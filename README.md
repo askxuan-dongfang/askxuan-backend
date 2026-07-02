@@ -102,12 +102,34 @@ askXuan-backend/
 ## 闭环测试
 
 ```bash
-# 执行 MVP-1 预约祈福闭环测试
+# 前置：启动基础设施 + 初始化数据库 + 启动所有服务
 docker compose up -d
 make db-init
 make start-all
+
+# MVP-1 预约祈福闭环（10 步）：注册→登录→寺院/法师→预约→消息→管理台确认
 bash scripts/test-mvp1-closed-loop.sh
+
+# MVP-2 DIY 定制闭环（16 步）：材料→设计→DIY订单→支付→加持→发货→物流→完成
+bash scripts/test-mvp2-diy-closed-loop.sh
+
+# MVP-2 商城交易闭环（11 步）：商品→订单→支付→发货→物流→确认收货
+bash scripts/test-mvp2-trade-closed-loop.sh
+
+# MVP-3 评价闭环（9 步）：评价创建→列表→详情→回复→举报→处理
+bash scripts/test-mvp3-review-closed-loop.sh
+
+# MVP-3 营销闭环（11 步）：Banner/活动/优惠券/推荐位全链路
+bash scripts/test-mvp3-marketing-closed-loop.sh
+
+# MVP-3 财务闭环（10 步）：总览/结算/提现/抽成配置/报表
+bash scripts/test-mvp3-finance-closed-loop.sh
+
+# MVP-3 审核闭环（10 步）：审核队列/通过/驳回/举报/敏感词/统计
+bash scripts/test-mvp3-audit-closed-loop.sh
 ```
+
+> MVP-3 四个服务使用内存存储（sync.RWMutex + slice + seq），重启后状态重置；若测试因数据被消费失败，重启对应服务后重跑即可。
 
 ## 快速启动
 
