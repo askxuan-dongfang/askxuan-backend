@@ -119,3 +119,30 @@ func ListReports(targetType, status string, page, size int) ([]Report, int64) {
 	}
 	return filtered[start:end], total
 }
+
+// FindReportByID 按ID查询举报记录
+func FindReportByID(id int64) (Report, bool) {
+	globalReportStore.mu.RLock()
+	defer globalReportStore.mu.RUnlock()
+	for _, rp := range globalReportStore.list {
+		if rp.Id == id {
+			return rp, true
+		}
+	}
+	return Report{}, false
+}
+
+// UpdateReport 更新举报记录，找到 id 则更新 status/handlerId/handleResult 并返回 true
+func UpdateReport(id int64, status, handlerId, handleResult string) bool {
+	globalReportStore.mu.Lock()
+	defer globalReportStore.mu.Unlock()
+	for i := range globalReportStore.list {
+		if globalReportStore.list[i].Id == id {
+			globalReportStore.list[i].Status = status
+			globalReportStore.list[i].HandlerId = handlerId
+			globalReportStore.list[i].HandleResult = handleResult
+			return true
+		}
+	}
+	return false
+}

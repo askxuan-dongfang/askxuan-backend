@@ -3,7 +3,7 @@ package logic
 import (
 	"context"
 
-	"github.com/askxuan/common"
+	"github.com/askxuan/finance-service/internal/model"
 	"github.com/askxuan/finance-service/internal/svc"
 	"github.com/askxuan/finance-service/internal/types"
 
@@ -27,6 +27,19 @@ func NewOverviewLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Overview
 
 // Overview 收入总览：总收入/寺院收入/法师收入/商城收入/平台抽成/待审核提现数
 func (l *OverviewLogic) Overview(req *types.OverviewReq) (*types.OverviewResp, error) {
-	// TODO: 聚合 settlement + withdrawal 数据计算收入总览
-	return nil, common.ErrNotImplemented
+	settlementSums := model.SumSettlementBySettleType(req.StartTime, req.EndTime)
+	templeIncome := settlementSums[model.SettleTypeTemple]
+	masterIncome := settlementSums[model.SettleTypeMaster]
+	shopIncome := settlementSums[model.SettleTypeShop]
+	totalIncome := templeIncome + masterIncome + shopIncome
+	commissionIncome := model.SumCommissionAmount()
+	pendingWithdraw := int(model.CountWithdrawalByStatus(model.WithdrawalPending))
+	return &types.OverviewResp{
+		TotalIncome:      totalIncome,
+		TempleIncome:     templeIncome,
+		MasterIncome:     masterIncome,
+		ShopIncome:       shopIncome,
+		CommissionIncome: commissionIncome,
+		PendingWithdraw:  pendingWithdraw,
+	}, nil
 }

@@ -1,7 +1,9 @@
 package model
 
 import (
+	"fmt"
 	"sync"
+	"time"
 )
 
 // 评价状态常量
@@ -131,4 +133,34 @@ func FindReviewByID(id int64) (Review, bool) {
 		}
 	}
 	return Review{}, false
+}
+
+// CreateReview 新建评价，seq 自增，生成 reviewNo（格式 R{YYYYMMDD}{seq:06d}），默认 status=normal，设置 createTime
+func CreateReview(r Review) Review {
+	globalReviewStore.mu.Lock()
+	defer globalReviewStore.mu.Unlock()
+
+	globalReviewStore.seq++
+	r.Id = globalReviewStore.seq
+	if r.Status == "" {
+		r.Status = ReviewStatusNormal
+	}
+	r.ReviewNo = fmt.Sprintf("R%s%06d", time.Now().Format("20060102"), r.Id)
+	r.CreateTime = time.Now().Format("2006-01-02 15:04:05")
+	globalReviewStore.list = append(globalReviewStore.list, r)
+	return r
+}
+
+// UpdateReviewStatus 更新评价状态，找到并更新返回 true，未找到返回 false
+func UpdateReviewStatus(id int64, status string) bool {
+	globalReviewStore.mu.Lock()
+	defer globalReviewStore.mu.Unlock()
+
+	for i := range globalReviewStore.list {
+		if globalReviewStore.list[i].Id == id {
+			globalReviewStore.list[i].Status = status
+			return true
+		}
+	}
+	return false
 }

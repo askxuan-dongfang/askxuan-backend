@@ -3,9 +3,9 @@ package logic
 import (
 	"context"
 
+	"github.com/askxuan/audit-service/internal/model"
 	"github.com/askxuan/audit-service/internal/svc"
 	"github.com/askxuan/audit-service/internal/types"
-	"github.com/askxuan/common"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -27,6 +27,31 @@ func NewStatisticsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Statis
 
 // Statistics 审核统计：总量/待审/已通过/已驳回/通过率/平均审核时长
 func (l *StatisticsLogic) Statistics(req *types.StatisticsReq) (*types.StatisticsResp, error) {
-	// TODO: 聚合 audit_queue 数据计算统计指标
-	return nil, common.ErrNotImplemented
+	// 遍历 audit_queue store 计算统计
+	list, _ := model.ListAuditQueue(req.BizType, "", 1, 100000) // 取全部
+	total := int64(len(list))
+	var pending, approved, rejected int64
+	for _, a := range list {
+		switch a.Status {
+		case model.AuditStatusPending:
+			pending++
+		case model.AuditStatusApproved:
+			approved++
+		case model.AuditStatusRejected:
+			rejected++
+		}
+	}
+	// 通过率 = approved / (approved + rejected) * 100
+	passRate := 0.0
+	if approved+rejected > 0 {
+		passRate = float64(approved) / float64(approved+rejected) * 100
+	}
+	return &types.StatisticsResp{
+		TotalCount:    total,
+		PendingCount:  pending,
+		ApprovedCount: approved,
+		RejectedCount: rejected,
+		PassRate:      passRate,
+		AvgAuditTime:  0, // 简化处理
+	}, nil
 }

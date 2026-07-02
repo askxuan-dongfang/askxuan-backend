@@ -2,6 +2,7 @@ package model
 
 import (
 	"sync"
+	"time"
 )
 
 // 举报状态常量
@@ -90,4 +91,47 @@ func ListReports(status string, page, size int) ([]ReviewReport, int64) {
 		end = len(filtered)
 	}
 	return filtered[start:end], total
+}
+
+// CreateReport 新建举报，seq 自增，默认 status=pending，设置 createTime
+func CreateReport(r ReviewReport) ReviewReport {
+	globalReviewReportStore.mu.Lock()
+	defer globalReviewReportStore.mu.Unlock()
+
+	globalReviewReportStore.seq++
+	r.Id = globalReviewReportStore.seq
+	if r.Status == "" {
+		r.Status = ReportStatusPending
+	}
+	r.CreateTime = time.Now().Format("2006-01-02 15:04:05")
+	globalReviewReportStore.list = append(globalReviewReportStore.list, r)
+	return r
+}
+
+// FindReportByID 按ID查询举报
+func FindReportByID(id int64) (ReviewReport, bool) {
+	globalReviewReportStore.mu.RLock()
+	defer globalReviewReportStore.mu.RUnlock()
+
+	for _, r := range globalReviewReportStore.list {
+		if r.Id == id {
+			return r, true
+		}
+	}
+	return ReviewReport{}, false
+}
+
+// UpdateReportStatus 更新举报状态和处理结果，找到并更新返回 true，未找到返回 false
+func UpdateReportStatus(id int64, status, handleResult string) bool {
+	globalReviewReportStore.mu.Lock()
+	defer globalReviewReportStore.mu.Unlock()
+
+	for i := range globalReviewReportStore.list {
+		if globalReviewReportStore.list[i].Id == id {
+			globalReviewReportStore.list[i].Status = status
+			globalReviewReportStore.list[i].HandleResult = handleResult
+			return true
+		}
+	}
+	return false
 }

@@ -3,7 +3,7 @@ package logic
 import (
 	"context"
 
-	"github.com/askxuan/common"
+	"github.com/askxuan/finance-service/internal/model"
 	"github.com/askxuan/finance-service/internal/svc"
 	"github.com/askxuan/finance-service/internal/types"
 
@@ -27,6 +27,17 @@ func NewSettlementListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Se
 
 // SettlementList 结算列表，支持按 settleType/status 筛选 + 分页
 func (l *SettlementListLogic) SettlementList(req *types.SettlementListReq) (*types.SettlementListResp, error) {
-	// TODO: 调用 model.ListSettlements 查询
-	return nil, common.ErrNotImplemented
+	list, total := model.ListSettlements(req.SettleType, req.Status, req.Page, req.Size)
+	resp := &types.SettlementListResp{Total: total, Page: req.Page, Size: req.Size}
+	for _, s := range list {
+		resp.List = append(resp.List, types.Settlement{
+			Id: s.Id, SettlementNo: s.SettlementNo, SettleType: s.SettleType,
+			TargetId: s.TargetId, TargetName: s.TargetName,
+			PeriodStart: s.PeriodStart, PeriodEnd: s.PeriodEnd,
+			OrderCount: s.OrderCount, TotalAmount: s.TotalAmount,
+			CommissionRate: s.CommissionRate, CommissionAmount: s.CommissionAmount,
+			SettleAmount: s.SettleAmount, Status: s.Status, CreateTime: s.CreateTime,
+		})
+	}
+	return resp, nil
 }

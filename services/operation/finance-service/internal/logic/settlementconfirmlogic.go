@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/finance-service/internal/model"
 	"github.com/askxuan/finance-service/internal/svc"
 	"github.com/askxuan/finance-service/internal/types"
 
@@ -27,6 +28,13 @@ func NewSettlementConfirmLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 
 // SettlementConfirm 确认结算（status: pending → confirmed）
 func (l *SettlementConfirmLogic) SettlementConfirm(req *types.SettlementConfirmReq) (*types.SettlementConfirmResp, error) {
-	// TODO: 校验状态流转 CanTransitSettlement + 更新状态
-	return nil, common.ErrNotImplemented
+	s, ok := model.FindSettlementByID(req.Id)
+	if !ok {
+		return nil, common.NewBizError(40404, "结算单不存在")
+	}
+	if !model.CanTransitSettlement(s.Status, model.SettlementConfirmed) {
+		return nil, common.ErrStatusInvalid
+	}
+	model.UpdateSettlementStatus(req.Id, model.SettlementConfirmed)
+	return &types.SettlementConfirmResp{Id: req.Id, Status: model.SettlementConfirmed}, nil
 }

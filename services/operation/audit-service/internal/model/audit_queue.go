@@ -165,3 +165,19 @@ func FindAuditQueueByID(id int64) (AuditQueue, bool) {
 	}
 	return AuditQueue{}, false
 }
+
+// UpdateAuditQueueStatus 更新审核记录状态，找到 id 则更新 status/auditorId/auditTime/auditRemark 并返回 true
+func UpdateAuditQueueStatus(id int64, status, auditorId, auditTime, remark string) bool {
+	globalAuditQueueStore.mu.Lock()
+	defer globalAuditQueueStore.mu.Unlock()
+	for i := range globalAuditQueueStore.list {
+		if globalAuditQueueStore.list[i].Id == id {
+			globalAuditQueueStore.list[i].Status = status
+			globalAuditQueueStore.list[i].AuditorId = auditorId
+			globalAuditQueueStore.list[i].AuditTime = auditTime
+			globalAuditQueueStore.list[i].AuditRemark = remark
+			return true
+		}
+	}
+	return false
+}

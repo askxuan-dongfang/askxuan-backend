@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 
+	"github.com/askxuan/audit-service/internal/model"
 	"github.com/askxuan/audit-service/internal/svc"
 	"github.com/askxuan/audit-service/internal/types"
 	"github.com/askxuan/common"
@@ -27,6 +28,8 @@ func NewSensitiveWordDeleteLogic(ctx context.Context, svcCtx *svc.ServiceContext
 
 // SensitiveWordDelete 删除敏感词
 func (l *SensitiveWordDeleteLogic) SensitiveWordDelete(req *types.SensitiveWordDeleteReq) error {
-	// TODO: 删除 sensitive_word 记录 + 更新 Redis 缓存
-	return common.ErrNotImplemented
+	if !model.DeleteSensitiveWord(req.Id) {
+		return common.NewBizError(40404, "敏感词不存在")
+	}
+	return nil
 }

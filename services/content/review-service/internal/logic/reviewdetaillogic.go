@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/review-service/internal/model"
 	"github.com/askxuan/review-service/internal/svc"
 	"github.com/askxuan/review-service/internal/types"
 
@@ -27,6 +28,20 @@ func NewReviewDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Revi
 
 // ReviewDetail 按ID查询评价详情
 func (l *ReviewDetailLogic) ReviewDetail(req *types.ReviewDetailReq) (*types.Review, error) {
-	// TODO: 调用 model.FindReviewByID 查询
-	return nil, common.ErrNotImplemented
+	r, ok := model.FindReviewByID(req.Id)
+	if !ok {
+		return nil, common.ErrReviewNotFound
+	}
+	return &types.Review{
+		Id:         r.Id,
+		ReviewNo:   r.ReviewNo,
+		UserId:     r.UserId,
+		TargetType: r.TargetType,
+		TargetId:   r.TargetId,
+		Rating:     r.Rating,
+		Content:    r.Content,
+		Images:     r.Images,
+		Status:     r.Status,
+		CreateTime: r.CreateTime,
+	}, nil
 }

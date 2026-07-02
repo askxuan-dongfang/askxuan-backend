@@ -2,6 +2,7 @@ package model
 
 import (
 	"sync"
+	"time"
 )
 
 // 回复者类型
@@ -41,4 +42,30 @@ var globalReviewReplyStore = &reviewReplyStore{
 		},
 	},
 	seq: 1,
+}
+
+// CreateReply 新建评价回复，seq 自增，设置 createTime，追加到 store
+func CreateReply(reply ReviewReply) ReviewReply {
+	globalReviewReplyStore.mu.Lock()
+	defer globalReviewReplyStore.mu.Unlock()
+
+	globalReviewReplyStore.seq++
+	reply.Id = globalReviewReplyStore.seq
+	reply.CreateTime = time.Now().Format("2006-01-02 15:04:05")
+	globalReviewReplyStore.list = append(globalReviewReplyStore.list, reply)
+	return reply
+}
+
+// ListRepliesByReviewID 按评价ID查询回复列表
+func ListRepliesByReviewID(reviewId int64) []ReviewReply {
+	globalReviewReplyStore.mu.RLock()
+	defer globalReviewReplyStore.mu.RUnlock()
+
+	result := make([]ReviewReply, 0)
+	for _, r := range globalReviewReplyStore.list {
+		if r.ReviewId == reviewId {
+			result = append(result, r)
+		}
+	}
+	return result
 }

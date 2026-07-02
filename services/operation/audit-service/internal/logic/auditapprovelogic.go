@@ -2,7 +2,11 @@ package logic
 
 import (
 	"context"
+	"fmt"
+	"time"
 
+	"github.com/askxuan/audit-service/internal/model"
+	"github.com/askxuan/audit-service/internal/mq"
 	"github.com/askxuan/audit-service/internal/svc"
 	"github.com/askxuan/audit-service/internal/types"
 	"github.com/askxuan/common"
@@ -28,6 +32,32 @@ func NewAuditApproveLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Audi
 // AuditApprove 审核通过
 // 参照 state-machines.md 7.1/7.2/7.3 审核状态机
 func (l *AuditApproveLogic) AuditApprove(req *types.AuditApproveReq) (*types.AuditApproveResp, error) {
-	// TODO: 校验状态流转 CanTransitAudit + 更新状态 + 写入 audit_log + MQ通知
-	return nil, common.ErrNotImplemented
+	// 查询审核记录
+	a, ok := model.FindAuditQueueByID(req.Id)
+	if !ok {
+		return nil, common.NewBizError(40404, "审核记录不存在")
+	}
+	// 校验状态流转
+	if !model.CanTransitAudit(a.Status, model.AuditStatusApproved) {
+		return nil, common.ErrStatusInvalid
+	}
+	// 更新审核状态
+	now := time.Now().Format("2006-01-02 15:04:05")
+	model.UpdateAuditQueueStatus(req.Id, model.AuditStatusApproved, req.AuditorId, now, req.Remark)
+	// 写入审核日志
+	model.InsertAuditLog(model.AuditLog{
+		AuditId:    req.Id,
+		Action:     "approve",
+		OperatorId: req.AuditorId,
+		Remark:     req.Remark,
+	})
+	// 发 MQ 通知
+	_ = l.svcCtx.MqProducer.PublishAuditResult(l.ctx, mq.AuditResult{
+		AuditId: fmt.Sprintf("%d", req.Id),
+		BizType: a.BizType,
+		BizId:   a.BizId,
+		Result:  "approved",
+		Time:    now,
+	})
+	return &types.AuditApproveResp{Id: req.Id, Status: model.AuditStatusApproved}, nil
 }

@@ -3,7 +3,7 @@ package logic
 import (
 	"context"
 
-	"github.com/askxuan/common"
+	"github.com/askxuan/finance-service/internal/model"
 	"github.com/askxuan/finance-service/internal/svc"
 	"github.com/askxuan/finance-service/internal/types"
 
@@ -27,6 +27,13 @@ func NewCommissionConfigListLogic(ctx context.Context, svcCtx *svc.ServiceContex
 
 // CommissionConfigList 抽成配置列表，支持按 bizType 筛选
 func (l *CommissionConfigListLogic) CommissionConfigList(req *types.CommissionConfigListReq) (*types.CommissionConfigListResp, error) {
-	// TODO: 调用 model.ListCommissionConfigs 查询
-	return nil, common.ErrNotImplemented
+	list := model.ListCommissionConfigs(req.BizType)
+	resp := &types.CommissionConfigListResp{}
+	for _, c := range list {
+		resp.List = append(resp.List, types.CommissionConfig{
+			Id: c.Id, BizType: c.BizType, Rate: c.Rate,
+			Description: c.Description, UpdateTime: c.UpdateTime,
+		})
+	}
+	return resp, nil
 }

@@ -3,7 +3,7 @@ package logic
 import (
 	"context"
 
-	"github.com/askxuan/common"
+	"github.com/askxuan/review-service/internal/model"
 	"github.com/askxuan/review-service/internal/svc"
 	"github.com/askxuan/review-service/internal/types"
 
@@ -27,6 +27,11 @@ func NewReviewReplyLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Revie
 
 // ReviewReply 寺院管理员/法师/平台回复评价
 func (l *ReviewReplyLogic) ReviewReply(req *types.ReviewReplyReq) (*types.ReviewReplyResp, error) {
-	// TODO: 写入 review_reply 记录
-	return nil, common.ErrNotImplemented
+	reply := model.CreateReply(model.ReviewReply{
+		ReviewId:    req.Id,
+		ReplierType: req.ReplierType,
+		ReplierId:   req.ReplierId,
+		Content:     req.Content,
+	})
+	return &types.ReviewReplyResp{Id: reply.Id}, nil
 }

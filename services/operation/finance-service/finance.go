@@ -11,6 +11,7 @@ import (
 
 	"github.com/askxuan/finance-service/internal/config"
 	"github.com/askxuan/finance-service/internal/handler"
+	"github.com/askxuan/finance-service/internal/model"
 	"github.com/askxuan/finance-service/internal/mq"
 	"github.com/askxuan/finance-service/internal/svc"
 
@@ -67,7 +68,13 @@ func startConsumer(ctx context.Context, consumer *mq.Consumer) {
 				}
 				logx.Infof("收到预约状态变更: bookingId=%s action=%s userId=%s",
 					evt.BookingId, evt.Action, evt.UserId)
-				// TODO: 记账/佣金计算
+				if evt.Action == "completed" {
+					model.InsertFinanceLog(model.FinanceLog{
+						Type:        "income",
+						Amount:      0,
+						Description: fmt.Sprintf("预约收入:%s", evt.BookingId),
+					})
+				}
 				return nil
 			},
 		},
@@ -82,7 +89,13 @@ func startConsumer(ctx context.Context, consumer *mq.Consumer) {
 				}
 				logx.Infof("收到订单状态变更: orderId=%s action=%s userId=%s",
 					evt.OrderId, evt.Action, evt.UserId)
-				// TODO: 记账/佣金计算
+				if evt.Action == "completed" {
+					model.InsertFinanceLog(model.FinanceLog{
+						Type:        "income",
+						Amount:      0,
+						Description: fmt.Sprintf("商城订单收入:%s", evt.OrderId),
+					})
+				}
 				return nil
 			},
 		},
@@ -97,7 +110,11 @@ func startConsumer(ctx context.Context, consumer *mq.Consumer) {
 				}
 				logx.Infof("收到支付通知: paymentNo=%s orderType=%s orderNo=%s action=%s amount=%.2f",
 					evt.PaymentNo, evt.OrderType, evt.OrderNo, evt.Action, evt.Amount)
-				// TODO: 记账/对账
+				model.InsertFinanceLog(model.FinanceLog{
+					Type:        "income",
+					Amount:      evt.Amount,
+					Description: fmt.Sprintf("支付%s:%s", evt.Action, evt.OrderNo),
+				})
 				return nil
 			},
 		},

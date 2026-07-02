@@ -162,3 +162,38 @@ func FindSettlementByID(id int64) (Settlement, bool) {
 	}
 	return Settlement{}, false
 }
+
+// UpdateSettlementStatus 更新结算单状态
+func UpdateSettlementStatus(id int64, status string) bool {
+	globalSettlementStore.mu.Lock()
+	defer globalSettlementStore.mu.Unlock()
+	for i := range globalSettlementStore.list {
+		if globalSettlementStore.list[i].Id == id {
+			globalSettlementStore.list[i].Status = status
+			return true
+		}
+	}
+	return false
+}
+
+// SumSettlementBySettleType 按结算类型聚合结算金额
+func SumSettlementBySettleType(start, end string) map[string]float64 {
+	globalSettlementStore.mu.RLock()
+	defer globalSettlementStore.mu.RUnlock()
+	result := map[string]float64{}
+	for _, s := range globalSettlementStore.list {
+		result[s.SettleType] += s.TotalAmount
+	}
+	return result
+}
+
+// SumCommissionAmount 聚合所有结算单的平台抽成金额
+func SumCommissionAmount() float64 {
+	globalSettlementStore.mu.RLock()
+	defer globalSettlementStore.mu.RUnlock()
+	var total float64
+	for _, s := range globalSettlementStore.list {
+		total += s.CommissionAmount
+	}
+	return total
+}

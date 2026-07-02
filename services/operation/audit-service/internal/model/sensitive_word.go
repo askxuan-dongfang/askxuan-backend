@@ -2,6 +2,7 @@ package model
 
 import (
 	"sync"
+	"time"
 )
 
 // 敏感词状态
@@ -75,6 +76,36 @@ func ListSensitiveWords(category, status, keyword string, page, size int) ([]Sen
 func contains(s, substr string) bool {
 	for i := 0; i+len(substr) <= len(s); i++ {
 		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
+// CreateSensitiveWord 新增敏感词，seq 自增，默认 status=enabled，设置 createTime
+func CreateSensitiveWord(word, category string) SensitiveWord {
+	globalSensitiveWordStore.mu.Lock()
+	defer globalSensitiveWordStore.mu.Unlock()
+	globalSensitiveWordStore.seq++
+	sw := SensitiveWord{
+		Id:         globalSensitiveWordStore.seq,
+		Word:       word,
+		Category:   category,
+		Status:     SensitiveWordEnabled,
+		CreateTime: time.Now().Format("2006-01-02 15:04:05"),
+	}
+	globalSensitiveWordStore.list = append(globalSensitiveWordStore.list, sw)
+	return sw
+}
+
+// DeleteSensitiveWord 删除敏感词，找到并删除返回 true，否则返回 false
+func DeleteSensitiveWord(id int64) bool {
+	globalSensitiveWordStore.mu.Lock()
+	defer globalSensitiveWordStore.mu.Unlock()
+	for i, sw := range globalSensitiveWordStore.list {
+		if sw.Id == id {
+			// 保留顺序删除：将 i 之后元素前移，再截断末尾
+			globalSensitiveWordStore.list = append(globalSensitiveWordStore.list[:i], globalSensitiveWordStore.list[i+1:]...)
 			return true
 		}
 	}

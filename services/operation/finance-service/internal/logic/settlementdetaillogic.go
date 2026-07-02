@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/finance-service/internal/model"
 	"github.com/askxuan/finance-service/internal/svc"
 	"github.com/askxuan/finance-service/internal/types"
 
@@ -27,6 +28,16 @@ func NewSettlementDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 
 // SettlementDetail 按 ID 查询结算单详情
 func (l *SettlementDetailLogic) SettlementDetail(req *types.SettlementDetailReq) (*types.Settlement, error) {
-	// TODO: 调用 model.FindSettlementByID 查询
-	return nil, common.ErrNotImplemented
+	s, ok := model.FindSettlementByID(req.Id)
+	if !ok {
+		return nil, common.NewBizError(40404, "结算单不存在")
+	}
+	return &types.Settlement{
+		Id: s.Id, SettlementNo: s.SettlementNo, SettleType: s.SettleType,
+		TargetId: s.TargetId, TargetName: s.TargetName,
+		PeriodStart: s.PeriodStart, PeriodEnd: s.PeriodEnd,
+		OrderCount: s.OrderCount, TotalAmount: s.TotalAmount,
+		CommissionRate: s.CommissionRate, CommissionAmount: s.CommissionAmount,
+		SettleAmount: s.SettleAmount, Status: s.Status, CreateTime: s.CreateTime,
+	}, nil
 }

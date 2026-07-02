@@ -1,7 +1,9 @@
 package model
 
 import (
+	"fmt"
 	"sync"
+	"time"
 )
 
 // 业务类型（抽成配置使用）
@@ -50,4 +52,33 @@ func ListCommissionConfigs(bizType string) []CommissionConfig {
 		result = append(result, c)
 	}
 	return result
+}
+
+// FindCommissionConfigByID 按ID查询抽成配置
+func FindCommissionConfigByID(id int64) (CommissionConfig, bool) {
+	globalCommissionConfigStore.mu.RLock()
+	defer globalCommissionConfigStore.mu.RUnlock()
+	for _, c := range globalCommissionConfigStore.list {
+		if c.Id == id {
+			return c, true
+		}
+	}
+	return CommissionConfig{}, false
+}
+
+// UpdateCommissionConfig 更新抽成配置
+func UpdateCommissionConfig(id int64, rate float64, description string) error {
+	globalCommissionConfigStore.mu.Lock()
+	defer globalCommissionConfigStore.mu.Unlock()
+	for i := range globalCommissionConfigStore.list {
+		if globalCommissionConfigStore.list[i].Id == id {
+			globalCommissionConfigStore.list[i].Rate = rate
+			if description != "" {
+				globalCommissionConfigStore.list[i].Description = description
+			}
+			globalCommissionConfigStore.list[i].UpdateTime = time.Now().Format("2006-01-02 15:04:05")
+			return nil
+		}
+	}
+	return fmt.Errorf("配置不存在")
 }

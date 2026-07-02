@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 
+	"github.com/askxuan/audit-service/internal/model"
 	"github.com/askxuan/audit-service/internal/svc"
 	"github.com/askxuan/audit-service/internal/types"
 	"github.com/askxuan/common"
@@ -27,6 +28,20 @@ func NewAuditQueueDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 
 // AuditQueueDetail 按ID查询审核详情
 func (l *AuditQueueDetailLogic) AuditQueueDetail(req *types.AuditQueueDetailReq) (*types.AuditQueue, error) {
-	// TODO: 调用 model.FindAuditQueueByID 查询
-	return nil, common.ErrNotImplemented
+	a, ok := model.FindAuditQueueByID(req.Id)
+	if !ok {
+		return nil, common.NewBizError(40404, "审核记录不存在")
+	}
+	return &types.AuditQueue{
+		Id:              a.Id,
+		BizType:         a.BizType,
+		BizId:           a.BizId,
+		SubmitterId:     a.SubmitterId,
+		ContentSnapshot: a.ContentSnapshot,
+		Status:          a.Status,
+		AuditorId:       a.AuditorId,
+		AuditTime:       a.AuditTime,
+		AuditRemark:     a.AuditRemark,
+		CreateTime:      a.CreateTime,
+	}, nil
 }

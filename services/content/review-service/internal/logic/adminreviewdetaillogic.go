@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/review-service/internal/model"
 	"github.com/askxuan/review-service/internal/svc"
 	"github.com/askxuan/review-service/internal/types"
 
@@ -25,8 +26,22 @@ func NewAdminReviewDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	}
 }
 
-// AdminReviewDetail 管理台评价详情（含回复列表）
+// AdminReviewDetail 管理台评价详情
 func (l *AdminReviewDetailLogic) AdminReviewDetail(req *types.ReviewDetailReq) (*types.Review, error) {
-	// TODO: 调用 model.FindReviewByID + 查询回复列表
-	return nil, common.ErrNotImplemented
+	r, ok := model.FindReviewByID(req.Id)
+	if !ok {
+		return nil, common.ErrReviewNotFound
+	}
+	return &types.Review{
+		Id:         r.Id,
+		ReviewNo:   r.ReviewNo,
+		UserId:     r.UserId,
+		TargetType: r.TargetType,
+		TargetId:   r.TargetId,
+		Rating:     r.Rating,
+		Content:    r.Content,
+		Images:     r.Images,
+		Status:     r.Status,
+		CreateTime: r.CreateTime,
+	}, nil
 }

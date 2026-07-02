@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 
+	"github.com/askxuan/audit-service/internal/model"
 	"github.com/askxuan/audit-service/internal/svc"
 	"github.com/askxuan/audit-service/internal/types"
 	"github.com/askxuan/common"
@@ -27,6 +28,26 @@ func NewReportHandleLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Repo
 
 // ReportHandle 处理举报（handled/rejected）
 func (l *ReportHandleLogic) ReportHandle(req *types.ReportHandleReq) (*types.ReportHandleResp, error) {
-	// TODO: 校验状态流转 CanTransitReport + 更新状态 + 记录处理结果
-	return nil, common.ErrNotImplemented
+	// 查询举报记录
+	r, ok := model.FindReportByID(req.Id)
+	if !ok {
+		return nil, common.NewBizError(40404, "举报记录不存在")
+	}
+	// 根据处理结果映射目标状态
+	var targetStatus string
+	switch req.HandleResult {
+	case "handled":
+		targetStatus = model.ReportStatusHandled
+	case "rejected":
+		targetStatus = model.ReportStatusRejected
+	default:
+		return nil, common.ErrParam
+	}
+	// 校验状态流转
+	if !model.CanTransitReport(r.Status, targetStatus) {
+		return nil, common.ErrStatusInvalid
+	}
+	// 更新举报记录
+	model.UpdateReport(req.Id, targetStatus, req.HandlerId, req.HandleResult)
+	return &types.ReportHandleResp{Id: req.Id, Status: targetStatus}, nil
 }

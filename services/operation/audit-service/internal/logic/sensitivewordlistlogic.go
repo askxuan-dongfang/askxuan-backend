@@ -3,9 +3,9 @@ package logic
 import (
 	"context"
 
+	"github.com/askxuan/audit-service/internal/model"
 	"github.com/askxuan/audit-service/internal/svc"
 	"github.com/askxuan/audit-service/internal/types"
-	"github.com/askxuan/common"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -27,6 +27,22 @@ func NewSensitiveWordListLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 
 // SensitiveWordList 敏感词库列表，支持按分类/状态/关键词筛选
 func (l *SensitiveWordListLogic) SensitiveWordList(req *types.SensitiveWordListReq) (*types.SensitiveWordListResp, error) {
-	// TODO: 调用 model.ListSensitiveWords 查询
-	return nil, common.ErrNotImplemented
+	list, total := model.ListSensitiveWords(req.Category, req.Status, req.Keyword, req.Page, req.Size)
+	// 转换为 []types.SensitiveWord
+	out := make([]types.SensitiveWord, 0, len(list))
+	for _, sw := range list {
+		out = append(out, types.SensitiveWord{
+			Id:         sw.Id,
+			Word:       sw.Word,
+			Category:   sw.Category,
+			Status:     sw.Status,
+			CreateTime: sw.CreateTime,
+		})
+	}
+	return &types.SensitiveWordListResp{
+		Total: total,
+		List:  out,
+		Page:  req.Page,
+		Size:  req.Size,
+	}, nil
 }

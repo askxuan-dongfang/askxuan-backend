@@ -136,3 +136,35 @@ func FindWithdrawalByID(id int64) (Withdrawal, bool) {
 	}
 	return Withdrawal{}, false
 }
+
+// UpdateWithdrawalStatus 更新提现状态
+func UpdateWithdrawalStatus(id int64, status, auditTime, processTime string) bool {
+	globalWithdrawalStore.mu.Lock()
+	defer globalWithdrawalStore.mu.Unlock()
+	for i := range globalWithdrawalStore.list {
+		if globalWithdrawalStore.list[i].Id == id {
+			globalWithdrawalStore.list[i].Status = status
+			if auditTime != "" {
+				globalWithdrawalStore.list[i].AuditTime = auditTime
+			}
+			if processTime != "" {
+				globalWithdrawalStore.list[i].ProcessTime = processTime
+			}
+			return true
+		}
+	}
+	return false
+}
+
+// CountWithdrawalByStatus 按状态计数提现单
+func CountWithdrawalByStatus(status string) int64 {
+	globalWithdrawalStore.mu.RLock()
+	defer globalWithdrawalStore.mu.RUnlock()
+	var count int64
+	for _, w := range globalWithdrawalStore.list {
+		if w.Status == status {
+			count++
+		}
+	}
+	return count
+}

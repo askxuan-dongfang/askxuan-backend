@@ -3,7 +3,7 @@ package logic
 import (
 	"context"
 
-	"github.com/askxuan/common"
+	"github.com/askxuan/finance-service/internal/model"
 	"github.com/askxuan/finance-service/internal/svc"
 	"github.com/askxuan/finance-service/internal/types"
 
@@ -27,6 +27,15 @@ func NewWithdrawalListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Wi
 
 // WithdrawalList 提现申请列表，支持按 applicantType/status 筛选 + 分页
 func (l *WithdrawalListLogic) WithdrawalList(req *types.WithdrawalListReq) (*types.WithdrawalListResp, error) {
-	// TODO: 调用 model.ListWithdrawals 查询
-	return nil, common.ErrNotImplemented
+	list, total := model.ListWithdrawals(req.ApplicantType, req.Status, req.Page, req.Size)
+	resp := &types.WithdrawalListResp{Total: total, Page: req.Page, Size: req.Size}
+	for _, w := range list {
+		resp.List = append(resp.List, types.Withdrawal{
+			Id: w.Id, WithdrawalNo: w.WithdrawalNo, ApplicantType: w.ApplicantType,
+			ApplicantId: w.ApplicantId, Amount: w.Amount, BankCard: w.BankCard,
+			Status: w.Status, AuditTime: w.AuditTime, ProcessTime: w.ProcessTime,
+			CreateTime: w.CreateTime,
+		})
+	}
+	return resp, nil
 }
