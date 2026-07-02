@@ -1,0 +1,318 @@
+syntax = "v1"
+
+info (
+    title:   "Temple Service"
+    desc:    "东方玄学 寺院服务 - 寺院/图片/服务/入驻审核/加持任务"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// ============ 寺院基础 ============
+type (
+    Temple {
+        Id          string  `json:"id"`
+        Name        string  `json:"name"`
+        Region      string  `json:"region"`
+        Type        string  `json:"type"`
+        Sect        string  `json:"sect"`
+        Status      string  `json:"status"`
+        Address     string  `json:"address"`
+        CoverImage  string  `json:"coverImage"`
+        Rating      float64 `json:"rating"`
+        Description string  `json:"description"`
+    }
+
+    TempleDetail {
+        Temple   Temple          `json:"temple"`
+        Images   []TempleImage   `json:"images"`
+        Services []TempleService `json:"services"`
+    }
+
+    ListReq {
+        Sect   string `form:"sect,optional"`
+        Type   string `form:"type,optional"`
+        Region string `form:"region,optional"` // 扩展地区筛选
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    ListResp {
+        Total int64    `json:"total"`
+        List  []Temple `json:"list"`
+        Page  int      `json:"page"`
+        Size  int      `json:"size"`
+    }
+
+    DetailReq {
+        Id string `path:"id"`
+    }
+)
+
+// ============ 寺院图片 ============
+type (
+    TempleImage {
+        Id         int64  `json:"id"`
+        TempleCode string `json:"templeCode"`
+        Url        string `json:"url"`
+        Type       string `json:"type"` // cover/detail/hero
+        Sort       int    `json:"sort"`
+        CreateTime string `json:"createTime"`
+    }
+
+    TempleImageCreateReq {
+        Url  string `json:"url"`
+        Type string `json:"type"`
+        Sort int    `json:"sort,optional"`
+    }
+
+    TempleImageCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    TempleImageDeleteReq {
+        Id int64 `path:"id"`
+    }
+)
+
+// ============ 寺院服务 ============
+type (
+    TempleService {
+        Id          int64    `json:"id"`
+        TempleCode  string   `json:"templeCode"`
+        ServiceCode string   `json:"serviceCode"`
+        ServiceName string   `json:"serviceName"`
+        Price       float64  `json:"price"`
+        TimeSlots   []string `json:"timeSlots"`
+        Status      string   `json:"status"` // on_shelf/off_shelf
+        CreateTime  string   `json:"createTime"`
+    }
+
+    TempleServiceListReq {
+        Id string `path:"id"`
+    }
+
+    TempleServiceListResp {
+        List []TempleService `json:"list"`
+    }
+
+    TempleServiceCreateReq {
+        ServiceCode string   `json:"serviceCode"`
+        ServiceName string   `json:"serviceName"`
+        Price       float64  `json:"price"`
+        TimeSlots   []string `json:"timeSlots"`
+    }
+
+    TempleServiceCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    TempleServiceUpdateReq {
+        Id          int64    `path:"id"`
+        ServiceName string   `json:"serviceName,optional"`
+        Price       float64  `json:"price,optional"`
+        TimeSlots   []string `json:"timeSlots,optional"`
+    }
+
+    TempleServiceStatusReq {
+        Id     int64  `path:"id"`
+        Status string `json:"status"` // on_shelf/off_shelf
+    }
+
+    TempleServiceStatusResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// ============ 寺院信息编辑 ============
+type (
+    TempleUpdateReq {
+        Id          string `json:"id"`
+        Name        string `json:"name,optional"`
+        Region      string `json:"region,optional"`
+        Address     string `json:"address,optional"`
+        CoverImage  string `json:"coverImage,optional"`
+        Description string `json:"description,optional"`
+    }
+)
+
+// ============ 加持任务（修复 Gap-3） ============
+type (
+    BlessingTask {
+        Id               int64    `json:"id"`
+        TaskNo           string   `json:"taskNo"`
+        DiyOrderNo       string   `json:"diyOrderNo"`
+        TempleCode       string   `json:"templeCode"`
+        MasterCode       string   `json:"masterCode"`
+        Status           string   `json:"status"`
+        CertificateUrls  []string `json:"certificateUrls"`
+        AssignTime       string   `json:"assignTime"`
+        CompleteTime     string   `json:"completeTime"`
+        CreateTime       string   `json:"createTime"`
+    }
+
+    BlessingTaskListReq {
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    BlessingTaskListResp {
+        Total int64          `json:"total"`
+        List  []BlessingTask `json:"list"`
+        Page  int            `json:"page"`
+        Size  int            `json:"size"`
+    }
+
+    BlessingTaskDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    BlessingAssignReq {
+        Id         int64  `path:"id"`
+        MasterCode string `json:"masterCode"` // 分配的法师编码
+    }
+)
+
+// ============ 入驻审核 ============
+type (
+    TempleAudit {
+        Id             int64    `json:"id"`
+        TempleCode     string   `json:"templeCode"`
+        ApplicantName  string   `json:"applicantName"`
+        ContactPhone   string   `json:"contactPhone"`
+        CertUrls       []string `json:"certUrls"`
+        Status         string   `json:"status"` // pending/first_pass/final_pass/rejected
+        AuditorId      int64    `json:"auditorId"`
+        AuditRemark    string   `json:"auditRemark"`
+        CreateTime     string   `json:"createTime"`
+    }
+
+    TempleApplyReq {
+        TempleCode     string   `json:"templeCode"`
+        ApplicantName  string   `json:"applicantName"`
+        ContactPhone   string   `json:"contactPhone"`
+        CertUrls       []string `json:"certUrls"`
+    }
+
+    TempleApplyResp {
+        Id int64 `json:"id"`
+    }
+
+    TempleAuditListReq {
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    TempleAuditListResp {
+        Total int64        `json:"total"`
+        List  []TempleAudit `json:"list"`
+        Page  int          `json:"page"`
+        Size  int          `json:"size"`
+    }
+
+    TempleAuditActionReq {
+        Id           int64  `path:"id"`
+        AuditRemark  string `json:"auditRemark,optional"`
+    }
+)
+
+// ============ 平台寺院状态 ============
+type (
+    TemplePlatformStatusReq {
+        Id     string `path:"id"`
+        Status string `json:"status"` // normal/banned/recommended
+    }
+
+    TemplePlatformStatusResp {
+        Id     string `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// ============ C端分组（保留+扩展） ============
+@server (
+    group: temple
+    prefix: /api/v1/temples
+)
+service temple-service {
+    @handler list
+    get / (ListReq) returns (ListResp)
+
+    @handler detail
+    get /:id (DetailReq) returns (TempleDetail)
+
+    @handler serviceList
+    get /:id/services (TempleServiceListReq) returns (TempleServiceListResp)
+}
+
+// ============ 寺院管理台分组 ============
+@server (
+    group: temple.admin
+    prefix: /api/v1/admin/temples
+    jwt: Auth
+)
+service temple-service {
+    @handler adminTempleInfo
+    get /info (DetailReq) returns (Temple)
+
+    @handler adminTempleUpdate
+    put /info (TempleUpdateReq) returns (Temple)
+
+    @handler adminImageCreate
+    post /images (TempleImageCreateReq) returns (TempleImageCreateResp)
+
+    @handler adminImageDelete
+    delete /images/:id (TempleImageDeleteReq)
+
+    @handler adminServiceList
+    get /services returns (TempleServiceListResp)
+
+    @handler adminServiceCreate
+    post /services (TempleServiceCreateReq) returns (TempleServiceCreateResp)
+
+    @handler adminServiceUpdate
+    put /services/:id (TempleServiceUpdateReq) returns (TempleService)
+
+    @handler adminServiceStatus
+    put /services/:id/status (TempleServiceStatusReq) returns (TempleServiceStatusResp)
+
+    @handler adminBlessingTaskList
+    get /blessing-tasks (BlessingTaskListReq) returns (BlessingTaskListResp)
+
+    @handler adminBlessingTaskDetail
+    get /blessing-tasks/:id (BlessingTaskDetailReq) returns (BlessingTask)
+
+    @handler adminBlessingAssign
+    put /blessing-tasks/:id/assign (BlessingAssignReq) returns (BlessingTask)
+
+    @handler adminTempleApply
+    post /apply (TempleApplyReq) returns (TempleApplyResp)
+}
+
+// ============ 平台管理台分组 ============
+@server (
+    group: temple.platform
+    prefix: /api/v1/admin/platform/temples
+    jwt: Auth
+)
+service temple-service {
+    @handler platformTempleList
+    get / (ListReq) returns (ListResp)
+
+    @handler platformAuditList
+    get /audits (TempleAuditListReq) returns (TempleAuditListResp)
+
+    @handler platformAuditFirstPass
+    put /audits/:id/first-pass (TempleAuditActionReq) returns (TempleAudit)
+
+    @handler platformAuditFinalPass
+    put /audits/:id/final-pass (TempleAuditActionReq) returns (TempleAudit)
+
+    @handler platformAuditReject
+    put /audits/:id/reject (TempleAuditActionReq) returns (TempleAudit)
+
+    @handler platformTempleStatus
+    put /:id/status (TemplePlatformStatusReq) returns (TemplePlatformStatusResp)
+}

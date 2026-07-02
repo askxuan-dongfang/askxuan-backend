@@ -1,0 +1,25 @@
+// askXuan-backend Go 微服务 workspace（多模块工作区）
+// 使用方式：在 askXuan-backend/ 目录下直接 go run / go build，各服务独立 go.mod
+go 1.22
+
+use (
+	./common
+	./services/commerce/diy-service
+	./services/commerce/order-service
+	./services/commerce/payment-service
+	./services/commerce/product-service
+	./services/content/booking-service
+	./services/content/master-service
+	./services/content/review-service
+	./services/content/temple-service
+	./services/infrastructure/ai-service
+	./services/infrastructure/file-service
+	./services/infrastructure/message-service
+	./services/operation/audit-service
+	./services/operation/finance-service
+	./services/operation/logistics-service
+	./services/operation/marketing-service
+	./services/platform/auth-service
+	./services/platform/gateway-service
+	./services/platform/user-service
+)

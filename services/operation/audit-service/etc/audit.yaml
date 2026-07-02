@@ -1,0 +1,21 @@
+Name: audit-service
+Host: 0.0.0.0
+Port: 8093
+
+Telemetry:
+  Name: audit-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# MySQL 数据源
+MySQL:
+  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_audit?charset=utf8mb4&parseTime=true&loc=Local"
+
+# RabbitMQ（发布 audit.result 审核结果通知事件）
+RabbitMQ:
+  Host: localhost
+  Port: 5672
+  User: admin
+  Password: admin
+  VHost: "/"

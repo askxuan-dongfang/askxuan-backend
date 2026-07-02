@@ -1,0 +1,31 @@
+// Code scaffolded by goctl. Safe to edit.
+// goctl 1.10.1
+
+package messageadmin
+
+import (
+	"net/http"
+
+	"github.com/askxuan/message-service/internal/logic/messageadmin"
+	"github.com/askxuan/message-service/internal/svc"
+	"github.com/askxuan/message-service/internal/types"
+	"github.com/zeromicro/go-zero/rest/httpx"
+)
+
+func AdminTemplateCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.TemplateCreateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+
+		l := messageadmin.NewAdminTemplateCreateLogic(r.Context(), svcCtx)
+		resp, err := l.AdminTemplateCreate(&req)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+		} else {
+			httpx.OkJsonCtx(r.Context(), w, resp)
+		}
+	}
+}

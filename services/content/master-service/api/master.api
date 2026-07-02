@@ -1,0 +1,301 @@
+syntax = "v1"
+
+info (
+    title:   "Master Service"
+    desc:    "东方玄学 法师服务 - 列表/详情/资质/日程/加持任务处理"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// ============ 法师基础 ============
+type (
+    Master {
+        Id          string   `json:"id"`          // 法师编码 M001~M006
+        DharmaName  string   `json:"dharmaName"`  // 法号
+        LayName     string   `json:"layName"`     // 俗名
+        TempleId    string   `json:"templeId"`    // 所属寺院编码
+        TempleName  string   `json:"templeName"`  // 所属寺院名称
+        Position    string   `json:"position"`    // 职位
+        Sect        string   `json:"sect"`        // 宗派
+        Type        string   `json:"type"`        // 类型 佛教/道教
+        AuthStatus  string   `json:"authStatus"`  // 认证状态
+        Specialties []string `json:"specialties"` // 专长
+        Avatar      string   `json:"avatar"`      // 头像
+        Rating      float64  `json:"rating"`      // 评分
+    }
+
+    ListReq {
+        Sect     string `form:"sect,optional"`
+        Type     string `form:"type,optional"`
+        TempleId string `form:"templeId,optional"`
+        Page     int    `form:"page,default=1"`
+        Size     int    `form:"size,default=20"`
+    }
+
+    ListResp {
+        Total int64    `json:"total"`
+        List  []Master `json:"list"`
+        Page  int      `json:"page"`
+        Size  int      `json:"size"`
+    }
+
+    DetailReq {
+        Id string `path:"id"`
+    }
+)
+
+// ============ 寺院管理台 - 法师管理 ============
+type (
+    AdminMasterListReq {
+        TempleId string `form:"templeId"`
+        Status   string `form:"status,optional"`
+        Page     int    `form:"page,default=1"`
+        Size     int    `form:"size,default=20"`
+    }
+
+    AdminMasterListResp {
+        Total int64    `json:"total"`
+        List  []Master `json:"list"`
+        Page  int      `json:"page"`
+        Size  int      `json:"size"`
+    }
+
+    AdminMasterCreateReq {
+        DharmaName  string   `json:"dharmaName"`
+        LayName     string   `json:"layName"`
+        TempleId    string   `json:"templeId"`
+        TempleName  string   `json:"templeName,optional"`
+        Position    string   `json:"position"`
+        Sect        string   `json:"sect"`
+        Type        string   `json:"type"`
+        Specialties []string `json:"specialties"`
+        Avatar      string   `json:"avatar,optional"`
+    }
+
+    AdminMasterCreateResp {
+        Id string `json:"id"`
+    }
+
+    AdminMasterUpdateReq {
+        Id          string   `path:"id"`
+        DharmaName  string   `json:"dharmaName,optional"`
+        LayName     string   `json:"layName,optional"`
+        Position    string   `json:"position,optional"`
+        Specialties []string `json:"specialties,optional"`
+        Avatar      string   `json:"avatar,optional"`
+    }
+
+    AdminMasterStatusReq {
+        Id     string `path:"id"`
+        Status string `json:"status"` // on_shelf/off_shelf
+    }
+
+    AdminMasterStatusResp {
+        Id     string `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// ============ 法师工作台 - 加持任务（修复 Gap-4/15） ============
+type (
+    BlessingTask {
+        Id              int64    `json:"id"`
+        TaskNo          string   `json:"taskNo"`
+        DiyOrderNo      string   `json:"diyOrderNo"`
+        TempleCode      string   `json:"templeCode"`
+        MasterCode      string   `json:"masterCode"`
+        Status          string   `json:"status"`
+        CertificateUrls []string `json:"certificateUrls"`
+        AssignTime      string   `json:"assignTime"`
+        CompleteTime    string   `json:"completeTime"`
+        CreateTime      string   `json:"createTime"`
+    }
+
+    BlessingTaskListReq {
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    BlessingTaskListResp {
+        Total int64          `json:"total"`
+        List  []BlessingTask `json:"list"`
+        Page  int            `json:"page"`
+        Size  int            `json:"size"`
+    }
+
+    BlessingTaskDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    BlessingTaskActionReq {
+        Id int64 `path:"id"`
+    }
+
+    BlessingTaskCompleteReq {
+        Id              int64    `path:"id"`
+        CertificateUrls []string `json:"certificateUrls"`
+    }
+)
+
+// ============ 法师工作台 - 日程管理 ============
+type (
+    MasterSchedule {
+        Id        int64    `json:"id"`
+        MasterCode string   `json:"masterCode"`
+        Date      string   `json:"date"`
+        TimeSlots []string `json:"timeSlots"`
+        Status    string   `json:"status"` // available/booked/off
+        CreateTime string  `json:"createTime"`
+    }
+
+    ScheduleListReq {
+        Date string `form:"date,optional"`
+        Page int    `form:"page,default=1"`
+        Size int    `form:"size,default=20"`
+    }
+
+    ScheduleListResp {
+        Total int64           `json:"total"`
+        List  []MasterSchedule `json:"list"`
+        Page  int             `json:"page"`
+        Size  int             `json:"size"`
+    }
+
+    ScheduleUpdateReq {
+        Date      string   `json:"date"`
+        TimeSlots []string `json:"timeSlots"`
+        Status    string   `json:"status"`
+    }
+
+    ScheduleUpdateResp {
+        Id int64 `json:"id"`
+    }
+)
+
+// ============ 平台审核 ============
+type (
+    MasterAudit {
+        Id            int64    `json:"id"`
+        MasterCode    string   `json:"masterCode"`
+        TempleCode    string   `json:"templeCode"`
+        CredentialUrls []string `json:"credentialUrls"`
+        Status        string   `json:"status"` // pending/pass/rejected
+        AuditorId     int64    `json:"auditorId"`
+        AuditRemark   string   `json:"auditRemark"`
+        CreateTime    string   `json:"createTime"`
+    }
+
+    MasterAuditListReq {
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    MasterAuditListResp {
+        Total int64         `json:"total"`
+        List  []MasterAudit `json:"list"`
+        Page  int           `json:"page"`
+        Size  int           `json:"size"`
+    }
+
+    MasterAuditActionReq {
+        Id          int64  `path:"id"`
+        AuditRemark string `json:"auditRemark,optional"`
+    }
+
+    MasterPlatformStatusReq {
+        Id     string `path:"id"`
+        Status string `json:"status"` // normal/banned
+    }
+
+    MasterPlatformStatusResp {
+        Id     string `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// ============ C端分组（保留） ============
+@server (
+    group: master
+    prefix: /api/v1/masters
+)
+service master-service {
+    @handler list
+    get / (ListReq) returns (ListResp)
+
+    @handler detail
+    get /:id (DetailReq) returns (Master)
+}
+
+// ============ 寺院管理台分组 ============
+@server (
+    group: master.admin
+    prefix: /api/v1/admin/temples/masters
+    jwt: Auth
+)
+service master-service {
+    @handler adminMasterList
+    get / (AdminMasterListReq) returns (AdminMasterListResp)
+
+    @handler adminMasterCreate
+    post / (AdminMasterCreateReq) returns (AdminMasterCreateResp)
+
+    @handler adminMasterUpdate
+    put /:id (AdminMasterUpdateReq) returns (Master)
+
+    @handler adminMasterStatus
+    put /:id/status (AdminMasterStatusReq) returns (AdminMasterStatusResp)
+}
+
+// ============ 法师工作台分组（修复 Gap-15） ============
+@server (
+    group: master.workspace
+    prefix: /api/v1/admin/masters
+    jwt: Auth
+)
+service master-service {
+    @handler workspaceBlessingTaskList
+    get /blessing-tasks (BlessingTaskListReq) returns (BlessingTaskListResp)
+
+    @handler workspaceBlessingTaskDetail
+    get /blessing-tasks/:id (BlessingTaskDetailReq) returns (BlessingTask)
+
+    @handler workspaceBlessingAccept
+    put /blessing-tasks/:id/accept (BlessingTaskActionReq) returns (BlessingTask)
+
+    @handler workspaceBlessingStart
+    put /blessing-tasks/:id/start (BlessingTaskActionReq) returns (BlessingTask)
+
+    @handler workspaceBlessingComplete
+    put /blessing-tasks/:id/complete (BlessingTaskCompleteReq) returns (BlessingTask)
+
+    @handler workspaceBlessingReject
+    put /blessing-tasks/:id/reject (BlessingTaskActionReq) returns (BlessingTask)
+
+    @handler workspaceScheduleList
+    get /schedules (ScheduleListReq) returns (ScheduleListResp)
+
+    @handler workspaceScheduleUpdate
+    put /schedules (ScheduleUpdateReq) returns (ScheduleUpdateResp)
+}
+
+// ============ 平台管理台分组 ============
+@server (
+    group: master.platform
+    prefix: /api/v1/admin/platform/masters
+    jwt: Auth
+)
+service master-service {
+    @handler platformAuditList
+    get /audits (MasterAuditListReq) returns (MasterAuditListResp)
+
+    @handler platformAuditPass
+    put /audits/:id/pass (MasterAuditActionReq) returns (MasterAudit)
+
+    @handler platformAuditReject
+    put /audits/:id/reject (MasterAuditActionReq) returns (MasterAudit)
+
+    @handler platformMasterStatus
+    put /:id/status (MasterPlatformStatusReq) returns (MasterPlatformStatusResp)
+}

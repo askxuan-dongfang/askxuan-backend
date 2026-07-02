@@ -1,0 +1,202 @@
+syntax = "v1"
+
+info (
+    title:   "Finance Service"
+    desc:    "东方玄学 财务服务 - 结算/提现/抽成配置/报表"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// 结算单
+type (
+    Settlement {
+        Id               int64   `json:"id"`
+        SettlementNo     string  `json:"settlementNo"`
+        SettleType       string  `json:"settleType"`       // temple/master/shop
+        TargetId         string  `json:"targetId"`
+        TargetName       string  `json:"targetName"`
+        PeriodStart      string  `json:"periodStart"`
+        PeriodEnd        string  `json:"periodEnd"`
+        OrderCount       int     `json:"orderCount"`
+        TotalAmount      float64 `json:"totalAmount"`
+        CommissionRate   float64 `json:"commissionRate"`
+        CommissionAmount float64 `json:"commissionAmount"`
+        SettleAmount     float64 `json:"settleAmount"`
+        Status           string  `json:"status"`           // pending/confirmed/paid
+        CreateTime       string  `json:"createTime"`
+    }
+
+    SettlementListReq {
+        SettleType string `form:"settleType,optional"`
+        Status     string `form:"status,optional"`
+        Page       int    `form:"page,default=1"`
+        Size       int    `form:"size,default=20"`
+    }
+
+    SettlementListResp {
+        Total int64        `json:"total"`
+        List  []Settlement `json:"list"`
+        Page  int          `json:"page"`
+        Size  int          `json:"size"`
+    }
+
+    SettlementDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    SettlementConfirmReq {
+        Id int64 `path:"id"`
+    }
+
+    SettlementConfirmResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// 提现申请
+type (
+    Withdrawal {
+        Id             int64   `json:"id"`
+        WithdrawalNo   string  `json:"withdrawalNo"`
+        ApplicantType  string  `json:"applicantType"`  // temple/master/shop
+        ApplicantId    string  `json:"applicantId"`
+        Amount         float64 `json:"amount"`
+        BankCard       string  `json:"bankCard"`
+        Status         string  `json:"status"`         // pending/approved/processing/success/failed/rejected
+        AuditTime      string  `json:"auditTime"`
+        ProcessTime    string  `json:"processTime"`
+        CreateTime     string  `json:"createTime"`
+    }
+
+    WithdrawalListReq {
+        ApplicantType string `form:"applicantType,optional"`
+        Status        string `form:"status,optional"`
+        Page          int    `form:"page,default=1"`
+        Size          int    `form:"size,default=20"`
+    }
+
+    WithdrawalListResp {
+        Total int64       `json:"total"`
+        List  []Withdrawal `json:"list"`
+        Page  int         `json:"page"`
+        Size  int         `json:"size"`
+    }
+
+    WithdrawalAuditReq {
+        Id     int64  `path:"id"`
+        Action string `json:"action"`  // approve/reject
+        Remark string `json:"remark,optional"`
+    }
+
+    WithdrawalAuditResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+
+    WithdrawalProcessReq {
+        Id int64 `path:"id"`
+    }
+
+    WithdrawalProcessResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// 抽成配置
+type (
+    CommissionConfig {
+        Id          int64   `json:"id"`
+        BizType     string  `json:"bizType"`     // booking/diy_blessing/diy_material/shop_order
+        Rate        float64 `json:"rate"`
+        Description string  `json:"description"`
+        UpdateTime  string  `json:"updateTime"`
+    }
+
+    CommissionConfigListReq {
+        BizType string `form:"bizType,optional"`
+    }
+
+    CommissionConfigListResp {
+        List []CommissionConfig `json:"list"`
+    }
+
+    CommissionConfigUpdateReq {
+        Id          int64   `path:"id"`
+        Rate        float64 `json:"rate"`
+        Description string  `json:"description,optional"`
+    }
+
+    CommissionConfigUpdateResp {
+        Id int64 `json:"id"`
+    }
+)
+
+// 收入总览 & 报表
+type (
+    OverviewReq {
+        StartTime string `form:"startTime,optional"`
+        EndTime   string `form:"endTime,optional"`
+    }
+
+    OverviewResp {
+        TotalIncome      float64 `json:"totalIncome"`      // 总收入
+        TempleIncome     float64 `json:"templeIncome"`     // 寺院结算总额
+        MasterIncome     float64 `json:"masterIncome"`     // 法师结算总额
+        ShopIncome       float64 `json:"shopIncome"`       // 商城结算总额
+        CommissionIncome float64 `json:"commissionIncome"` // 平台抽成总额
+        PendingWithdraw  int     `json:"pendingWithdraw"`  // 待审核提现数
+    }
+
+    ReportReq {
+        StartTime string `form:"startTime"`
+        EndTime   string `form:"endTime"`
+        Type      string `form:"type,optional"` // income/settlement/withdrawal
+        Page      int    `form:"page,default=1"`
+        Size      int    `form:"size,default=20"`
+    }
+
+    ReportResp {
+        TotalIncome      float64 `json:"totalIncome"`
+        TotalSettlement  float64 `json:"totalSettlement"`
+        TotalWithdrawal  float64 `json:"totalWithdrawal"`
+        OrderCount       int     `json:"orderCount"`
+    }
+)
+
+@server (
+    group: finance
+    prefix: /api/v1/admin/finance
+)
+service finance-service {
+    @handler overview
+    get /overview (OverviewReq) returns (OverviewResp)
+
+    @handler settlementList
+    get /settlements (SettlementListReq) returns (SettlementListResp)
+
+    @handler settlementDetail
+    get /settlements/:id (SettlementDetailReq) returns (Settlement)
+
+    @handler settlementConfirm
+    post /settlements/confirm/:id (SettlementConfirmReq) returns (SettlementConfirmResp)
+
+    @handler withdrawalList
+    get /withdrawals (WithdrawalListReq) returns (WithdrawalListResp)
+
+    @handler withdrawalAudit
+    put /withdrawals/:id/audit (WithdrawalAuditReq) returns (WithdrawalAuditResp)
+
+    @handler withdrawalProcess
+    put /withdrawals/:id/process (WithdrawalProcessReq) returns (WithdrawalProcessResp)
+
+    @handler commissionConfigList
+    get /commission-config (CommissionConfigListReq) returns (CommissionConfigListResp)
+
+    @handler commissionConfigUpdate
+    put /commission-config/:id (CommissionConfigUpdateReq) returns (CommissionConfigUpdateResp)
+
+    @handler reports
+    get /reports (ReportReq) returns (ReportResp)
+}

@@ -1,0 +1,194 @@
+# =====================================================
+# 东方玄学全栈项目 .gitignore
+# 覆盖：Java / Node / iOS / IDE / OS / 环境变量 / 构建产物
+# =====================================================
+
+# ---------- 环境变量与密钥 ----------
+.env
+.env.*
+!.env.example
+!.env.template
+*.env
+*.env.local
+application-local.yml
+application-local.yaml
+application-local.properties
+*.pem
+*.key
+*.p12
+*.keystore
+secrets/
+
+# ---------- Java / Maven / Gradle ----------
+target/
+build/
+out/
+bin/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+.mvn/wrapper/maven-wrapper.jar
+.gradle/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
+gradle.properties.local
+*.iml
+
+# ---------- Node.js / 前端 ----------
+node_modules/
+dist/
+dist-ssr/
+.npm/
+.pnpm-store/
+.yarn/cache
+.yarn/install-state.gz
+.yarn/build-state.yml
+.pnp.*
+coverage/
+*.lcov
+.nyc_output/
+.vite/
+.turbo/
+.parcel-cache/
+.next/
+.nuxt/
+.cache/
+
+# ---------- 前端构建与依赖产物 ----------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.eslintcache
+.stylelintcache
+stats.html
+report.html
+
+# ---------- iOS / macOS / Xcode ----------
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+xcuserdata/
+*.moved-aside
+DerivedData/
+build/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Package.resolved
+Packages/
+Package.pins
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+Carthage/Checkouts/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+*.app.dSYM.zip
+
+# ---------- IDE ----------
+.idea/
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.orig
+*.rej
+.project
+.classpath
+.settings/
+.factorypath
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# ---------- 操作系统 ----------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---------- 日志 ----------
+logs/
+*.log
+log/
+log_*.txt
+
+# ---------- Docker ----------
+docker-compose.override.yml
+
+# ---------- 数据库本地文件 ----------
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql.bak
+
+# ---------- 测试与覆盖率 ----------
+coverage/
+*.lcov
+.nyc_output
+
+# ---------- 文档生成产物 ----------
+_site/
+.docusaurus/
+.cache-loader/
+
+# ---------- Go ----------
+# 编译产物（各 service 目录下的同名二进制文件）
+/services/**/auth
+/services/**/booking
+/services/**/review
+/services/**/temple
+/services/**/master
+/services/**/diy
+/services/**/order
+/services/**/payment
+/services/**/product
+/services/**/marketing
+/services/**/logistics
+/services/**/finance
+/services/**/audit
+/services/**/message
+/services/**/file
+/services/**/ai
+/services/**/user
+/services/**/gateway
+*.exe
+*.test
+*.out
+vendor/
+

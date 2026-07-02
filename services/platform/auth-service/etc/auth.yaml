@@ -1,0 +1,31 @@
+# 东方玄学 认证服务配置
+Name: auth-service
+Host: 0.0.0.0
+Port: 8081
+
+# etcd 服务注册（go-zero rest 通过 Telemetry 上报）
+Telemetry:
+  Name: auth-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# MySQL 数据源
+MySQL:
+  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan?charset=utf8mb4&parseTime=true&loc=Local"
+
+# Redis（存 JWT 黑名单）
+Redis:
+  Host: localhost:6379
+  Type: node
+
+# JWT 配置
+Auth:
+  AccessSecret: "askxuan-access-secret-change-in-prod"
+  AccessExpire: 7200      # Access Token 2 小时
+  RefreshExpire: 604800   # Refresh Token 7 天
+
+IM:
+  APIURL: "http://localhost:10002"
+  AdminUserID: "imAdmin"
+  Secret: "openim123"

@@ -1,0 +1,59 @@
+# askXuan-backend golangci-lint 配置
+# 使用方式：golangci-lint run ./...（需先安装 golangci-lint）
+# 安装：brew install golangci-lint（macOS）
+
+run:
+  timeout: 5m
+  go: "1.22"
+  modules-download-mode: mod
+
+linters:
+  enable:
+    - errcheck       # 检查未处理的错误返回值
+    - gosimple       # 简化代码
+    - govet          # go vet 检查
+    - ineffassign    # 检测无效赋值
+    - staticcheck    # 综合静态检查
+    - typecheck      # 类型检查
+    - unused         # 未使用代码检测
+    - gofmt          # 格式化检查
+    - goimports      # import 顺序检查
+    - misspell       # 拼写检查
+    - bodyclose      # http.Response.Body 关闭检查
+    - dupl           # 重复代码检测
+    - goconst        # 常量提取建议
+    - gocritic       # 代码改进建议
+    - revive         # golint 替代品
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/askxuan
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+  dupl:
+    threshold: 200
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+issues:
+  exclude-rules:
+    # 测试文件放宽检查
+    - path: _test\.go
+      linters:
+        - dupl
+        - gocritic
+        - errcheck
+    # main 入口文件放宽检查
+    - path: main\.go
+      linters:
+        - gocritic
+    # 路由注册文件放宽重复检查
+    - path: routes\.go
+      linters:
+        - dupl
+  max-issues-per-linter: 0
+  max-same-issues: 0

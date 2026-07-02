@@ -1,0 +1,210 @@
+syntax = "v1"
+
+info (
+    title:   "Review Service"
+    desc:    "东方玄学 评价服务 - 评价/回复/举报"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// 评价
+type (
+    Review {
+        Id         int64  `json:"id"`
+        ReviewNo   string `json:"reviewNo"`
+        UserId     string `json:"userId"`
+        TargetType string `json:"targetType"` // booking/diy_order/shop_order
+        TargetId   string `json:"targetId"`
+        Rating     int    `json:"rating"`     // 1-5
+        Content    string `json:"content"`
+        Images     string `json:"images"`     // JSON数组
+        Status     string `json:"status"`     // normal/hidden
+        CreateTime string `json:"createTime"`
+    }
+
+    ReviewReply {
+        Id          int64  `json:"id"`
+        ReviewId    int64  `json:"reviewId"`
+        ReplierType string `json:"replierType"` // temple_admin/master/platform
+        ReplierId   string `json:"replierId"`
+        Content     string `json:"content"`
+        CreateTime  string `json:"createTime"`
+    }
+
+    ReviewReport {
+        Id            int64  `json:"id"`
+        ReviewId      int64  `json:"reviewId"`
+        ReporterId    string `json:"reporterId"`
+        Reason        string `json:"reason"`
+        Status        string `json:"status"`     // pending/handled/rejected
+        HandleResult  string `json:"handleResult"`
+        CreateTime    string `json:"createTime"`
+    }
+)
+
+// C端 - 提交评价
+type (
+    CreateReviewReq {
+        UserId     string `json:"userId"`
+        TargetType string `json:"targetType"`
+        TargetId   string `json:"targetId"`
+        Rating     int    `json:"rating"`
+        Content    string `json:"content"`
+        Images     string `json:"images,optional"`
+    }
+
+    CreateReviewResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// C端 - 评价列表
+type (
+    ReviewListReq {
+        TargetType string `form:"targetType,optional"`
+        TargetId   string `form:"targetId,optional"`
+        UserId     string `form:"userId,optional"`
+        Rating     int    `form:"rating,optional"`
+        Page       int    `form:"page,default=1"`
+        Size       int    `form:"size,default=20"`
+    }
+
+    ReviewListResp {
+        Total int64    `json:"total"`
+        List  []Review `json:"list"`
+        Page  int      `json:"page"`
+        Size  int      `json:"size"`
+    }
+)
+
+// 评价详情
+type (
+    ReviewDetailReq {
+        Id int64 `path:"id"`
+    }
+)
+
+// 管理台 - 评价列表
+type (
+    AdminReviewListReq {
+        TargetType string `form:"targetType,optional"`
+        TargetId   string `form:"targetId,optional"`
+        Status     string `form:"status,optional"`
+        Rating     int    `form:"rating,optional"`
+        Page       int    `form:"page,default=1"`
+        Size       int    `form:"size,default=20"`
+    }
+
+    AdminReviewListResp {
+        Total int64    `json:"total"`
+        List  []Review `json:"list"`
+        Page  int      `json:"page"`
+        Size  int      `json:"size"`
+    }
+)
+
+// 回复评价
+type (
+    ReviewReplyReq {
+        Id          int64  `path:"id"`
+        ReplierType string `json:"replierType"`
+        ReplierId   string `json:"replierId"`
+        Content     string `json:"content"`
+    }
+
+    ReviewReplyResp {
+        Id int64 `json:"id"`
+    }
+)
+
+// 举报评价
+type (
+    ReviewReportReq {
+        Id         int64  `path:"id"`
+        ReporterId string `json:"reporterId"`
+        Reason     string `json:"reason"`
+    }
+
+    ReviewReportResp {
+        Id int64 `json:"id"`
+    }
+)
+
+// 平台 - 举报列表
+type (
+    ReportListReq {
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    ReportListResp {
+        Total int64         `json:"total"`
+        List  []ReviewReport `json:"list"`
+        Page  int           `json:"page"`
+        Size  int           `json:"size"`
+    }
+)
+
+// 平台 - 处理举报
+type (
+    ReportHandleReq {
+        Id           int64  `path:"id"`
+        HandleResult string `json:"handleResult"` // handled/rejected
+        Remark       string `json:"remark,optional"`
+    }
+
+    ReportHandleResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// C端评价接口
+@server (
+    group: review.customer
+    prefix: /api/v1/reviews
+)
+service review-service {
+    @handler createReview
+    post / (CreateReviewReq) returns (CreateReviewResp)
+
+    @handler reviewList
+    get / (ReviewListReq) returns (ReviewListResp)
+
+    @handler reviewDetail
+    get /:id (ReviewDetailReq) returns (Review)
+}
+
+// 寺院台/法师台评价管理接口
+@server (
+    group: review.admin
+    prefix: /api/v1/admin/reviews
+)
+service review-service {
+    @handler adminReviewList
+    get / (AdminReviewListReq) returns (AdminReviewListResp)
+
+    @handler adminReviewDetail
+    get /:id (ReviewDetailReq) returns (Review)
+
+    @handler reviewReply
+    post /:id/reply (ReviewReplyReq) returns (ReviewReplyResp)
+
+    @handler reviewReport
+    post /:id/report (ReviewReportReq) returns (ReviewReportResp)
+}
+
+// 平台台举报处理接口
+@server (
+    group: review.platform
+    prefix: /api/v1/admin/platform/reviews
+)
+service review-service {
+    @handler reportList
+    get /reports (ReportListReq) returns (ReportListResp)
+
+    @handler reportHandle
+    put /reports/:id/handle (ReportHandleReq) returns (ReportHandleResp)
+}

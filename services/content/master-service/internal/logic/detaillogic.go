@@ -1,0 +1,41 @@
+package logic
+
+import (
+	"context"
+	"errors"
+
+	"github.com/askxuan/common"
+	"github.com/askxuan/master-service/internal/svc"
+	"github.com/askxuan/master-service/internal/types"
+
+	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
+)
+
+// DetailLogic 法师详情查询逻辑
+type DetailLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *DetailLogic {
+	return &DetailLogic{
+		Logger: logx.WithContext(ctx),
+		ctx:    ctx,
+		svcCtx: svcCtx,
+	}
+}
+
+// Detail 按 ID（法师编码 code）查询法师详情
+func (l *DetailLogic) Detail(req *types.DetailReq) (*types.Master, error) {
+	m, err := l.svcCtx.MasterModel.FindByCode(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrMasterNotFound
+		}
+		return nil, err
+	}
+	resp := toTypeMaster(m)
+	return &resp, nil
+}

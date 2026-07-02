@@ -1,0 +1,37 @@
+Name: payment-service
+Host: 0.0.0.0
+Port: 8090
+
+DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_shop?charset=utf8mb4&parseTime=true&loc=Local"
+
+Redis:
+  Host: localhost:6379
+  Type: node
+
+Telemetry:
+  Name: payment-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# RabbitMQ（支付通知）
+RabbitMQ:
+  Host: localhost
+  Port: 5672
+  User: admin
+  Password: admin
+  VHost: "/"
+
+# 微信支付配置
+WechatPay:
+  AppId: ""
+  MchId: ""
+  ApiKey: ""
+  NotifyUrl: "https://api.askxuan.com/api/v1/payments/callback/wechat"
+
+# 支付宝配置
+Alipay:
+  AppId: ""
+  PrivateKey: ""
+  PublicKey: ""
+  NotifyUrl: "https://api.askxuan.com/api/v1/payments/callback/alipay"

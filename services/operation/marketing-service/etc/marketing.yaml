@@ -1,0 +1,13 @@
+Name: marketing-service
+Host: 0.0.0.0
+Port: 8096
+
+Telemetry:
+  Name: marketing-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# MySQL 数据源
+MySQL:
+  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_marketing?charset=utf8mb4&parseTime=true&loc=Local"

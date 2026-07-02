@@ -1,0 +1,129 @@
+syntax = "v1"
+
+info (
+    title:   "Payment Service"
+    desc:    "东方玄学 支付服务 - 微信/支付宝支付 / 退款 / 对账"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// ==================== 公共类型 ====================
+
+type (
+    Payment {
+        Id         int64   `json:"id"`
+        PaymentNo  string  `json:"paymentNo"`
+        OrderType  string  `json:"orderType"` // booking/shop_order/diy_order
+        OrderNo    string  `json:"orderNo"`
+        Amount     float64 `json:"amount"`
+        Channel    string  `json:"channel"` // wechat/alipay
+        Status     string  `json:"status"` // pending/success/failed/refunding/refunded/closed
+        TradeNo    string  `json:"tradeNo,optional"` // 第三方交易号
+        CreateTime string  `json:"createTime"`
+    }
+
+    Refund {
+        Id         int64   `json:"id"`
+        RefundNo   string  `json:"refundNo"`
+        PaymentId  int64   `json:"paymentId"`
+        Amount     float64 `json:"amount"`
+        Reason     string  `json:"reason"`
+        Status     string  `json:"status"` // pending/processing/success/failed
+        CreateTime string  `json:"createTime"`
+    }
+)
+
+// ==================== C端接口 ====================
+
+type (
+    PaymentCreateReq {
+        OrderType string  `json:"orderType"` // booking/shop_order/diy_order
+        OrderNo   string  `json:"orderNo"`
+        Amount    float64 `json:"amount"`
+        Channel   string  `json:"channel"` // wechat/alipay
+        UserId    string  `json:"userId"`
+    }
+
+    PaymentCreateResp {
+        Id        int64  `json:"id"`
+        PaymentNo string `json:"paymentNo"`
+        PayUrl    string `json:"payUrl,optional"` // 支付链接/二维码
+    }
+
+    PaymentQueryReq {
+        Id int64 `path:"id"`
+    }
+)
+
+// ==================== 回调接口 ====================
+
+type (
+    CallbackWechatReq {
+        RawBody string `json:"rawBody"`
+    }
+
+    CallbackAlipayReq {
+        RawBody string `json:"rawBody"`
+    }
+
+    CallbackResp {
+        Code string `json:"code"`
+        Msg  string `json:"msg"`
+    }
+)
+
+// ==================== 内部接口 ====================
+
+type (
+    RefundReq {
+        PaymentNo string  `json:"paymentNo"`
+        Amount    float64 `json:"amount"`
+        Reason    string  `json:"reason"`
+    }
+
+    RefundResp {
+        Id        int64  `json:"id"`
+        RefundNo  string `json:"refundNo"`
+        Status    string `json:"status"`
+    }
+)
+
+// ==================== C端路由 ====================
+
+@server (
+    group: payment.customer
+    prefix: /api/v1/payments
+)
+service payment-service {
+    @handler paymentCreate
+    post / (PaymentCreateReq) returns (PaymentCreateResp)
+
+    @handler paymentQuery
+    get /:id (PaymentQueryReq) returns (Payment)
+}
+
+// ==================== 回调路由（公开，无需鉴权） ====================
+
+@server (
+    group: payment.callback
+    prefix: /api/v1/payments/callback
+)
+service payment-service {
+    @handler callbackWechat
+    post /wechat (CallbackWechatReq) returns (CallbackResp)
+
+    @handler callbackAlipay
+    post /alipay (CallbackAlipayReq) returns (CallbackResp)
+}
+
+// ==================== 内部路由 ====================
+
+@server (
+    group: payment.internal
+    prefix: /api/v1/payments
+    jwt: Auth
+)
+service payment-service {
+    @handler refund
+    post /refund (RefundReq) returns (RefundResp)
+}

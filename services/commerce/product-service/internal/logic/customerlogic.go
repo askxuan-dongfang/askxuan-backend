@@ -1,0 +1,170 @@
+package logic
+
+import (
+	"context"
+	"errors"
+
+	"github.com/askxuan/common"
+	"github.com/askxuan/product-service/internal/model"
+	"github.com/askxuan/product-service/internal/svc"
+	"github.com/askxuan/product-service/internal/types"
+
+	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
+)
+
+// ===== C端商品列表 =====
+
+type CustomerProductListLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewCustomerProductListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CustomerProductListLogic {
+	return &CustomerProductListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *CustomerProductListLogic) List(req *types.CustomerProductListReq) (*types.CustomerProductListResp, error) {
+	list, total, err := l.svcCtx.ProductModel.FindList(l.ctx, req.CategoryId, req.Keyword, model.ProductStatusOnShelf, req.Page, req.Size)
+	if err != nil {
+		l.Errorf("查询商品列表失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	result := make([]types.Product, 0, len(list))
+	for _, p := range list {
+		result = append(result, toTypesProduct(p))
+	}
+	return &types.CustomerProductListResp{Total: total, List: result, Page: req.Page, Size: req.Size}, nil
+}
+
+// ===== C端商品详情 =====
+
+type CustomerProductDetailLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewCustomerProductDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CustomerProductDetailLogic {
+	return &CustomerProductDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *CustomerProductDetailLogic) Detail(req *types.CustomerProductDetailReq) (*types.Product, error) {
+	p, err := l.svcCtx.ProductModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrProductNotFound
+		}
+		l.Errorf("查询商品详情失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	resp := toTypesProduct(p)
+
+	// 查 SKU
+	skus, err := l.svcCtx.ProductSkuModel.ListByProductId(l.ctx, req.Id)
+	if err == nil {
+		for _, s := range skus {
+			resp.Skus = append(resp.Skus, toTypesSku(s))
+		}
+	}
+
+	// 查图片
+	images, err := l.svcCtx.ProductImageModel.ListByProductId(l.ctx, req.Id)
+	if err == nil {
+		for _, img := range images {
+			resp.Images = append(resp.Images, toTypesImage(img))
+		}
+	}
+
+	return &resp, nil
+}
+
+// ===== C端分类树 =====
+
+type CustomerCategoryTreeLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewCustomerCategoryTreeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CustomerCategoryTreeLogic {
+	return &CustomerCategoryTreeLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *CustomerCategoryTreeLogic) Tree(req *types.CustomerCategoryTreeReq) (*types.CustomerCategoryTreeResp, error) {
+	list, err := l.svcCtx.ProductCategoryModel.ListAll(l.ctx)
+	if err != nil {
+		l.Errorf("查询分类列表失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	tree := buildCategoryTree(list)
+	return &types.CustomerCategoryTreeResp{List: tree}, nil
+}
+
+// ===== helper =====
+
+func toTypesProduct(p *model.Product) types.Product {
+	return types.Product{
+		Id:                p.Id,
+		ProductNo:         p.ProductNo,
+		Name:              p.Name,
+		CategoryId:        p.CategoryId,
+		Description:       p.Description,
+		MainImage:         p.MainImage,
+		Status:            p.Status,
+		Price:             p.Price,
+		MarketPrice:       p.MarketPrice,
+		Stock:             p.Stock,
+		Tags:              p.Tags,
+		FreightTemplateId: p.FreightTemplateId,
+		CreateTime:        p.CreateTime,
+		UpdateTime:        p.UpdateTime,
+	}
+}
+
+func toTypesSku(s *model.ProductSku) types.ProductSku {
+	return types.ProductSku{
+		Id:        s.Id,
+		ProductId: s.ProductId,
+		SpecName:  s.SpecName,
+		SpecValue: s.SpecValue,
+		Price:     s.Price,
+		Stock:     s.Stock,
+		SkuNo:     s.SkuNo,
+	}
+}
+
+func toTypesImage(img *model.ProductImage) types.ProductImage {
+	return types.ProductImage{
+		Id:        img.Id,
+		ProductId: img.ProductId,
+		ImageUrl:  img.ImageUrl,
+		Sort:      img.Sort,
+		Type:      img.Type,
+	}
+}
+
+func buildCategoryTree(list []*model.ProductCategory) []types.ProductCategory {
+	nodeMap := make(map[int64]*types.ProductCategory)
+	var roots []types.ProductCategory
+	for _, c := range list {
+		node := types.ProductCategory{
+			Id:       c.Id,
+			ParentId: c.ParentId,
+			Name:     c.Name,
+			Level:    c.Level,
+			Sort:     c.Sort,
+		}
+		nodeMap[c.Id] = &node
+	}
+	for _, c := range list {
+		node := nodeMap[c.Id]
+		if c.ParentId == 0 {
+			roots = append(roots, *node)
+		} else if parent, ok := nodeMap[c.ParentId]; ok {
+			parent.Children = append(parent.Children, *node)
+		}
+	}
+	return roots
+}

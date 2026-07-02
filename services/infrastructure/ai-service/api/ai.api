@@ -1,0 +1,126 @@
+syntax = "v1"
+
+info (
+    title:   "AI Service"
+    desc:    "东方玄学 AI 问事服务 - 7 技能对话（八字/姻缘/塔罗/风水/奇门/紫微/六爻）"
+    author:  "askxuan"
+    version: "v1"
+)
+
+type (
+    AISkill {
+        Id             int64  `json:"id"`
+        Code           string `json:"code"`           // bazi/marriage/tarot/fengshui/qimen/ziwei/liuyao
+        Name           string `json:"name"`
+        Description    string `json:"description"`
+        Icon           string `json:"icon"`
+        PromptTemplate string `json:"promptTemplate"`
+        Status         string `json:"status"`         // enabled/disabled
+        CreatedAt      string `json:"createdAt"`
+    }
+
+    SkillListReq {
+        Status string `form:"status,optional"`
+    }
+
+    SkillListResp {
+        List []AISkill `json:"list"`
+    }
+
+    AISession {
+        Id        int64  `json:"id"`
+        SessionNo string `json:"sessionNo"`
+        UserId    string `json:"userId"`
+        SkillCode string `json:"skillCode"`
+        Status    string `json:"status"` // active/closed
+        CreatedAt string `json:"createdAt"`
+        UpdatedAt string `json:"updatedAt"`
+    }
+
+    SessionCreateReq {
+        UserId    string `json:"userId"`
+        SkillCode string `json:"skillCode"`
+    }
+
+    SessionCreateResp {
+        Id        int64  `json:"id"`
+        SessionNo string `json:"sessionNo"`
+        SkillCode string `json:"skillCode"`
+        Status    string `json:"status"`
+    }
+
+    SessionListReq {
+        UserId string `form:"userId"`
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    SessionListResp {
+        Total int64       `json:"total"`
+        List  []AISession `json:"list"`
+        Page  int         `json:"page"`
+        Size  int         `json:"size"`
+    }
+
+    SessionDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    AIMessage {
+        Id        int64  `json:"id"`
+        SessionId int64  `json:"sessionId"`
+        Role      string `json:"role"` // user/assistant
+        Content   string `json:"content"`
+        Tokens    int    `json:"tokens"`
+        CreatedAt string `json:"createdAt"`
+    }
+
+    SessionDetailResp {
+        Session  AISession  `json:"session"`
+        Messages []AIMessage `json:"messages"`
+    }
+
+    SessionDeleteReq {
+        Id int64 `path:"id"`
+    }
+
+    IdResp {
+        Id int64 `json:"id"`
+    }
+
+    MessageSendReq {
+        Id      int64  `path:"id"` // 会话 ID
+        UserId  string `json:"userId"`
+        Content string `json:"content"`
+    }
+
+    MessageSendResp {
+        SessionId int64  `json:"sessionId"`
+        Status    string `json:"status"` // accepted
+    }
+)
+
+@server (
+    group: ai
+    prefix: /api/v1/ai
+)
+service ai-service {
+    @handler skillList
+    get /skills (SkillListReq) returns (SkillListResp)
+
+    @handler sessionCreate
+    post /sessions (SessionCreateReq) returns (SessionCreateResp)
+
+    @handler sessionList
+    get /sessions (SessionListReq) returns (SessionListResp)
+
+    @handler sessionDetail
+    get /sessions/:id (SessionDetailReq) returns (SessionDetailResp)
+
+    @handler messageSend
+    post /sessions/:id/messages (MessageSendReq) returns (MessageSendResp)
+
+    @handler sessionDelete
+    delete /sessions/:id (SessionDeleteReq) returns (IdResp)
+}

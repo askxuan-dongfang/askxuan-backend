@@ -1,0 +1,21 @@
+Name: message-service
+Host: 0.0.0.0
+Port: 8094
+
+Telemetry:
+  Name: message-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# RabbitMQ（消费 booking.notify 事件生成站内消息）
+RabbitMQ:
+  Host: localhost
+  Port: 5672
+  User: admin
+  Password: admin
+  VHost: "/"
+
+# MySQL（站内消息/模板/推送日志/咨询对话/系统公告）
+MySQL:
+  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_message?charset=utf8mb4&parseTime=true&loc=Local"

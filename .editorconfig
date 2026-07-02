@@ -1,0 +1,43 @@
+# EditorConfig is awesome: https://editorconfig.org
+# 东方玄学全栈项目 - 跨端跨语言统一编码规范
+# 各 IDE 需安装 EditorConfig 插件以自动应用（VS Code: EditorConfig for VS Code）
+
+root = true
+
+# ---------- 通用默认规则 ----------
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# ---------- 前端类文件（Vue / TS / JS / JSON / CSS / SCSS / HTML / Vant / uni-app） ----------
+[*.{vue,ts,tsx,js,jsx,mjs,cjs,json,jsonc,css,scss,sass,less,html,htm,yml,yaml,md,markdown}]
+indent_size = 2
+
+# ---------- Java ----------
+[*.java]
+indent_size = 4
+max_line_length = 120
+
+# ---------- Swift ----------
+[*.swift]
+indent_size = 4
+
+# ---------- Shell / Dockerfile ----------
+[*.{sh,bash,zsh,Dockerfile,dockerfile}]
+indent_size = 4
+
+# ---------- XML / Properties（Spring 配置） ----------
+[*.{xml,properties}]
+indent_size = 4
+
+# ---------- SQL ----------
+[*.sql]
+indent_size = 4
+
+# ---------- Makefile 必须使用 Tab ----------
+[Makefile]
+indent_style = tab

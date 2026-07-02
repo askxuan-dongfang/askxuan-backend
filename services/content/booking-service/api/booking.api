@@ -1,0 +1,211 @@
+syntax = "v1"
+
+info (
+    title:   "Booking Service"
+    desc:    "东方玄学 预约服务 - 创建/列表/详情/状态流转/评价/管理台"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// ============ 预约基础 ============
+type (
+    Booking {
+        Id            string  `json:"id"`            // 预约单号 B20260630001
+        UserId        string  `json:"userId"`        // 用户ID
+        TempleId      string  `json:"templeId"`      // 寺院编码 T001
+        TempleName    string  `json:"templeName"`    // 寺院名称
+        MasterId      string  `json:"masterId"`      // 法师编码 M001
+        MasterName    string  `json:"masterName"`    // 法师名称
+        ServiceId     string  `json:"serviceId"`     // 服务编码 S001
+        ServiceName   string  `json:"serviceName"`   // 服务名称
+        BookingDate   string  `json:"bookingDate"`   // 预约日期 yyyy-MM-dd
+        TimeSlot      string  `json:"timeSlot"`      // 时段 09:00-10:00
+        MeritMoney    float64 `json:"meritMoney"`    // 功德金
+        MeritMoneyTier string `json:"meritMoneyTier"` // 功德金档位
+        Status        string  `json:"status"`        // pending/confirmed/in_progress/completed/cancelled/reviewed
+        Note          string  `json:"note"`          // 备注
+        CreatedAt     string  `json:"createdAt"`     // 创建时间
+    }
+
+    CreateReq {
+        UserId         string  `json:"userId"`
+        TempleId       string  `json:"templeId"`
+        TempleName     string  `json:"templeName,optional"`
+        MasterId       string  `json:"masterId"`
+        MasterName     string  `json:"masterName,optional"`
+        ServiceId      string  `json:"serviceId"`
+        ServiceName    string  `json:"serviceName,optional"`
+        BookingDate    string  `json:"bookingDate"`
+        TimeSlot       string  `json:"timeSlot"`
+        MeritMoney     float64 `json:"meritMoney"`
+        MeritMoneyTier string  `json:"meritMoneyTier"`
+        Note           string  `json:"note,optional"`
+    }
+
+    CreateResp {
+        Id     string `json:"id"`
+        Status string `json:"status"`
+    }
+
+    ListReq {
+        UserId string `form:"userId,optional"`
+        Status string `form:"status,optional"`
+        TempleId string `form:"templeId,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    ListResp {
+        Total int64     `json:"total"`
+        List  []Booking `json:"list"`
+        Page  int       `json:"page"`
+        Size  int       `json:"size"`
+    }
+
+    DetailReq {
+        Id string `path:"id"`
+    }
+
+    StatusReq {
+        Id     string `path:"id"`
+        Status string `json:"status"` // 目标状态
+    }
+
+    StatusResp {
+        Id     string `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// ============ 评价 ============
+type (
+    BookingReview {
+        Id           int64    `json:"id"`
+        BookingId    string   `json:"bookingId"`
+        UserId       string   `json:"userId"`
+        Rating       int      `json:"rating"`      // 1-5
+        Content      string   `json:"content"`
+        Images       []string `json:"images"`
+        MasterReply  string   `json:"masterReply"`
+        CreateTime   string   `json:"createTime"`
+    }
+
+    ReviewCreateReq {
+        Id      string   `path:"id"` // 预约ID
+        Rating  int      `json:"rating"`
+        Content string   `json:"content"`
+        Images  []string `json:"images,optional"`
+    }
+
+    ReviewCreateResp {
+        ReviewId int64 `json:"reviewId"`
+    }
+
+    ReviewDetailReq {
+        Id string `path:"id"` // 预约ID
+    }
+
+    ReviewReplyReq {
+        Id          string `path:"id"` // 预约ID
+        MasterReply string `json:"masterReply"`
+    }
+)
+
+// ============ 管理台 ============
+type (
+    AdminBookingListReq {
+        TempleId string `form:"templeId"`
+        Status   string `form:"status,optional"`
+        MasterId string `form:"masterId,optional"`
+        Page     int    `form:"page,default=1"`
+        Size     int    `form:"size,default=20"`
+    }
+
+    AdminBookingListResp {
+        Total int64     `json:"total"`
+        List  []Booking `json:"list"`
+        Page  int       `json:"page"`
+        Size  int       `json:"size"`
+    }
+
+    AdminBookingActionReq {
+        Id     string `path:"id"`
+        Remark string `json:"remark,optional"`
+    }
+
+    StatusLogReq {
+        Id string `path:"id"`
+    }
+
+    BookingStatusLog {
+        Id           int64  `json:"id"`
+        BookingId    string `json:"bookingId"`
+        FromStatus   string `json:"fromStatus"`
+        ToStatus     string `json:"toStatus"`
+        OperatorId   string `json:"operatorId"`
+        OperatorType string `json:"operatorType"` // user/temple_admin/system
+        Remark       string `json:"remark"`
+        CreateTime   string `json:"createTime"`
+    }
+
+    StatusLogResp {
+        List []BookingStatusLog `json:"list"`
+    }
+)
+
+// ============ C端分组（保留） ============
+@server (
+    group: booking
+    prefix: /api/v1/booking
+)
+service booking-service {
+    @handler create
+    post / (CreateReq) returns (CreateResp)
+
+    @handler list
+    get / (ListReq) returns (ListResp)
+
+    @handler detail
+    get /:id (DetailReq) returns (Booking)
+
+    @handler updateStatus
+    put /:id/status (StatusReq) returns (StatusResp)
+
+    @handler createReview
+    post /:id/review (ReviewCreateReq) returns (ReviewCreateResp)
+
+    @handler reviewDetail
+    get /:id/review (ReviewDetailReq) returns (BookingReview)
+}
+
+// ============ 寺院管理台分组 ============
+@server (
+    group: booking.admin
+    prefix: /api/v1/admin/bookings
+    jwt: Auth
+)
+service booking-service {
+    @handler adminBookingList
+    get / (AdminBookingListReq) returns (AdminBookingListResp)
+
+    @handler adminBookingDetail
+    get /:id (DetailReq) returns (Booking)
+
+    @handler adminBookingConfirm
+    put /:id/confirm (AdminBookingActionReq) returns (StatusResp)
+
+    @handler adminBookingComplete
+    put /:id/complete (AdminBookingActionReq) returns (StatusResp)
+
+    @handler adminBookingCancel
+    put /:id/cancel (AdminBookingActionReq) returns (StatusResp)
+
+    @handler adminBookingTimeoutCancel
+    put /:id/timeout-cancel (AdminBookingActionReq) returns (StatusResp)
+
+    @handler adminBookingStatusLog
+    get /:id/status-log (StatusLogReq) returns (StatusLogResp)
+
+    @handler adminReviewReply
+    put /:id/review/reply (ReviewReplyReq) returns (BookingReview)
+}

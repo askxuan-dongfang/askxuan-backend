@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+.trae
+
+# 编译产物
+**/*.exe
+**/*.exe~
+**/*.dll
+**/*.so
+**/*.dylib
+gateway-service/gateway
+auth-service/auth
+user-service/user
+temple-service/temple
+master-service/master
+booking-service/booking
+message-service/message
+file-service/file
+product-service/product
+diy-service/diy
+order-service/order
+payment-service/payment
+finance-service/finance
+review-service/review
+audit-service/audit
+logistics-service/logistics
+marketing-service/marketing
+ai-service/ai
+
+# 日志
+logs/
+*.log
+
+# 文档
+docs/
+*.md
+README.md
+
+# 环境配置
+envs/
+.github/
+deployments/
+scripts/
+
+# 测试
+*_test.go
+
+# 临时文件
+tmp/
+*.tmp
+.DS_Store

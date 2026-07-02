@@ -1,0 +1,21 @@
+Name: booking-service
+Host: 0.0.0.0
+Port: 8085
+
+Telemetry:
+  Name: booking-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# RabbitMQ 连接（创建预约时发送 booking.notify 事件）
+RabbitMQ:
+  Host: localhost
+  Port: 5672
+  User: admin
+  Password: admin
+  VHost: "/"
+
+# MySQL 连接（booking 表在 askxuan 库，booking_status_log/booking_review 在 askxuan_booking 库）
+MySQL:
+  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan?charset=utf8mb4&parseTime=true&loc=Local"

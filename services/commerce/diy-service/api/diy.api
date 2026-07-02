@@ -1,0 +1,328 @@
+syntax = "v1"
+
+info (
+    title:   "DIY Service"
+    desc:    "东方玄学 DIY手串服务 - DIY设计 / 材料库 / DIY订单 / 加持任务"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// ==================== 公共类型 ====================
+
+type (
+    DiyDesign {
+        Id              int64  `json:"id"`
+        DesignNo        string `json:"designNo"`
+        UserId          string `json:"userId"`
+        Name            string `json:"name"`
+        DesignData      string `json:"designData"` // JSON: 材料配置
+        TotalPrice      float64 `json:"totalPrice"`
+        Status          string `json:"status"` // private/public/pending_review/approved/rejected
+        BlessServiceCode string `json:"blessServiceCode,optional"`
+        CreateTime      string `json:"createTime"`
+    }
+
+    DiyOrder {
+        Id          int64            `json:"id"`
+        OrderNo     string           `json:"orderNo"`
+        UserId      string           `json:"userId"`
+        DesignId    int64            `json:"designId"`
+        MaterialFee float64          `json:"materialFee"`
+        BlessFee    float64          `json:"blessFee"`
+        TotalFee    float64          `json:"totalFee"`
+        Status      string           `json:"status"`
+        AddressId   int64            `json:"addressId"`
+        Items       []DiyOrderItem   `json:"items,optional"`
+        BlessingTask BlessingTask    `json:"blessingTask,optional"`
+        CreateTime  string           `json:"createTime"`
+    }
+
+    DiyOrderItem {
+        Id           int64   `json:"id"`
+        OrderId      int64   `json:"orderId"`
+        MaterialId   int64   `json:"materialId"`
+        MaterialName string  `json:"materialName"`
+        Spec         string  `json:"spec"`
+        UnitPrice    float64 `json:"unitPrice"`
+        Quantity     int     `json:"quantity"`
+        Subtype      string  `json:"subtype"`
+    }
+
+    Material {
+        Id           int64   `json:"id"`
+        Name         string  `json:"name"`
+        Spec         string  `json:"spec"`
+        UnitPrice    float64 `json:"unitPrice"`
+        Unit         string  `json:"unit"`
+        Category     string  `json:"category"` // main_bead/spacer/buddha_head/pendant/tassel/three_way/cord
+        FiveElements string  `json:"fiveElements,optional"`
+        Image        string  `json:"image"`
+        Stock        int     `json:"stock"`
+        Status       string  `json:"status"`
+    }
+
+    BlessingTask {
+        Id              int64    `json:"id"`
+        TaskNo          string   `json:"taskNo"`
+        DiyOrderNo      string   `json:"diyOrderNo"`
+        TempleCode      string   `json:"templeCode"`
+        MasterCode      string   `json:"masterCode"`
+        Status          string   `json:"status"` // dispatched/assigned/accepted/in_progress/completed/rejected
+        CertificateUrls []string `json:"certificateUrls,optional"`
+        AssignTime      string   `json:"assignTime,optional"`
+        CompleteTime    string   `json:"completeTime,optional"`
+    }
+)
+
+// ==================== C端接口 ====================
+
+type (
+    DesignListReq {
+        Page int `form:"page,default=1"`
+        Size int `form:"size,default=20"`
+    }
+
+    DesignListResp {
+        Total int64        `json:"total"`
+        List  []DiyDesign  `json:"list"`
+        Page  int          `json:"page"`
+        Size  int          `json:"size"`
+    }
+
+    DesignSaveReq {
+        UserId           string  `json:"userId"`
+        Name             string  `json:"name"`
+        DesignData       string  `json:"designData"`
+        TotalPrice       float64 `json:"totalPrice"`
+        Status           string  `json:"status"` // private/public
+        BlessServiceCode string  `json:"blessServiceCode,optional"`
+    }
+
+    DesignSaveResp {
+        Id int64 `json:"id"`
+    }
+
+    DesignDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    MaterialListReq {
+        Category string `form:"category,optional"`
+        Page     int    `form:"page,default=1"`
+        Size     int    `form:"size,default=50"`
+    }
+
+    MaterialListResp {
+        Total int64      `json:"total"`
+        List  []Material `json:"list"`
+        Page  int        `json:"page"`
+        Size  int        `json:"size"`
+    }
+
+    DiyOrderCreateReq {
+        UserId          string         `json:"userId"`
+        DesignId        int64          `json:"designId"`
+        Items           []DiyOrderItem `json:"items"`
+        BlessServiceCode string        `json:"blessServiceCode,optional"`
+        AddressId       int64          `json:"addressId"`
+    }
+
+    DiyOrderCreateResp {
+        Id     int64  `json:"id"`
+        OrderNo string `json:"orderNo"`
+    }
+
+    DiyOrderListReq {
+        UserId string `form:"userId"`
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    DiyOrderListResp {
+        Total int64      `json:"total"`
+        List  []DiyOrder `json:"list"`
+        Page  int        `json:"page"`
+        Size  int        `json:"size"`
+    }
+
+    DiyOrderDetailReq {
+        Id int64 `path:"id"`
+    }
+)
+
+// ==================== 商城台接口 ====================
+
+type (
+    AdminDiyOrderListReq {
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    AdminDiyOrderListResp {
+        Total int64      `json:"total"`
+        List  []DiyOrder `json:"list"`
+        Page  int        `json:"page"`
+        Size  int        `json:"size"`
+    }
+
+    AdminDiyOrderDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    AdminDiyOrderReviewReq {
+        Id     int64  `path:"id"`
+        Action string `json:"action"` // approve/reject
+        Reason string `json:"reason,optional"`
+    }
+
+    AdminDiyOrderMakeCompleteReq {
+        Id int64 `path:"id"`
+    }
+
+    AdminDiyOrderShipReq {
+        Id             int64  `path:"id"`
+        ExpressCompany string `json:"expressCompany"`
+        TrackingNo     string `json:"trackingNo"`
+    }
+
+    AdminMaterialListReq {
+        Category string `form:"category,optional"`
+        Keyword  string `form:"keyword,optional"`
+        Page     int    `form:"page,default=1"`
+        Size     int    `form:"size,default=20"`
+    }
+
+    AdminMaterialListResp {
+        Total int64      `json:"total"`
+        List  []Material `json:"list"`
+        Page  int        `json:"page"`
+        Size  int        `json:"size"`
+    }
+
+    AdminMaterialCreateReq {
+        Name         string  `json:"name"`
+        Spec         string  `json:"spec"`
+        UnitPrice    float64 `json:"unitPrice"`
+        Unit         string  `json:"unit"`
+        Category     string  `json:"category"`
+        FiveElements string  `json:"fiveElements,optional"`
+        Image        string  `json:"image"`
+        Stock        int     `json:"stock"`
+    }
+
+    AdminMaterialCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    AdminMaterialUpdateReq {
+        Id           int64   `path:"id"`
+        Name         string  `json:"name"`
+        Spec         string  `json:"spec"`
+        UnitPrice    float64 `json:"unitPrice"`
+        Unit         string  `json:"unit"`
+        Category     string  `json:"category"`
+        FiveElements string  `json:"fiveElements,optional"`
+        Image        string  `json:"image"`
+        Stock        int     `json:"stock"`
+    }
+
+    AdminMaterialStatusReq {
+        Id     int64  `path:"id"`
+        Status string `json:"status"` // on_shelf/off_shelf
+    }
+
+    AdminBlessingServiceListReq {
+        Page int `form:"page,default=1"`
+        Size int `form:"size,default=20"`
+    }
+
+    AdminBlessingServiceListResp {
+        Total int64 `json:"total"`
+        List  []BlessingService `json:"list"`
+        Page  int   `json:"page"`
+        Size  int   `json:"size"`
+    }
+
+    BlessingService {
+        Id          int64   `json:"id"`
+        ServiceCode string  `json:"serviceCode"`
+        ServiceName string  `json:"serviceName"`
+        TempleCode  string  `json:"templeCode"`
+        TempleName  string  `json:"templeName"`
+        MasterCode  string  `json:"masterCode"`
+        MasterName  string  `json:"masterName"`
+        Price       float64 `json:"price"`
+        Description string  `json:"description"`
+        Status      string  `json:"status"`
+    }
+)
+
+// ==================== C端路由 ====================
+
+@server (
+    group: diy.customer
+    prefix: /api/v1/diy
+)
+service diy-service {
+    @handler designList
+    get /designs (DesignListReq) returns (DesignListResp)
+
+    @handler designSave
+    post /designs (DesignSaveReq) returns (DesignSaveResp)
+
+    @handler designDetail
+    get /designs/:id (DesignDetailReq) returns (DiyDesign)
+
+    @handler materialList
+    get /materials (MaterialListReq) returns (MaterialListResp)
+
+    @handler diyOrderCreate
+    post /orders (DiyOrderCreateReq) returns (DiyOrderCreateResp)
+
+    @handler diyOrderList
+    get /orders (DiyOrderListReq) returns (DiyOrderListResp)
+
+    @handler diyOrderDetail
+    get /orders/:id (DiyOrderDetailReq) returns (DiyOrder)
+}
+
+// ==================== 商城台路由 ====================
+
+@server (
+    group: diy.admin
+    prefix: /api/v1/admin/diy
+    jwt: Auth
+)
+service diy-service {
+    @handler adminDiyOrderList
+    get /orders (AdminDiyOrderListReq) returns (AdminDiyOrderListResp)
+
+    @handler adminDiyOrderDetail
+    get /orders/:id (AdminDiyOrderDetailReq) returns (DiyOrder)
+
+    @handler adminDiyOrderReview
+    put /orders/:id/review (AdminDiyOrderReviewReq) returns (DiyOrder)
+
+    @handler adminDiyOrderMakeComplete
+    put /orders/:id/make-complete (AdminDiyOrderMakeCompleteReq) returns (DiyOrder)
+
+    @handler adminDiyOrderShip
+    put /orders/:id/ship (AdminDiyOrderShipReq) returns (DiyOrder)
+
+    @handler adminMaterialList
+    get /materials (AdminMaterialListReq) returns (AdminMaterialListResp)
+
+    @handler adminMaterialCreate
+    post /materials (AdminMaterialCreateReq) returns (AdminMaterialCreateResp)
+
+    @handler adminMaterialUpdate
+    put /materials/:id (AdminMaterialUpdateReq) returns (Material)
+
+    @handler adminMaterialStatus
+    put /materials/:id/status (AdminMaterialStatusReq) returns (Material)
+
+    @handler adminBlessingServiceList
+    get /blessing-services (AdminBlessingServiceListReq) returns (AdminBlessingServiceListResp)
+}

@@ -1,0 +1,228 @@
+syntax = "v1"
+
+info (
+    title:   "Auth Service"
+    desc:    "东方玄学 认证服务 - 多端登录 / 角色权限 / 管理台账号"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// ============ C端/通用认证 ============
+type (
+    // LoginReq 登录请求，支持 手机号+验证码 或 账号(手机号)+密码
+    LoginReq {
+        Phone    string `json:"phone"`
+        Code     string `json:"code,optional"`     // 验证码（手机号登录）
+        Account  string `json:"account,optional"`  // 账号（密码登录，可传手机号）
+        Password string `json:"password,optional"` // 密码（密码登录）
+    }
+
+    // LoginResp 登录响应
+    LoginResp {
+        AccessToken  string `json:"accessToken"`
+        RefreshToken string `json:"refreshToken"`
+        ExpiresIn    int64  `json:"expiresIn"` // access token 有效期（秒）
+        UserInfo     UserInfo `json:"userInfo"`
+        IMToken      string `json:"imToken,optional"` // OpenIM WebSocket 连接 token
+    }
+
+    // UserInfo 用户简要信息
+    UserInfo {
+        UserId   int64  `json:"userId"`
+        Nickname string `json:"nickname"`
+        Avatar   string `json:"avatar"`
+        Mobile   string `json:"mobile"`
+    }
+
+    // RefreshReq 续期请求
+    RefreshReq {
+        RefreshToken string `json:"refreshToken"`
+    }
+
+    // RefreshResp 续期响应
+    RefreshResp {
+        AccessToken string `json:"accessToken"`
+        ExpiresIn   int64  `json:"expiresIn"`
+    }
+
+    // LogoutReq 登出请求
+    LogoutReq {
+        AccessToken string `json:"accessToken,optional"`
+    }
+
+    // LogoutResp 登出响应
+    LogoutResp {
+        Success bool `json:"success"`
+    }
+)
+
+// ============ 管理台登录 ============
+type (
+    // AdminLoginReq 管理台登录请求（account + password）
+    AdminLoginReq {
+        Account  string `json:"account"`
+        Password string `json:"password"`
+    }
+)
+
+// ============ 管理台账号管理 ============
+type (
+    // AdminAccount 管理台账号
+    AdminAccount {
+        Id            int64  `json:"id"`
+        Account       string `json:"account"`
+        Name          string `json:"name"`
+        RoleId        int64  `json:"roleId"`
+        RoleName      string `json:"roleName,optional"`
+        TempleId      string `json:"templeId,optional"`
+        MasterId      string `json:"masterId,optional"`
+        ShopId        int64  `json:"shopId,optional"`
+        Status        string `json:"status"` // enabled/disabled
+        LastLoginTime string `json:"lastLoginTime,optional"`
+        CreateTime    string `json:"createTime"`
+    }
+
+    AdminAccountListReq {
+        Keyword string `form:"keyword,optional"` // 按账号/姓名模糊搜索
+        Status  string `form:"status,optional"`
+        Page    int    `form:"page,default=1"`
+        Size    int    `form:"size,default=20"`
+    }
+
+    AdminAccountListResp {
+        Total int64          `json:"total"`
+        List  []AdminAccount `json:"list"`
+        Page  int            `json:"page"`
+        Size  int            `json:"size"`
+    }
+
+    AdminAccountCreateReq {
+        Account  string `json:"account"`
+        Password string `json:"password"`
+        Name     string `json:"name"`
+        RoleId   int64  `json:"roleId"`
+        TempleId string `json:"templeId,optional"`
+        MasterId string `json:"masterId,optional"`
+        ShopId   int64  `json:"shopId,optional"`
+    }
+
+    AdminAccountCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    AdminAccountUpdateReq {
+        Id       int64  `path:"id"`
+        Name     string `json:"name,optional"`
+        RoleId   int64  `json:"roleId,optional"`
+        TempleId string `json:"templeId,optional"`
+        MasterId string `json:"masterId,optional"`
+        ShopId   int64  `json:"shopId,optional"`
+    }
+
+    AdminAccountStatusReq {
+        Id     int64  `path:"id"`
+        Status string `json:"status"` // enabled/disabled
+    }
+
+    AdminAccountStatusResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// ============ 角色管理 ============
+type (
+    Role {
+        Id          int64  `json:"id"`
+        Name        string `json:"name"`
+        Code        string `json:"code"`
+        Description string `json:"description"`
+        CreateTime  string `json:"createTime"`
+    }
+
+    RoleListResp {
+        List []Role `json:"list"`
+    }
+
+    RoleCreateReq {
+        Name        string `json:"name"`
+        Code        string `json:"code"`
+        Description string `json:"description,optional"`
+    }
+
+    RoleCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    RoleUpdateReq {
+        Id          int64  `path:"id"`
+        Name        string `json:"name,optional"`
+        Description string `json:"description,optional"`
+    }
+)
+
+// ============ 权限管理 ============
+type (
+    Permission {
+        Id       int64  `json:"id"`
+        Code     string `json:"code"`
+        Name     string `json:"name"`
+        Resource string `json:"resource"`
+        Action   string `json:"action"`
+    }
+
+    PermissionListResp {
+        List []Permission `json:"list"`
+    }
+)
+
+// ============ C端认证分组（保留原有接口） ============
+@server (
+    group: auth
+    prefix: /api/v1/auth
+)
+service auth-service {
+    @handler login
+    post /login (LoginReq) returns (LoginResp)
+
+    @handler refresh
+    post /refresh (RefreshReq) returns (RefreshResp)
+
+    @handler logout
+    post /logout (LogoutReq) returns (LogoutResp)
+
+    @handler adminLogin
+    post /admin/login (AdminLoginReq) returns (LoginResp)
+}
+
+// ============ 管理台分组（需JWT + 平台超管角色） ============
+@server (
+    group: auth.admin
+    prefix: /api/v1/admin/auth
+    jwt: Auth
+)
+service auth-service {
+    @handler adminAccountList
+    get /accounts (AdminAccountListReq) returns (AdminAccountListResp)
+
+    @handler adminAccountCreate
+    post /accounts (AdminAccountCreateReq) returns (AdminAccountCreateResp)
+
+    @handler adminAccountUpdate
+    put /accounts/:id (AdminAccountUpdateReq) returns (AdminAccount)
+
+    @handler adminAccountStatus
+    put /accounts/:id/status (AdminAccountStatusReq) returns (AdminAccountStatusResp)
+
+    @handler adminRoleList
+    get /roles returns (RoleListResp)
+
+    @handler adminRoleCreate
+    post /roles (RoleCreateReq) returns (RoleCreateResp)
+
+    @handler adminRoleUpdate
+    put /roles/:id (RoleUpdateReq) returns (Role)
+
+    @handler adminPermissionList
+    get /permissions returns (PermissionListResp)
+}

@@ -1,0 +1,207 @@
+syntax = "v1"
+
+info (
+    title:   "Order Service"
+    desc:    "东方玄学 商城订单服务 - 普通商品订单 / 退换货"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// ==================== 公共类型 ====================
+
+type (
+    ShopOrder {
+        Id           int64              `json:"id"`
+        OrderNo      string             `json:"orderNo"`
+        UserId       string             `json:"userId"`
+        TotalAmount  float64            `json:"totalAmount"`
+        PayAmount    float64            `json:"payAmount"`
+        Status       string             `json:"status"` // pending_payment/paid/shipped/completed/cancelled/in_return
+        AddressId    int64              `json:"addressId"`
+        Note         string             `json:"note"`
+        Items        []ShopOrderItem    `json:"items,optional"`
+        Logistics    ShopOrderLogistics `json:"logistics,optional"`
+        CreateTime   string             `json:"createTime"`
+    }
+
+    ShopOrderItem {
+        Id          int64   `json:"id,optional"`
+        OrderId     int64   `json:"orderId,optional"`
+        ProductId   int64   `json:"productId"`
+        SkuId       int64   `json:"skuId,optional"`
+        ProductName string  `json:"productName"`
+        SkuSpec     string  `json:"skuSpec,optional"`
+        Price       float64 `json:"price"`
+        Quantity    int     `json:"quantity"`
+        Image       string  `json:"image,optional"`
+    }
+
+    ShopOrderLogistics {
+        Id             int64  `json:"id"`
+        OrderId        int64  `json:"orderId"`
+        ExpressCompany string `json:"expressCompany"`
+        TrackingNo     string `json:"trackingNo"`
+        ShipTime       string `json:"shipTime"`
+    }
+
+    ReturnOrder {
+        Id            int64   `json:"id"`
+        ReturnNo      string  `json:"returnNo"`
+        OrderId       int64   `json:"orderId"`
+        Type          string  `json:"type"` // return/exchange
+        Reason        string  `json:"reason"`
+        Status        string  `json:"status"` // pending_review/approved/return_shipping/return_received/refunding/completed/rejected
+        RefundAmount  float64 `json:"refundAmount"`
+        CreateTime    string  `json:"createTime"`
+    }
+)
+
+// ==================== C端接口 ====================
+
+type (
+    OrderCreateReq {
+        UserId    string           `json:"userId"`
+        AddressId int64            `json:"addressId"`
+        Note      string           `json:"note,optional"`
+        Items     []ShopOrderItem  `json:"items"`
+    }
+
+    OrderCreateResp {
+        Id      int64  `json:"id"`
+        OrderNo string `json:"orderNo"`
+    }
+
+    OrderListReq {
+        UserId string `form:"userId"`
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    OrderListResp {
+        Total int64       `json:"total"`
+        List  []ShopOrder `json:"list"`
+        Page  int         `json:"page"`
+        Size  int         `json:"size"`
+    }
+
+    OrderDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    OrderConfirmReq {
+        Id int64 `path:"id"`
+    }
+
+    OrderReturnReq {
+        Id     int64  `path:"id"`
+        Type   string `json:"type"` // return/exchange
+        Reason string `json:"reason"`
+    }
+
+    OrderReturnResp {
+        Id        int64  `json:"id"`
+        ReturnNo  string `json:"returnNo"`
+    }
+)
+
+// ==================== 商城台接口 ====================
+
+type (
+    AdminOrderListReq {
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    AdminOrderListResp {
+        Total int64       `json:"total"`
+        List  []ShopOrder `json:"list"`
+        Page  int         `json:"page"`
+        Size  int         `json:"size"`
+    }
+
+    AdminOrderDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    AdminOrderShipReq {
+        Id             int64  `path:"id"`
+        ExpressCompany string `json:"expressCompany"`
+        TrackingNo     string `json:"trackingNo"`
+    }
+
+    AdminReturnListReq {
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    AdminReturnListResp {
+        Total int64        `json:"total"`
+        List  []ReturnOrder `json:"list"`
+        Page  int          `json:"page"`
+        Size  int          `json:"size"`
+    }
+
+    AdminReturnReviewReq {
+        Id     int64  `path:"id"`
+        Action string `json:"action"` // approve/reject
+        Reason string `json:"reason,optional"`
+    }
+
+    AdminReturnRefundReq {
+        Id     int64   `path:"id"`
+        Amount float64 `json:"amount"`
+    }
+)
+
+// ==================== C端路由 ====================
+
+@server (
+    group: order.customer
+    prefix: /api/v1/orders
+)
+service order-service {
+    @handler orderCreate
+    post / (OrderCreateReq) returns (OrderCreateResp)
+
+    @handler orderList
+    get / (OrderListReq) returns (OrderListResp)
+
+    @handler orderDetail
+    get /:id (OrderDetailReq) returns (ShopOrder)
+
+    @handler orderConfirm
+    put /:id/confirm (OrderConfirmReq) returns (ShopOrder)
+
+    @handler orderReturn
+    post /:id/return (OrderReturnReq) returns (OrderReturnResp)
+}
+
+// ==================== 商城台路由 ====================
+
+@server (
+    group: order.admin
+    prefix: /api/v1/admin/orders
+    jwt: Auth
+)
+service order-service {
+    @handler adminOrderList
+    get / (AdminOrderListReq) returns (AdminOrderListResp)
+
+    @handler adminOrderDetail
+    get /:id (AdminOrderDetailReq) returns (ShopOrder)
+
+    @handler adminOrderShip
+    put /:id/ship (AdminOrderShipReq) returns (ShopOrder)
+
+    @handler adminReturnList
+    get /returns (AdminReturnListReq) returns (AdminReturnListResp)
+
+    @handler adminReturnReview
+    put /returns/:id/review (AdminReturnReviewReq) returns (ReturnOrder)
+
+    @handler adminReturnRefund
+    put /returns/:id/refund (AdminReturnRefundReq) returns (ReturnOrder)
+}

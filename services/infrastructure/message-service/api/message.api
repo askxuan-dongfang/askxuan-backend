@@ -1,0 +1,215 @@
+syntax = "v1"
+
+info (
+	title:   "Message Service"
+	desc:    "东方玄学 通信服务 - 站内消息 / IM咨询对话 / 系统公告 / 推送 / 模板"
+	author:  "askxuan"
+	version: "v1"
+)
+
+type (
+	Message {
+		Id        int64  `json:"id"`
+		UserId    string `json:"userId"`
+		Title     string `json:"title"`
+		Content   string `json:"content"`
+		BizType   string `json:"bizType"` // booking/system
+		BizId     string `json:"bizId"`
+		IsRead    int    `json:"isRead"` // 0未读 1已读
+		CreatedAt string `json:"createdAt"`
+	}
+	ListReq {
+		UserId string `form:"userId"`
+		IsRead int    `form:"isRead,optional,default=-1"` // -1全部 0未读 1已读
+		Page   int    `form:"page,default=1"`
+		Size   int    `form:"size,default=20"`
+	}
+	ListResp {
+		Total int64     `json:"total"`
+		List  []Message `json:"list"`
+		Page  int       `json:"page"`
+		Size  int       `json:"size"`
+	}
+	ReadReq {
+		Id string `path:"id"`
+	}
+	ReadResp {
+		Id     int64 `json:"id"`
+		IsRead int   `json:"isRead"`
+	}
+	// ===== 扩展：未读 / 全部已读 / 删除 =====
+	UnreadCountReq {
+		UserId string `form:"userId"`
+	}
+	UnreadCountResp {
+		Count int64 `json:"count"`
+	}
+	ReadAllReq {
+		UserId string `json:"userId"`
+	}
+	ReadAllResp {
+		Count int64 `json:"count"`
+	}
+	DeleteMessageReq {
+		Id string `path:"id"`
+	}
+	IdResp {
+		Id int64 `json:"id"`
+	}
+	// ===== 消息模板 =====
+	MessageTemplate {
+		Id              int64  `json:"id"`
+		Code            string `json:"code"`
+		TitleTemplate   string `json:"titleTemplate"`
+		ContentTemplate string `json:"contentTemplate"`
+		Variables       string `json:"variables"` // JSON
+		Type            string `json:"type"` // booking/system/consult/income/audit
+		CreatedAt       string `json:"createdAt"`
+	}
+	TemplateListReq {
+		Type string `form:"type,optional"`
+		Page int    `form:"page,default=1"`
+		Size int    `form:"size,default=20"`
+	}
+	TemplateListResp {
+		Total int64             `json:"total"`
+		List  []MessageTemplate `json:"list"`
+		Page  int               `json:"page"`
+		Size  int               `json:"size"`
+	}
+	TemplateCreateReq {
+		Code            string `json:"code"`
+		TitleTemplate   string `json:"titleTemplate"`
+		ContentTemplate string `json:"contentTemplate"`
+		Variables       string `json:"variables,optional"`
+		Type            string `json:"type"`
+	}
+	TemplateUpdateReq {
+		Id              int64  `path:"id"`
+		TitleTemplate   string `json:"titleTemplate,optional"`
+		ContentTemplate string `json:"contentTemplate,optional"`
+		Variables       string `json:"variables,optional"`
+		Type            string `json:"type,optional"`
+	}
+	// ===== 推送 =====
+	PushReq {
+		UserId   string `json:"userId"`
+		PushType string `json:"pushType"` // app_push/sms
+		Title    string `json:"title"`
+		Content  string `json:"content"`
+		BizType  string `json:"bizType,optional"`
+		BizId    string `json:"bizId,optional"`
+	}
+	PushResp {
+		PushLogId int64  `json:"pushLogId"`
+		Status    string `json:"status"` // pending/success/failed
+	}
+	// ===== 系统公告 =====
+	SystemAnnouncement {
+		Id             int64  `json:"id"`
+		Title          string `json:"title"`
+		Content        string `json:"content"`
+		Type           string `json:"type"` // system/activity/maintenance
+		TargetAudience string `json:"targetAudience"` // all/customer/temple_admin/master
+		Status         string `json:"status"` // draft/published/offline
+		PublishTime    string `json:"publishTime"`
+		CreateTime     string `json:"createTime"`
+	}
+	AnnouncementListReq {
+		Type           string `form:"type,optional"`
+		TargetAudience string `form:"targetAudience,optional"`
+		Page           int    `form:"page,default=1"`
+		Size           int    `form:"size,default=20"`
+	}
+	AnnouncementListResp {
+		Total int64                `json:"total"`
+		List  []SystemAnnouncement `json:"list"`
+		Page  int                  `json:"page"`
+		Size  int                  `json:"size"`
+	}
+	AnnouncementCreateReq {
+		Title          string `json:"title"`
+		Content        string `json:"content"`
+		Type           string `json:"type"`
+		TargetAudience string `json:"targetAudience"`
+	}
+	AnnouncementStatusReq {
+		Id     int64  `path:"id"`
+		Status string `json:"status"` // published/offline
+	}
+)
+
+// C 端消息接口（保留原单数前缀，兼容已有调用）
+@server (
+	group:  message
+	prefix: /api/v1/message
+)
+service messageService {
+	@handler list
+	get /list (ListReq) returns (ListResp)
+
+	@handler read
+	put /:id/read (ReadReq) returns (ReadResp)
+}
+
+// C 端消息接口（扩展，复数前缀）
+@server (
+	group:  messagecustomer
+	prefix: /api/v1/messages
+)
+service messageService {
+	@handler unreadCount
+	get /unread-count (UnreadCountReq) returns (UnreadCountResp)
+
+	@handler readAll
+	put /read-all (ReadAllReq) returns (ReadAllResp)
+
+	@handler deleteMessage
+	delete /:id (DeleteMessageReq) returns (IdResp)
+}
+
+// 平台管理台接口
+@server (
+	group:  messageadmin
+	prefix: /api/v1/admin/messages
+)
+service messageService {
+	@handler adminTemplateList
+	get /templates (TemplateListReq) returns (TemplateListResp)
+
+	@handler adminTemplateCreate
+	post /templates (TemplateCreateReq) returns (IdResp)
+
+	@handler adminTemplateUpdate
+	put /templates/:id (TemplateUpdateReq) returns (IdResp)
+
+	@handler adminPush
+	post /push (PushReq) returns (PushResp)
+}
+
+// ===== 系统公告：C端 =====
+@server (
+	group:  announcement
+	prefix: /api/v1/announcements
+)
+service messageService {
+	@handler announcementList
+	get /list (AnnouncementListReq) returns (AnnouncementListResp)
+}
+
+// ===== 系统公告：管理台 =====
+@server (
+	group:  messageadminannouncement
+	prefix: /api/v1/admin/announcements
+)
+service messageService {
+	@handler adminAnnouncementList
+	get /list (AnnouncementListReq) returns (AnnouncementListResp)
+
+	@handler adminAnnouncementCreate
+	post /create (AnnouncementCreateReq) returns (IdResp)
+
+	@handler adminAnnouncementStatus
+	put /:id/status (AnnouncementStatusReq) returns (IdResp)
+}
+

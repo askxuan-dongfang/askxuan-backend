@@ -1,0 +1,281 @@
+# askXuan-backend Go 微服务 - 便捷命令
+# 使用方式：在 askXuan-backend/ 目录下执行 make <target>
+#
+# 依赖：Go 1.22+，建议配置 GOPROXY=https://goproxy.cn,direct
+# 基础设施：`docker compose up -d` 启动 MySQL/Redis/RabbitMQ/MinIO/etcd
+
+SHELL := /bin/bash
+
+# ===== 服务路径映射（按业务域分组）=====
+GATEWAY_PATH    := services/platform/gateway-service
+AUTH_PATH       := services/platform/auth-service
+USER_PATH       := services/platform/user-service
+TEMPLE_PATH     := services/content/temple-service
+MASTER_PATH     := services/content/master-service
+BOOKING_PATH    := services/content/booking-service
+REVIEW_PATH     := services/content/review-service
+PRODUCT_PATH    := services/commerce/product-service
+ORDER_PATH      := services/commerce/order-service
+PAYMENT_PATH    := services/commerce/payment-service
+DIY_PATH        := services/commerce/diy-service
+MARKETING_PATH  := services/operation/marketing-service
+LOGISTICS_PATH  := services/operation/logistics-service
+FINANCE_PATH    := services/operation/finance-service
+AUDIT_PATH      := services/operation/audit-service
+MESSAGE_PATH    := services/infrastructure/message-service
+FILE_PATH       := services/infrastructure/file-service
+AI_PATH         := services/infrastructure/ai-service
+
+# 全部服务路径列表
+SERVICE_PATHS := $(GATEWAY_PATH) $(AUTH_PATH) $(USER_PATH) $(TEMPLE_PATH) \
+                 $(MASTER_PATH) $(BOOKING_PATH) $(REVIEW_PATH) $(PRODUCT_PATH) \
+                 $(ORDER_PATH) $(PAYMENT_PATH) $(DIY_PATH) $(MARKETING_PATH) \
+                 $(LOGISTICS_PATH) $(FINANCE_PATH) $(AUDIT_PATH) $(MESSAGE_PATH) \
+                 $(FILE_PATH) $(AI_PATH)
+
+# 默认 GOPROXY 加速
+export GOPROXY ?= https://goproxy.cn,direct
+
+.PHONY: help tidy build run-all start-all stop-all db-init clean \
+        test test-verbose vet lint fmt docker-build docker-build-all swagger \
+        start-gateway start-auth start-user start-temple start-master start-booking \
+        start-message start-file start-product start-diy start-order start-payment \
+        start-finance start-review start-audit start-logistics start-marketing start-ai \
+        build-gateway build-auth build-user build-temple build-master build-booking \
+        build-message build-file build-product build-diy build-order build-payment \
+        build-finance build-review build-audit build-logistics build-marketing build-ai
+
+help: ## 查看所有命令
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+tidy: ## 拉取/整理所有模块依赖
+	@for path in $(SERVICE_PATHS) common; do \
+		echo "==> go mod tidy: $$path"; \
+		(cd $$path && go mod tidy) || echo "  (跳过 $$path)"; \
+	done
+
+# ---------- 单服务启动 ----------
+start-gateway: ## 启动网关 (8080)
+	cd $(GATEWAY_PATH) && go run gateway.go -f etc/gateway.yaml
+
+start-auth: ## 启动认证服务 (8081)
+	cd $(AUTH_PATH) && go run auth.go -f etc/auth.yaml
+
+start-user: ## 启动用户服务 (8082)
+	cd $(USER_PATH) && go run user.go -f etc/user.yaml
+
+start-temple: ## 启动寺院服务 (8083)
+	cd $(TEMPLE_PATH) && go run temple.go -f etc/temple.yaml
+
+start-master: ## 启动法师服务 (8084)
+	cd $(MASTER_PATH) && go run master.go -f etc/master.yaml
+
+start-booking: ## 启动预约服务 (8085)
+	cd $(BOOKING_PATH) && go run booking.go -f etc/booking.yaml
+
+start-message: ## 启动消息服务 (8094)
+	cd $(MESSAGE_PATH) && go run message.go -f etc/message.yaml
+
+start-file: ## 启动文件服务 (8097)
+	cd $(FILE_PATH) && go run file.go -f etc/file.yaml
+
+start-product: ## 启动商品服务 (8086)
+	cd $(PRODUCT_PATH) && go run product.go -f etc/product.yaml
+
+start-diy: ## 启动DIY服务 (8088)
+	cd $(DIY_PATH) && go run diy.go -f etc/diy.yaml
+
+start-order: ## 启动订单服务 (8089)
+	cd $(ORDER_PATH) && go run order.go -f etc/order.yaml
+
+start-payment: ## 启动支付服务 (8090)
+	cd $(PAYMENT_PATH) && go run payment.go -f etc/payment.yaml
+
+start-finance: ## 启动财务服务 (8091)
+	cd $(FINANCE_PATH) && go run finance.go -f etc/finance.yaml
+
+start-review: ## 启动评价服务 (8092)
+	cd $(REVIEW_PATH) && go run review.go -f etc/review.yaml
+
+start-audit: ## 启动审核服务 (8093)
+	cd $(AUDIT_PATH) && go run audit.go -f etc/audit.yaml
+
+start-logistics: ## 启动物流服务 (8095)
+	cd $(LOGISTICS_PATH) && go run logistics.go -f etc/logistics.yaml
+
+start-marketing: ## 启动营销服务 (8096)
+	cd $(MARKETING_PATH) && go run marketing.go -f etc/marketing.yaml
+
+start-ai: ## 启动AI服务 (8098)
+	cd $(AI_PATH) && go run ai.go -f etc/ai.yaml
+
+# ---------- 单服务编译 ----------
+build-gateway:
+	cd $(GATEWAY_PATH) && go build -o gateway gateway.go
+
+build-auth:
+	cd $(AUTH_PATH) && go build -o auth auth.go
+
+build-user:
+	cd $(USER_PATH) && go build -o user user.go
+
+build-temple:
+	cd $(TEMPLE_PATH) && go build -o temple temple.go
+
+build-master:
+	cd $(MASTER_PATH) && go build -o master master.go
+
+build-booking:
+	cd $(BOOKING_PATH) && go build -o booking booking.go
+
+build-message:
+	cd $(MESSAGE_PATH) && go build -o message message.go
+
+build-file:
+	cd $(FILE_PATH) && go build -o file file.go
+
+build-product:
+	cd $(PRODUCT_PATH) && go build -o product product.go
+
+build-diy:
+	cd $(DIY_PATH) && go build -o diy diy.go
+
+build-order:
+	cd $(ORDER_PATH) && go build -o order order.go
+
+build-payment:
+	cd $(PAYMENT_PATH) && go build -o payment payment.go
+
+build-finance:
+	cd $(FINANCE_PATH) && go build -o finance finance.go
+
+build-review:
+	cd $(REVIEW_PATH) && go build -o review review.go
+
+build-audit:
+	cd $(AUDIT_PATH) && go build -o audit audit.go
+
+build-logistics:
+	cd $(LOGISTICS_PATH) && go build -o logistics logistics.go
+
+build-marketing:
+	cd $(MARKETING_PATH) && go build -o marketing marketing.go
+
+build-ai:
+	cd $(AI_PATH) && go build -o ai ai.go
+
+build: ## 编译所有服务
+build: build-gateway build-auth build-user build-temple build-master build-booking \
+       build-message build-file build-product build-diy build-order build-payment \
+       build-finance build-review build-audit build-logistics build-marketing build-ai
+	@echo "==> 所有服务编译完成"
+
+# ---------- 全部启动（后台并发，日志输出到 logs/） ----------
+start-all: ## 并发启动所有服务（后台运行，日志写到 logs/）
+	@mkdir -p logs
+	@echo "==> 后台启动所有服务，日志见 logs/"
+	@for path in $(SERVICE_PATHS); do \
+		bin=$$(ls $$path/*.go | head -1 | sed 's|.*/||;s|\.go$$||'); \
+		echo "  启动 $$path ($$bin.go)"; \
+		(cd $$path && nohup go run $$bin.go -f etc/$$bin.yaml > ../../../logs/$$bin.log 2>&1 &) || true; \
+	done
+	@echo "==> 已启动。查看日志：tail -f logs/gateway.log"
+	@echo "==> 停止：make stop-all"
+
+stop-all: ## 停止所有服务
+	@echo "==> 停止所有服务..."
+	@-pkill -f "go run.*gateway.go" 2>/dev/null || true
+	@-pkill -f "go run.*auth.go" 2>/dev/null || true
+	@-pkill -f "go run.*user.go" 2>/dev/null || true
+	@-pkill -f "go run.*temple.go" 2>/dev/null || true
+	@-pkill -f "go run.*master.go" 2>/dev/null || true
+	@-pkill -f "go run.*booking.go" 2>/dev/null || true
+	@-pkill -f "go run.*message.go" 2>/dev/null || true
+	@-pkill -f "go run.*file.go" 2>/dev/null || true
+	@-pkill -f "go run.*product.go" 2>/dev/null || true
+	@-pkill -f "go run.*diy.go" 2>/dev/null || true
+	@-pkill -f "go run.*order.go" 2>/dev/null || true
+	@-pkill -f "go run.*payment.go" 2>/dev/null || true
+	@-pkill -f "go run.*finance.go" 2>/dev/null || true
+	@-pkill -f "go run.*review.go" 2>/dev/null || true
+	@-pkill -f "go run.*audit.go" 2>/dev/null || true
+	@-pkill -f "go run.*logistics.go" 2>/dev/null || true
+	@-pkill -f "go run.*marketing.go" 2>/dev/null || true
+	@-pkill -f "go run.*ai.go" 2>/dev/null || true
+	@echo "==> 已停止"
+
+# ---------- 数据库 ----------
+db-init: ## 初始化数据库（建表 + 种子数据）
+	@echo "==> 初始化数据库..."
+	@docker exec -i askxuan-mysql mysql -uroot -proot123 askxuan < db/init.sql && echo "==> 数据库初始化完成" || echo "==> 失败：请先执行 docker compose up -d"
+
+# ---------- 清理 ----------
+clean: ## 清理编译产物
+	@-find services -type f \( -name "gateway" -o -name "auth" -o -name "user" -o -name "temple" \
+		-o -name "master" -o -name "booking" -o -name "message" -o -name "file" \
+		-o -name "product" -o -name "diy" -o -name "order" -o -name "payment" \
+		-o -name "finance" -o -name "review" -o -name "audit" \
+		-o -name "logistics" -o -name "marketing" -o -name "ai" \) -delete
+	@-rm -rf logs
+	@echo "==> 已清理"
+
+# ---------- 测试 ----------
+test: ## 运行所有模块单元测试
+	@for path in $(SERVICE_PATHS) common; do \
+		echo "==> go test: $$path"; \
+		(cd $$path && go test ./... -count=1) || echo "  (测试失败 $$path)"; \
+	done
+
+test-verbose: ## 运行所有模块单元测试（详细输出）
+	@for path in $(SERVICE_PATHS) common; do \
+		echo "==> go test -v: $$path"; \
+		(cd $$path && go test ./... -v -count=1) || echo "  (测试失败 $$path)"; \
+	done
+
+# ---------- 代码检查 ----------
+vet: ## 运行 go vet 静态检查
+	@for path in $(SERVICE_PATHS) common; do \
+		echo "==> go vet: $$path"; \
+		(cd $$path && go vet ./...) || echo "  (vet 失败 $$path)"; \
+	done
+
+lint: ## 运行 golangci-lint（需先安装: brew install golangci-lint）
+	@if ! command -v golangci-lint > /dev/null 2>&1; then \
+		echo "==> golangci-lint 未安装，请执行: brew install golangci-lint"; \
+		exit 1; \
+	fi
+	@for path in $(SERVICE_PATHS) common; do \
+		echo "==> lint: $$path"; \
+		(cd $$path && golangci-lint run ./... --timeout 5m) || echo "  (lint 警告 $$path)"; \
+	done
+
+fmt: ## 格式化所有 Go 代码
+	@for path in $(SERVICE_PATHS) common; do \
+		(cd $$path && go fmt ./...) || true; \
+	done
+	@echo "==> 代码格式化完成"
+
+# ---------- Docker ----------
+docker-build: ## 构建单个服务 Docker 镜像（用法: make docker-build SVC=auth-service TAG=latest）
+	@if [ -z "$(SVC)" ]; then echo "用法: make docker-build SVC=auth-service [TAG=latest]"; exit 1; fi
+	@path=$$(find services -name "$(SVC)" -type d | head -1); \
+	binary=$$(echo "$(SVC)" | sed 's/-service$$//'); \
+	echo "==> 构建 askxuan/$(SVC):$(or $(TAG),latest) (path=$$path, binary=$$binary)"; \
+	docker build -f build/docker/Dockerfile \
+		--build-arg SERVICE=$$path \
+		--build-arg BINARY=$$binary \
+		-t askxuan/$(SVC):$(or $(TAG),latest) .
+
+docker-build-all: ## 构建所有服务 Docker 镜像
+	@TAG=$(or $(TAG),latest); bash scripts/docker-build-all.sh $$TAG
+
+# ---------- Swagger 文档 ----------
+swagger: ## 生成 Swagger API 文档（需安装 goctl-swagger 插件）
+	@echo "==> 生成 Swagger 文档..."
+	@for path in $(SERVICE_PATHS); do \
+		if [ -f $$path/api/*.api ]; then \
+			echo "  生成 $$path Swagger..."; \
+			(cd $$path && goctl api plugin -plugin goctl-swagger="swagger -filename $$(basename $$(pwd)).json" -api api/*.api -dir ../../docs/api 2>/dev/null) || true; \
+		fi; \
+	done
+	@echo "==> Swagger 文档生成完成（见 docs/api/）"

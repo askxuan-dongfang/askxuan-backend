@@ -1,0 +1,21 @@
+Name: logistics-service
+Host: 0.0.0.0
+Port: 8095
+
+Telemetry:
+  Name: logistics-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# MySQL 数据源
+MySQL:
+  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_logistics?charset=utf8mb4&parseTime=true&loc=Local"
+
+# RabbitMQ（发布 logistics.sync 物流状态变更事件）
+RabbitMQ:
+  Host: localhost
+  Port: 5672
+  User: admin
+  Password: admin
+  VHost: "/"

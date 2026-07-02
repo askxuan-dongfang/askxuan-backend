@@ -1,0 +1,23 @@
+Name: diy-service
+Host: 0.0.0.0
+Port: 8088
+
+DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_diy?charset=utf8mb4&parseTime=true&loc=Local"
+
+Redis:
+  Host: localhost:6379
+  Type: node
+
+Telemetry:
+  Name: diy-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# RabbitMQ（加持任务派单 / 状态通知）
+RabbitMQ:
+  Host: localhost
+  Port: 5672
+  User: admin
+  Password: admin
+  VHost: "/"

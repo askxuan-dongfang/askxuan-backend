@@ -1,0 +1,18 @@
+Name: file-service
+Host: 0.0.0.0
+Port: 8097
+
+Telemetry:
+  Name: file-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# MinIO 对象存储
+MinIO:
+  Endpoint: localhost:9000
+  AccessKey: minioadmin
+  SecretKey: minioadmin
+  Bucket: askxuan
+  UseSSL: false
+  PresignExpire: 900  # 预签名 URL 有效期（秒），默认 15 分钟

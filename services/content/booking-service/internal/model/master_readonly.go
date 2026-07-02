@@ -1,0 +1,40 @@
+package model
+
+import (
+	"context"
+
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
+)
+
+// MasterReadonlyModel 预约服务只读访问法师表（跨库查询 askxuan.master）
+type MasterReadonlyModel interface {
+	FindByCode(ctx context.Context, code string) (*MasterBrief, error)
+}
+
+// MasterBrief 法师简要信息
+type MasterBrief struct {
+	Id          int64  `db:"id"`
+	Code        string `db:"code"`
+	DharmaName  string `db:"dharma_name"`
+	ShelfStatus string `db:"shelf_status"`
+}
+
+type masterReadonlyModel struct {
+	conn sqlx.SqlConn
+}
+
+// NewMasterReadonlyModel 构造法师只读模型
+func NewMasterReadonlyModel(conn sqlx.SqlConn) MasterReadonlyModel {
+	return &masterReadonlyModel{conn: conn}
+}
+
+// FindByCode 按法师编码查询（跨库 askxuan.master）
+func (m *masterReadonlyModel) FindByCode(ctx context.Context, code string) (*MasterBrief, error) {
+	var mb MasterBrief
+	query := `SELECT id, code, dharma_name, shelf_status FROM askxuan.master WHERE code = ?`
+	err := m.conn.QueryRowCtx(ctx, &mb, query, code)
+	if err != nil {
+		return nil, err
+	}
+	return &mb, nil
+}

@@ -1,0 +1,300 @@
+syntax = "v1"
+
+info (
+    title:   "Marketing Service"
+    desc:    "东方玄学 营销服务 - 优惠券 / 活动 / Banner / 推荐位"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// ===== Banner =====
+type (
+    Banner {
+        Id        int64  `json:"id"`
+        Title     string `json:"title"`
+        ImageUrl  string `json:"imageUrl"`
+        LinkType  string `json:"linkType"`  // temple/master/product/diy/ad_landing
+        LinkValue string `json:"linkValue"`
+        Sort      int    `json:"sort"`
+        Status    string `json:"status"` // enabled/disabled
+        StartTime string `json:"startTime"`
+        EndTime   string `json:"endTime"`
+        CreatedAt string `json:"createdAt"`
+    }
+
+    BannerListReq {
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    BannerListResp {
+        Total int64    `json:"total"`
+        List  []Banner `json:"list"`
+        Page  int      `json:"page"`
+        Size  int      `json:"size"`
+    }
+
+    BannerCreateReq {
+        Title     string `json:"title"`
+        ImageUrl  string `json:"imageUrl"`
+        LinkType  string `json:"linkType"`
+        LinkValue string `json:"linkValue"`
+        Sort      int    `json:"sort,optional"`
+        StartTime string `json:"startTime"`
+        EndTime   string `json:"endTime"`
+    }
+
+    BannerUpdateReq {
+        Id        int64  `path:"id"`
+        Title     string `json:"title,optional"`
+        ImageUrl  string `json:"imageUrl,optional"`
+        LinkType  string `json:"linkType,optional"`
+        LinkValue string `json:"linkValue,optional"`
+        Sort      int    `json:"sort,optional"`
+        Status    string `json:"status,optional"`
+        StartTime string `json:"startTime,optional"`
+        EndTime   string `json:"endTime,optional"`
+    }
+
+    IdResp {
+        Id int64 `json:"id"`
+    }
+)
+
+// ===== Recommend =====
+type (
+    Recommend {
+        Id        int64  `json:"id"`
+        Type      string `json:"type"` // temple/master/product
+        TargetId  string `json:"targetId"`
+        Sort      int    `json:"sort"`
+        Status    string `json:"status"`
+        CreatedAt string `json:"createdAt"`
+    }
+
+    RecommendListReq {
+        Type   string `form:"type,optional"`
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    RecommendListResp {
+        Total int64       `json:"total"`
+        List  []Recommend `json:"list"`
+        Page  int         `json:"page"`
+        Size  int         `json:"size"`
+    }
+
+    RecommendUpdateReq {
+        Id       int64  `path:"id"`
+        Type     string `json:"type,optional"`
+        TargetId string `json:"targetId,optional"`
+        Sort     int    `json:"sort,optional"`
+        Status   string `json:"status,optional"`
+    }
+)
+
+// ===== Activity =====
+type (
+    Activity {
+        Id        int64  `json:"id"`
+        Name      string `json:"name"`
+        Type      string `json:"type"` // limited_discount/festival/temple_event
+        StartTime string `json:"startTime"`
+        EndTime   string `json:"endTime"`
+        Config    string `json:"config"`
+        Status    string `json:"status"`
+        CreatedAt string `json:"createdAt"`
+    }
+
+    ActivityListReq {
+        Status string `form:"status,optional"`
+        Type   string `form:"type,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    ActivityListResp {
+        Total int64      `json:"total"`
+        List  []Activity `json:"list"`
+        Page  int        `json:"page"`
+        Size  int        `json:"size"`
+    }
+
+    ActivityCreateReq {
+        Name      string `json:"name"`
+        Type      string `json:"type"`
+        StartTime string `json:"startTime"`
+        EndTime   string `json:"endTime"`
+        Config    string `json:"config,optional"`
+    }
+
+    ActivityUpdateReq {
+        Id        int64  `path:"id"`
+        Name      string `json:"name,optional"`
+        Type      string `json:"type,optional"`
+        StartTime string `json:"startTime,optional"`
+        EndTime   string `json:"endTime,optional"`
+        Config    string `json:"config,optional"`
+        Status    string `json:"status,optional"`
+    }
+)
+
+// ===== Coupon =====
+type (
+    Coupon {
+        Id            int64   `json:"id"`
+        CouponNo      string  `json:"couponNo"`
+        Name          string  `json:"name"`
+        Type          string  `json:"type"`      // full_reduce/discount/new_user/category
+        Value         float64 `json:"value"`
+        MinAmount     float64 `json:"minAmount"`
+        CategoryId    string  `json:"categoryId"`
+        StartTime     string  `json:"startTime"`
+        EndTime       string  `json:"endTime"`
+        TotalCount    int     `json:"totalCount"`
+        ReceivedCount int     `json:"receivedCount"`
+        Status        string  `json:"status"`
+        CreatedAt     string  `json:"createdAt"`
+    }
+
+    CouponListReq {
+        Status string `form:"status,optional"`
+        Type   string `form:"type,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    CouponListResp {
+        Total int64    `json:"total"`
+        List  []Coupon `json:"list"`
+        Page  int      `json:"page"`
+        Size  int      `json:"size"`
+    }
+
+    CouponCreateReq {
+        Name       string  `json:"name"`
+        Type       string  `json:"type"`
+        Value      float64 `json:"value"`
+        MinAmount  float64 `json:"minAmount,optional"`
+        CategoryId string  `json:"categoryId,optional"`
+        StartTime  string  `json:"startTime"`
+        EndTime    string  `json:"endTime"`
+        TotalCount int     `json:"totalCount"`
+    }
+
+    CouponUpdateReq {
+        Id         int64   `path:"id"`
+        Name       string  `json:"name,optional"`
+        Type       string  `json:"type,optional"`
+        Value      float64 `json:"value,optional"`
+        MinAmount  float64 `json:"minAmount,optional"`
+        CategoryId string  `json:"categoryId,optional"`
+        StartTime  string  `json:"startTime,optional"`
+        EndTime    string  `json:"endTime,optional"`
+        TotalCount int     `json:"totalCount,optional"`
+        Status     string  `json:"status,optional"`
+    }
+
+    CouponReceiveReq {
+        Id     int64  `path:"id"`
+        UserId string `form:"userId"`
+    }
+
+    CouponRecord {
+        Id        int64  `json:"id"`
+        CouponId  int64  `json:"couponId"`
+        CouponNo  string `json:"couponNo"`
+        UserId    string `json:"userId"`
+        Status    string `json:"status"` // unused/used/expired
+        OrderNo   string `json:"orderNo"`
+        UseTime   string `json:"useTime"`
+        CreatedAt string `json:"createdAt"`
+        Name      string  `json:"name"`
+        Type      string  `json:"type"`
+        Value     float64 `json:"value"`
+        MinAmount float64 `json:"minAmount"`
+        EndTime   string  `json:"endTime"`
+    }
+
+    MyCouponReq {
+        UserId string `form:"userId"`
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    MyCouponResp {
+        Total int64          `json:"total"`
+        List  []CouponRecord `json:"list"`
+        Page  int            `json:"page"`
+        Size  int            `json:"size"`
+    }
+)
+
+// ===== C 端接口（公开） =====
+@server (
+    group: marketing.customer
+    prefix: /api/v1/marketing
+)
+service marketing-service {
+    @handler customerBannerList
+    get /banners (BannerListReq) returns (BannerListResp)
+
+    @handler customerRecommendList
+    get /recommends (RecommendListReq) returns (RecommendListResp)
+
+    @handler customerActivityList
+    get /activities (ActivityListReq) returns (ActivityListResp)
+
+    @handler customerCouponList
+    get /coupons (CouponListReq) returns (CouponListResp)
+
+    @handler customerCouponReceive
+    post /coupons/:id/receive (CouponReceiveReq) returns (CouponRecord)
+
+    @handler customerMyCoupon
+    get /my-coupons (MyCouponReq) returns (MyCouponResp)
+}
+
+// ===== 平台管理台接口 =====
+@server (
+    group: marketing.admin
+    prefix: /api/v1/admin/marketing
+)
+service marketing-service {
+    @handler adminCouponList
+    get /coupons (CouponListReq) returns (CouponListResp)
+
+    @handler adminCouponCreate
+    post /coupons (CouponCreateReq) returns (IdResp)
+
+    @handler adminCouponUpdate
+    put /coupons/:id (CouponUpdateReq) returns (IdResp)
+
+    @handler adminActivityList
+    get /activities (ActivityListReq) returns (ActivityListResp)
+
+    @handler adminActivityCreate
+    post /activities (ActivityCreateReq) returns (IdResp)
+
+    @handler adminActivityUpdate
+    put /activities/:id (ActivityUpdateReq) returns (IdResp)
+
+    @handler adminBannerList
+    get /banners (BannerListReq) returns (BannerListResp)
+
+    @handler adminBannerCreate
+    post /banners (BannerCreateReq) returns (IdResp)
+
+    @handler adminBannerUpdate
+    put /banners/:id (BannerUpdateReq) returns (IdResp)
+
+    @handler adminRecommendList
+    get /recommends (RecommendListReq) returns (RecommendListResp)
+
+    @handler adminRecommendUpdate
+    put /recommends/:id (RecommendUpdateReq) returns (IdResp)
+}

@@ -1,0 +1,17 @@
+Name: product-service
+Host: 0.0.0.0
+Port: 8086
+
+# MySQL 数据源
+DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_shop?charset=utf8mb4&parseTime=true&loc=Local"
+
+# Redis 缓存
+Redis:
+  Host: localhost:6379
+  Type: node
+
+Telemetry:
+  Name: product-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger

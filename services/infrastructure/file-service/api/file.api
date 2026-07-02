@@ -1,0 +1,45 @@
+syntax = "v1"
+
+info (
+    title:   "File Service"
+    desc:    "东方玄学 文件服务 - MinIO 上传 / 预签名URL"
+    author:  "askxuan"
+    version: "v1"
+)
+
+type (
+    // PresignReq 预签名请求
+    PresignReq {
+        FileName   string `form:"fileName"`             // 原始文件名（用于生成 objectName）
+        ObjectType string `form:"objectType,optional,default=temp"` // 业务目录 temples/masters/booking/temp
+        Operate    string `form:"operate,optional,default=upload"`  // upload / download
+        ObjectName string `form:"objectName,optional"`  // 下载时指定已存在的 objectName
+    }
+
+    // PresignResp 预签名响应
+    PresignResp {
+        UploadUrl  string `json:"uploadUrl"`  // 预签名上传/下载 URL
+        ObjectName string `json:"objectName"` // MinIO 对象名
+        ExpiresIn  int64  `json:"expiresIn"`  // 有效期（秒）
+    }
+
+    // UploadResp 上传响应
+    UploadResp {
+        ObjectName string `json:"objectName"` // MinIO 对象名
+        Url        string `json:"url"`        // 可访问 URL（通过网关/CDN，此处返回对象名拼接）
+        Size       int64  `json:"size"`       // 文件大小（字节）
+        ContentType string `json:"contentType"`
+    }
+)
+
+@server (
+    group: file
+    prefix: /api/v1/file
+)
+service file-service {
+    @handler presigned
+    get /presigned (PresignReq) returns (PresignResp)
+
+    @handler upload
+    post /upload returns (UploadResp)
+}

@@ -1,0 +1,286 @@
+package handler
+
+import (
+	"net/http"
+
+	"github.com/askxuan/common"
+	"github.com/askxuan/common/middleware"
+	"github.com/askxuan/product-service/internal/logic"
+	"github.com/askxuan/product-service/internal/svc"
+	"github.com/askxuan/product-service/internal/types"
+
+	"github.com/zeromicro/go-zero/rest"
+	"github.com/zeromicro/go-zero/rest/httpx"
+)
+
+// RegisterHandlers 注册 product 服务路由
+func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
+	server.Use(middleware.CorsFunc)
+
+	// ===== C端路由（只读） =====
+	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/products", Handler: customerProductListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/products/:id", Handler: customerProductDetailHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/products/categories", Handler: customerCategoryTreeHandler(svcCtx)},
+	})
+
+	// ===== 商城台路由 =====
+	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/admin/products", Handler: adminProductListHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/admin/products", Handler: adminProductCreateHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/admin/products/:id", Handler: adminProductDetailHandler(svcCtx)},
+		{Method: http.MethodPut, Path: "/api/v1/admin/products/:id", Handler: adminProductUpdateHandler(svcCtx)},
+		{Method: http.MethodDelete, Path: "/api/v1/admin/products/:id", Handler: adminProductDeleteHandler(svcCtx)},
+		{Method: http.MethodPut, Path: "/api/v1/admin/products/:id/status", Handler: adminProductStatusHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/admin/products/:id/skus", Handler: adminSkuCreateHandler(svcCtx)},
+		{Method: http.MethodPut, Path: "/api/v1/admin/products/:id/skus/:skuId", Handler: adminSkuUpdateHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/admin/products/categories", Handler: adminCategoryListHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/admin/products/categories", Handler: adminCategoryCreateHandler(svcCtx)},
+		{Method: http.MethodPut, Path: "/api/v1/admin/products/categories/:id", Handler: adminCategoryUpdateHandler(svcCtx)},
+		{Method: http.MethodDelete, Path: "/api/v1/admin/products/categories/:id", Handler: adminCategoryDeleteHandler(svcCtx)},
+	})
+}
+
+// ===== C端 handler =====
+
+func customerProductListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.CustomerProductListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewCustomerProductListLogic(r.Context(), svcCtx).List(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func customerProductDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.CustomerProductDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewCustomerProductDetailLogic(r.Context(), svcCtx).Detail(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func customerCategoryTreeHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.CustomerCategoryTreeReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewCustomerCategoryTreeLogic(r.Context(), svcCtx).Tree(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+// ===== 商城台 handler =====
+
+func adminProductListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminProductListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminProductListLogic(r.Context(), svcCtx).List(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminProductCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminProductCreateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminProductCreateLogic(r.Context(), svcCtx).Create(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminProductDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminProductDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminProductDetailLogic(r.Context(), svcCtx).Detail(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminProductUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminProductUpdateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminProductUpdateLogic(r.Context(), svcCtx).Update(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminProductDeleteHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminProductDeleteReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		err := logic.NewAdminProductDeleteLogic(r.Context(), svcCtx).Delete(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, nil)
+		}
+	}
+}
+
+func adminProductStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminProductStatusReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminProductStatusLogic(r.Context(), svcCtx).Status(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminSkuCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminSkuCreateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminSkuCreateLogic(r.Context(), svcCtx).Create(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminSkuUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminSkuUpdateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminSkuUpdateLogic(r.Context(), svcCtx).Update(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminCategoryListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminCategoryListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminCategoryListLogic(r.Context(), svcCtx).List(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminCategoryCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminCategoryCreateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminCategoryCreateLogic(r.Context(), svcCtx).Create(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminCategoryUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminCategoryUpdateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminCategoryUpdateLogic(r.Context(), svcCtx).Update(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminCategoryDeleteHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminCategoryDeleteReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		err := logic.NewAdminCategoryDeleteLogic(r.Context(), svcCtx).Delete(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, nil)
+		}
+	}
+}

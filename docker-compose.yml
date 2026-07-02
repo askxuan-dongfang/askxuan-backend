@@ -1,0 +1,206 @@
+# 东方玄学全栈项目 - 本地开发基础设施
+# 使用方式：docker compose up -d
+# 销毁方式：docker compose down（保留数据） / docker compose down -v（清除数据卷）
+#
+# 包含服务：
+#   - MySQL 8.0      : 3306
+#   - Redis 7.0      : 6379
+#   - RabbitMQ 3.13  : 5672 (AMQP) / 15672 (管理台)
+#   - MinIO          : 9000 (S3 API) / 9001 (Console)
+#   - etcd           : 2379 (客户端) / 2380 (peer) [quay.io/coreos/etcd:v3.5.15，非 bitnami]
+#   - MongoDB 7.0    : 27017（OpenIM 依赖）
+#   - Zookeeper 3.9  : 2181（Kafka 协调，OpenIM 依赖）
+#   - Kafka          : 9092（OpenIM 消息队列）[confluentinc/cp-kafka:7.7.0，非 bitnami]
+
+name: askxuan
+
+services:
+  # ===== MySQL 8.0 主数据库 =====
+  mysql:
+    image: mysql:8.0
+    container_name: askxuan-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "root123"
+      MYSQL_DATABASE: "askxuan"
+      TZ: "Asia/Shanghai"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --lower_case_table_names=1
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - askxuan-net
+
+  # ===== Redis 7.0 缓存 =====
+  redis:
+    image: redis:7.0
+    container_name: askxuan-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - askxuan-net
+
+  # ===== RabbitMQ 3.13 消息队列（含管理台） =====
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: askxuan-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"    # AMQP 协议端口
+      - "15672:15672"  # 管理台 Web UI
+    environment:
+      RABBITMQ_DEFAULT_USER: "admin"
+      RABBITMQ_DEFAULT_PASS: "admin"
+      RABBITMQ_DEFAULT_VHOST: "/"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+    networks:
+      - askxuan-net
+
+  # ===== MinIO 对象存储 =====
+  minio:
+    image: minio/minio:latest
+    container_name: askxuan-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"  # S3 API 端口
+      - "9001:9001"  # Console Web UI
+    environment:
+      MINIO_ROOT_USER: "minioadmin"
+      MINIO_ROOT_PASSWORD: "minioadmin"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+    networks:
+      - askxuan-net
+
+  # ===== etcd 注册/配置中心（单节点 standalone 模式，go-zero 原生支持） =====
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.15
+    container_name: askxuan-etcd
+    restart: unless-stopped
+    ports:
+      - "2379:2379"  # 客户端通信端口（go-zero 服务注册/发现/配置读取）
+      - "2380:2380"  # 集群 peer 通信端口
+    command:
+      - etcd
+      - --name=etcd-single
+      - --data-dir=/etcd-data
+      - --advertise-client-urls=http://127.0.0.1:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-advertise-peer-urls=http://127.0.0.1:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-cluster=etcd-single=http://127.0.0.1:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=askxuan-etcd
+    volumes:
+      - etcd-data:/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - askxuan-net
+
+  # ===== MongoDB 7.0（OpenIM 依赖） =====
+  mongodb:
+    image: mongo:7.0
+    container_name: askxuan-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "root"
+      MONGO_INITDB_ROOT_PASSWORD: "root123"
+      TZ: "Asia/Shanghai"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+    networks:
+      - askxuan-net
+
+  # ===== Zookeeper 3.9（Kafka 协调，OpenIM 依赖） =====
+  zookeeper:
+    image: zookeeper:3.9
+    container_name: askxuan-zookeeper
+    restart: unless-stopped
+    ports:
+      - "2181:2181"
+    environment:
+      ZOO_AUTOPURGE_SNAPRETAINCOUNT: "3"
+      ZOO_AUTOPURGE_PURGEINTERVAL: "1"
+      TZ: "Asia/Shanghai"
+    networks:
+      - askxuan-net
+
+  # ===== Kafka 3.7（OpenIM 消息队列） =====
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    container_name: askxuan-kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      TZ: "Asia/Shanghai"
+    depends_on:
+      - zookeeper
+    networks:
+      - askxuan-net
+
+networks:
+  askxuan-net:
+    name: askxuan-net
+    driver: bridge
+
+volumes:
+  mysql-data:
+    name: askxuan-mysql-data
+  redis-data:
+    name: askxuan-redis-data
+  rabbitmq-data:
+    name: askxuan-rabbitmq-data
+  minio-data:
+    name: askxuan-minio-data
+  etcd-data:
+    name: askxuan-etcd-data
+  mongo-data:
+    name: askxuan-mongo-data

@@ -1,0 +1,172 @@
+syntax = "v1"
+
+info (
+    title:   "Logistics Service"
+    desc:    "东方玄学 物流服务 - 快递公司/运费模板/物流追踪"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// 快递公司
+type (
+    ExpressCompany {
+        Id            int64  `json:"id"`
+        Code          string `json:"code"`          // SF/ZTO/YTO/EMS 等
+        Name          string `json:"name"`
+        LogoUrl       string `json:"logoUrl"`
+        CustomerService string `json:"customerService"`
+        Sort          int    `json:"sort"`
+        Status        string `json:"status"`        // enabled/disabled
+        CreateTime    string `json:"createTime"`
+        UpdateTime    string `json:"updateTime"`
+    }
+
+    ExpressListReq {
+        Code   string `form:"code,optional"`
+        Name   string `form:"name,optional"`
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    ExpressListResp {
+        Total int64            `json:"total"`
+        List  []ExpressCompany `json:"list"`
+        Page  int              `json:"page"`
+        Size  int              `json:"size"`
+    }
+
+    ExpressCreateReq {
+        Code            string `json:"code"`
+        Name            string `json:"name"`
+        LogoUrl         string `json:"logoUrl,optional"`
+        CustomerService string `json:"customerService,optional"`
+        Sort            int    `json:"sort,default=0"`
+    }
+
+    ExpressCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    ExpressUpdateReq {
+        Id              int64  `path:"id"`
+        Name            string `json:"name,optional"`
+        LogoUrl         string `json:"logoUrl,optional"`
+        CustomerService string `json:"customerService,optional"`
+        Sort            int    `json:"sort,optional"`
+        Status          string `json:"status,optional"` // enabled/disabled
+    }
+)
+
+// 运费模板
+type (
+    FreightTemplate {
+        Id           int64  `json:"id"`
+        Name         string `json:"name"`
+        Type         string `json:"type"`         // by_weight/by_piece
+        FreeShipping int    `json:"freeShipping"` // 0否 1是
+        Config       string `json:"config"`       // JSON 计费规则
+        Status       string `json:"status"`       // enabled/disabled
+        CreateTime   string `json:"createTime"`
+        UpdateTime   string `json:"updateTime"`
+    }
+
+    FreightTemplateListReq {
+        Name   string `form:"name,optional"`
+        Type   string `form:"type,optional"`
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    FreightTemplateListResp {
+        Total int64            `json:"total"`
+        List  []FreightTemplate `json:"list"`
+        Page  int              `json:"page"`
+        Size  int              `json:"size"`
+    }
+
+    FreightTemplateCreateReq {
+        Name         string `json:"name"`
+        Type         string `json:"type"`         // by_weight/by_piece
+        FreeShipping int    `json:"freeShipping,default=0"`
+        Config       string `json:"config"`       // JSON 计费规则
+    }
+
+    FreightTemplateCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    FreightTemplateUpdateReq {
+        Id           int64  `path:"id"`
+        Name         string `json:"name,optional"`
+        Type         string `json:"type,optional"`
+        FreeShipping int    `json:"freeShipping,optional"`
+        Config       string `json:"config,optional"`
+        Status       string `json:"status,optional"` // enabled/disabled
+    }
+)
+
+// 物流追踪
+type (
+    TrackTrace {
+        Time    string `json:"time"`
+        Desc    string `json:"desc"`
+    }
+
+    TrackQueryReq {
+        TrackingNo string `path:"trackingNo"`
+    }
+
+    TrackQueryResp {
+        TrackingNo    string       `json:"trackingNo"`
+        ExpressCode   string       `json:"expressCode"`
+        ExpressName   string       `json:"expressName"`
+        BizType       string       `json:"bizType"`
+        BizNo         string       `json:"bizNo"`
+        Status        string       `json:"status"`     // pending/in_transit/delivered/signed
+        Traces        []TrackTrace `json:"traces"`
+        LastSyncTime  string       `json:"lastSyncTime"`
+    }
+
+    TracksBatchSyncReq {
+        // 为空则同步所有非终态记录
+        TrackingNos []string `json:"trackingNos,optional"`
+    }
+
+    TracksBatchSyncResp {
+        Total      int `json:"total"`      // 应同步数
+        Success    int `json:"success"`    // 成功数
+        Failed     int `json:"failed"`     // 失败数
+    }
+)
+
+@server (
+    group: logistics
+    prefix: /api/v1/admin/logistics
+)
+service logistics-service {
+    @handler expressList
+    get /express (ExpressListReq) returns (ExpressListResp)
+
+    @handler expressCreate
+    post /express (ExpressCreateReq) returns (ExpressCreateResp)
+
+    @handler expressUpdate
+    put /express/:id (ExpressUpdateReq)
+
+    @handler freightTemplateList
+    get /freight-templates (FreightTemplateListReq) returns (FreightTemplateListResp)
+
+    @handler freightTemplateCreate
+    post /freight-templates (FreightTemplateCreateReq) returns (FreightTemplateCreateResp)
+
+    @handler freightTemplateUpdate
+    put /freight-templates/:id (FreightTemplateUpdateReq)
+
+    @handler trackQuery
+    get /tracks/:trackingNo (TrackQueryReq) returns (TrackQueryResp)
+
+    @handler tracksBatchSync
+    post /tracks/batch-sync (TracksBatchSyncReq) returns (TracksBatchSyncResp)
+}

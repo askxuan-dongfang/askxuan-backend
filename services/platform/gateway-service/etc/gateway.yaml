@@ -1,0 +1,124 @@
+# 东方玄学 API 网关配置
+Name: gateway
+Host: 0.0.0.0
+Port: 8080
+
+# JWT（网关层统一校验）
+Auth:
+  AccessSecret: "askxuan-access-secret-change-in-prod"
+
+# etcd（预留：MVP-1 使用静态路由，未启用动态服务发现）
+Telemetry:
+  Name: gateway
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# 下游服务路由表
+# proxy 按前缀长度降序匹配（最长前缀优先），admin 子路径自动优先于父路径
+Upstreams:
+  # ============ C 端路由 ============
+  - Prefix: /api/v1/auth
+    Target: localhost:8081
+  - Prefix: /api/v1/user
+    Target: localhost:8082
+  - Prefix: /api/v1/temples
+    Target: localhost:8083
+  - Prefix: /api/v1/masters
+    Target: localhost:8084
+  - Prefix: /api/v1/booking
+    Target: localhost:8085
+  - Prefix: /api/v1/message
+    Target: localhost:8094
+  - Prefix: /api/v1/messages
+    Target: localhost:8094
+  - Prefix: /api/v1/announcements
+    Target: localhost:8094
+  - Prefix: /api/v1/file
+    Target: localhost:8097
+  - Prefix: /api/v1/product
+    Target: localhost:8086
+  - Prefix: /api/v1/diy
+    Target: localhost:8088
+  - Prefix: /api/v1/order
+    Target: localhost:8089
+  - Prefix: /api/v1/payments
+    Target: localhost:8090
+  - Prefix: /api/v1/logistics
+    Target: localhost:8095
+  - Prefix: /api/v1/review
+    Target: localhost:8092
+  - Prefix: /api/v1/audit
+    Target: localhost:8093
+  - Prefix: /api/v1/finance
+    Target: localhost:8091
+  - Prefix: /api/v1/marketing
+    Target: localhost:8096
+  - Prefix: /api/v1/ai
+    Target: localhost:8098
+  - Prefix: /api/v1/im
+    Target: localhost:10002
+
+  # ============ 管理台路由（/api/v1/admin/*） ============
+  # auth 管理台
+  - Prefix: /api/v1/admin/auth
+    Target: localhost:8081
+  # user 平台管理
+  - Prefix: /api/v1/admin/users
+    Target: localhost:8082
+  # temple 寺院管理台 + 平台审核（需在 /admin/temples 之前匹配 /admin/temples/masters）
+  - Prefix: /api/v1/admin/temples/masters
+    Target: localhost:8084
+  - Prefix: /api/v1/admin/temples
+    Target: localhost:8083
+  - Prefix: /api/v1/admin/platform/temples
+    Target: localhost:8083
+  # master 法师工作台 + 平台审核
+  - Prefix: /api/v1/admin/masters
+    Target: localhost:8084
+  - Prefix: /api/v1/admin/platform/masters
+    Target: localhost:8084
+  # booking 寺院管理台
+  - Prefix: /api/v1/admin/bookings
+    Target: localhost:8085
+  # message 管理台
+  - Prefix: /api/v1/admin/messages
+    Target: localhost:8094
+  # announcements 管理台
+  - Prefix: /api/v1/admin/announcements
+    Target: localhost:8094
+  # product 商城管理台
+  - Prefix: /api/v1/admin/products
+    Target: localhost:8086
+  # diy 商城管理台
+  - Prefix: /api/v1/admin/diy
+    Target: localhost:8088
+  # order 商城管理台
+  - Prefix: /api/v1/admin/orders
+    Target: localhost:8089
+  # finance 平台财务
+  - Prefix: /api/v1/admin/finance
+    Target: localhost:8091
+  # review 管理台 + 平台审核
+  - Prefix: /api/v1/admin/platform/reviews
+    Target: localhost:8092
+  - Prefix: /api/v1/admin/reviews
+    Target: localhost:8092
+  # audit 平台审核
+  - Prefix: /api/v1/admin/audit
+    Target: localhost:8093
+  # logistics 管理台
+  - Prefix: /api/v1/admin/logistics
+    Target: localhost:8095
+  # marketing 管理台
+  - Prefix: /api/v1/admin/marketing
+    Target: localhost:8096
+
+# 不需要鉴权的白名单路径（登录 / 注册 / 续期 / 支付回调 / 管理台登录）
+NoAuthPaths:
+  - /api/v1/auth/login
+  - /api/v1/auth/refresh
+  - /api/v1/auth/admin/login
+  - /api/v1/user/register
+  - /api/v1/payments/callback/wechat
+  - /api/v1/payments/callback/alipay

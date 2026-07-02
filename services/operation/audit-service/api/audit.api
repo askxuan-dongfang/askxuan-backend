@@ -1,0 +1,197 @@
+syntax = "v1"
+
+info (
+    title:   "Audit Service"
+    desc:    "东方玄学 审核服务 - 内容审核/举报处理/敏感词"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// 审核队列
+type (
+    AuditQueue {
+        Id              int64  `json:"id"`
+        BizType         string `json:"bizType"`         // design/temple/master/comment
+        BizId           string `json:"bizId"`
+        SubmitterId     string `json:"submitterId"`
+        ContentSnapshot string `json:"contentSnapshot"` // JSON内容快照
+        Status          string `json:"status"`          // pending/approved/rejected/first_pass/final_pass/verified
+        AuditorId       string `json:"auditorId"`
+        AuditTime       string `json:"auditTime"`
+        AuditRemark     string `json:"auditRemark"`
+        CreateTime      string `json:"createTime"`
+    }
+
+    AuditQueueListReq {
+        BizType string `form:"bizType,optional"`
+        Status  string `form:"status,optional"`
+        Page    int    `form:"page,default=1"`
+        Size    int    `form:"size,default=20"`
+    }
+
+    AuditQueueListResp {
+        Total int64       `json:"total"`
+        List  []AuditQueue `json:"list"`
+        Page  int         `json:"page"`
+        Size  int         `json:"size"`
+    }
+
+    AuditQueueDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    AuditApproveReq {
+        Id        int64  `path:"id"`
+        AuditorId string `json:"auditorId"`
+        Remark    string `json:"remark,optional"`
+    }
+
+    AuditApproveResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+
+    AuditRejectReq {
+        Id        int64  `path:"id"`
+        AuditorId string `json:"auditorId"`
+        Remark    string `json:"remark"` // 驳回必填
+    }
+
+    AuditRejectResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// 举报
+type (
+    Report {
+        Id            int64  `json:"id"`
+        ReporterId    string `json:"reporterId"`
+        TargetType    string `json:"targetType"`    // design/comment/master/temple
+        TargetId      string `json:"targetId"`
+        Reason        string `json:"reason"`
+        EvidenceUrls  string `json:"evidenceUrls"`  // JSON数组
+        Status        string `json:"status"`        // pending/handled/rejected
+        HandlerId     string `json:"handlerId"`
+        HandleResult  string `json:"handleResult"`
+        CreateTime    string `json:"createTime"`
+    }
+
+    ReportListReq {
+        TargetType string `form:"targetType,optional"`
+        Status     string `form:"status,optional"`
+        Page       int    `form:"page,default=1"`
+        Size       int    `form:"size,default=20"`
+    }
+
+    ReportListResp {
+        Total int64    `json:"total"`
+        List  []Report `json:"list"`
+        Page  int      `json:"page"`
+        Size  int      `json:"size"`
+    }
+
+    ReportHandleReq {
+        Id           int64  `path:"id"`
+        HandlerId    string `json:"handlerId"`
+        HandleResult string `json:"handleResult"` // handled/rejected
+        Remark       string `json:"remark,optional"`
+    }
+
+    ReportHandleResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// 敏感词
+type (
+    SensitiveWord {
+        Id         int64  `json:"id"`
+        Word       string `json:"word"`
+        Category   string `json:"category"`   // political/religious/vulgar/advertising
+        Status     string `json:"status"`     // enabled/disabled
+        CreateTime string `json:"createTime"`
+    }
+
+    SensitiveWordListReq {
+        Category string `form:"category,optional"`
+        Status   string `form:"status,optional"`
+        Keyword  string `form:"keyword,optional"`
+        Page     int    `form:"page,default=1"`
+        Size     int    `form:"size,default=20"`
+    }
+
+    SensitiveWordListResp {
+        Total int64          `json:"total"`
+        List  []SensitiveWord `json:"list"`
+        Page  int            `json:"page"`
+        Size  int            `json:"size"`
+    }
+
+    SensitiveWordCreateReq {
+        Word     string `json:"word"`
+        Category string `json:"category"`
+    }
+
+    SensitiveWordCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    SensitiveWordDeleteReq {
+        Id int64 `path:"id"`
+    }
+)
+
+// 审核统计
+type (
+    StatisticsReq {
+        BizType string `form:"bizType,optional"`
+    }
+
+    StatisticsResp {
+        TotalCount    int64 `json:"totalCount"`    // 总审核量
+        PendingCount  int64 `json:"pendingCount"`  // 待审核
+        ApprovedCount int64 `json:"approvedCount"` // 已通过
+        RejectedCount int64 `json:"rejectedCount"` // 已驳回
+        PassRate      float64 `json:"passRate"`    // 通过率
+        AvgAuditTime  int64 `json:"avgAuditTime"`  // 平均审核时长(秒)
+    }
+)
+
+@server (
+    group: audit
+    prefix: /api/v1/admin/audit
+)
+service audit-service {
+    @handler auditQueueList
+    get /queue (AuditQueueListReq) returns (AuditQueueListResp)
+
+    @handler auditQueueDetail
+    get /queue/:id (AuditQueueDetailReq) returns (AuditQueue)
+
+    @handler auditApprove
+    put /queue/:id/approve (AuditApproveReq) returns (AuditApproveResp)
+
+    @handler auditReject
+    put /queue/:id/reject (AuditRejectReq) returns (AuditRejectResp)
+
+    @handler reportList
+    get /reports (ReportListReq) returns (ReportListResp)
+
+    @handler reportHandle
+    put /reports/:id/handle (ReportHandleReq) returns (ReportHandleResp)
+
+    @handler sensitiveWordList
+    get /sensitive-words (SensitiveWordListReq) returns (SensitiveWordListResp)
+
+    @handler sensitiveWordCreate
+    post /sensitive-words (SensitiveWordCreateReq) returns (SensitiveWordCreateResp)
+
+    @handler sensitiveWordDelete
+    delete /sensitive-words/:id (SensitiveWordDeleteReq)
+
+    @handler statistics
+    get /statistics (StatisticsReq) returns (StatisticsResp)
+}

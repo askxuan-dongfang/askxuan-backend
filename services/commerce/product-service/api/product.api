@@ -1,0 +1,275 @@
+syntax = "v1"
+
+info (
+    title:   "Product Service"
+    desc:    "东方玄学 商品服务 - 商品CRUD / SKU / 分类 / 上下架"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// ==================== 公共类型 ====================
+
+type (
+    Product {
+        Id               int64          `json:"id"`
+        ProductNo        string         `json:"productNo"`
+        Name             string         `json:"name"`
+        CategoryId       int64          `json:"categoryId"`
+        CategoryName     string         `json:"categoryName,optional"`
+        Description      string         `json:"description"`
+        MainImage        string         `json:"mainImage"`
+        Status           string         `json:"status"` // draft/on_shelf/off_shelf
+        Price            float64        `json:"price"`
+        MarketPrice      float64        `json:"marketPrice"`
+        Stock            int            `json:"stock"`
+        Tags             string         `json:"tags"`
+        FreightTemplateId int64         `json:"freightTemplateId"`
+        Skus             []ProductSku   `json:"skus,optional"`
+        Images           []ProductImage `json:"images,optional"`
+        CreateTime       string         `json:"createTime"`
+        UpdateTime       string         `json:"updateTime"`
+    }
+
+    ProductSku {
+        Id        int64   `json:"id"`
+        ProductId int64   `json:"productId"`
+        SpecName  string  `json:"specName"`
+        SpecValue string  `json:"specValue"`
+        Price     float64 `json:"price"`
+        Stock     int     `json:"stock"`
+        SkuNo     string  `json:"skuNo"`
+    }
+
+    ProductCategory {
+        Id       int64             `json:"id"`
+        ParentId int64             `json:"parentId"`
+        Name     string            `json:"name"`
+        Level    int               `json:"level"`
+        Sort     int               `json:"sort"`
+        Children []ProductCategory `json:"children,optional"`
+    }
+
+    ProductImage {
+        Id        int64  `json:"id"`
+        ProductId int64  `json:"productId"`
+        ImageUrl  string `json:"imageUrl"`
+        Sort      int    `json:"sort"`
+        Type      string `json:"type"` // main/detail
+    }
+)
+
+// ==================== C端接口 ====================
+
+type (
+    CustomerProductListReq {
+        CategoryId int64  `form:"categoryId,optional"`
+        Keyword    string `form:"keyword,optional"`
+        Page       int    `form:"page,default=1"`
+        Size       int    `form:"size,default=20"`
+    }
+
+    CustomerProductListResp {
+        Total int64     `json:"total"`
+        List  []Product `json:"list"`
+        Page  int       `json:"page"`
+        Size  int       `json:"size"`
+    }
+
+    CustomerProductDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    CustomerCategoryTreeReq {
+    }
+
+    CustomerCategoryTreeResp {
+        List []ProductCategory `json:"list"`
+    }
+)
+
+// ==================== 商城台接口 ====================
+
+type (
+    AdminProductListReq {
+        CategoryId int64  `form:"categoryId,optional"`
+        Keyword    string `form:"keyword,optional"`
+        Status     string `form:"status,optional"`
+        Page       int    `form:"page,default=1"`
+        Size       int    `form:"size,default=20"`
+    }
+
+    AdminProductListResp {
+        Total int64     `json:"total"`
+        List  []Product `json:"list"`
+        Page  int       `json:"page"`
+        Size  int       `json:"size"`
+    }
+
+    AdminProductCreateReq {
+        Name              string  `json:"name"`
+        CategoryId        int64   `json:"categoryId"`
+        Description       string  `json:"description,optional"`
+        MainImage         string  `json:"mainImage"`
+        Price             float64 `json:"price"`
+        MarketPrice       float64 `json:"marketPrice,optional"`
+        Stock             int     `json:"stock"`
+        Tags              string  `json:"tags,optional"`
+        FreightTemplateId int64   `json:"freightTemplateId,optional"`
+    }
+
+    AdminProductCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    AdminProductDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    AdminProductUpdateReq {
+        Id                int64   `path:"id"`
+        Name              string  `json:"name"`
+        CategoryId        int64   `json:"categoryId"`
+        Description       string  `json:"description,optional"`
+        MainImage         string  `json:"mainImage"`
+        Price             float64 `json:"price"`
+        MarketPrice       float64 `json:"marketPrice,optional"`
+        Stock             int     `json:"stock"`
+        Tags              string  `json:"tags,optional"`
+        FreightTemplateId int64   `json:"freightTemplateId,optional"`
+    }
+
+    AdminProductDeleteReq {
+        Id int64 `path:"id"`
+    }
+
+    AdminProductStatusReq {
+        Id     int64  `path:"id"`
+        Status string `json:"status"` // on_shelf/off_shelf
+    }
+
+    AdminProductStatusResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+
+    AdminSkuCreateReq {
+        ProductId int64   `path:"id"`
+        SpecName  string  `json:"specName"`
+        SpecValue string  `json:"specValue"`
+        Price     float64 `json:"price"`
+        Stock     int     `json:"stock"`
+        SkuNo     string  `json:"skuNo"`
+    }
+
+    AdminSkuCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    AdminSkuUpdateReq {
+        ProductId int64   `path:"id"`
+        SkuId     int64   `path:"skuId"`
+        SpecName  string  `json:"specName"`
+        SpecValue string  `json:"specValue"`
+        Price     float64 `json:"price"`
+        Stock     int     `json:"stock"`
+        SkuNo     string  `json:"skuNo"`
+    }
+
+    AdminCategoryListReq {
+        ParentId int64 `form:"parentId,optional"`
+        Page     int   `form:"page,default=1"`
+        Size     int   `form:"size,default=50"`
+    }
+
+    AdminCategoryListResp {
+        Total int64            `json:"total"`
+        List  []ProductCategory `json:"list"`
+        Page  int              `json:"page"`
+        Size  int              `json:"size"`
+    }
+
+    AdminCategoryCreateReq {
+        ParentId int64  `json:"parentId"`
+        Name     string `json:"name"`
+        Level    int    `json:"level"`
+        Sort     int    `json:"sort,optional"`
+    }
+
+    AdminCategoryCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    AdminCategoryUpdateReq {
+        Id       int64  `path:"id"`
+        ParentId int64  `json:"parentId"`
+        Name     string `json:"name"`
+        Level    int    `json:"level"`
+        Sort     int    `json:"sort,optional"`
+    }
+
+    AdminCategoryDeleteReq {
+        Id int64 `path:"id"`
+    }
+)
+
+// ==================== C端路由（只读，无需鉴权） ====================
+
+@server (
+    group: product.customer
+    prefix: /api/v1
+)
+service product-service {
+    @handler customerProductList
+    get /products (CustomerProductListReq) returns (CustomerProductListResp)
+
+    @handler customerProductDetail
+    get /products/:id (CustomerProductDetailReq) returns (Product)
+
+    @handler customerCategoryTree
+    get /products/categories (CustomerCategoryTreeReq) returns (CustomerCategoryTreeResp)
+}
+
+// ==================== 商城台路由（需鉴权） ====================
+
+@server (
+    group: product.admin
+    prefix: /api/v1/admin
+    jwt: Auth
+)
+service product-service {
+    @handler adminProductList
+    get /products (AdminProductListReq) returns (AdminProductListResp)
+
+    @handler adminProductCreate
+    post /products (AdminProductCreateReq) returns (AdminProductCreateResp)
+
+    @handler adminProductDetail
+    get /products/:id (AdminProductDetailReq) returns (Product)
+
+    @handler adminProductUpdate
+    put /products/:id (AdminProductUpdateReq) returns (Product)
+
+    @handler adminProductDelete
+    delete /products/:id (AdminProductDeleteReq)
+
+    @handler adminProductStatus
+    put /products/:id/status (AdminProductStatusReq) returns (AdminProductStatusResp)
+
+    @handler adminSkuCreate
+    post /products/:id/skus (AdminSkuCreateReq) returns (AdminSkuCreateResp)
+
+    @handler adminSkuUpdate
+    put /products/:id/skus/:skuId (AdminSkuUpdateReq) returns (ProductSku)
+
+    @handler adminCategoryList
+    get /products/categories (AdminCategoryListReq) returns (AdminCategoryListResp)
+
+    @handler adminCategoryCreate
+    post /products/categories (AdminCategoryCreateReq) returns (AdminCategoryCreateResp)
+
+    @handler adminCategoryUpdate
+    put /products/categories/:id (AdminCategoryUpdateReq) returns (ProductCategory)
+
+    @handler adminCategoryDelete
+    delete /products/categories/:id (AdminCategoryDeleteReq)
+}

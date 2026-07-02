@@ -1,0 +1,191 @@
+syntax = "v1"
+
+info (
+    title:   "User Service"
+    desc:    "东方玄学 用户服务 - 资料 / 地址 / 画像 / 平台用户管理"
+    author:  "askxuan"
+    version: "v1"
+)
+
+// ============ 用户资料 ============
+type (
+    UserProfile {
+        UserId   int64  `json:"userId"`
+        Nickname string `json:"nickname"`
+        Avatar   string `json:"avatar"`
+        Mobile   string `json:"mobile"`
+        Gender   string `json:"gender"`   // male/female/unknown
+        Birthday string `json:"birthday"` // yyyy-MM-dd
+        Region   string `json:"region"`   // 所在地
+        Bio      string `json:"bio"`      // 简介
+    }
+
+    RegisterReq {
+        Mobile   string `json:"mobile"`
+        Code     string `json:"code"`     // 验证码
+        Nickname string `json:"nickname,optional"`
+    }
+
+    RegisterResp {
+        UserId int64 `json:"userId"`
+    }
+
+    ProfileReq {
+        // 从 JWT 注入，无需请求参数
+    }
+
+    UpdateProfileReq {
+        Nickname string `json:"nickname,optional"`
+        Avatar   string `json:"avatar,optional"`
+        Gender   string `json:"gender,optional"`
+        Birthday string `json:"birthday,optional"`
+        Region   string `json:"region,optional"`
+        Bio      string `json:"bio,optional"`
+    }
+)
+
+// ============ 收货地址 ============
+type (
+    UserAddress {
+        Id        int64  `json:"id"`
+        UserId    int64  `json:"userId"`
+        Name      string `json:"name"`
+        Phone     string `json:"phone"`
+        Province  string `json:"province"`
+        City      string `json:"city"`
+        District  string `json:"district"`
+        Detail    string `json:"detail"`
+        IsDefault bool   `json:"isDefault"`
+        CreateTime string `json:"createTime"`
+    }
+
+    AddressListResp {
+        List []UserAddress `json:"list"`
+    }
+
+    AddressCreateReq {
+        Name      string `json:"name"`
+        Phone     string `json:"phone"`
+        Province  string `json:"province"`
+        City      string `json:"city"`
+        District  string `json:"district"`
+        Detail    string `json:"detail"`
+        IsDefault bool   `json:"isDefault,optional"`
+    }
+
+    AddressCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    AddressUpdateReq {
+        Id        int64  `path:"id"`
+        Name      string `json:"name,optional"`
+        Phone     string `json:"phone,optional"`
+        Province  string `json:"province,optional"`
+        City      string `json:"city,optional"`
+        District  string `json:"district,optional"`
+        Detail    string `json:"detail,optional"`
+        IsDefault bool   `json:"isDefault,optional"`
+    }
+
+    AddressDeleteReq {
+        Id int64 `path:"id"`
+    }
+)
+
+// ============ 平台用户管理 ============
+type (
+    AdminUserListReq {
+        Keyword string `form:"keyword,optional"` // 手机号/昵称模糊搜索
+        Status  string `form:"status,optional"`  // normal/banned
+        Page    int    `form:"page,default=1"`
+        Size    int    `form:"size,default=20"`
+    }
+
+    AdminUserItem {
+        UserId      int64   `json:"userId"`
+        Nickname    string  `json:"nickname"`
+        Mobile      string  `json:"mobile"`     // 脱敏
+        Avatar      string  `json:"avatar"`
+        Region      string  `json:"region"`
+        Status      string  `json:"status"`     // normal/banned
+        TotalOrders int     `json:"totalOrders"`
+        TotalSpent  float64 `json:"totalSpent"`
+        CreateTime  string  `json:"createTime"`
+    }
+
+    AdminUserListResp {
+        Total int64            `json:"total"`
+        List  []AdminUserItem  `json:"list"`
+        Page  int              `json:"page"`
+        Size  int              `json:"size"`
+    }
+
+    AdminUserDetailReq {
+        Id int64 `path:"id"`
+    }
+
+    AdminUserDetailResp {
+        User          UserProfile `json:"user"`
+        PreferenceTags []string   `json:"preferenceTags"`
+        TotalOrders   int         `json:"totalOrders"`
+        TotalSpent    float64     `json:"totalSpent"`
+        LastActiveTime string     `json:"lastActiveTime"`
+        Status        string      `json:"status"`
+    }
+
+    AdminUserStatusReq {
+        Id     int64  `path:"id"`
+        Status string `json:"status"` // normal/banned
+    }
+
+    AdminUserStatusResp {
+        Id     int64  `json:"id"`
+        Status string `json:"status"`
+    }
+)
+
+// ============ C端用户分组（保留原有接口） ============
+@server (
+    group: user
+    prefix: /api/v1/user
+)
+service user-service {
+    @handler register
+    post /register (RegisterReq) returns (RegisterResp)
+
+    @handler profile
+    get /profile (ProfileReq) returns (UserProfile)
+
+    @handler updateProfile
+    put /profile (UpdateProfileReq) returns (UserProfile)
+
+    @handler addressList
+    get /addresses returns (AddressListResp)
+
+    @handler addressCreate
+    post /addresses (AddressCreateReq) returns (AddressCreateResp)
+
+    @handler addressUpdate
+    put /addresses/:id (AddressUpdateReq) returns (UserAddress)
+
+    @handler addressDelete
+    delete /addresses/:id (AddressDeleteReq)
+}
+
+// ============ 平台管理台分组 ============
+@server (
+    group: user.admin
+    prefix: /api/v1/admin/users
+    jwt: Auth
+)
+service user-service {
+    @handler adminUserList
+    get / (AdminUserListReq) returns (AdminUserListResp)
+
+    @handler adminUserDetail
+    get /:id (AdminUserDetailReq) returns (AdminUserDetailResp)
+
+    @handler adminUserStatus
+    put /:id/status (AdminUserStatusReq) returns (AdminUserStatusResp)
+}
