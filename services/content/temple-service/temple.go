@@ -36,7 +36,7 @@ func main() {
 	// 启动 RabbitMQ 消费者：监听 blessing.dispatch 派单事件
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	startConsumer(ctx, svcCtx.Consumer)
+	startConsumer(ctx, svcCtx)
 
 	// 优雅退出
 	go func() {
@@ -52,8 +52,8 @@ func main() {
 
 // startConsumer 启动事件消费者
 // 监听 blessing.dispatch 派单事件与 review.events 新评价通知
-func startConsumer(ctx context.Context, consumer *mq.Consumer) {
-	if consumer == nil {
+func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
+	if svcCtx == nil || svcCtx.Consumer == nil {
 		return
 	}
 	bindings := []mq.Binding{
@@ -67,7 +67,40 @@ func startConsumer(ctx context.Context, consumer *mq.Consumer) {
 				}
 				logx.Infof("收到加持派单: taskNo=%s diyOrderId=%s templeCode=%s serviceCode=%s",
 					evt.TaskNo, evt.DiyOrderId, evt.TempleCode, evt.ServiceCode)
-				// TODO: 创建加持任务记录，分配法师执行
+
+				// 查找加持任务记录
+				task, err := svcCtx.BlessingTaskModel.FindByTaskNo(ctx, evt.TaskNo)
+				if err != nil {
+					logx.Errorf("查找加持任务失败 taskNo=%s: %v", evt.TaskNo, err)
+					return nil
+				}
+
+				// 确定分配的法师
+				masterCode := evt.MasterCode
+				if masterCode == "" {
+					// 派单未指定法师，使用默认法师
+					masterCode = "M001"
+				}
+
+				// 分配法师：dispatched → assigned
+				_, err = svcCtx.BlessingTaskModel.Assign(ctx, task.Id, masterCode)
+				if err != nil {
+					logx.Errorf("分配法师失败 taskNo=%s: %v", evt.TaskNo, err)
+					return nil
+				}
+
+				// 发布 blessing.assign 事件通知法师服务
+				err = svcCtx.MqProducer.PublishBlessingAssign(ctx, mq.BlessingAssign{
+					TaskNo:      evt.TaskNo,
+					TempleCode:  evt.TempleCode,
+					MasterCode:  masterCode,
+					ServiceCode: evt.ServiceCode,
+				})
+				if err != nil {
+					logx.Errorf("发布 blessing.assign 失败 taskNo=%s: %v", evt.TaskNo, err)
+				} else {
+					logx.Infof("已分配法师 taskNo=%s masterCode=%s", evt.TaskNo, masterCode)
+				}
 				return nil
 			},
 		},
@@ -82,11 +115,13 @@ func startConsumer(ctx context.Context, consumer *mq.Consumer) {
 				}
 				logx.Infof("收到评价通知: reviewId=%s targetType=%s targetId=%s action=%s",
 					evt.ReviewId, evt.TargetType, evt.TargetId, evt.Action)
-				// TODO: 寺院管理台展示新评价，可按 targetType=temple 过滤本寺评价
+				if evt.TargetType == "temple" {
+					logx.Infof("寺院收到新评价通知: reviewId=%s templeId=%s action=%s", evt.ReviewId, evt.TargetId, evt.Action)
+				}
 				return nil
 			},
 		},
 	}
-	consumer.Start(ctx, bindings)
+	svcCtx.Consumer.Start(ctx, bindings)
 	logx.Info("temple-service 已启动 blessing.dispatch 与 review.notify 消费者")
 }

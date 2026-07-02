@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/product-service/internal/model"
@@ -138,6 +139,8 @@ func (l *AdminProductUpdateLogic) Update(req *types.AdminProductUpdateReq) (*typ
 		l.Errorf("更新商品失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	// 失效详情缓存
+	_, _ = l.svcCtx.Redis.Del("product:detail:" + strconv.FormatInt(req.Id, 10))
 	p, err := l.svcCtx.ProductModel.FindOne(l.ctx, req.Id)
 	if err != nil {
 		return nil, common.ErrSystem
@@ -188,5 +191,7 @@ func (l *AdminProductStatusLogic) Status(req *types.AdminProductStatusReq) (*typ
 		l.Errorf("更新商品状态失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	// 上下架后失效详情缓存
+	_, _ = l.svcCtx.Redis.Del("product:detail:" + strconv.FormatInt(req.Id, 10))
 	return &types.AdminProductStatusResp{Id: req.Id, Status: req.Status}, nil
 }

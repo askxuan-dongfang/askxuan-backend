@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/diy-service/internal/model"
@@ -68,6 +69,10 @@ func (l *DesignSaveLogic) Save(req *types.DesignSaveReq) (*types.DesignSaveResp,
 	if err != nil {
 		l.Errorf("保存设计失败: %v", err)
 		return nil, common.ErrSystem
+	}
+	// 缓存设计草稿（24 小时），便于用户下次进入设计页恢复上一次编辑
+	if jsonBytes, mErr := json.Marshal(toTypesDesign(d)); mErr == nil {
+		_ = l.svcCtx.Redis.Setex("diy:draft:"+req.UserId, string(jsonBytes), 86400)
 	}
 	return &types.DesignSaveResp{Id: d.Id}, nil
 }

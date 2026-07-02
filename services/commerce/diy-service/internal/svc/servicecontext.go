@@ -5,6 +5,7 @@ import (
 	"github.com/askxuan/diy-service/internal/model"
 	"github.com/askxuan/diy-service/internal/mq"
 
+	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -12,6 +13,7 @@ import (
 type ServiceContext struct {
 	Config            config.Config
 	DB                sqlx.SqlConn
+	Redis             *redis.Redis
 	MqProducer        *mq.Producer
 	Consumer          *mq.Consumer
 	DiyDesignModel    model.DiyDesignModel
@@ -36,6 +38,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:            c,
 		DB:                db,
+		Redis:             redis.MustNewRedis(c.Redis),
 		MqProducer:        producer,
 		Consumer:          consumer,
 		DiyDesignModel:    model.NewDiyDesignModel(db),

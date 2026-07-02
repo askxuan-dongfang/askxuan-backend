@@ -76,6 +76,7 @@ type BlessingTask struct {
 // BlessingTaskModel 加持任务模型接口
 type BlessingTaskModel interface {
 	FindOne(ctx context.Context, id int64) (*BlessingTask, error)
+	FindByTaskNo(ctx context.Context, taskNo string) (*BlessingTask, error)
 	FindByMasterId(ctx context.Context, masterCode, status string, page, size int) ([]*BlessingTask, int64, error)
 	UpdateStatus(ctx context.Context, id int64, status string) error
 	UpdateComplete(ctx context.Context, id int64, certificateUrls string) error
@@ -97,6 +98,17 @@ func (m *blessingTaskModel) FindOne(ctx context.Context, id int64) (*BlessingTas
 	var task BlessingTask
 	query := fmt.Sprintf("SELECT %s FROM %s WHERE id = ?", blessingTaskRows, m.table)
 	err := m.conn.QueryRowCtx(ctx, &task, query, id)
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
+}
+
+// FindByTaskNo 按任务编号查找加持任务
+func (m *blessingTaskModel) FindByTaskNo(ctx context.Context, taskNo string) (*BlessingTask, error) {
+	var task BlessingTask
+	query := fmt.Sprintf("SELECT %s FROM %s WHERE task_no = ? LIMIT 1", blessingTaskRows, m.table)
+	err := m.conn.QueryRowCtx(ctx, &task, query, taskNo)
 	if err != nil {
 		return nil, err
 	}

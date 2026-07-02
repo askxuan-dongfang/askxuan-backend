@@ -2,7 +2,9 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strconv"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/product-service/internal/model"
@@ -51,6 +53,15 @@ func NewCustomerProductDetailLogic(ctx context.Context, svcCtx *svc.ServiceConte
 }
 
 func (l *CustomerProductDetailLogic) Detail(req *types.CustomerProductDetailReq) (*types.Product, error) {
+	cacheKey := "product:detail:" + strconv.FormatInt(req.Id, 10)
+	// 尝试命中缓存
+	if cached, _ := l.svcCtx.Redis.Get(cacheKey); cached != "" {
+		var p types.Product
+		if err := json.Unmarshal([]byte(cached), &p); err == nil {
+			return &p, nil
+		}
+	}
+
 	p, err := l.svcCtx.ProductModel.FindOne(l.ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
@@ -75,6 +86,11 @@ func (l *CustomerProductDetailLogic) Detail(req *types.CustomerProductDetailReq)
 		for _, img := range images {
 			resp.Images = append(resp.Images, toTypesImage(img))
 		}
+	}
+
+	// 回写缓存（10 分钟）
+	if jsonBytes, mErr := json.Marshal(resp); mErr == nil {
+		_ = l.svcCtx.Redis.Setex(cacheKey, string(jsonBytes), 600)
 	}
 
 	return &resp, nil

@@ -105,6 +105,8 @@ func (l *AdminOrderShipLogic) Ship(req *types.AdminOrderShipReq) (*types.ShopOrd
 	if err != nil {
 		return nil, common.ErrSystem
 	}
+	// 发货后失效订单状态缓存
+	_, _ = l.svcCtx.Redis.Del("order:status:" + updated.OrderNo)
 	// 发 MQ 通知发货（order.events action=shipped）
 	_ = l.svcCtx.MqProducer.Publish(l.ctx, mqOrderNotify(updated.OrderNo, updated.UserId, "shipped"))
 	return toTypesOrderDetail(l.ctx, l.svcCtx, updated), nil

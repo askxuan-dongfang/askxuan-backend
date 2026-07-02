@@ -100,6 +100,7 @@ type blessingTaskRow struct {
 type BlessingTaskModel interface {
 	Insert(ctx context.Context, data *BlessingTask) (int64, error)
 	FindOne(ctx context.Context, id int64) (*BlessingTask, error)
+	FindByTaskNo(ctx context.Context, taskNo string) (*BlessingTask, error)
 	FindByTempleId(ctx context.Context, templeCode, status string, page, size int) ([]*BlessingTask, int64, error)
 	FindList(ctx context.Context, templeCode, status string, page, size int) ([]*BlessingTask, int64, error)
 	Update(ctx context.Context, data *BlessingTask) error
@@ -149,6 +150,17 @@ func (m *defaultBlessingTaskModel) FindOne(ctx context.Context, id int64) (*Bles
 		blessingTaskTable)
 	var row blessingTaskRow
 	if err := m.conn.QueryRowCtx(ctx, &row, query, id); err != nil {
+		return nil, err
+	}
+	return rowToBlessingTask(&row), nil
+}
+
+// FindByTaskNo 按任务编号查找加持任务
+func (m *defaultBlessingTaskModel) FindByTaskNo(ctx context.Context, taskNo string) (*BlessingTask, error) {
+	query := fmt.Sprintf(`SELECT id, task_no, diy_order_no, temple_code, master_code, status, certificate_urls, assign_time, complete_time, create_time, update_time FROM %s WHERE task_no = ? LIMIT 1`,
+		blessingTaskTable)
+	var row blessingTaskRow
+	if err := m.conn.QueryRowCtx(ctx, &row, query, taskNo); err != nil {
 		return nil, err
 	}
 	return rowToBlessingTask(&row), nil

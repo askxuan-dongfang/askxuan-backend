@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/payment-service/internal/model"
@@ -52,6 +53,8 @@ func (l *RefundLogic) Refund(req *types.RefundReq) (*types.RefundResp, error) {
 		l.Errorf("创建退款单失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	// 写入退款幂等标记（24 小时），同一退款单重复请求时可据此识别
+	_, _ = l.svcCtx.Redis.SetnxEx("pay:refund:idem:"+created.RefundNo, strconv.FormatInt(created.Id, 10), 86400)
 
 	// 支付单状态流转 success → refunding
 	if _, err := l.svcCtx.PaymentModel.UpdateStatus(l.ctx, p.Id, model.PaymentStatusRefunding, ""); err != nil {

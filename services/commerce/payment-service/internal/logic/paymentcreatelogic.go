@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/payment-service/internal/model"
@@ -54,6 +55,9 @@ func (l *PaymentCreateLogic) Create(req *types.PaymentCreateReq) (*types.Payment
 	}); logErr != nil {
 		l.Errorf("记录支付日志失败: %v", logErr)
 	}
+
+	// 写入幂等标记（2 小时），同一订单重复创建支付单时可据此识别
+	_, _ = l.svcCtx.Redis.SetnxEx("pay:idem:"+req.OrderNo, strconv.FormatInt(created.Id, 10), 7200)
 
 	payUrl := fmt.Sprintf("https://mock-pay.example.com/pay/%s?channel=%s", created.PaymentNo, created.Channel)
 

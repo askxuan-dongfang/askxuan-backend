@@ -4,6 +4,7 @@ import (
 	"github.com/askxuan/product-service/internal/config"
 	"github.com/askxuan/product-service/internal/model"
 
+	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -11,6 +12,7 @@ import (
 type ServiceContext struct {
 	Config               config.Config
 	DB                   sqlx.SqlConn
+	Redis                *redis.Redis
 	ProductModel         model.ProductModel
 	ProductSkuModel      model.ProductSkuModel
 	ProductCategoryModel model.ProductCategoryModel
@@ -22,6 +24,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:               c,
 		DB:                   db,
+		Redis:                redis.MustNewRedis(c.Redis),
 		ProductModel:         model.NewProductModel(db),
 		ProductSkuModel:      model.NewProductSkuModel(db),
 		ProductCategoryModel: model.NewProductCategoryModel(db),

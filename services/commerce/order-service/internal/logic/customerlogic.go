@@ -131,6 +131,8 @@ func (l *OrderDetailLogic) Detail(req *types.OrderDetailReq) (*types.ShopOrder, 
 		l.Errorf("查询订单详情失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	// 缓存订单状态（30 秒），供仅需要状态的场景读取
+	_ = l.svcCtx.Redis.Setex("order:status:"+o.OrderNo, o.Status, 30)
 	return toTypesOrderDetail(l.ctx, l.svcCtx, o), nil
 }
 
@@ -160,6 +162,8 @@ func (l *OrderConfirmLogic) Confirm(req *types.OrderConfirmReq) (*types.ShopOrde
 	if err != nil {
 		return nil, common.ErrSystem
 	}
+	// 状态变更后失效订单状态缓存
+	_, _ = l.svcCtx.Redis.Del("order:status:" + updated.OrderNo)
 	_ = l.svcCtx.MqProducer.Publish(l.ctx, mqOrderNotify(updated.OrderNo, updated.UserId, "completed"))
 	return toTypesOrderDetail(l.ctx, l.svcCtx, updated), nil
 }

@@ -35,7 +35,7 @@ func main() {
 	// 启动 RabbitMQ 消费者：监听 blessing.assign 分配事件
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	startConsumer(ctx, svcCtx.Consumer)
+	startConsumer(ctx, svcCtx)
 
 	// 优雅退出
 	go func() {
@@ -51,8 +51,8 @@ func main() {
 
 // startConsumer 启动 blessing.assign 消费者
 // temple-service 分配法师后，master-service 接收并执行加持
-func startConsumer(ctx context.Context, consumer *mq.Consumer) {
-	if consumer == nil {
+func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
+	if svcCtx == nil || svcCtx.Consumer == nil {
 		return
 	}
 	bindings := []mq.Binding{
@@ -66,11 +66,49 @@ func startConsumer(ctx context.Context, consumer *mq.Consumer) {
 				}
 				logx.Infof("收到法师分配: taskNo=%s templeCode=%s masterCode=%s serviceCode=%s",
 					evt.TaskNo, evt.TempleCode, evt.MasterCode, evt.ServiceCode)
-				// TODO: 法师执行加持，完成后发布 blessing.complete 事件
+
+				// 查找加持任务
+				task, err := svcCtx.BlessingTaskModel.FindByTaskNo(ctx, evt.TaskNo)
+				if err != nil {
+					logx.Errorf("查找加持任务失败 taskNo=%s: %v", evt.TaskNo, err)
+					return nil
+				}
+
+				// 驱动状态机：assigned → accepted → in_progress
+				if err := svcCtx.BlessingTaskModel.UpdateStatus(ctx, task.Id, "accepted"); err != nil {
+					logx.Errorf("更新状态 accepted 失败: %v", err)
+					return nil
+				}
+				if err := svcCtx.BlessingTaskModel.UpdateStatus(ctx, task.Id, "in_progress"); err != nil {
+					logx.Errorf("更新状态 in_progress 失败: %v", err)
+					return nil
+				}
+
+				// Mock 加持完成，生成证书 URL
+				certURL := fmt.Sprintf("https://oss.askxuan.com/blessing/cert_%s.jpg", evt.TaskNo)
+				certJSON := fmt.Sprintf(`["%s"]`, certURL)
+				if err := svcCtx.BlessingTaskModel.UpdateComplete(ctx, task.Id, certJSON); err != nil {
+					logx.Errorf("更新完成状态失败: %v", err)
+					return nil
+				}
+
+				// 发布 blessing.complete 事件
+				err = svcCtx.MqProducer.PublishBlessingComplete(ctx, mq.BlessingComplete{
+					TaskNo:     evt.TaskNo,
+					DiyOrderId: task.DiyOrderNo,
+					TempleCode: evt.TempleCode,
+					MasterCode: evt.MasterCode,
+					Status:     "completed",
+				})
+				if err != nil {
+					logx.Errorf("发布 blessing.complete 失败: %v", err)
+				} else {
+					logx.Infof("加持完成 taskNo=%s certUrl=%s", evt.TaskNo, certURL)
+				}
 				return nil
 			},
 		},
 	}
-	consumer.Start(ctx, bindings)
+	svcCtx.Consumer.Start(ctx, bindings)
 	logx.Info("master-service 已启动 blessing.assign 消费者")
 }
