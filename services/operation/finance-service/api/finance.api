@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "Finance Service"
-    desc:    "东方玄学 财务服务 - 结算/提现/抽成配置/报表"
+    desc:    "问玄东方 财务服务 - 结算/提现/抽成配置/报表"
     author:  "askxuan"
     version: "v1"
 )

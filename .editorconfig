@@ -1,5 +1,5 @@
 # EditorConfig is awesome: https://editorconfig.org
-# 东方玄学全栈项目 - 跨端跨语言统一编码规范
+# 问玄东方全栈项目 - 跨端跨语言统一编码规范
 # 各 IDE 需安装 EditorConfig 插件以自动应用（VS Code: EditorConfig for VS Code）
 
 root = true

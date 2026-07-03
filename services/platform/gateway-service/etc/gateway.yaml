@@ -1,4 +1,4 @@
-# 东方玄学 API 网关配置
+# 问玄东方 API 网关配置
 Name: gateway
 Host: 0.0.0.0
 Port: 8080

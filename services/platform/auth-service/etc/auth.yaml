@@ -1,4 +1,4 @@
-# 东方玄学 认证服务配置
+# 问玄东方 认证服务配置
 Name: auth-service
 Host: 0.0.0.0
 Port: 8081

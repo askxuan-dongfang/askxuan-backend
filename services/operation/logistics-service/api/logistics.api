@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "Logistics Service"
-    desc:    "东方玄学 物流服务 - 快递公司/运费模板/物流追踪"
+    desc:    "问玄东方 物流服务 - 快递公司/运费模板/物流追踪"
     author:  "askxuan"
     version: "v1"
 )

@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "User Service"
-    desc:    "东方玄学 用户服务 - 资料 / 地址 / 画像 / 平台用户管理"
+    desc:    "问玄东方 用户服务 - 资料 / 地址 / 画像 / 平台用户管理"
     author:  "askxuan"
     version: "v1"
 )

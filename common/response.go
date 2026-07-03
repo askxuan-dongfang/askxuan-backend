@@ -1,4 +1,4 @@
-// Package common 提供东方玄学后端各微服务共享的公共能力
+// Package common 提供问玄东方后端各微服务共享的公共能力
 // 包括：统一响应体、错误码、JWT 工具、CORS / 鉴权中间件
 package common
 

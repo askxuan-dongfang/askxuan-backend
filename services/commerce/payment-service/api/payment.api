@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "Payment Service"
-    desc:    "东方玄学 支付服务 - 微信/支付宝支付 / 退款 / 对账"
+    desc:    "问玄东方 支付服务 - 微信/支付宝支付 / 退款 / 对账"
     author:  "askxuan"
     version: "v1"
 )

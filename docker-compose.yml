@@ -1,4 +1,4 @@
-# 东方玄学全栈项目 - 本地开发基础设施
+# 问玄东方全栈项目 - 本地开发基础设施
 # 使用方式：docker compose up -d
 # 销毁方式：docker compose down（保留数据） / docker compose down -v（清除数据卷）
 #

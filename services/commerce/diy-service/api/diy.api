@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "DIY Service"
-    desc:    "东方玄学 DIY手串服务 - DIY设计 / 材料库 / DIY订单 / 加持任务"
+    desc:    "问玄东方 DIY手串服务 - DIY设计 / 材料库 / DIY订单 / 加持任务"
     author:  "askxuan"
     version: "v1"
 )

@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "Order Service"
-    desc:    "东方玄学 商城订单服务 - 普通商品订单 / 退换货"
+    desc:    "问玄东方 商城订单服务 - 普通商品订单 / 退换货"
     author:  "askxuan"
     version: "v1"
 )

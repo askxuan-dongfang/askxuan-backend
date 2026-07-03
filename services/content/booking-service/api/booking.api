@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "Booking Service"
-    desc:    "东方玄学 预约服务 - 创建/列表/详情/状态流转/评价/管理台"
+    desc:    "问玄东方 预约服务 - 创建/列表/详情/状态流转/评价/管理台"
     author:  "askxuan"
     version: "v1"
 )

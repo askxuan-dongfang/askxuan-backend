@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "Audit Service"
-    desc:    "东方玄学 审核服务 - 内容审核/举报处理/敏感词"
+    desc:    "问玄东方 审核服务 - 内容审核/举报处理/敏感词"
     author:  "askxuan"
     version: "v1"
 )

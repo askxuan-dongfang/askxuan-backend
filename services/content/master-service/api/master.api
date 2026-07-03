@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "Master Service"
-    desc:    "东方玄学 法师服务 - 列表/详情/资质/日程/加持任务处理"
+    desc:    "问玄东方 法师服务 - 列表/详情/资质/日程/加持任务处理"
     author:  "askxuan"
     version: "v1"
 )

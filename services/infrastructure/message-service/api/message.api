@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
 	title:   "Message Service"
-	desc:    "东方玄学 通信服务 - 站内消息 / IM咨询对话 / 系统公告 / 推送 / 模板"
+	desc:    "问玄东方 通信服务 - 站内消息 / IM咨询对话 / 系统公告 / 推送 / 模板"
 	author:  "askxuan"
 	version: "v1"
 )

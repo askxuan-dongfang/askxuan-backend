@@ -1,5 +1,5 @@
 -- ============================================================
--- 东方玄学 数据库初始化脚本
+-- 问玄东方 数据库初始化脚本
 -- 依据《统一数据字典.md》建表与种子数据
 -- 数据库：askxuan (MySQL 8.0)
 -- 字符集：utf8mb4
@@ -651,7 +651,7 @@ CREATE TABLE IF NOT EXISTS `system_announcement` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统公告';
 
 INSERT INTO `system_announcement` (`title`,`content`,`type`,`target_audience`,`status`,`publish_time`) VALUES
-('欢迎使用东方玄学平台', '连接信众与寺院/法师的一站式服务平台，预约祈福、AI问事、DIY手串。','system','all','published','2026-07-01 00:00:00');
+('欢迎使用问玄东方平台', '连接信众与寺院/法师的一站式服务平台，预约祈福、AI问事、DIY手串。','system','all','published','2026-07-01 00:00:00');
 
 -- ============================================================
 -- 七、商品域 askxuan_shop（product/product_sku/product_category/product_image）
@@ -1472,7 +1472,7 @@ CREATE TABLE IF NOT EXISTS `system_config` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置';
 
 INSERT INTO `system_config` (`config_key`,`config_value`,`description`) VALUES
-('site_name','东方玄学','站点名称'),
+('site_name','问玄东方','站点名称'),
 ('booking_auto_cancel_minutes','30','预约未确认自动取消分钟数'),
 ('withdrawal_min_amount','100','最低提现金额'),
 ('review_auto_publish','1','评价是否自动发布 0否 1是'),

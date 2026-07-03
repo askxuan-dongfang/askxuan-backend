@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "AI Service"
-    desc:    "东方玄学 AI 问事服务 - 7 技能对话（八字/姻缘/塔罗/风水/奇门/紫微/六爻）"
+    desc:    "问玄东方 AI 问事服务 - 7 技能对话（八字/姻缘/塔罗/风水/奇门/紫微/六爻）"
     author:  "askxuan"
     version: "v1"
 )

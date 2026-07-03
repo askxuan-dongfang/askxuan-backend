@@ -2,7 +2,7 @@ syntax = "v1"
 
 info (
     title:   "File Service"
-    desc:    "东方玄学 文件服务 - MinIO 上传 / 预签名URL"
+    desc:    "问玄东方 文件服务 - MinIO 上传 / 预签名URL"
     author:  "askxuan"
     version: "v1"
 )
