@@ -185,6 +185,82 @@ type ScheduleUpdateResp struct {
 	Id int64 `json:"id"`
 }
 
+// ============ 法师工作台 - 收益 ============
+
+// EarningsSummaryReq 收益汇总请求
+type EarningsSummaryReq struct {
+}
+
+// EarningsTrendItem 收益趋势项
+type EarningsTrendItem struct {
+	Month  string  `json:"month"`
+	Amount float64 `json:"amount"`
+}
+
+// EarningsSummaryResp 收益汇总响应
+type EarningsSummaryResp struct {
+	MonthIncome  float64             `json:"monthIncome"`
+	TotalIncome  float64             `json:"totalIncome"`
+	Withdrawable float64             `json:"withdrawable"`
+	Trend        []EarningsTrendItem `json:"trend"`
+}
+
+// EarningsDetailReq 收益明细请求
+type EarningsDetailReq struct {
+	ServiceType string `form:"serviceType,optional"`
+	Page        int    `form:"page,default=1"`
+	Size        int    `form:"size,default=20"`
+}
+
+// EarningsDetailItem 收益明细项
+type EarningsDetailItem struct {
+	Id           int64   `json:"id"`
+	Date         string  `json:"date"`
+	ServiceType  string  `json:"serviceType"`
+	UserName     string  `json:"userName"`
+	Amount       float64 `json:"amount"`
+	SettleStatus string  `json:"settleStatus"`
+}
+
+// EarningsDetailResp 收益明细响应
+type EarningsDetailResp struct {
+	Total int64               `json:"total"`
+	List  []EarningsDetailItem `json:"list"`
+	Page  int                  `json:"page"`
+	Size  int                  `json:"size"`
+}
+
+// ============ 法师工作台 - 个人资料 ============
+
+// MasterProfileReq 法师资料请求
+type MasterProfileReq struct {
+}
+
+// MasterProfileResp 法师资料响应
+type MasterProfileResp struct {
+	Id          string   `json:"id"`
+	DharmaName  string   `json:"dharmaName"`
+	LayName     string   `json:"layName"`
+	TempleId    string   `json:"templeId"`
+	Position    string   `json:"position"`
+	Sect        string   `json:"sect"`
+	Type        string   `json:"type"`
+	AuthStatus  string   `json:"authStatus"`
+	Specialties []string `json:"specialties"`
+	Avatar      string   `json:"avatar"`
+	Bio         string   `json:"bio"`
+	Pricing     string   `json:"pricing"`
+	Rating      float64  `json:"rating"`
+}
+
+// MasterProfileUpdateReq 法师资料更新请求
+type MasterProfileUpdateReq struct {
+	Bio         string   `json:"bio,optional"`
+	Specialties []string `json:"specialties,optional"`
+	Avatar      string   `json:"avatar,optional"`
+	Pricing     string   `json:"pricing,optional"`
+}
+
 // ============ 平台审核 ============
 
 // MasterAudit 法师资质审核

@@ -209,3 +209,29 @@ service booking-service {
     @handler adminReviewReply
     put /:id/review/reply (ReviewReplyReq) returns (BookingReview)
 }
+
+// ============ 法师工作台 - 预约分组 ============
+type (
+    MasterBookingListReq {
+        Status string `form:"status,optional"`
+        Page   int    `form:"page,default=1"`
+        Size   int    `form:"size,default=20"`
+    }
+
+    MasterBookingListResp {
+        Total int64     `json:"total"`
+        List  []Booking `json:"list"`
+        Page  int       `json:"page"`
+        Size  int       `json:"size"`
+    }
+)
+
+@server (
+    group: booking.master
+    prefix: /api/v1/admin/masters/bookings
+    jwt: Auth
+)
+service booking-service {
+    @handler masterBookingList
+    get / (MasterBookingListReq) returns (MasterBookingListResp)
+}

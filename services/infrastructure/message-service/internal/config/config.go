@@ -19,6 +19,7 @@ type MySQLConf struct {
 // Config message 服务配置
 type Config struct {
 	rest.RestConf
-	RabbitMQ RabbitMQConf
-	MySQL    MySQLConf
+	RabbitMQ   RabbitMQConf
+	AuthSecret string // JWT 签名密钥
+	MySQL      MySQLConf
 }

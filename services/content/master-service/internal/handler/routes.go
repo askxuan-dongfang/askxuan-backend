@@ -102,6 +102,28 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/admin/masters/schedules",
 			Handler: workspaceScheduleUpdateHandler(svcCtx),
 		},
+		// 收益管理
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/masters/earnings/summary",
+			Handler: workspaceEarningsSummaryHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/masters/earnings/details",
+			Handler: workspaceEarningsDetailsHandler(svcCtx),
+		},
+		// 个人资料
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/masters/profile",
+			Handler: workspaceProfileGetHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPut,
+			Path:    "/api/v1/admin/masters/profile",
+			Handler: workspaceProfileUpdateHandler(svcCtx),
+		},
 	}...))
 
 	// ============ 平台管理台分组（需JWT + 平台超管） ============
@@ -435,6 +457,78 @@ func platformMasterStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewPlatformMasterStatusLogic(r.Context(), svcCtx)
 		resp, err := l.PlatformMasterStatus(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+// ============ 法师工作台 - 收益 Handler ============
+
+func workspaceEarningsSummaryHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.EarningsSummaryReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewWorkspaceEarningsSummaryLogic(r.Context(), svcCtx)
+		resp, err := l.WorkspaceEarningsSummary(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func workspaceEarningsDetailsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.EarningsDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewWorkspaceEarningsDetailsLogic(r.Context(), svcCtx)
+		resp, err := l.WorkspaceEarningsDetails(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+// ============ 法师工作台 - 个人资料 Handler ============
+
+func workspaceProfileGetHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MasterProfileReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewWorkspaceProfileGetLogic(r.Context(), svcCtx)
+		resp, err := l.WorkspaceProfileGet(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func workspaceProfileUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MasterProfileUpdateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewWorkspaceProfileUpdateLogic(r.Context(), svcCtx)
+		resp, err := l.WorkspaceProfileUpdate(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

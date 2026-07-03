@@ -6,17 +6,22 @@ package handler
 import (
 	"net/http"
 
+	"github.com/askxuan/common/middleware"
 	announcement "github.com/askxuan/message-service/internal/handler/announcement"
 	message "github.com/askxuan/message-service/internal/handler/message"
 	messageadmin "github.com/askxuan/message-service/internal/handler/messageadmin"
 	messageadminannouncement "github.com/askxuan/message-service/internal/handler/messageadminannouncement"
 	messagecustomer "github.com/askxuan/message-service/internal/handler/messagecustomer"
+	messagemaster "github.com/askxuan/message-service/internal/handler/messagemaster"
 	"github.com/askxuan/message-service/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
 )
 
 func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
+	// JWT 鉴权配置（法师消息接口需要登录）
+	authCfg := &middleware.AuthConfig{Secret: serverCtx.Config.AuthSecret}
+
 	server.AddRoutes(
 		[]rest.Route{
 			{
@@ -50,6 +55,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPost,
 				Path:    "/push",
 				Handler: messageadmin.AdminPushHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/push-logs",
+				Handler: messageadmin.AdminPushLogListHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodGet,
@@ -94,6 +104,16 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				Method:  http.MethodPost,
+				Path:    "/device-token",
+				Handler: messagecustomer.RegisterDeviceTokenHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/device-token",
+				Handler: messagecustomer.UnbindDeviceTokenHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodDelete,
 				Path:    "/:id",
 				Handler: messagecustomer.DeleteMessageHandler(serverCtx),
@@ -104,11 +124,33 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: messagecustomer.ReadAllHandler(serverCtx),
 			},
 			{
+				Method:  http.MethodPost,
+				Path:    "/send",
+				Handler: messagecustomer.SendMessageHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodGet,
 				Path:    "/unread-count",
 				Handler: messagecustomer.UnreadCountHandler(serverCtx),
 			},
 		},
 		rest.WithPrefix("/api/v1/messages"),
+	)
+
+	// ===== 法师消息分组（需JWT） =====
+	server.AddRoutes(
+		rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
+			{
+				Method:  http.MethodGet,
+				Path:    "/",
+				Handler: messagemaster.MasterMessageListHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPut,
+				Path:    "/:id/read",
+				Handler: messagemaster.MasterMessageReadHandler(serverCtx),
+			},
+		}...),
+		rest.WithPrefix("/api/v1/admin/messages/master"),
 	)
 }

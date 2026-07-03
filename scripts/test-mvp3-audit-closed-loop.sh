@@ -40,6 +40,13 @@ fi
 info "开始 MVP-3 审核闭环测试（共 $TOTAL 步）"
 echo "================================================"
 
+# ===== 0. 重启服务（重置内存数据，确保幂等）=====
+info "步骤 0: 重启 audit-service 重置内存数据"
+lsof -ti:8093 | xargs kill -9 2>/dev/null
+sleep 1
+(cd services/operation/audit-service && go run audit.go -f etc/audit.yaml > /dev/null 2>&1) &
+sleep 5
+
 AUDIT_ID=""
 REJECT_ID=""
 REPORT_ID=""

@@ -19,3 +19,6 @@ RabbitMQ:
 # MySQL 连接（booking 表在 askxuan 库，booking_status_log/booking_review 在 askxuan_booking 库）
 MySQL:
   DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan?charset=utf8mb4&parseTime=true&loc=Local"
+
+# JWT 签名密钥
+AuthSecret: "askxuan-access-secret-change-in-prod"

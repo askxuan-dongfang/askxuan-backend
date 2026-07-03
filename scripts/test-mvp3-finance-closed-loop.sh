@@ -40,6 +40,13 @@ fi
 info "开始 MVP-3 财务闭环测试（共 $TOTAL 步）"
 echo "================================================"
 
+# ===== 0. 重启服务（重置内存数据，确保幂等）=====
+info "步骤 0: 重启 finance-service 重置内存数据"
+lsof -ti:8091 | xargs kill -9 2>/dev/null
+sleep 1
+(cd services/operation/finance-service && go run finance.go -f etc/finance.yaml > /dev/null 2>&1) &
+sleep 5
+
 # ===== 1. 总览 =====
 info "步骤 1/$TOTAL: 财务总览"
 RESP=$(curl -s -X GET "$BASE/api/v1/admin/finance/overview")

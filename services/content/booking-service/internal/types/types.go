@@ -161,3 +161,20 @@ type BookingStatusLog struct {
 type StatusLogResp struct {
 	List []BookingStatusLog `json:"list"`
 }
+
+// ============ 法师工作台 - 预约 ============
+
+// MasterBookingListReq 法师预约列表请求（masterId 从 JWT 获取，无需前端传递）
+type MasterBookingListReq struct {
+	Status string `form:"status,optional"`
+	Page   int    `form:"page,default=1"`
+	Size   int    `form:"size,default=20"`
+}
+
+// MasterBookingListResp 法师预约列表响应
+type MasterBookingListResp struct {
+	Total int64     `json:"total"`
+	List  []Booking `json:"list"`
+	Page  int       `json:"page"`
+	Size  int       `json:"size"`
+}

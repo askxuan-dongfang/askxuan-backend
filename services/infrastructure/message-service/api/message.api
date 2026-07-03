@@ -53,6 +53,14 @@ type (
 	DeleteMessageReq {
 		Id string `path:"id"`
 	}
+	SendMessageReq {
+		ConversationId string `json:"conversationId"`
+		UserId         string `json:"userId"`
+		Content        string `json:"content"`
+	}
+	SendMessageResp {
+		Id int64 `json:"id"`
+	}
 	IdResp {
 		Id int64 `json:"id"`
 	}
@@ -103,6 +111,46 @@ type (
 	PushResp {
 		PushLogId int64  `json:"pushLogId"`
 		Status    string `json:"status"` // pending/success/failed
+	}
+	PushLog {
+		Id         int64  `json:"id"`
+		UserId     string `json:"userId"`
+		PushType   string `json:"pushType"`
+		Title      string `json:"title"`
+		Content    string `json:"content"`
+		Status     string `json:"status"`
+		BizType    string `json:"bizType"`
+		BizId      string `json:"bizId"`
+		CreateTime string `json:"createTime"`
+	}
+	PushLogListReq {
+		UserId  string `form:"userId,optional"`
+		Status  string `form:"status,optional"`
+		BizType string `form:"bizType,optional"`
+		Page    int    `form:"page,default=1"`
+		Size    int    `form:"size,default=20"`
+	}
+	PushLogListResp {
+		Total int64     `json:"total"`
+		List  []PushLog `json:"list"`
+		Page  int       `json:"page"`
+		Size  int       `json:"size"`
+	}
+	DeviceTokenRegisterReq {
+		UserId      string `json:"userId"`
+		ClientType  string `json:"clientType"` // customer/master
+		Platform    string `json:"platform"`   // ios/android
+		DeviceToken string `json:"deviceToken"`
+		BundleId    string `json:"bundleId,optional"`
+		AppVersion  string `json:"appVersion,optional"`
+	}
+	DeviceTokenUnbindReq {
+		UserId      string `json:"userId"`
+		DeviceToken string `json:"deviceToken"`
+	}
+	DeviceTokenResp {
+		Id     int64  `json:"id"`
+		Status string `json:"status"`
 	}
 	// ===== 系统公告 =====
 	SystemAnnouncement {
@@ -164,6 +212,15 @@ service messageService {
 	@handler readAll
 	put /read-all (ReadAllReq) returns (ReadAllResp)
 
+	@handler sendMessage
+	post /send (SendMessageReq) returns (SendMessageResp)
+
+	@handler registerDeviceToken
+	post /device-token (DeviceTokenRegisterReq) returns (DeviceTokenResp)
+
+	@handler unbindDeviceToken
+	delete /device-token (DeviceTokenUnbindReq) returns (DeviceTokenResp)
+
 	@handler deleteMessage
 	delete /:id (DeleteMessageReq) returns (IdResp)
 }
@@ -185,6 +242,9 @@ service messageService {
 
 	@handler adminPush
 	post /push (PushReq) returns (PushResp)
+
+	@handler adminPushLogList
+	get /push-logs (PushLogListReq) returns (PushLogListResp)
 }
 
 // ===== 系统公告：C端 =====
@@ -213,3 +273,27 @@ service messageService {
 	put /:id/status (AnnouncementStatusReq) returns (IdResp)
 }
 
+// ===== 法师消息（master-scoped from JWT） =====
+type (
+	MasterMessageListReq {
+		IsRead int    `form:"isRead,optional,default=-1"` // -1全部 0未读 1已读
+		Page   int    `form:"page,default=1"`
+		Size   int    `form:"size,default=20"`
+	}
+	MasterMessageReadReq {
+		Id int64 `path:"id"`
+	}
+)
+
+@server (
+	group:  messagemaster
+	prefix: /api/v1/admin/messages/master
+	jwt:    Auth
+)
+service messageService {
+	@handler masterMessageList
+	get / (MasterMessageListReq) returns (ListResp)
+
+	@handler masterMessageRead
+	put /:id/read (MasterMessageReadReq) returns (ReadResp)
+}

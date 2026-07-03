@@ -67,10 +67,10 @@ type WithdrawalListReq struct {
 }
 
 type WithdrawalListResp struct {
-	Total int64       `json:"total"`
+	Total int64        `json:"total"`
 	List  []Withdrawal `json:"list"`
-	Page  int         `json:"page"`
-	Size  int         `json:"size"`
+	Page  int          `json:"page"`
+	Size  int          `json:"size"`
 }
 
 type WithdrawalAuditReq struct {
@@ -148,4 +148,50 @@ type ReportResp struct {
 	TotalSettlement float64 `json:"totalSettlement"`
 	TotalWithdrawal float64 `json:"totalWithdrawal"`
 	OrderCount      int     `json:"orderCount"`
+}
+
+// ============ 法师提现申请 ============
+
+// WithdrawalApplyReq 法师提现申请请求
+type WithdrawalApplyReq struct {
+	Amount   float64 `json:"amount"`
+	BankCard string  `json:"bankCard"`
+}
+
+// WithdrawalApplyResp 法师提现申请响应
+type WithdrawalApplyResp struct {
+	Id            int64   `json:"id"`
+	WithdrawalNo  string  `json:"withdrawalNo"`
+	ApplicantType string  `json:"applicantType"`
+	ApplicantId   string  `json:"applicantId"`
+	Amount        float64 `json:"amount"`
+	Status        string  `json:"status"`
+	CreateTime    string  `json:"createTime"`
+}
+
+type ShopReportReq struct {
+	StartTime string `form:"startTime,optional"`
+	EndTime   string `form:"endTime,optional"`
+}
+
+type ShopReportResp struct {
+	TotalSales    float64           `json:"totalSales"`
+	TotalOrders   int               `json:"totalOrders"`
+	AvgOrderValue float64           `json:"avgOrderValue"`
+	RefundRate    float64           `json:"refundRate"`
+	SalesTrend    []SalesTrendPoint `json:"salesTrend"`
+	TopProducts   []TopProduct      `json:"topProducts"`
+}
+
+type SalesTrendPoint struct {
+	Date   string  `json:"date"`
+	Sales  float64 `json:"sales"`
+	Orders int     `json:"orders"`
+}
+
+type TopProduct struct {
+	ProductId   int64   `json:"productId"`
+	ProductName string  `json:"productName"`
+	Sales       float64 `json:"sales"`
+	OrderCount  int     `json:"orderCount"`
 }

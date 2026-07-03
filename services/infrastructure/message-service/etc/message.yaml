@@ -19,3 +19,6 @@ RabbitMQ:
 # MySQL（站内消息/模板/推送日志/咨询对话/系统公告）
 MySQL:
   DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_message?charset=utf8mb4&parseTime=true&loc=Local"
+
+# JWT 签名密钥
+AuthSecret: "askxuan-access-secret-change-in-prod"

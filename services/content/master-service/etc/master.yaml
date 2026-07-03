@@ -14,7 +14,7 @@ MySQL:
   DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan?charset=utf8mb4&parseTime=true&loc=Local"
 
 # JWT 签名密钥
-AuthSecret: "askxuan-secret-key-2026"
+AuthSecret: "askxuan-access-secret-change-in-prod"
 
 # RabbitMQ（消费 blessing.assign 分配事件 / 发布 blessing.complete 完成事件）
 RabbitMQ:

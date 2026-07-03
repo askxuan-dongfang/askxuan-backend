@@ -41,6 +41,9 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPut, Path: "/api/v1/admin/diy/materials/:id", Handler: adminMaterialUpdateHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/diy/materials/:id/status", Handler: adminMaterialStatusHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/admin/diy/blessing-services", Handler: adminBlessingServiceListHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/admin/diy/blessing-services", Handler: adminBlessingServiceCreateHandler(svcCtx)},
+		{Method: http.MethodPut, Path: "/api/v1/admin/diy/blessing-services/:id", Handler: adminBlessingServiceUpdateHandler(svcCtx)},
+		{Method: http.MethodDelete, Path: "/api/v1/admin/diy/blessing-services/:id", Handler: adminBlessingServiceDeleteHandler(svcCtx)},
 	})
 }
 
@@ -317,6 +320,53 @@ func adminBlessingServiceListHandler(svcCtx *svc.ServiceContext) http.HandlerFun
 			common.JsonError(w, err)
 		} else {
 			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminBlessingServiceCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminBlessingServiceCreateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminBlessingServiceCreateLogic(r.Context(), svcCtx).Create(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminBlessingServiceUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminBlessingServiceUpdateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminBlessingServiceUpdateLogic(r.Context(), svcCtx).Update(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminBlessingServiceDeleteHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminBlessingServiceDeleteReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		if err := logic.NewAdminBlessingServiceDeleteLogic(r.Context(), svcCtx).Delete(&req); err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, nil)
 		}
 	}
 }

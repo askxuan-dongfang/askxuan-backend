@@ -231,6 +231,47 @@ type (
     }
 )
 
+// ============ 寺院报表（寺院管理台） ============
+type (
+    TempleReportReq {
+        StartTime string `form:"startTime,optional"`
+        EndTime   string `form:"endTime,optional"`
+    }
+
+    TempleReportResp {
+        BookingTrend         []BookingTrendPoint  `json:"bookingTrend"`
+        RevenueStats         TempleRevenueStats   `json:"revenueStats"`
+        ServiceDistribution  []ServiceDistItem    `json:"serviceDistribution"`
+        MasterRanking        []MasterRankItem     `json:"masterRanking"`
+    }
+
+    BookingTrendPoint {
+        Date    string `json:"date"`
+        Bookings int    `json:"bookings"`
+        Revenue  float64 `json:"revenue"`
+    }
+
+    TempleRevenueStats {
+        TotalRevenue   float64 `json:"totalRevenue"`
+        BookingCount   int     `json:"bookingCount"`
+        AvgBookingValue float64 `json:"avgBookingValue"`
+        CompletedCount  int     `json:"completedCount"`
+    }
+
+    ServiceDistItem {
+        ServiceName string  `json:"serviceName"`
+        Count       int     `json:"count"`
+        Percentage  float64 `json:"percentage"`
+    }
+
+    MasterRankItem {
+        MasterCode  string  `json:"masterCode"`
+        MasterName  string  `json:"masterName"`
+        BookingCount int    `json:"bookingCount"`
+        Revenue      float64 `json:"revenue"`
+    }
+)
+
 // ============ C端分组（保留+扩展） ============
 @server (
     group: temple
@@ -289,6 +330,9 @@ service temple-service {
 
     @handler adminTempleApply
     post /apply (TempleApplyReq) returns (TempleApplyResp)
+
+    @handler adminTempleReports
+    get /reports (TempleReportReq) returns (TempleReportResp)
 }
 
 // ============ 平台管理台分组 ============

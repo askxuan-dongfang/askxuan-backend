@@ -14,7 +14,8 @@ type RabbitMQConf struct {
 // Config booking 服务配置
 type Config struct {
 	rest.RestConf
-	RabbitMQ RabbitMQConf
+	RabbitMQ   RabbitMQConf
+	AuthSecret string // JWT 签名密钥
 	MySQL struct {
 		DataSource string
 	}

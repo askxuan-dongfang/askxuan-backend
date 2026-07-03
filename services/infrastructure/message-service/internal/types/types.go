@@ -33,6 +33,25 @@ type DeleteMessageReq struct {
 	Id string `path:"id"`
 }
 
+type DeviceTokenRegisterReq struct {
+	UserId      string `json:"userId"`
+	ClientType  string `json:"clientType"` // customer/master
+	Platform    string `json:"platform"`   // ios/android
+	DeviceToken string `json:"deviceToken"`
+	BundleId    string `json:"bundleId,optional"`
+	AppVersion  string `json:"appVersion,optional"`
+}
+
+type DeviceTokenResp struct {
+	Id     int64  `json:"id"`
+	Status string `json:"status"`
+}
+
+type DeviceTokenUnbindReq struct {
+	UserId      string `json:"userId"`
+	DeviceToken string `json:"deviceToken"`
+}
+
 type IdResp struct {
 	Id int64 `json:"id"`
 }
@@ -86,12 +105,49 @@ type PushResp struct {
 	Status    string `json:"status"` // pending/success/failed
 }
 
+type PushLog struct {
+	Id         int64  `json:"id"`
+	UserId     string `json:"userId"`
+	PushType   string `json:"pushType"`
+	Title      string `json:"title"`
+	Content    string `json:"content"`
+	Status     string `json:"status"`
+	BizType    string `json:"bizType"`
+	BizId      string `json:"bizId"`
+	CreateTime string `json:"createTime"`
+}
+
+type PushLogListReq struct {
+	UserId  string `form:"userId,optional"`
+	Status  string `form:"status,optional"`
+	BizType string `form:"bizType,optional"`
+	Page    int    `form:"page,default=1"`
+	Size    int    `form:"size,default=20"`
+}
+
+type PushLogListResp struct {
+	Total int64     `json:"total"`
+	List  []PushLog `json:"list"`
+	Page  int       `json:"page"`
+	Size  int       `json:"size"`
+}
+
 type ReadAllReq struct {
 	UserId string `json:"userId"`
 }
 
 type ReadAllResp struct {
 	Count int64 `json:"count"`
+}
+
+type SendMessageReq struct {
+	ConversationId string `json:"conversationId"`
+	UserId         string `json:"userId"`
+	Content        string `json:"content"`
+}
+
+type SendMessageResp struct {
+	Id int64 `json:"id"`
 }
 
 type ReadReq struct {
@@ -149,4 +205,16 @@ type UnreadCountReq struct {
 
 type UnreadCountResp struct {
 	Count int64 `json:"count"`
+}
+
+// ===== 法师消息（master-scoped from JWT） =====
+
+type MasterMessageListReq struct {
+	IsRead int `form:"isRead,optional,default=-1"` // -1全部 0未读 1已读
+	Page   int `form:"page,default=1"`
+	Size   int `form:"size,default=20"`
+}
+
+type MasterMessageReadReq struct {
+	Id int64 `path:"id"`
 }

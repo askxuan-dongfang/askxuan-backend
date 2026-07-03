@@ -155,27 +155,112 @@ func (l *AdminBlessingServiceListLogic) List(req *types.AdminBlessingServiceList
 	if req.Size <= 0 {
 		req.Size = 20
 	}
-	list, err := l.svcCtx.ExtraServiceModel.FindList(l.ctx, req.Page, req.Size)
-	if err != nil {
-		l.Errorf("查询加持服务列表失败: %v", err)
-		return nil, common.ErrSystem
-	}
-	resp := &types.AdminBlessingServiceListResp{Page: req.Page, Size: req.Size}
+	list, total := l.svcCtx.BlessingServiceListModel.FindList(l.ctx, req.Page, req.Size)
+	resp := &types.AdminBlessingServiceListResp{Page: req.Page, Size: req.Size, Total: total}
 	for _, s := range list {
-		resp.List = append(resp.List, toTypesBlessingService(s))
+		resp.List = append(resp.List, toTypesBlessingServiceFromRecord(s))
 	}
-	resp.Total = int64(len(resp.List))
 	return resp, nil
 }
 
-func toTypesBlessingService(s *model.ExtraService) types.BlessingService {
+// AdminBlessingServiceCreateLogic 商城台创建加持服务
+type AdminBlessingServiceCreateLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewAdminBlessingServiceCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminBlessingServiceCreateLogic {
+	return &AdminBlessingServiceCreateLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *AdminBlessingServiceCreateLogic) Create(req *types.AdminBlessingServiceCreateReq) (*types.AdminBlessingServiceCreateResp, error) {
+	if req.ServiceName == "" || req.TempleCode == "" {
+		return nil, common.ErrParam
+	}
+	if req.Status != "" && req.Status != model.BlessingServiceStatusOnShelf && req.Status != model.BlessingServiceStatusOffShelf {
+		return nil, common.ErrParamInvalid
+	}
+	s, err := l.svcCtx.BlessingServiceListModel.Insert(&model.BlessingServiceRecord{
+		Name:        req.ServiceName,
+		TempleCode:  req.TempleCode,
+		MasterCode:  req.MasterCode,
+		Price:       req.Price,
+		Description: req.Description,
+		Status:      req.Status,
+	})
+	if err != nil {
+		l.Errorf("创建加持服务失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	return &types.AdminBlessingServiceCreateResp{Id: s.Id}, nil
+}
+
+// AdminBlessingServiceUpdateLogic 商城台更新加持服务
+type AdminBlessingServiceUpdateLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewAdminBlessingServiceUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminBlessingServiceUpdateLogic {
+	return &AdminBlessingServiceUpdateLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *AdminBlessingServiceUpdateLogic) Update(req *types.AdminBlessingServiceUpdateReq) (*types.BlessingService, error) {
+	if req.ServiceName == "" || req.TempleCode == "" {
+		return nil, common.ErrParam
+	}
+	if req.Status != model.BlessingServiceStatusOnShelf && req.Status != model.BlessingServiceStatusOffShelf {
+		return nil, common.ErrParamInvalid
+	}
+	existing, ok := l.svcCtx.BlessingServiceListModel.FindOne(req.Id)
+	if !ok {
+		return nil, common.NewBizError(40415, "加持服务不存在")
+	}
+	existing.Name = req.ServiceName
+	existing.TempleCode = req.TempleCode
+	existing.MasterCode = req.MasterCode
+	existing.Price = req.Price
+	existing.Description = req.Description
+	existing.Status = req.Status
+	if err := l.svcCtx.BlessingServiceListModel.Update(existing); err != nil {
+		l.Errorf("更新加持服务失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	t := toTypesBlessingServiceFromRecord(existing)
+	return &t, nil
+}
+
+// AdminBlessingServiceDeleteLogic 商城台删除加持服务
+type AdminBlessingServiceDeleteLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewAdminBlessingServiceDeleteLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminBlessingServiceDeleteLogic {
+	return &AdminBlessingServiceDeleteLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *AdminBlessingServiceDeleteLogic) Delete(req *types.AdminBlessingServiceDeleteReq) error {
+	if !l.svcCtx.BlessingServiceListModel.Delete(req.Id) {
+		return common.NewBizError(40415, "加持服务不存在")
+	}
+	return nil
+}
+
+func toTypesBlessingServiceFromRecord(s *model.BlessingServiceRecord) types.BlessingService {
 	return types.BlessingService{
 		Id:          s.Id,
 		ServiceCode: s.Code,
 		ServiceName: s.Name,
 		TempleCode:  s.TempleCode,
+		TempleName:  s.TempleName,
 		MasterCode:  s.MasterCode,
+		MasterName:  s.MasterName,
 		Price:       s.Price,
 		Description: s.Description,
+		Status:      s.Status,
 	}
 }

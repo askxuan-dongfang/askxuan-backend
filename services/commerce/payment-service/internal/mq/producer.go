@@ -75,7 +75,7 @@ func (p *Producer) Publish(ctx context.Context, evt PaymentNotify) error {
 	}
 	body, _ := json.Marshal(evt)
 	if err := p.ensureChannel(); err != nil {
-		return nil
+		return err
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()

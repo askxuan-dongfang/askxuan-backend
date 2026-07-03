@@ -25,6 +25,7 @@ type PushLog struct {
 // PushLogModel 推送日志模型接口
 type PushLogModel interface {
 	Insert(ctx context.Context, p *PushLog) (int64, error)
+	List(ctx context.Context, userId, status, bizType string, page, size int) ([]*PushLog, int64, error)
 }
 
 type defaultPushLogModel struct {
@@ -49,4 +50,39 @@ func (m *defaultPushLogModel) Insert(ctx context.Context, data *PushLog) (int64,
 		return 0, err
 	}
 	return id, nil
+}
+
+func (m *defaultPushLogModel) List(ctx context.Context, userId, status, bizType string, page, size int) ([]*PushLog, int64, error) {
+	where := "1=1"
+	args := make([]interface{}, 0, 5)
+	if userId != "" {
+		where += " AND user_id = ?"
+		args = append(args, userId)
+	}
+	if status != "" {
+		where += " AND status = ?"
+		args = append(args, status)
+	}
+	if bizType != "" {
+		where += " AND biz_type = ?"
+		args = append(args, bizType)
+	}
+
+	var total int64
+	countQuery := `SELECT COUNT(1) FROM ` + pushLogTable + ` WHERE ` + where
+	if err := m.conn.QueryRowCtx(ctx, &total, countQuery, args...); err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []*PushLog{}, 0, nil
+	}
+
+	offset := (page - 1) * size
+	listArgs := append(args, offset, size)
+	query := `SELECT id, user_id, push_type, title, content, status, biz_type, biz_id, create_time FROM ` + pushLogTable + ` WHERE ` + where + ` ORDER BY id DESC LIMIT ?, ?`
+	var list []*PushLog
+	if err := m.conn.QueryRowsCtx(ctx, &list, query, listArgs...); err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }

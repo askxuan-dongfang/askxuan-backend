@@ -1,7 +1,9 @@
 package model
 
 import (
+	"fmt"
 	"sync"
+	"time"
 )
 
 // 提现状态常量（参照 state-machines.md 第6节）
@@ -167,4 +169,25 @@ func CountWithdrawalByStatus(status string) int64 {
 		}
 	}
 	return count
+}
+
+// ApplyWithdrawal 法师/寺院/商家提交提现申请，返回新建的提现单
+func ApplyWithdrawal(applicantType, applicantId string, amount float64, bankCard string) Withdrawal {
+	globalWithdrawalStore.mu.Lock()
+	defer globalWithdrawalStore.mu.Unlock()
+
+	globalWithdrawalStore.seq++
+	now := time.Now().Format("2006-01-02 15:04:05")
+	w := Withdrawal{
+		Id:            globalWithdrawalStore.seq,
+		WithdrawalNo:  fmt.Sprintf("WD%s%03d", now[:8], globalWithdrawalStore.seq),
+		ApplicantType: applicantType,
+		ApplicantId:   applicantId,
+		Amount:        amount,
+		BankCard:      bankCard,
+		Status:        WithdrawalPending,
+		CreateTime:    now,
+	}
+	globalWithdrawalStore.list = append(globalWithdrawalStore.list, w)
+	return w
 }

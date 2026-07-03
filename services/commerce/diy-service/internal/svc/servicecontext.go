@@ -11,18 +11,19 @@ import (
 
 // ServiceContext diy 服务依赖容器
 type ServiceContext struct {
-	Config            config.Config
-	DB                sqlx.SqlConn
-	Redis             *redis.Redis
-	MqProducer        *mq.Producer
-	Consumer          *mq.Consumer
-	DiyDesignModel    model.DiyDesignModel
-	DiyOrderModel     model.DiyOrderModel
-	DiyOrderItemModel model.DiyOrderItemModel
-	MaterialModel     model.MaterialModel
-	MaterialSkuModel  model.MaterialSkuModel
-	BlessingTaskModel model.BlessingTaskModel
-	ExtraServiceModel model.ExtraServiceModel
+	Config                   config.Config
+	DB                       sqlx.SqlConn
+	Redis                    *redis.Redis
+	MqProducer               *mq.Producer
+	Consumer                 *mq.Consumer
+	DiyDesignModel           model.DiyDesignModel
+	DiyOrderModel            model.DiyOrderModel
+	DiyOrderItemModel        model.DiyOrderItemModel
+	MaterialModel            model.MaterialModel
+	MaterialSkuModel         model.MaterialSkuModel
+	BlessingTaskModel        model.BlessingTaskModel
+	ExtraServiceModel        model.ExtraServiceModel
+	BlessingServiceListModel model.BlessingServiceListModel
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -36,17 +37,18 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost,
 	)
 	return &ServiceContext{
-		Config:            c,
-		DB:                db,
-		Redis:             redis.MustNewRedis(c.Redis),
-		MqProducer:        producer,
-		Consumer:          consumer,
-		DiyDesignModel:    model.NewDiyDesignModel(db),
-		DiyOrderModel:     model.NewDiyOrderModel(db),
-		DiyOrderItemModel: model.NewDiyOrderItemModel(db),
-		MaterialModel:     model.NewMaterialModel(db),
-		MaterialSkuModel:  model.NewMaterialSkuModel(db),
-		BlessingTaskModel: model.NewBlessingTaskModel(db),
-		ExtraServiceModel: model.NewExtraServiceModel(db),
+		Config:                   c,
+		DB:                       db,
+		Redis:                    redis.MustNewRedis(c.Redis),
+		MqProducer:               producer,
+		Consumer:                 consumer,
+		DiyDesignModel:           model.NewDiyDesignModel(db),
+		DiyOrderModel:            model.NewDiyOrderModel(db),
+		DiyOrderItemModel:        model.NewDiyOrderItemModel(db),
+		MaterialModel:            model.NewMaterialModel(db),
+		MaterialSkuModel:         model.NewMaterialSkuModel(db),
+		BlessingTaskModel:        model.NewBlessingTaskModel(db),
+		ExtraServiceModel:        model.NewExtraServiceModel(db),
+		BlessingServiceListModel: model.NewBlessingServiceListModel(),
 	}
 }

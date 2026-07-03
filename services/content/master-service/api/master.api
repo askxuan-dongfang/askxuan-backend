@@ -173,6 +173,68 @@ type (
     }
 )
 
+// ============ 法师工作台 - 收益 ============
+type (
+    EarningsSummaryReq {
+    }
+    EarningsTrendItem {
+        Month  string  `json:"month"`
+        Amount float64 `json:"amount"`
+    }
+    EarningsSummaryResp {
+        MonthIncome  float64             `json:"monthIncome"`
+        TotalIncome  float64             `json:"totalIncome"`
+        Withdrawable float64             `json:"withdrawable"`
+        Trend        []EarningsTrendItem `json:"trend"`
+    }
+    EarningsDetailReq {
+        ServiceType string `form:"serviceType,optional"`
+        Page        int    `form:"page,default=1"`
+        Size        int    `form:"size,default=20"`
+    }
+    EarningsDetailItem {
+        Id           int64   `json:"id"`
+        Date         string  `json:"date"`
+        ServiceType  string  `json:"serviceType"`
+        UserName     string  `json:"userName"`
+        Amount       float64 `json:"amount"`
+        SettleStatus string  `json:"settleStatus"`
+    }
+    EarningsDetailResp {
+        Total int64               `json:"total"`
+        List  []EarningsDetailItem `json:"list"`
+        Page  int                  `json:"page"`
+        Size  int                  `json:"size"`
+    }
+)
+
+// ============ 法师工作台 - 个人资料 ============
+type (
+    MasterProfileReq {
+    }
+    MasterProfileResp {
+        Id          string   `json:"id"`
+        DharmaName  string   `json:"dharmaName"`
+        LayName     string   `json:"layName"`
+        TempleId    string   `json:"templeId"`
+        Position    string   `json:"position"`
+        Sect        string   `json:"sect"`
+        Type        string   `json:"type"`
+        AuthStatus  string   `json:"authStatus"`
+        Specialties []string `json:"specialties"`
+        Avatar      string   `json:"avatar"`
+        Bio         string   `json:"bio"`
+        Pricing     string   `json:"pricing"`
+        Rating      float64  `json:"rating"`
+    }
+    MasterProfileUpdateReq {
+        Bio         string   `json:"bio,optional"`
+        Specialties []string `json:"specialties,optional"`
+        Avatar      string   `json:"avatar,optional"`
+        Pricing     string   `json:"pricing,optional"`
+    }
+)
+
 // ============ 平台审核 ============
 type (
     MasterAudit {
@@ -278,6 +340,34 @@ service master-service {
 
     @handler workspaceScheduleUpdate
     put /schedules (ScheduleUpdateReq) returns (ScheduleUpdateResp)
+}
+
+// ============ 法师工作台 - 收益分组 ============
+@server (
+    group: master.workspace.earnings
+    prefix: /api/v1/admin/masters/earnings
+    jwt: Auth
+)
+service master-service {
+    @handler workspaceEarningsSummary
+    get /summary (EarningsSummaryReq) returns (EarningsSummaryResp)
+
+    @handler workspaceEarningsDetails
+    get /details (EarningsDetailReq) returns (EarningsDetailResp)
+}
+
+// ============ 法师工作台 - 个人资料分组 ============
+@server (
+    group: master.workspace.profile
+    prefix: /api/v1/admin/masters/profile
+    jwt: Auth
+)
+service master-service {
+    @handler workspaceProfileGet
+    get / (MasterProfileReq) returns (MasterProfileResp)
+
+    @handler workspaceProfileUpdate
+    put / (MasterProfileUpdateReq) returns (MasterProfileResp)
 }
 
 // ============ 平台管理台分组 ============

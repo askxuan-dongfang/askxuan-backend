@@ -16,6 +16,7 @@ type ServiceContext struct {
 	MessageModel      model.MessageModel
 	TemplateModel     model.TemplateModel
 	PushLogModel      model.PushLogModel
+	DeviceTokenModel  model.DeviceTokenModel
 	AnnouncementModel model.AnnouncementModel
 }
 
@@ -32,6 +33,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		MessageModel:      model.NewMessageModel(db),
 		TemplateModel:     model.NewTemplateModel(db),
 		PushLogModel:      model.NewPushLogModel(db),
+		DeviceTokenModel:  model.NewDeviceTokenModel(db),
 		AnnouncementModel: model.NewAnnouncementModel(db),
 	}
 }

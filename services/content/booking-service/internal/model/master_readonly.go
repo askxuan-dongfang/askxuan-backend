@@ -9,6 +9,7 @@ import (
 // MasterReadonlyModel 预约服务只读访问法师表（跨库查询 askxuan.master）
 type MasterReadonlyModel interface {
 	FindByCode(ctx context.Context, code string) (*MasterBrief, error)
+	FindByID(ctx context.Context, id int64) (*MasterBrief, error)
 }
 
 // MasterBrief 法师简要信息
@@ -33,6 +34,17 @@ func (m *masterReadonlyModel) FindByCode(ctx context.Context, code string) (*Mas
 	var mb MasterBrief
 	query := `SELECT id, code, dharma_name, shelf_status FROM askxuan.master WHERE code = ?`
 	err := m.conn.QueryRowCtx(ctx, &mb, query, code)
+	if err != nil {
+		return nil, err
+	}
+	return &mb, nil
+}
+
+// FindByID 按法师ID查询（跨库 askxuan.master）
+func (m *masterReadonlyModel) FindByID(ctx context.Context, id int64) (*MasterBrief, error) {
+	var mb MasterBrief
+	query := `SELECT id, code, dharma_name, shelf_status FROM askxuan.master WHERE id = ?`
+	err := m.conn.QueryRowCtx(ctx, &mb, query, id)
 	if err != nil {
 		return nil, err
 	}

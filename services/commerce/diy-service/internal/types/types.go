@@ -249,3 +249,30 @@ type AdminBlessingServiceListResp struct {
 	Page  int               `json:"page"`
 	Size  int               `json:"size"`
 }
+
+type AdminBlessingServiceCreateReq struct {
+	ServiceName string  `json:"serviceName"`
+	TempleCode  string  `json:"templeCode"`
+	MasterCode  string  `json:"masterCode"`
+	Price       float64 `json:"price"`
+	Description string  `json:"description"`
+	Status      string  `json:"status"`
+}
+
+type AdminBlessingServiceCreateResp struct {
+	Id int64 `json:"id"`
+}
+
+type AdminBlessingServiceUpdateReq struct {
+	Id          int64   `path:"id"`
+	ServiceName string  `json:"serviceName"`
+	TempleCode  string  `json:"templeCode"`
+	MasterCode  string  `json:"masterCode"`
+	Price       float64 `json:"price"`
+	Description string  `json:"description"`
+	Status      string  `json:"status"`
+}
+
+type AdminBlessingServiceDeleteReq struct {
+	Id int64 `path:"id"`
+}

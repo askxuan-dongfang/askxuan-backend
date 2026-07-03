@@ -163,7 +163,61 @@ type (
         TotalWithdrawal  float64 `json:"totalWithdrawal"`
         OrderCount       int     `json:"orderCount"`
     }
+
+    ShopReportReq {
+        StartTime string `form:"startTime,optional"`
+        EndTime   string `form:"endTime,optional"`
+    }
+
+    ShopReportResp {
+        TotalSales    float64            `json:"totalSales"`
+        TotalOrders   int                `json:"totalOrders"`
+        AvgOrderValue float64            `json:"avgOrderValue"`
+        RefundRate    float64            `json:"refundRate"`
+        SalesTrend    []SalesTrendPoint  `json:"salesTrend"`
+        TopProducts   []TopProduct       `json:"topProducts"`
+    }
+
+    SalesTrendPoint {
+        Date   string  `json:"date"`
+        Sales  float64 `json:"sales"`
+        Orders int     `json:"orders"`
+    }
+
+    TopProduct {
+        ProductId   int64   `json:"productId"`
+        ProductName string  `json:"productName"`
+        Sales       float64 `json:"sales"`
+        OrderCount  int     `json:"orderCount"`
+    }
 )
+
+// 法师提现申请
+type (
+    WithdrawalApplyReq {
+        Amount   float64 `json:"amount"`
+        BankCard string  `json:"bankCard"`
+    }
+    WithdrawalApplyResp {
+        Id            int64   `json:"id"`
+        WithdrawalNo  string  `json:"withdrawalNo"`
+        ApplicantType string  `json:"applicantType"`
+        ApplicantId   string  `json:"applicantId"`
+        Amount        float64 `json:"amount"`
+        Status        string  `json:"status"`
+        CreateTime    string  `json:"createTime"`
+    }
+)
+
+@server (
+    group: finance.master
+    prefix: /api/v1/admin/finance/withdrawals
+    jwt: Auth
+)
+service finance-service {
+    @handler withdrawalApply
+    post /apply (WithdrawalApplyReq) returns (WithdrawalApplyResp)
+}
 
 @server (
     group: finance

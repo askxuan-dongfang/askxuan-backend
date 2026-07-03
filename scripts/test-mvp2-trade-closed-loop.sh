@@ -172,7 +172,8 @@ fi
 # ===== 7. Mock 微信支付回调 =====
 info "步骤 7/10: Mock 微信支付回调"
 if [ -n "$PAYMENT_NO" ]; then
-    CALLBACK_PAYLOAD=$(jq -n --arg pn "$PAYMENT_NO" '{paymentNo:$pn,tradeNo:"MOCK_TX_001",result:"success"}')
+    MOCK_TX="MOCK_TX_$(date +%s)"
+    CALLBACK_PAYLOAD=$(jq -n --arg pn "$PAYMENT_NO" --arg tn "$MOCK_TX" '{paymentNo:$pn,tradeNo:$tn,result:"success"}')
     CB_BODY=$(jq -n --arg rb "$CALLBACK_PAYLOAD" '{rawBody:$rb}')
     CB_RESP=$(curl -s -X POST "$BASE/api/v1/payments/callback/wechat" \
         -H 'Content-Type: application/json' \

@@ -17,6 +17,9 @@ import (
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
 
+	// JWT 鉴权配置（法师工作台接口需要登录）
+	authCfg := &middleware.AuthConfig{Secret: svcCtx.Config.AuthSecret}
+
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodGet,
@@ -68,7 +71,21 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/admin/finance/reports",
 			Handler: reportsHandler(svcCtx),
 		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/finance/shop/reports",
+			Handler: shopReportsHandler(svcCtx),
+		},
 	})
+
+	// ============ 法师工作台分组（需JWT，masterId 从 JWT 获取） ============
+	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/admin/finance/withdrawals/apply",
+			Handler: withdrawalApplyHandler(svcCtx),
+		},
+	}...))
 }
 
 func overviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
@@ -190,6 +207,23 @@ func withdrawalProcessHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	}
 }
 
+func withdrawalApplyHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.WithdrawalApplyReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewWithdrawalApplyLogic(r.Context(), svcCtx)
+		resp, err := l.WithdrawalApply(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
 func commissionConfigListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.CommissionConfigListReq
@@ -233,6 +267,23 @@ func reportsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewReportsLogic(r.Context(), svcCtx)
 		resp, err := l.Reports(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func shopReportsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ShopReportReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewShopReportsLogic(r.Context(), svcCtx)
+		resp, err := l.ShopReports(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

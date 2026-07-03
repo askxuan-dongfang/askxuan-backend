@@ -104,6 +104,12 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/admin/temples/apply",
 			Handler: adminTempleApplyHandler(svcCtx),
 		},
+		// 寺院报表
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/temples/reports",
+			Handler: adminTempleReportsHandler(svcCtx),
+		},
 	}
 	server.AddRoutes(rest.WithMiddleware(adminContextMiddleware, adminRoutes...))
 
@@ -405,6 +411,23 @@ func adminTempleApplyHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewAdminTempleApplyLogic(r.Context(), svcCtx)
 		resp, err := l.AdminTempleApply(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminTempleReportsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.TempleReportReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewAdminTempleReportsLogic(r.Context(), svcCtx)
+		resp, err := l.AdminTempleReports(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

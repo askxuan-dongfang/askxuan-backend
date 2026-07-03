@@ -257,6 +257,33 @@ type (
         Description string  `json:"description"`
         Status      string  `json:"status"`
     }
+
+    AdminBlessingServiceCreateReq {
+        ServiceName string  `json:"serviceName"`
+        TempleCode  string  `json:"templeCode"`
+        MasterCode  string  `json:"masterCode"`
+        Price       float64 `json:"price"`
+        Description string  `json:"description,optional"`
+        Status      string  `json:"status,optional"` // on_shelf/off_shelf
+    }
+
+    AdminBlessingServiceCreateResp {
+        Id int64 `json:"id"`
+    }
+
+    AdminBlessingServiceUpdateReq {
+        Id          int64   `path:"id"`
+        ServiceName string  `json:"serviceName"`
+        TempleCode  string  `json:"templeCode"`
+        MasterCode  string  `json:"masterCode"`
+        Price       float64 `json:"price"`
+        Description string  `json:"description,optional"`
+        Status      string  `json:"status"`
+    }
+
+    AdminBlessingServiceDeleteReq {
+        Id int64 `path:"id"`
+    }
 )
 
 // ==================== C端路由 ====================
@@ -325,4 +352,13 @@ service diy-service {
 
     @handler adminBlessingServiceList
     get /blessing-services (AdminBlessingServiceListReq) returns (AdminBlessingServiceListResp)
+
+    @handler adminBlessingServiceCreate
+    post /blessing-services (AdminBlessingServiceCreateReq) returns (AdminBlessingServiceCreateResp)
+
+    @handler adminBlessingServiceUpdate
+    put /blessing-services/:id (AdminBlessingServiceUpdateReq) returns (BlessingService)
+
+    @handler adminBlessingServiceDelete
+    delete /blessing-services/:id (AdminBlessingServiceDeleteReq)
 }

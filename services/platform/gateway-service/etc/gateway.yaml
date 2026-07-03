@@ -36,17 +36,17 @@ Upstreams:
     Target: localhost:8094
   - Prefix: /api/v1/file
     Target: localhost:8097
-  - Prefix: /api/v1/product
+  - Prefix: /api/v1/products
     Target: localhost:8086
   - Prefix: /api/v1/diy
     Target: localhost:8088
-  - Prefix: /api/v1/order
+  - Prefix: /api/v1/orders
     Target: localhost:8089
   - Prefix: /api/v1/payments
     Target: localhost:8090
   - Prefix: /api/v1/logistics
     Target: localhost:8095
-  - Prefix: /api/v1/review
+  - Prefix: /api/v1/reviews
     Target: localhost:8092
   - Prefix: /api/v1/audit
     Target: localhost:8093
@@ -74,6 +74,9 @@ Upstreams:
   - Prefix: /api/v1/admin/platform/temples
     Target: localhost:8083
   # master 法师工作台 + 平台审核
+  # 注意：/admin/masters/bookings 属于 booking-service，需在 /admin/masters 之前匹配
+  - Prefix: /api/v1/admin/masters/bookings
+    Target: localhost:8085
   - Prefix: /api/v1/admin/masters
     Target: localhost:8084
   - Prefix: /api/v1/admin/platform/masters
@@ -114,7 +117,7 @@ Upstreams:
   - Prefix: /api/v1/admin/marketing
     Target: localhost:8096
 
-# 不需要鉴权的白名单路径（登录 / 注册 / 续期 / 支付回调 / 管理台登录）
+# 不需要鉴权的白名单路径（登录 / 注册 / 续期 / 支付回调 / 管理台登录 / 公开浏览接口）
 NoAuthPaths:
   - /api/v1/auth/login
   - /api/v1/auth/refresh
@@ -122,3 +125,6 @@ NoAuthPaths:
   - /api/v1/user/register
   - /api/v1/payments/callback/wechat
   - /api/v1/payments/callback/alipay
+  - /api/v1/temples
+  - /api/v1/masters
+  - /api/v1/health

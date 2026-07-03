@@ -72,9 +72,24 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	// 根据 role.Code 映射 clientId
 	clientID := roleCodeToClientID(role.Code)
 
-	// templeId / masterId 从 VARCHAR 解析为 int64（空字符串为0）
+	// templeId 从 VARCHAR 解析为 int64（空字符串为0）
 	templeID, _ := strconv.ParseInt(acc.TempleId, 10, 64)
-	masterID, _ := strconv.ParseInt(acc.MasterId, 10, 64)
+
+	// masterId：admin_account.master_id 是 VARCHAR（如 "M001"），需查 master 表获取 int64 id
+	var masterID int64
+	if acc.MasterId != "" {
+		// 先尝试直接解析为数字
+		if id, err := strconv.ParseInt(acc.MasterId, 10, 64); err == nil {
+			masterID = id
+		} else {
+			// 字符串格式（如 "M001"），查 master 表
+			var id int64
+			if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &id,
+				"SELECT id FROM master WHERE code = ?", acc.MasterId); err == nil {
+				masterID = id
+			}
+		}
+	}
 
 	// 签发 Access Token（2h）
 	access, err := common.GenAccessToken(

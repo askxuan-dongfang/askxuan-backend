@@ -17,6 +17,9 @@ import (
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
 
+	// JWT 鉴权配置（法师工作台接口需要登录）
+	authCfg := &middleware.AuthConfig{Secret: svcCtx.Config.AuthSecret}
+
 	// ============ C端分组 ============
 	server.AddRoutes([]rest.Route{
 		{
@@ -52,7 +55,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		},
 	})
 
-	// ============ 寺院管理台分组（需JWT） ============
+	// ============ 寺院管理台分组 ============
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodGet,
@@ -95,6 +98,15 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: adminReviewReplyHandler(svcCtx),
 		},
 	})
+
+	// ============ 法师工作台分组（需JWT） ============
+	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/masters/bookings",
+			Handler: masterBookingListHandler(svcCtx),
+		},
+	}...))
 }
 
 // ============ C端 Handler ============
@@ -331,6 +343,25 @@ func adminReviewReplyHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewAdminReviewReplyLogic(r.Context(), svcCtx)
 		resp, err := l.AdminReviewReply(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+// ============ 法师工作台 Handler ============
+
+func masterBookingListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MasterBookingListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewMasterBookingListLogic(r.Context(), svcCtx)
+		resp, err := l.MasterBookingList(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

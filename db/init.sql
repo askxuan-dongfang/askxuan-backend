@@ -133,27 +133,33 @@ CREATE TABLE `material` (
   `spec` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '规格',
   `unit_price` DECIMAL(10,2) NOT NULL COMMENT '单价',
   `unit` VARCHAR(16) NOT NULL DEFAULT '颗' COMMENT '单位',
+  `category` VARCHAR(32) NOT NULL DEFAULT 'main_bead' COMMENT '材料分类',
+  `five_elements` VARCHAR(16) NOT NULL DEFAULT '' COMMENT '五行属性',
+  `image` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '材料图片',
+  `stock` INT NOT NULL DEFAULT 0 COMMENT '库存',
+  `status` VARCHAR(32) NOT NULL DEFAULT 'on_shelf' COMMENT '状态：on_shelf/off_shelf',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_name_spec` (`name`,`spec`)
+  UNIQUE KEY `uk_name_spec` (`name`,`spec`),
+  KEY `idx_category_status` (`category`,`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='DIY手串材料表';
 
-INSERT INTO `material` (`name`,`spec`,`unit_price`,`unit`) VALUES
-('小叶紫檀圆珠','10mm',28.00,'颗'),
-('星月菩提','10mm',18.00,'颗'),
-('凤眼菩提','10mm',22.00,'颗'),
-('白玉','8mm',35.00,'颗'),
-('青金石','10mm',25.00,'颗'),
-('南红玛瑙','8mm',32.00,'颗'),
-('蜜蜡','10mm',45.00,'颗'),
-('黑曜石','10mm',12.00,'颗'),
-('藏银三通','10mm',48.00,'个'),
-('蜜蜡佛头','12mm',68.00,'个'),
-('花丝莲花吊坠','15mm',20.00,'个'),
-('白水晶隔片','6mm',2.50,'颗'),
-('流苏配饰','',28.00,'个'),
-('弹力绳','',2.00,'根');
+INSERT INTO `material` (`name`,`spec`,`unit_price`,`unit`,`category`,`five_elements`,`image`,`stock`,`status`) VALUES
+('小叶紫檀圆珠','10mm',28.00,'颗','main_bead','wood','/assets/materials/rosewood.jpg',500,'on_shelf'),
+('星月菩提','10mm',18.00,'颗','main_bead','wood','/assets/materials/bodhi.jpg',500,'on_shelf'),
+('凤眼菩提','10mm',22.00,'颗','main_bead','wood','/assets/materials/rudraksha.jpg',500,'on_shelf'),
+('白玉','8mm',35.00,'颗','main_bead','earth','/assets/materials/jade.jpg',300,'on_shelf'),
+('青金石','10mm',25.00,'颗','main_bead','water','/assets/materials/lapis.jpg',300,'on_shelf'),
+('南红玛瑙','8mm',32.00,'颗','main_bead','fire','/assets/materials/agate.jpg',300,'on_shelf'),
+('蜜蜡','10mm',45.00,'颗','main_bead','earth','/assets/materials/amber.jpg',260,'on_shelf'),
+('黑曜石','10mm',12.00,'颗','main_bead','water','/assets/materials/obsidian.jpg',500,'on_shelf'),
+('藏银三通','10mm',48.00,'个','three_way','metal','/assets/materials/silver-three-way.jpg',120,'on_shelf'),
+('蜜蜡佛头','12mm',68.00,'个','buddha_head','earth','/assets/materials/amber-head.jpg',120,'on_shelf'),
+('花丝莲花吊坠','15mm',20.00,'个','pendant','metal','/assets/materials/lotus-pendant.jpg',200,'on_shelf'),
+('白水晶隔片','6mm',2.50,'颗','spacer','water','/assets/materials/crystal-spacer.jpg',1000,'on_shelf'),
+('流苏配饰','',28.00,'个','tassel','fire','/assets/materials/tassel.jpg',180,'on_shelf'),
+('弹力绳','',2.00,'根','cord','wood','/assets/materials/cord.jpg',1000,'on_shelf');
 
 -- ----------------------------
 -- 6. 用户表 user
@@ -197,7 +203,7 @@ CREATE TABLE `booking` (
   `time_slot` VARCHAR(32) NOT NULL COMMENT '时段',
   `merit_money` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '功德金',
   `merit_money_tier` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '功德金档位',
-  `status` VARCHAR(16) NOT NULL DEFAULT 'pending' COMMENT 'pending/confirmed/inProgress/completed/cancelled',
+  `status` VARCHAR(16) NOT NULL DEFAULT 'pending' COMMENT 'pending/confirmed/in_progress/completed/cancelled/reviewed',
   `note` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '备注',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -455,6 +461,7 @@ CREATE TABLE IF NOT EXISTS `temple_service` (
 INSERT INTO `temple_service` (`temple_code`,`service_code`,`service_name`,`price`,`time_slots`,`status`,`create_time`) VALUES
 ('T001','S001','祈福',200.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
 ('T001','S003','开光',500.00,'["10:00-11:00"]','on_shelf','2026-06-01 10:00:00'),
+('T001','S007','命理咨询',300.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
 ('T003','S005','超度',500.00,'["14:00-15:30"]','on_shelf','2026-06-01 10:00:00');
 
 CREATE TABLE IF NOT EXISTS `service_schedule` (
@@ -609,6 +616,23 @@ CREATE TABLE IF NOT EXISTS `push_log` (
   KEY `idx_user` (`user_id`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='推送日志';
+
+CREATE TABLE IF NOT EXISTS `device_token` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
+  `client_type` VARCHAR(32) NOT NULL DEFAULT 'customer' COMMENT 'customer/master',
+  `platform` VARCHAR(16) NOT NULL DEFAULT 'ios' COMMENT 'ios/android',
+  `device_token` VARCHAR(255) NOT NULL COMMENT 'APNs/厂商推送 token',
+  `bundle_id` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'iOS bundle id',
+  `app_version` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '客户端版本',
+  `status` VARCHAR(16) NOT NULL DEFAULT 'active' COMMENT 'active/inactive',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_device_token` (`device_token`),
+  KEY `idx_user_client` (`user_id`,`client_type`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='设备推送 token';
 
 -- 系统公告表（通信模块 - 系统公告，IM 咨询对话由 OpenIM 独立服务承载）
 CREATE TABLE IF NOT EXISTS `system_announcement` (
@@ -1085,7 +1109,7 @@ CREATE TABLE IF NOT EXISTS `audit_queue` (
   `biz_id` VARCHAR(64) NOT NULL COMMENT '业务ID',
   `submitter_id` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '提交人ID',
   `content_snapshot` TEXT COMMENT '内容快照，JSON',
-  `status` VARCHAR(32) NOT NULL DEFAULT 'pending' COMMENT 'pending/approved/rejected/first_pass/final_pass/verified',
+  `status` VARCHAR(32) NOT NULL DEFAULT 'pending' COMMENT 'pending/approved/rejected/first_pass/final_pass/pass',
   `auditor_id` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '审核人ID',
   `audit_time` DATETIME DEFAULT NULL COMMENT '审核时间',
   `audit_remark` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '审核备注',
@@ -1430,6 +1454,7 @@ INSERT INTO `dictionary` (`dict_code`,`dict_name`,`item_key`,`item_value`,`sort`
 ('booking_status','预约状态','in_progress','进行中',3,'enabled'),
 ('booking_status','预约状态','completed','已完成',4,'enabled'),
 ('booking_status','预约状态','cancelled','已取消',5,'enabled'),
+('booking_status','预约状态','reviewed','已评价',6,'enabled'),
 ('temple_type','寺院类型','汉传佛教','汉传佛教',1,'enabled'),
 ('temple_type','寺院类型','道教','道教',2,'enabled'),
 ('temple_type','寺院类型','藏传佛教','藏传佛教',3,'enabled'),
@@ -1459,7 +1484,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- 初始化完成
 -- 默认库 askxuan：9 张 MVP-1 核心表（temple/master/service_type/extra_service/material/user/booking/message/merit_money_tier）
 -- 业务域分库：askxuan_auth/askxuan_user/askxuan_temple/askxuan_master/askxuan_booking/askxuan_message/askxuan_shop/askxuan_diy/askxuan_finance/askxuan_review/askxuan_audit/askxuan_logistics/askxuan_marketing/askxuan_ai/askxuan_system
--- askxuan_message 库：5 张表（message_template/push_log/conversation/chat_message/system_announcement）
+-- askxuan_message 库：3 张表（message_template/push_log/system_announcement）
 -- 验证：
 --   SELECT code,name,sect FROM askxuan.temple;            -- 应返回 6 行
 --   SELECT code,dharma_name,sect FROM askxuan.master;     -- 应返回 6 行

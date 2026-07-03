@@ -27,6 +27,8 @@ type MessageModel interface {
 	List(ctx context.Context, userId string, isRead int, page, size int) ([]*Message, int64, error)
 	Insert(ctx context.Context, m *Message) (int64, error)
 	MarkRead(ctx context.Context, id int64) error
+	// MarkReadByUser 标记消息已读，同时校验消息归属（防止越权）
+	MarkReadByUser(ctx context.Context, id int64, userId string) error
 	UnreadCount(ctx context.Context, userId string) (int64, error)
 	MarkAllRead(ctx context.Context, userId string) (int64, error)
 	DeleteMessage(ctx context.Context, id int64) error
@@ -91,6 +93,13 @@ func (m *defaultMessageModel) Insert(ctx context.Context, data *Message) (int64,
 func (m *defaultMessageModel) MarkRead(ctx context.Context, id int64) error {
 	const query = `UPDATE ` + messageTable + ` SET is_read = 1 WHERE id = ?`
 	_, err := m.conn.ExecCtx(ctx, query, id)
+	return err
+}
+
+// MarkReadByUser 标记消息已读，同时校验消息归属（防止越权标记他人消息）
+func (m *defaultMessageModel) MarkReadByUser(ctx context.Context, id int64, userId string) error {
+	const query = `UPDATE ` + messageTable + ` SET is_read = 1 WHERE id = ? AND user_id = ?`
+	_, err := m.conn.ExecCtx(ctx, query, id, userId)
 	return err
 }
 

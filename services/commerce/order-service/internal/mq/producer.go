@@ -81,7 +81,7 @@ func (p *Producer) Publish(ctx context.Context, evt OrderNotify) error {
 	}
 	body, _ := json.Marshal(evt)
 	if err := p.ensureChannel(); err != nil {
-		return nil
+		return err
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -96,7 +96,7 @@ func (p *Producer) PublishLogisticsSync(ctx context.Context, evt LogisticsSyncEv
 	}
 	body, _ := json.Marshal(evt)
 	if err := p.ensureChannel(); err != nil {
-		return nil
+		return err
 	}
 	// 声明 logistics 交换机（幂等）
 	_ = p.ch.ExchangeDeclare(ExchangeLogisticsEvents, "fanout", true, false, false, false, nil)

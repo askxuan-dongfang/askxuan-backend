@@ -222,10 +222,10 @@ type TempleAuditListReq struct {
 
 // TempleAuditListResp 审核列表响应
 type TempleAuditListResp struct {
-	Total int64        `json:"total"`
+	Total int64         `json:"total"`
 	List  []TempleAudit `json:"list"`
-	Page  int          `json:"page"`
-	Size  int          `json:"size"`
+	Page  int           `json:"page"`
+	Size  int           `json:"size"`
 }
 
 // TempleAuditActionReq 审核操作请求
@@ -246,4 +246,50 @@ type TemplePlatformStatusReq struct {
 type TemplePlatformStatusResp struct {
 	Id     string `json:"id"`
 	Status string `json:"status"`
+}
+
+// ============ 寺院报表（寺院管理台） ============
+
+// TempleReportReq 寺院报表请求
+type TempleReportReq struct {
+	StartTime string `form:"startTime,optional"`
+	EndTime   string `form:"endTime,optional"`
+}
+
+// TempleReportResp 寺院报表响应
+type TempleReportResp struct {
+	BookingTrend        []BookingTrendPoint `json:"bookingTrend"`
+	RevenueStats        TempleRevenueStats  `json:"revenueStats"`
+	ServiceDistribution []ServiceDistItem   `json:"serviceDistribution"`
+	MasterRanking       []MasterRankItem    `json:"masterRanking"`
+}
+
+// BookingTrendPoint 预约趋势点
+type BookingTrendPoint struct {
+	Date     string  `json:"date"`
+	Bookings int     `json:"bookings"`
+	Revenue  float64 `json:"revenue"`
+}
+
+// TempleRevenueStats 寺院收入统计
+type TempleRevenueStats struct {
+	TotalRevenue    float64 `json:"totalRevenue"`
+	BookingCount    int     `json:"bookingCount"`
+	AvgBookingValue float64 `json:"avgBookingValue"`
+	CompletedCount  int     `json:"completedCount"`
+}
+
+// ServiceDistItem 服务分布项
+type ServiceDistItem struct {
+	ServiceName string  `json:"serviceName"`
+	Count       int     `json:"count"`
+	Percentage  float64 `json:"percentage"`
+}
+
+// MasterRankItem 法师排名项
+type MasterRankItem struct {
+	MasterCode   string  `json:"masterCode"`
+	MasterName   string  `json:"masterName"`
+	BookingCount int     `json:"bookingCount"`
+	Revenue      float64 `json:"revenue"`
 }
