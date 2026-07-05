@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/askxuan/booking-service/internal/model"
 	"github.com/askxuan/booking-service/internal/svc"
 	"github.com/askxuan/booking-service/internal/types"
 	"github.com/askxuan/common"
@@ -70,4 +71,113 @@ func (l *MasterBookingListLogic) MasterBookingList(req *types.MasterBookingListR
 		Page:  page,
 		Size:  size,
 	}, nil
+}
+
+// ============ 法师工作台 - 预约详情/确认/完成 ============
+
+// MasterBookingDetailLogic 法师查询预约详情（仅可查看分配给自己的预约）
+type MasterBookingDetailLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewMasterBookingDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MasterBookingDetailLogic {
+	return &MasterBookingDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *MasterBookingDetailLogic) MasterBookingDetail(req *types.DetailReq) (*types.Booking, error) {
+	masterID := middleware.MasterIDFromCtx(l.ctx)
+	if masterID == 0 {
+		return nil, common.ErrUnauthorized
+	}
+	b, err := l.svcCtx.BookingModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrBookingNotFound
+		}
+		l.Errorf("法师查询预约详情失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	// 校验归属：仅可查看分配给自己的预约
+	master, err := l.svcCtx.MasterReadonlyModel.FindByID(l.ctx, masterID)
+	if err != nil {
+		l.Errorf("法师信息查询失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	if b.MasterId != master.Code {
+		return nil, common.ErrForbidden
+	}
+	resp := types.Booking(*b)
+	return &resp, nil
+}
+
+// MasterBookingConfirmLogic 法师确认预约（pending → confirmed）
+type MasterBookingConfirmLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewMasterBookingConfirmLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MasterBookingConfirmLogic {
+	return &MasterBookingConfirmLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *MasterBookingConfirmLogic) MasterBookingConfirm(req *types.AdminBookingActionReq) (*types.StatusResp, error) {
+	masterID := middleware.MasterIDFromCtx(l.ctx)
+	if masterID == 0 {
+		return nil, common.ErrUnauthorized
+	}
+	// 校验预约归属本法师
+	b, err := l.svcCtx.BookingModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrBookingNotFound
+		}
+		return nil, common.ErrSystem
+	}
+	master, err := l.svcCtx.MasterReadonlyModel.FindByID(l.ctx, masterID)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	if b.MasterId != master.Code {
+		return nil, common.ErrForbidden
+	}
+	operatorId := master.Code
+	return transitBookingStatus(l.Logger, l.ctx, l.svcCtx, req.Id, model.StatusConfirmed, req.Remark, operatorId, model.OperatorTypeMaster, "confirmed")
+}
+
+// MasterBookingCompleteLogic 法师完成预约（in_progress → completed）
+type MasterBookingCompleteLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewMasterBookingCompleteLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MasterBookingCompleteLogic {
+	return &MasterBookingCompleteLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *MasterBookingCompleteLogic) MasterBookingComplete(req *types.AdminBookingActionReq) (*types.StatusResp, error) {
+	masterID := middleware.MasterIDFromCtx(l.ctx)
+	if masterID == 0 {
+		return nil, common.ErrUnauthorized
+	}
+	// 校验预约归属本法师
+	b, err := l.svcCtx.BookingModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrBookingNotFound
+		}
+		return nil, common.ErrSystem
+	}
+	master, err := l.svcCtx.MasterReadonlyModel.FindByID(l.ctx, masterID)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	if b.MasterId != master.Code {
+		return nil, common.ErrForbidden
+	}
+	operatorId := master.Code
+	return transitBookingStatus(l.Logger, l.ctx, l.svcCtx, req.Id, model.StatusCompleted, req.Remark, operatorId, model.OperatorTypeMaster, "completed")
 }

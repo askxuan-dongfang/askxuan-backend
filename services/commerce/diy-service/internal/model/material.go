@@ -25,9 +25,9 @@ const (
 )
 
 const (
-	materialTable     = "askxuan.material"       // 跨库：DSN 指向 askxuan_diy
-	materialSkuTable  = "askxuan_diy.material_sku"
-	extraServiceTable = "askxuan.extra_service"  // 跨库
+	materialTable     = "material"       // 已迁入 askxuan_diy 库
+	materialSkuTable  = "material_sku"
+	extraServiceTable = "extra_service"  // 已迁入 askxuan_diy 库
 )
 
 // Material 材料表

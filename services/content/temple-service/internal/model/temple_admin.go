@@ -15,8 +15,8 @@ const (
 	TempleAdminRoleEditor = "editor"
 )
 
-// templeAdminTable 寺院管理员关联表（位于 askxuan_temple 库）
-const templeAdminTable = "askxuan_temple.temple_admin"
+// templeAdminTable 寺院管理员关联表
+const templeAdminTable = "temple_admin"
 
 // TempleAdmin 寺院管理员关联
 type TempleAdmin struct {

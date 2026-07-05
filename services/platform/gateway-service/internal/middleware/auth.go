@@ -20,21 +20,30 @@ const (
 )
 
 // Auth 全局 JWT 鉴权中间件
-// - 白名单路径直接放行
+// - 白名单路径直接放行（前缀匹配：GET 请求匹配 path == prefix 或 path 以 prefix+"/" 开头）
 // - 校验 Authorization: Bearer <token>，解析后将用户信息注入请求头透传下游
 // - /api/v1/admin/* 路径额外校验管理台角色
 func Auth(secret string, noAuthPaths []string) func(http.Handler) http.Handler {
-	whitelist := make(map[string]bool, len(noAuthPaths))
-	for _, p := range noAuthPaths {
-		whitelist[p] = true
-	}
+	whitelist := noAuthPaths
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// 白名单放行
-			if whitelist[r.URL.Path] {
-				next.ServeHTTP(w, r)
-				return
+			// 白名单放行：GET 请求前缀匹配（支持 /temples 和 /temples/T001 等公开浏览接口）
+			if r.Method == http.MethodGet {
+				for _, p := range whitelist {
+					if r.URL.Path == p || strings.HasPrefix(r.URL.Path, p+"/") {
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
+			} else {
+				// 非 GET 请求精确匹配白名单
+				for _, p := range whitelist {
+					if r.URL.Path == p {
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
 			}
 			// 解析 token
 			auth := r.Header.Get("Authorization")

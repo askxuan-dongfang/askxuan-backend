@@ -2,7 +2,19 @@ Name: order-service
 Host: 0.0.0.0
 Port: 8089
 
-DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_shop?charset=utf8mb4&parseTime=true&loc=Local"
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: order.service
+
+DataSource: "order_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_order?charset=utf8mb4&parseTime=true&loc=Local"
+
+# JWT 签名密钥（与网关/payment-service 共享，用于签名内部服务调用 token）
+AuthSecret: "askxuan-dev-secret-2024"
+
+# payment-service 网关地址（为空默认 http://localhost:8080）
+PaymentGateway: "http://localhost:8080"
 
 Redis:
   Host: localhost:6379

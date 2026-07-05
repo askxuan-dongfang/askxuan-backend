@@ -2,15 +2,15 @@
 # 使用方式：docker compose up -d
 # 销毁方式：docker compose down（保留数据） / docker compose down -v（清除数据卷）
 #
-# 包含服务：
+# 包含服务（askxuan 后端 18 个微服务实际依赖）：
 #   - MySQL 8.0      : 3306
 #   - Redis 7.0      : 6379
 #   - RabbitMQ 3.13  : 5672 (AMQP) / 15672 (管理台)
 #   - MinIO          : 9000 (S3 API) / 9001 (Console)
 #   - etcd           : 2379 (客户端) / 2380 (peer) [quay.io/coreos/etcd:v3.5.15，非 bitnami]
-#   - MongoDB 7.0    : 27017（OpenIM 依赖）
-#   - Zookeeper 3.9  : 2181（Kafka 协调，OpenIM 依赖）
-#   - Kafka          : 9092（OpenIM 消息队列）[confluentinc/cp-kafka:7.7.0，非 bitnami]
+#
+# 说明：MongoDB / Zookeeper / Kafka 已移除——后端 18 个服务均无引用；
+#       OpenIM 自带独立的 mongo/kafka/zookeeper 容器（由 scripts/dev/openim-up.sh 启动）。
 
 name: askxuan
 
@@ -132,60 +132,6 @@ services:
     networks:
       - askxuan-net
 
-  # ===== MongoDB 7.0（OpenIM 依赖） =====
-  mongodb:
-    image: mongo:7.0
-    container_name: askxuan-mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: "root"
-      MONGO_INITDB_ROOT_PASSWORD: "root123"
-      TZ: "Asia/Shanghai"
-    volumes:
-      - mongo-data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 15s
-      timeout: 10s
-      retries: 6
-    networks:
-      - askxuan-net
-
-  # ===== Zookeeper 3.9（Kafka 协调，OpenIM 依赖） =====
-  zookeeper:
-    image: zookeeper:3.9
-    container_name: askxuan-zookeeper
-    restart: unless-stopped
-    ports:
-      - "2181:2181"
-    environment:
-      ZOO_AUTOPURGE_SNAPRETAINCOUNT: "3"
-      ZOO_AUTOPURGE_PURGEINTERVAL: "1"
-      TZ: "Asia/Shanghai"
-    networks:
-      - askxuan-net
-
-  # ===== Kafka 3.7（OpenIM 消息队列） =====
-  kafka:
-    image: confluentinc/cp-kafka:7.7.0
-    container_name: askxuan-kafka
-    restart: unless-stopped
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
-      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092"
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
-      TZ: "Asia/Shanghai"
-    depends_on:
-      - zookeeper
-    networks:
-      - askxuan-net
-
 networks:
   askxuan-net:
     name: askxuan-net
@@ -202,5 +148,3 @@ volumes:
     name: askxuan-minio-data
   etcd-data:
     name: askxuan-etcd-data
-  mongo-data:
-    name: askxuan-mongo-data

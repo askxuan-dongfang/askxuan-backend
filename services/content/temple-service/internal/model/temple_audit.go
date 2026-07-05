@@ -48,8 +48,8 @@ func CanTransitTempleAudit(from, to string) bool {
 
 // ============ 寺院入驻审核 MySQL 存储 ============
 
-// templeAuditTable 审核表（位于 askxuan_temple 库）
-const templeAuditTable = "askxuan_temple.temple_audit"
+// templeAuditTable 审核表
+const templeAuditTable = "temple_audit"
 
 // TempleAudit 寺院入驻审核
 type TempleAudit struct {

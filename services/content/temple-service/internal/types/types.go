@@ -41,8 +41,9 @@ type ListResp struct {
 }
 
 // DetailReq 详情请求
+// 注：Id 加 optional 以兼容管理台 /info 接口（路径无 :id 参数）
 type DetailReq struct {
-	Id string `path:"id"`
+	Id string `path:"id,optional"`
 }
 
 // ============ 寺院图片 ============

@@ -20,12 +20,16 @@ type ServiceContext struct {
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	db := sqlx.NewMysql(c.MySQL.DataSource)
-	return &ServiceContext{
+	sc := &ServiceContext{
 		Config:       c,
 		DB:           db,
 		UserModel:    model.NewUserModel(db),
 		ProfileModel: model.NewUserProfileModel(db),
 		AddressModel: model.NewAddressModel(db),
-		IMClient:     im.NewClient(c.IM.APIURL, c.IM.AdminUserID, c.IM.Secret),
 	}
+	// OpenIM 可选：APIURL 为空时跳过（与 auth-service 一致）
+	if c.IM.APIURL != "" {
+		sc.IMClient = im.NewClient(c.IM.APIURL, c.IM.AdminUserID, c.IM.Secret)
+	}
+	return sc
 }

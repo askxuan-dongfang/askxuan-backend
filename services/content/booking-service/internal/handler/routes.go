@@ -106,6 +106,21 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/admin/masters/bookings",
 			Handler: masterBookingListHandler(svcCtx),
 		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/masters/bookings/:id",
+			Handler: masterBookingDetailHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPut,
+			Path:    "/api/v1/admin/masters/bookings/:id/confirm",
+			Handler: masterBookingConfirmHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPut,
+			Path:    "/api/v1/admin/masters/bookings/:id/complete",
+			Handler: masterBookingCompleteHandler(svcCtx),
+		},
 	}...))
 }
 
@@ -362,6 +377,57 @@ func masterBookingListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewMasterBookingListLogic(r.Context(), svcCtx)
 		resp, err := l.MasterBookingList(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func masterBookingDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.DetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewMasterBookingDetailLogic(r.Context(), svcCtx)
+		resp, err := l.MasterBookingDetail(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func masterBookingConfirmHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminBookingActionReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewMasterBookingConfirmLogic(r.Context(), svcCtx)
+		resp, err := l.MasterBookingConfirm(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func masterBookingCompleteHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminBookingActionReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewMasterBookingCompleteLogic(r.Context(), svcCtx)
+		resp, err := l.MasterBookingComplete(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

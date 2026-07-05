@@ -8,8 +8,8 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-// userProfileTable 用户画像表（位于 askxuan_user 库，需完全限定名跨库查询）
-const userProfileTable = "askxuan_user.user_profile"
+// userProfileTable 用户画像表
+const userProfileTable = "user_profile"
 
 // UserProfileStats 用户画像统计（依据 init.sql user_profile 表）
 type UserProfileStats struct {

@@ -13,10 +13,10 @@ const (
 	ImageTypeDetail = "detail" // 详情图
 )
 
-const productImageTable = "askxuan_shop.product_image"
+const productImageTable = "product_image"
 
 // ProductImage 商品图片表
-// 对应数据库表 askxuan_shop.product_image
+// 对应数据库表 product_image（askxuan_product 库）
 type ProductImage struct {
 	Id        int64  `db:"id" json:"id"`
 	ProductId int64  `db:"product_id" json:"productId"`

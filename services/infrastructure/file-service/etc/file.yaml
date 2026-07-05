@@ -2,6 +2,12 @@ Name: file-service
 Host: 0.0.0.0
 Port: 8097
 
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: file.service
+
 Telemetry:
   Name: file-service
   Endpoint: http://localhost:2379

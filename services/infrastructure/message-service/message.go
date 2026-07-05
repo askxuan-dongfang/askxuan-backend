@@ -11,6 +11,7 @@ import (
 
 	"github.com/askxuan/message-service/internal/config"
 	"github.com/askxuan/message-service/internal/handler"
+	"github.com/askxuan/message-service/internal/middleware"
 	"github.com/askxuan/message-service/internal/model"
 	"github.com/askxuan/message-service/internal/mq"
 	"github.com/askxuan/message-service/internal/svc"
@@ -30,6 +31,7 @@ func main() {
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
+	server.Use(middleware.EnvelopeFunc)
 
 	svcCtx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, svcCtx)

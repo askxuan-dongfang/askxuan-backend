@@ -2,6 +2,12 @@ Name: user-service
 Host: 0.0.0.0
 Port: 8082
 
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: user.service
+
 Telemetry:
   Name: user-service
   Endpoint: http://localhost:2379
@@ -10,14 +16,14 @@ Telemetry:
 
 # MySQL（user 表在 askxuan 库，user_address/user_profile 在 askxuan_user 库，跨库用完全限定名）
 MySQL:
-  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan?charset=utf8mb4&parseTime=true&loc=Local"
+  DataSource: "user_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_user?charset=utf8mb4&parseTime=true&loc=Local"
 
 # JWT 配置（用于解析网关透传的 userId；实际 userId 由网关鉴权后透传）
 Auth:
   AccessSecret: "askxuan-access-secret-change-in-prod"
 
-# OpenIM 配置（best-effort，未部署时不影响主流程）
+# OpenIM 配置（best-effort，未部署时设为空以跳过同步）
 IM:
-  APIURL: "http://localhost:10002"
+  APIURL: "http://127.0.0.1:10002"
   AdminUserID: "imAdmin"
-  Secret: "openim123"
+  Secret: "openIM123"

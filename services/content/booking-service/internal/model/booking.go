@@ -98,9 +98,9 @@ const (
 	bookingSelect = `b.booking_no, b.user_id, b.temple_code, t.name AS temple_name, ` +
 		`b.master_code, m.dharma_name AS master_name, b.service_code, s.name AS service_name, ` +
 		`b.booking_date, b.time_slot, b.merit_money, b.merit_money_tier, b.status, b.note, b.create_time`
-	bookingJoins = ` LEFT JOIN temple t ON t.code = b.temple_code ` +
-		`LEFT JOIN master m ON m.code = b.master_code ` +
-		`LEFT JOIN service_type s ON s.code = b.service_code`
+	bookingJoins = ` LEFT JOIN askxuan_temple.temple t ON t.code = b.temple_code ` +
+		`LEFT JOIN askxuan_master.master m ON m.code = b.master_code ` +
+		`LEFT JOIN askxuan_temple.service_type s ON s.code = b.service_code`
 )
 
 // Insert 新建预约，返回带 booking_no 与初始状态的对象

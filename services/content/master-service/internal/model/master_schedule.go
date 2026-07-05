@@ -15,7 +15,7 @@ const (
 	ScheduleStatusOff       = "off"       // 休息
 )
 
-// MasterSchedule 法师排班（对应 askxuan_master.master_schedule）
+// MasterSchedule 法师排班（对应 master_schedule 表）
 type MasterSchedule struct {
 	Id         int64  `db:"id" json:"id"`
 	MasterCode string `db:"master_code" json:"masterCode"`
@@ -40,7 +40,7 @@ type masterScheduleModel struct {
 
 // NewMasterScheduleModel 构造法师排班模型
 func NewMasterScheduleModel(conn sqlx.SqlConn) MasterScheduleModel {
-	return &masterScheduleModel{conn: conn, table: "askxuan_master.master_schedule"}
+	return &masterScheduleModel{conn: conn, table: "master_schedule"}
 }
 
 const masterScheduleRows = "id, master_code, schedule_date, time_slots, status, create_time, update_time"

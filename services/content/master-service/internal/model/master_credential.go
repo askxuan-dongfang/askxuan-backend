@@ -15,7 +15,7 @@ const (
 	CredentialStatusRejected = "rejected" // 已驳回
 )
 
-// MasterCredential 法师资质证书（对应 askxuan_master.master_credential）
+// MasterCredential 法师资质证书（对应 master_credential 表）
 type MasterCredential struct {
 	Id         int64  `db:"id" json:"id"`
 	MasterCode string `db:"master_code" json:"masterCode"`
@@ -40,7 +40,7 @@ type masterCredentialModel struct {
 
 // NewMasterCredentialModel 构造法师资质证书模型
 func NewMasterCredentialModel(conn sqlx.SqlConn) MasterCredentialModel {
-	return &masterCredentialModel{conn: conn, table: "askxuan_master.master_credential"}
+	return &masterCredentialModel{conn: conn, table: "master_credential"}
 }
 
 const masterCredentialRows = "id, master_code, cert_type, cert_url, status, submit_time, audit_time"

@@ -7,8 +7,8 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-// messageTable 消息表（位于 askxuan 库，跨库查询使用全限定名）
-const messageTable = "askxuan.message"
+// messageTable 消息表（位于 askxuan_message 库）
+const messageTable = "message"
 
 // Message 消息实体
 type Message struct {

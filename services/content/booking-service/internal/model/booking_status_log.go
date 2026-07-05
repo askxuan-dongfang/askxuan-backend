@@ -13,11 +13,12 @@ import (
 const (
 	OperatorTypeUser        = "user"         // 用户操作
 	OperatorTypeTempleAdmin = "temple_admin" // 寺院管理员操作
+	OperatorTypeMaster      = "master"       // 法师操作
 	OperatorTypeSystem      = "system"       // 系统自动（超时取消）
 )
 
-// statusLogTable 状态日志表（位于 askxuan_booking 库）
-const statusLogTable = "askxuan_booking.booking_status_log"
+// statusLogTable 状态日志表
+const statusLogTable = "booking_status_log"
 
 // BookingStatusLog 状态变更日志
 type BookingStatusLog struct {

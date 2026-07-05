@@ -27,8 +27,8 @@ const (
 )
 
 const (
-	roleTable       = "askxuan_auth.role"
-	permissionTable = "askxuan_auth.permission"
+	roleTable       = "role"
+	permissionTable = "permission"
 )
 
 // Role 角色实体（依据 init.sql role 表）

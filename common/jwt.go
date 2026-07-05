@@ -74,6 +74,29 @@ func GenRefreshToken(secret string, userId int64, expireSeconds int64) (string, 
 	return token.SignedString([]byte(secret))
 }
 
+// SignServiceToken 签发内部服务调用 token
+// secret: 签名密钥；serviceName: 调用方服务名（如 order-service）
+// 该 token 为 access 类型，UserType=service，用于服务间调用绕过管理台角色校验
+// 默认有效期 1 小时
+func SignServiceToken(secret, serviceName string) (string, error) {
+	now := time.Now()
+	claims := CustomClaims{
+		UserId:   0,
+		UserType: "service",
+		Roles:    []string{"platform_service"},
+		ClientID: serviceName,
+		Type:     "access",
+		RegisteredClaims: jwt.RegisteredClaims{
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(1 * time.Hour)),
+			Subject:   "service",
+			Issuer:    serviceName,
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(secret))
+}
+
 // ParseToken 解析并校验 token，返回自定义声明
 func ParseToken(secret, tokenStr string) (*CustomClaims, error) {
 	claims := &CustomClaims{}

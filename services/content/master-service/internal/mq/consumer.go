@@ -7,8 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/askxuan/common"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/redis"
 )
 
 // 消费队列约定
@@ -40,12 +42,13 @@ type Consumer struct {
 	user     string
 	password string
 	vhost    string
+	redis    *redis.Redis
 }
 
-// NewConsumer 构造消费者
-func NewConsumer(host string, port int, user, password, vhost string) *Consumer {
+// NewConsumer 构造消费者，rds 用于消息幂等性检查
+func NewConsumer(host string, port int, user, password, vhost string, rds *redis.Redis) *Consumer {
 	return &Consumer{
-		host: host, port: port, user: user, password: password, vhost: vhost,
+		host: host, port: port, user: user, password: password, vhost: vhost, redis: rds,
 	}
 }
 
@@ -88,9 +91,10 @@ func (c *Consumer) consumeLoop(ctx context.Context, bindings []Binding) error {
 	_ = ch.Qos(1, 0, false)
 
 	type queueConsumer struct {
-		msgs    <-chan amqp.Delivery
-		handler func([]byte) error
-		name    string
+		msgs     <-chan amqp.Delivery
+		handler  func([]byte) error
+		name     string
+		exchange string
 	}
 	consumers := make([]queueConsumer, 0, len(bindings))
 	for _, b := range bindings {
@@ -106,7 +110,7 @@ func (c *Consumer) consumeLoop(ctx context.Context, bindings []Binding) error {
 		if err != nil {
 			return fmt.Errorf("注册消费者 %s 失败: %w", b.Queue, err)
 		}
-		consumers = append(consumers, queueConsumer{msgs: msgs, handler: b.Handler, name: b.Queue})
+		consumers = append(consumers, queueConsumer{msgs: msgs, handler: b.Handler, name: b.Queue, exchange: b.Exchange})
 	}
 
 	closeCh := conn.NotifyClose(make(chan *amqp.Error, 1))
@@ -127,8 +131,28 @@ func (c *Consumer) consumeLoop(ctx context.Context, bindings []Binding) error {
 						cancel()
 						return
 					}
+					// 幂等性检查：防止消息重试导致重复处理
+					if c.redis != nil {
+						messageId := common.ResolveMessageId(msg.MessageId, msg.Body)
+						alreadyProcessed, err := common.CheckMessageProcessed(c.redis, qc.exchange, messageId)
+						if err != nil {
+							logx.Errorf("幂等性检查失败(queue=%s)，nack 重投: %v", qc.name, err)
+							_ = msg.Nack(false, true)
+							continue
+						}
+						if alreadyProcessed {
+							logx.Infof("消息已处理过(queue=%s messageId=%s)，跳过", qc.name, messageId)
+							_ = msg.Ack(false)
+							continue
+						}
+					}
 					if err := qc.handler(msg.Body); err != nil {
 						logx.Errorf("处理消息失败(queue=%s)，nack 重投: %v", qc.name, err)
+						// 回滚幂等标记，允许下次重试
+						if c.redis != nil {
+							messageId := common.ResolveMessageId(msg.MessageId, msg.Body)
+							common.RollbackMessageProcessed(c.redis, qc.exchange, messageId)
+						}
 						_ = msg.Nack(false, true)
 					} else {
 						_ = msg.Ack(false)

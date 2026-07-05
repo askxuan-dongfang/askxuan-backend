@@ -59,7 +59,7 @@ type TrackTrace struct {
 	Desc string `json:"desc"`
 }
 
-const logisticsTrackTable = "askxuan_logistics.logistics_track"
+const logisticsTrackTable = "logistics_track"
 
 // LogisticsTrack 物流追踪结构体（对外使用，Traces 为切片）
 type LogisticsTrack struct {

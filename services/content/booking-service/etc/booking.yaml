@@ -2,6 +2,12 @@ Name: booking-service
 Host: 0.0.0.0
 Port: 8085
 
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: booking.service
+
 Telemetry:
   Name: booking-service
   Endpoint: http://localhost:2379
@@ -18,7 +24,7 @@ RabbitMQ:
 
 # MySQL 连接（booking 表在 askxuan 库，booking_status_log/booking_review 在 askxuan_booking 库）
 MySQL:
-  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan?charset=utf8mb4&parseTime=true&loc=Local"
+  DataSource: "booking_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_booking?charset=utf8mb4&parseTime=true&loc=Local"
 
 # JWT 签名密钥
 AuthSecret: "askxuan-access-secret-change-in-prod"

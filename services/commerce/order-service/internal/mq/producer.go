@@ -89,6 +89,26 @@ func (p *Producer) Publish(ctx context.Context, evt OrderNotify) error {
 		amqp.Publishing{ContentType: "application/json", Body: body, DeliveryMode: amqp.Persistent, Timestamp: time.Now()})
 }
 
+// PublishOutbox 发布 outbox 消息（用于事务性发件箱模式）。
+// 复用 order.events exchange；消息体由调用方提供（payload 已是 JSON 字符串）。
+// msgType 写入 amqp.Publishing.Type 字段，消费端可据此路由；messageId 用于幂等去重。
+func (p *Producer) PublishOutbox(ctx context.Context, msgType, messageId, payload string) error {
+	if err := p.ensureChannel(); err != nil {
+		return err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.ch.PublishWithContext(ctx, ExchangeOrderEvents, "", false, false,
+		amqp.Publishing{
+			ContentType:  "application/json",
+			DeliveryMode: amqp.Persistent,
+			MessageId:    messageId,
+			Type:         msgType,
+			Body:         []byte(payload),
+			Timestamp:    time.Now(),
+		})
+}
+
 // PublishLogisticsSync 发布物流同步事件（发货时调用）
 func (p *Producer) PublishLogisticsSync(ctx context.Context, evt LogisticsSyncEvent) error {
 	if evt.Time == "" {

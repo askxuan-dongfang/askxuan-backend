@@ -17,7 +17,9 @@ type RabbitMQConf struct {
 // Config order 服务配置
 type Config struct {
 	rest.RestConf
-	DataSource string      // MySQL 数据源
-	Redis      redis.RedisConf
-	RabbitMQ   RabbitMQConf
+	DataSource     string      // MySQL 数据源
+	Redis          redis.RedisConf
+	RabbitMQ       RabbitMQConf
+	AuthSecret     string // JWT 签名密钥，用于签名内部服务调用 token
+	PaymentGateway string // payment-service 网关地址（含 host:port），为空则默认 http://localhost:8080
 }

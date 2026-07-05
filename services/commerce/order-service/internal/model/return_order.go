@@ -57,7 +57,7 @@ func CanReturnTransit(from, to string) bool {
 	return allowed[to]
 }
 
-const returnOrderTable = "askxuan_shop.return_order"
+const returnOrderTable = "return_order"
 
 // ReturnOrder 退换货表
 type ReturnOrder struct {
@@ -76,8 +76,12 @@ type ReturnOrder struct {
 type ReturnOrderModel interface {
 	Insert(ctx context.Context, data *ReturnOrder) (*ReturnOrder, error)
 	FindOne(ctx context.Context, id int64) (*ReturnOrder, error)
+	FindOneByReturnNo(ctx context.Context, returnNo string) (*ReturnOrder, error)
 	FindList(ctx context.Context, status string, page, size int) ([]*ReturnOrder, int64, error)
 	UpdateStatus(ctx context.Context, id int64, status string) (*ReturnOrder, error)
+	// UpdateStatusWithSession 在指定 session（事务）中更新退换货状态。
+	// 用于与 outbox 写入同事务，保证状态流转与消息发布的原子性。
+	UpdateStatusWithSession(ctx context.Context, session sqlx.Session, id int64, status string) error
 }
 
 type defaultReturnOrderModel struct {
@@ -159,4 +163,22 @@ func (m *defaultReturnOrderModel) UpdateStatus(ctx context.Context, id int64, st
 		return nil, err
 	}
 	return m.FindOne(ctx, id)
+}
+
+func (m *defaultReturnOrderModel) FindOneByReturnNo(ctx context.Context, returnNo string) (*ReturnOrder, error) {
+	var r ReturnOrder
+	query := fmt.Sprintf(`SELECT id, return_no, order_id, type, reason, status, refund_amount, create_time, update_time FROM %s WHERE return_no = ?`, returnOrderTable)
+	err := m.conn.QueryRowCtx(ctx, &r, query, returnNo)
+	if err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// UpdateStatusWithSession 在指定 session（事务）中更新退换货状态。
+// 不返回最新数据，调用方如需可在事务提交后再次 FindOne。
+func (m *defaultReturnOrderModel) UpdateStatusWithSession(ctx context.Context, session sqlx.Session, id int64, status string) error {
+	query := fmt.Sprintf(`UPDATE %s SET status=?, update_time=? WHERE id=?`, returnOrderTable)
+	_, err := session.ExecCtx(ctx, query, status, time.Now().Format("2006-01-02 15:04:05"), id)
+	return err
 }

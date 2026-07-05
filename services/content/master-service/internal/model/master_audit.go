@@ -42,7 +42,7 @@ func CanTransitMasterAudit(from, to string) bool {
 
 // ============ 法师资质审核 MySQL 存储 ============
 
-// MasterAudit 法师资质审核（对应 askxuan_master.master_audit）
+// MasterAudit 法师资质审核（对应 master_audit 表）
 type MasterAudit struct {
 	Id             int64  `db:"id" json:"id"`
 	MasterCode     string `db:"master_code" json:"masterCode"`
@@ -71,7 +71,7 @@ type masterAuditModel struct {
 
 // NewMasterAuditModel 构造法师资质审核模型
 func NewMasterAuditModel(conn sqlx.SqlConn) MasterAuditModel {
-	return &masterAuditModel{conn: conn, table: "askxuan_master.master_audit"}
+	return &masterAuditModel{conn: conn, table: "master_audit"}
 }
 
 const masterAuditRows = "id, master_code, temple_code, credential_urls, status, auditor_id, audit_remark, create_time, update_time"

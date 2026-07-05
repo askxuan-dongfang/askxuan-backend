@@ -7,8 +7,11 @@ import (
 	"github.com/askxuan/temple-service/internal/config"
 	"github.com/askxuan/temple-service/internal/model"
 	"github.com/askxuan/temple-service/internal/mq"
+	"github.com/askxuan/temple-service/rpc/diy"
 
+	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"github.com/zeromicro/go-zero/zrpc"
 )
 
 // ============ 网关注入的请求头（gateway-service/internal/middleware/auth.go 约定） ============
@@ -67,6 +70,7 @@ func ParseHeaderToInt64(val string) int64 {
 type ServiceContext struct {
 	Config             config.Config
 	DB                 sqlx.SqlConn
+	Redis              *redis.Redis
 	MqProducer         *mq.Producer
 	Consumer           *mq.Consumer
 	TempleModel        model.TempleModel
@@ -79,6 +83,7 @@ type ServiceContext struct {
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	db := sqlx.NewMysql(c.MySQL.DataSource)
+	rds := redis.MustNewRedis(c.Redis)
 	producer := mq.NewProducer(
 		c.RabbitMQ.Host, c.RabbitMQ.Port,
 		c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost,
@@ -86,10 +91,16 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	consumer := mq.NewConsumer(
 		c.RabbitMQ.Host, c.RabbitMQ.Port,
 		c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost,
+		rds,
 	)
+
+	// 通过 zrpc 调用 diy-service 查询 blessing_task（替代跨库直读 askxuan_diy.blessing_task）
+	diyClient := diy.NewDiyService(zrpc.MustNewClient(c.DiyRpc))
+
 	return &ServiceContext{
 		Config:             c,
 		DB:                 db,
+		Redis:              rds,
 		MqProducer:         producer,
 		Consumer:           consumer,
 		TempleModel:        model.NewTempleModel(db),
@@ -97,6 +108,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		TempleAdminModel:   model.NewTempleAdminModel(db),
 		TempleAuditModel:   model.NewTempleAuditModel(db),
 		TempleServiceModel: model.NewTempleServiceModel(db),
-		BlessingTaskModel:  model.NewBlessingTaskModel(db),
+		BlessingTaskModel:  model.NewBlessingTaskModel(diyClient),
 	}
 }

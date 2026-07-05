@@ -5,6 +5,7 @@ import (
 	"github.com/askxuan/logistics-service/internal/model"
 	"github.com/askxuan/logistics-service/internal/mq"
 
+	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -12,6 +13,7 @@ import (
 type ServiceContext struct {
 	Config               config.Config
 	DB                   sqlx.SqlConn
+	Redis                *redis.Redis
 	MqProducer           *mq.Producer
 	Consumer             *mq.Consumer
 	ExpressCompanyModel  model.ExpressCompanyModel
@@ -21,6 +23,7 @@ type ServiceContext struct {
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	db := sqlx.NewMysql(c.MySQL.DataSource)
+	rds := redis.MustNewRedis(c.Redis)
 	producer := mq.NewProducer(
 		c.RabbitMQ.Host, c.RabbitMQ.Port,
 		c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost,
@@ -28,10 +31,12 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	consumer := mq.NewConsumer(
 		c.RabbitMQ.Host, c.RabbitMQ.Port,
 		c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost,
+		rds,
 	)
 	return &ServiceContext{
 		Config:               c,
 		DB:                   db,
+		Redis:                rds,
 		MqProducer:           producer,
 		Consumer:             consumer,
 		ExpressCompanyModel:  model.NewExpressCompanyModel(db),

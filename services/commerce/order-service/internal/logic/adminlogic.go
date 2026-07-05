@@ -5,10 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/order-service/internal/model"
+	"github.com/askxuan/order-service/internal/mq"
 	"github.com/askxuan/order-service/internal/svc"
 	"github.com/askxuan/order-service/internal/types"
 
@@ -203,18 +206,28 @@ func (l *AdminReturnRefundLogic) Refund(req *types.AdminReturnRefundReq) (*types
 	if !model.CanReturnTransit(r.Status, model.ReturnStatusRefunding) {
 		return nil, common.ErrStatusInvalid
 	}
-	// 先流转到 refunding
-	_, err = l.svcCtx.ReturnOrderModel.UpdateStatus(l.ctx, req.Id, model.ReturnStatusRefunding)
+
+	// 事务：状态流转 refunding + 写入 outbox 消息（保证原子性）
+	// 退款实际由 payment-service 异步处理，order-service 通过 outbox 可靠投递退款请求，
+	// 通过消费 payment.refund.completed 事件将退货单流转到 completed。
+	payload := mq.BuildRefundRequestPayload(r, req.Amount)
+	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, session sqlx.Session) error {
+		if err := l.svcCtx.ReturnOrderModel.UpdateStatusWithSession(ctx, session, req.Id, model.ReturnStatusRefunding); err != nil {
+			return err
+		}
+		if err := model.InsertOutbox(ctx, session, r.ReturnNo, mq.MessageTypeRefundRequest, payload); err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
+		l.Errorf("退款事务失败（refunding + outbox）: %v", err)
 		return nil, common.ErrSystem
 	}
-	// 调 payment-service 退款接口（HTTP）
-	if err := callPaymentRefund(l.ctx, l.svcCtx, r, req.Amount); err != nil {
-		l.Errorf("调用支付退款失败: %v", err)
-		// 退款失败不改变本地状态，由人工处理
-	}
-	// 流转到 completed
-	updated, err := l.svcCtx.ReturnOrderModel.UpdateStatus(l.ctx, req.Id, model.ReturnStatusCompleted)
+	l.Infof("退款已异步提交，returnNo=%s amount=%.2f，等待 payment.refund.completed 事件", r.ReturnNo, req.Amount)
+
+	// 重新查询返回最新状态（refunding）
+	updated, err := l.svcCtx.ReturnOrderModel.FindOne(l.ctx, req.Id)
 	if err != nil {
 		return nil, common.ErrSystem
 	}
@@ -222,7 +235,11 @@ func (l *AdminReturnRefundLogic) Refund(req *types.AdminReturnRefundReq) (*types
 	return &t, nil
 }
 
-// callPaymentRefund 调用 payment-service 退款接口
+// callPaymentRefund 同步调用 payment-service 退款接口（DEPRECATED）
+// 阶段 5 已改为 Outbox + 异步 MQ 模式：Refund 函数不再调用本函数。
+// 保留代码作为 fallback 与历史参考，后续 payment-service 完全切换到 outbox 消费后可移除。
+//
+// 通过网关调用（网关路由到 etcd 发现的实例），并携带内部服务 JWT 绕过管理台角色校验
 func callPaymentRefund(ctx context.Context, svcCtx *svc.ServiceContext, r *model.ReturnOrder, amount float64) error {
 	payload := map[string]interface{}{
 		"paymentNo": fmt.Sprintf("PAY-%d", r.OrderId), // 临时构造，实际应查询订单关联的支付单号
@@ -230,19 +247,36 @@ func callPaymentRefund(ctx context.Context, svcCtx *svc.ServiceContext, r *model
 		"reason":    r.Reason,
 	}
 	body, _ := json.Marshal(payload)
-	// payment-service 端口 8090；直连调用
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://localhost:8090/api/v1/payments/refund", bytes.NewReader(body))
+
+	// 通过网关调用 payment-service（网关路由到 etcd 发现的实例）
+	refundURL := "http://localhost:8080/api/v1/payments/refund"
+	if svcCtx.Config.PaymentGateway != "" {
+		refundURL = svcCtx.Config.PaymentGateway + "/api/v1/payments/refund"
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, refundURL, bytes.NewReader(body))
 	if err != nil {
-		return err
+		return fmt.Errorf("构造退款请求失败: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+
+	// 构造内部服务 JWT（service 角色，绕过管理台角色校验）
+	token, err := common.SignServiceToken(svcCtx.Config.AuthSecret, "order-service")
 	if err != nil {
-		return err
+		return fmt.Errorf("签名内部 token 失败: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("调用退款接口失败: %w", err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("退款接口返回 %d", resp.StatusCode)
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("退款接口返回 %d: %s", resp.StatusCode, string(respBody))
 	}
 	return nil
 }

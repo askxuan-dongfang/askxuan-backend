@@ -2,6 +2,12 @@ Name: temple-service
 Host: 0.0.0.0
 Port: 8083
 
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: temple.service
+
 Telemetry:
   Name: temple-service
   Endpoint: http://localhost:2379
@@ -18,4 +24,16 @@ RabbitMQ:
 
 # MySQL 连接（temple 表在 askxuan 库，temple_image/temple_admin/temple_audit/temple_service 在 askxuan_temple 库，blessing_task 在 askxuan_diy 库）
 MySQL:
-  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan?charset=utf8mb4&parseTime=true&loc=Local"
+  DataSource: "temple_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_temple?charset=utf8mb4&parseTime=true&loc=Local"
+
+# Redis（消息幂等性检查）
+Redis:
+  Host: localhost:6379
+  Type: node
+
+# diy-service zrpc 客户端（通过 etcd 发现 diy.rpc，查询/更新 blessing_task）
+DiyRpc:
+  Etcd:
+    Hosts:
+      - localhost:2379
+    Key: diy.rpc

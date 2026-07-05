@@ -33,10 +33,18 @@ SERVICE_PATHS := $(GATEWAY_PATH) $(AUTH_PATH) $(USER_PATH) $(TEMPLE_PATH) \
                  $(LOGISTICS_PATH) $(FINANCE_PATH) $(AUDIT_PATH) $(MESSAGE_PATH) \
                  $(FILE_PATH) $(AI_PATH)
 
+SERVICE_BINS := gateway auth user temple master booking review product order payment diy marketing logistics finance audit message file ai
+SERVICE_PORTS := gateway:8080 auth:8081 user:8082 temple:8083 master:8084 booking:8085 product:8086 diy:8088 order:8089 payment:8090 finance:8091 review:8092 audit:8093 message:8094 logistics:8095 marketing:8096 file:8097 ai:8098
+CORE_SERVICE_PATHS := $(GATEWAY_PATH) $(AUTH_PATH) $(MESSAGE_PATH)
+CORE_SERVICE_BINS := gateway auth message
+CORE_SERVICE_PORTS := gateway:8080 auth:8081 message:8094
+
 # 默认 GOPROXY 加速
 export GOPROXY ?= https://goproxy.cn,direct
+LOG_DIR := $(CURDIR)/logs
+PID_DIR := $(LOG_DIR)/pids
 
-.PHONY: help tidy build run-all start-all stop-all db-init clean \
+.PHONY: help tidy build run-all start-all start-core stop-core stop-all db-init db-reset clean \
         test test-verbose vet lint fmt docker-build docker-build-all swagger \
         start-gateway start-auth start-user start-temple start-master start-booking \
         start-message start-file start-product start-diy start-order start-payment \
@@ -171,43 +179,107 @@ build: build-gateway build-auth build-user build-temple build-master build-booki
 	@echo "==> 所有服务编译完成"
 
 # ---------- 全部启动（后台并发，日志输出到 logs/） ----------
-start-all: ## 并发启动所有服务（后台运行，日志写到 logs/）
-	@mkdir -p logs
+start-all: build ## 编译并后台启动所有服务（PID 写入 logs/pids/）
+	@mkdir -p $(PID_DIR)
+	@echo "==> 停止旧服务..."
+	@$(MAKE) -s stop-all
+	@echo "==> 预检服务端口..."
+	@for pair in $(SERVICE_PORTS); do \
+		bin=$$(printf '%s\n' "$$pair" | cut -d: -f1); \
+		port=$$(printf '%s\n' "$$pair" | cut -d: -f2); \
+		pids=$$(lsof -tiTCP:$$port -sTCP:LISTEN 2>/dev/null || true); \
+		if [ -n "$$pids" ]; then \
+			echo "  端口 $$port 被占用（$$bin），清理 PID: $$pids"; \
+			kill $$pids 2>/dev/null || true; \
+			sleep 1; \
+		fi; \
+	done
 	@echo "==> 后台启动所有服务，日志见 logs/"
 	@for path in $(SERVICE_PATHS); do \
 		bin=$$(ls $$path/*.go | head -1 | sed 's|.*/||;s|\.go$$||'); \
-		echo "  启动 $$path ($$bin.go)"; \
-		(cd $$path && nohup go run $$bin.go -f etc/$$bin.yaml > ../../../logs/$$bin.log 2>&1 &) || true; \
+		echo "  启动 $$path ($$bin)"; \
+		(cd $$path && nohup ./$$bin -f etc/$$bin.yaml > $(LOG_DIR)/$$bin.log 2>&1 & echo $$! > $(PID_DIR)/$$bin.pid) || exit 1; \
 	done
-	@echo "==> 已启动。查看日志：tail -f logs/gateway.log"
+	@echo "==> 等待 gateway 健康检查..."
+	@ok=0; \
+	for i in $$(seq 1 30); do \
+		if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null 2>&1; then ok=1; break; fi; \
+		sleep 1; \
+	done; \
+	if [ "$$ok" != "1" ]; then \
+		echo "==> gateway 启动失败，最近日志："; \
+		tail -80 $(LOG_DIR)/gateway.log 2>/dev/null || true; \
+		exit 1; \
+	fi
+	@echo "==> 已启动。健康检查：http://127.0.0.1:8080/api/v1/health"
 	@echo "==> 停止：make stop-all"
+
+start-core: build-gateway build-auth build-message ## 低内存启动核心通信服务（gateway/auth/message）
+	@mkdir -p $(PID_DIR)
+	@echo "==> 停止旧核心服务..."
+	@$(MAKE) -s stop-core
+	@echo "==> 预检核心服务端口..."
+	@for pair in $(CORE_SERVICE_PORTS); do \
+		bin=$$(printf '%s\n' "$$pair" | cut -d: -f1); \
+		port=$$(printf '%s\n' "$$pair" | cut -d: -f2); \
+		pids=$$(lsof -tiTCP:$$port -sTCP:LISTEN 2>/dev/null || true); \
+		if [ -n "$$pids" ]; then \
+			echo "  端口 $$port 被占用（$$bin），清理 PID: $$pids"; \
+			kill $$pids 2>/dev/null || true; \
+			sleep 1; \
+		fi; \
+	done
+	@echo "==> 后台启动核心通信服务，日志见 logs/"
+	@for path in $(CORE_SERVICE_PATHS); do \
+		bin=$$(ls $$path/*.go | head -1 | sed 's|.*/||;s|\.go$$||'); \
+		echo "  启动 $$path ($$bin)"; \
+		(cd $$path && nohup ./$$bin -f etc/$$bin.yaml > $(LOG_DIR)/$$bin.log 2>&1 & echo $$! > $(PID_DIR)/$$bin.pid) || exit 1; \
+	done
+	@echo "==> 等待 gateway 健康检查..."
+	@ok=0; \
+	for i in $$(seq 1 30); do \
+		if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null 2>&1; then ok=1; break; fi; \
+		sleep 1; \
+	done; \
+	if [ "$$ok" != "1" ]; then \
+		echo "==> gateway 启动失败，最近日志："; \
+		tail -80 $(LOG_DIR)/gateway.log 2>/dev/null || true; \
+		exit 1; \
+	fi
+	@echo "==> 核心通信服务已启动。健康检查：http://127.0.0.1:8080/api/v1/health"
+
+stop-core: ## 停止核心通信服务
+	@echo "==> 停止核心通信服务..."
+	@for bin in $(CORE_SERVICE_BINS); do \
+		if [ -f $(PID_DIR)/$$bin.pid ]; then \
+			pid=$$(cat $(PID_DIR)/$$bin.pid); \
+			kill $$pid 2>/dev/null || true; \
+			rm -f $(PID_DIR)/$$bin.pid; \
+		fi; \
+	done
+	@echo "==> 核心通信服务已停止"
 
 stop-all: ## 停止所有服务
 	@echo "==> 停止所有服务..."
-	@-pkill -f "go run.*gateway.go" 2>/dev/null || true
-	@-pkill -f "go run.*auth.go" 2>/dev/null || true
-	@-pkill -f "go run.*user.go" 2>/dev/null || true
-	@-pkill -f "go run.*temple.go" 2>/dev/null || true
-	@-pkill -f "go run.*master.go" 2>/dev/null || true
-	@-pkill -f "go run.*booking.go" 2>/dev/null || true
-	@-pkill -f "go run.*message.go" 2>/dev/null || true
-	@-pkill -f "go run.*file.go" 2>/dev/null || true
-	@-pkill -f "go run.*product.go" 2>/dev/null || true
-	@-pkill -f "go run.*diy.go" 2>/dev/null || true
-	@-pkill -f "go run.*order.go" 2>/dev/null || true
-	@-pkill -f "go run.*payment.go" 2>/dev/null || true
-	@-pkill -f "go run.*finance.go" 2>/dev/null || true
-	@-pkill -f "go run.*review.go" 2>/dev/null || true
-	@-pkill -f "go run.*audit.go" 2>/dev/null || true
-	@-pkill -f "go run.*logistics.go" 2>/dev/null || true
-	@-pkill -f "go run.*marketing.go" 2>/dev/null || true
-	@-pkill -f "go run.*ai.go" 2>/dev/null || true
+	@for bin in $(SERVICE_BINS); do \
+		if [ -f $(PID_DIR)/$$bin.pid ]; then \
+			pid=$$(cat $(PID_DIR)/$$bin.pid); \
+			kill $$pid 2>/dev/null || true; \
+			rm -f $(PID_DIR)/$$bin.pid; \
+		fi; \
+	done
+	@-pkill -f "/askXuan-backend/services/.*/\(gateway\|auth\|user\|temple\|master\|booking\|review\|product\|order\|payment\|diy\|marketing\|logistics\|finance\|audit\|message\|file\|ai\) " 2>/dev/null || true
 	@echo "==> 已停止"
 
 # ---------- 数据库 ----------
 db-init: ## 初始化数据库（建表 + 种子数据）
 	@echo "==> 初始化数据库..."
 	@docker exec -i askxuan-mysql mysql -uroot -proot123 askxuan < db/init.sql && echo "==> 数据库初始化完成" || echo "==> 失败：请先执行 docker compose up -d"
+
+db-reset: ## 重置本地数据库（危险：删除 askxuan* 业务库后重新初始化）
+	@echo "==> 即将删除 askxuan* 业务库并重新初始化..."
+	@docker exec askxuan-mysql mysql -uroot -proot123 -e "SET FOREIGN_KEY_CHECKS=0; DROP DATABASE IF EXISTS askxuan; DROP DATABASE IF EXISTS askxuan_auth; DROP DATABASE IF EXISTS askxuan_user; DROP DATABASE IF EXISTS askxuan_temple; DROP DATABASE IF EXISTS askxuan_master; DROP DATABASE IF EXISTS askxuan_booking; DROP DATABASE IF EXISTS askxuan_message; DROP DATABASE IF EXISTS askxuan_shop; DROP DATABASE IF EXISTS askxuan_diy; DROP DATABASE IF EXISTS askxuan_finance; DROP DATABASE IF EXISTS askxuan_review; DROP DATABASE IF EXISTS askxuan_audit; DROP DATABASE IF EXISTS askxuan_logistics; DROP DATABASE IF EXISTS askxuan_marketing; DROP DATABASE IF EXISTS askxuan_ai; DROP DATABASE IF EXISTS askxuan_system; CREATE DATABASE askxuan DEFAULT CHARACTER SET utf8mb4; SET FOREIGN_KEY_CHECKS=1;"
+	@$(MAKE) -s db-init
 
 # ---------- 清理 ----------
 clean: ## 清理编译产物

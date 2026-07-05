@@ -72,8 +72,20 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	// 根据 role.Code 映射 clientId
 	clientID := roleCodeToClientID(role.Code)
 
-	// templeId 从 VARCHAR 解析为 int64（空字符串为0）
-	templeID, _ := strconv.ParseInt(acc.TempleId, 10, 64)
+	// templeId 从 VARCHAR（如 "T001"）解析为 int64；字符串格式需跨库查 askxuan_temple.temple
+	var templeID int64
+	if acc.TempleId != "" {
+		if id, err := strconv.ParseInt(acc.TempleId, 10, 64); err == nil {
+			templeID = id
+		} else {
+			// 字符串格式（如 "T001"），查 temple 表（跨库 askxuan_temple.temple）
+			var tid int64
+			if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &tid,
+				"SELECT id FROM askxuan_temple.temple WHERE code = ?", acc.TempleId); err == nil {
+				templeID = tid
+			}
+		}
+	}
 
 	// masterId：admin_account.master_id 是 VARCHAR（如 "M001"），需查 master 表获取 int64 id
 	var masterID int64
@@ -82,12 +94,12 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		if id, err := strconv.ParseInt(acc.MasterId, 10, 64); err == nil {
 			masterID = id
 		} else {
-			// 字符串格式（如 "M001"），查 master 表
-			var id int64
-			if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &id,
-				"SELECT id FROM master WHERE code = ?", acc.MasterId); err == nil {
-				masterID = id
-			}
+			// 字符串格式（如 "M001"），查 master 表（跨库 askxuan_master.master）
+		var id int64
+		if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &id,
+			"SELECT id FROM askxuan_master.master WHERE code = ?", acc.MasterId); err == nil {
+			masterID = id
+		}
 		}
 	}
 
@@ -126,6 +138,18 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		l.Errorf("更新最后登录时间失败 id=%d: %v", acc.Id, err)
 	}
 
+	// best-effort 同步法师到 OpenIM 并获取 IM token（仅法师角色需要 imToken）
+	var imToken string
+	if l.svcCtx.IMClient != nil && masterID > 0 {
+		userIDStr := "m_" + strconv.FormatInt(masterID, 10)
+		masterName := acc.Name
+		masterAvatar := ""
+		_ = l.svcCtx.IMClient.RegisterUser(l.ctx, userIDStr, masterName, masterAvatar)
+		if token, err := l.svcCtx.IMClient.GetUserToken(l.ctx, userIDStr); err == nil {
+			imToken = token
+		}
+	}
+
 	return &types.LoginResp{
 		AccessToken:  access,
 		RefreshToken: refresh,
@@ -135,6 +159,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 			Nickname: acc.Name,
 			Mobile:   acc.Account,
 		},
+		IMToken: imToken,
 	}, nil
 }
 

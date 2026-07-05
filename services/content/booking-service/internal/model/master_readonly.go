@@ -29,10 +29,10 @@ func NewMasterReadonlyModel(conn sqlx.SqlConn) MasterReadonlyModel {
 	return &masterReadonlyModel{conn: conn}
 }
 
-// FindByCode 按法师编码查询（跨库 askxuan.master）
+// FindByCode 按法师编码查询（跨库 askxuan_master.master）
 func (m *masterReadonlyModel) FindByCode(ctx context.Context, code string) (*MasterBrief, error) {
 	var mb MasterBrief
-	query := `SELECT id, code, dharma_name, shelf_status FROM askxuan.master WHERE code = ?`
+	query := `SELECT id, code, dharma_name, shelf_status FROM askxuan_master.master WHERE code = ?`
 	err := m.conn.QueryRowCtx(ctx, &mb, query, code)
 	if err != nil {
 		return nil, err
@@ -40,10 +40,10 @@ func (m *masterReadonlyModel) FindByCode(ctx context.Context, code string) (*Mas
 	return &mb, nil
 }
 
-// FindByID 按法师ID查询（跨库 askxuan.master）
+// FindByID 按法师ID查询（跨库 askxuan_master.master）
 func (m *masterReadonlyModel) FindByID(ctx context.Context, id int64) (*MasterBrief, error) {
 	var mb MasterBrief
-	query := `SELECT id, code, dharma_name, shelf_status FROM askxuan.master WHERE id = ?`
+	query := `SELECT id, code, dharma_name, shelf_status FROM askxuan_master.master WHERE id = ?`
 	err := m.conn.QueryRowCtx(ctx, &mb, query, id)
 	if err != nil {
 		return nil, err

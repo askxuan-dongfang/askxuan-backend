@@ -11,8 +11,8 @@ import (
 
 // ============ 预约评价 MySQL 存储 ============
 
-// reviewTable 评价表（位于 askxuan_booking 库）
-const reviewTable = "askxuan_booking.booking_review"
+// reviewTable 评价表
+const reviewTable = "booking_review"
 
 // BookingReview 预约评价
 type BookingReview struct {

@@ -24,7 +24,7 @@ type ServiceContext struct {
 // NewServiceContext 初始化依赖
 func NewServiceContext(c config.Config) *ServiceContext {
 	db := sqlx.NewMysql(c.MySQL.DataSource)
-	return &ServiceContext{
+	sc := &ServiceContext{
 		Config:            c,
 		DB:                db,
 		Redis:             redis.MustNewRedis(c.Redis),
@@ -32,6 +32,10 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		AdminAccountModel: model.NewAdminAccountModel(db),
 		RoleModel:         model.NewRoleModel(db),
 		PermissionModel:   model.NewPermissionModel(db),
-		IMClient:          im.NewClient(c.IM.APIURL, c.IM.AdminUserID, c.IM.Secret),
 	}
+	// OpenIM 可选：APIURL 为空时跳过（避免本地无 OpenIM 时登录卡住）
+	if c.IM.APIURL != "" {
+		sc.IMClient = im.NewClient(c.IM.APIURL, c.IM.AdminUserID, c.IM.Secret)
+	}
+	return sc
 }

@@ -35,10 +35,10 @@ type DiyOrderItem struct {
 	OrderId      int64   `json:"orderId,optional"`
 	MaterialId   int64   `json:"materialId"`
 	MaterialName string  `json:"materialName"`
-	Spec         string  `json:"spec"`
+	Spec         string  `json:"spec,optional"`
 	UnitPrice    float64 `json:"unitPrice"`
 	Quantity     int     `json:"quantity"`
-	Subtype      string  `json:"subtype"`
+	Subtype      string  `json:"subtype,optional"`
 }
 
 // Material 材料库
@@ -102,7 +102,7 @@ type DesignSaveReq struct {
 	DesignData       string  `json:"designData"`
 	TotalPrice       float64 `json:"totalPrice"`
 	Status           string  `json:"status"`
-	BlessServiceCode string  `json:"blessServiceCode"`
+	BlessServiceCode string  `json:"blessServiceCode,optional"`
 }
 
 type DesignSaveResp struct {
@@ -130,7 +130,7 @@ type DiyOrderCreateReq struct {
 	UserId           string         `json:"userId"`
 	DesignId         int64          `json:"designId"`
 	Items            []DiyOrderItem `json:"items"`
-	BlessServiceCode string         `json:"blessServiceCode"`
+	BlessServiceCode string         `json:"blessServiceCode,optional"`
 	AddressId        int64          `json:"addressId"`
 }
 

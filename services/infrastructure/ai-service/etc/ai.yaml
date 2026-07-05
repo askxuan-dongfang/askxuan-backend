@@ -2,6 +2,12 @@ Name: ai-service
 Host: 0.0.0.0
 Port: 8098
 
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: ai.service
+
 Telemetry:
   Name: ai-service
   Endpoint: http://localhost:2379
@@ -10,7 +16,7 @@ Telemetry:
 
 # MySQL 数据源
 MySQL:
-  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_ai?charset=utf8mb4&parseTime=true&loc=Local"
+  DataSource: "ai_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_ai?charset=utf8mb4&parseTime=true&loc=Local"
 
 # RabbitMQ（发送 ai.divination 异步问事事件）
 RabbitMQ:
@@ -19,3 +25,8 @@ RabbitMQ:
   User: admin
   Password: admin
   VHost: "/"
+
+# Redis（消息幂等性检查）
+Redis:
+  Host: localhost:6379
+  Type: node

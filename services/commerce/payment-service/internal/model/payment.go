@@ -65,11 +65,11 @@ func IsPaymentTerminalStatus(s string) bool {
 		s == PaymentStatusRefunded || s == PaymentStatusSuccess
 }
 
-// 跨库表名常量（payment 表在 askxuan_shop 库，DSN 指向 askxuan_shop，全限定名更安全）
+// 跨库表名常量（payment 表在 askxuan_payment 库，DSN 指向 askxuan_payment）
 const (
-	paymentTable    = "askxuan_shop.payment"
-	paymentLogTable = "askxuan_shop.payment_log"
-	refundTable     = "askxuan_shop.refund"
+	paymentTable    = "payment"
+	paymentLogTable = "payment_log"
+	refundTable     = "refund"
 )
 
 // Payment 支付表

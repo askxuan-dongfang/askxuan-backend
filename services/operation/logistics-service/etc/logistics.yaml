@@ -2,6 +2,12 @@ Name: logistics-service
 Host: 0.0.0.0
 Port: 8095
 
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: logistics.service
+
 Telemetry:
   Name: logistics-service
   Endpoint: http://localhost:2379
@@ -10,7 +16,7 @@ Telemetry:
 
 # MySQL 数据源
 MySQL:
-  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_logistics?charset=utf8mb4&parseTime=true&loc=Local"
+  DataSource: "logistics_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_logistics?charset=utf8mb4&parseTime=true&loc=Local"
 
 # RabbitMQ（发布 logistics.sync 物流状态变更事件）
 RabbitMQ:
@@ -19,3 +25,8 @@ RabbitMQ:
   User: admin
   Password: admin
   VHost: "/"
+
+# Redis（消息幂等性检查）
+Redis:
+  Host: localhost:6379
+  Type: node

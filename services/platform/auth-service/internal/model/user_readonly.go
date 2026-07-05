@@ -7,7 +7,8 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-const userReadonlyTable = "user"
+// user 表位于 askxuan_user 库，auth-service 跨库只读校验登录
+const userReadonlyTable = "askxuan_user.user"
 
 // User 用户实体（只读，仅用于登录校验）
 type User struct {

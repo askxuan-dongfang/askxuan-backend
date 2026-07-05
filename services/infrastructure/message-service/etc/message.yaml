@@ -2,6 +2,12 @@ Name: message-service
 Host: 0.0.0.0
 Port: 8094
 
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: message.service
+
 Telemetry:
   Name: message-service
   Endpoint: http://localhost:2379
@@ -18,7 +24,12 @@ RabbitMQ:
 
 # MySQL（站内消息/模板/推送日志/咨询对话/系统公告）
 MySQL:
-  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_message?charset=utf8mb4&parseTime=true&loc=Local"
+  DataSource: "message_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_message?charset=utf8mb4&parseTime=true&loc=Local"
+
+# Redis（消息幂等性检查）
+Redis:
+  Host: localhost:6379
+  Type: node
 
 # JWT 签名密钥
 AuthSecret: "askxuan-access-secret-change-in-prod"

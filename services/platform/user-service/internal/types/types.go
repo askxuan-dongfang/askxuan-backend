@@ -32,8 +32,9 @@ type ProfileReq struct {
 }
 
 // UpdateProfileReq 更新资料请求
+// 注：UserId 加 optional 以兼容 httpx.Parse（handler 从 X-User-Id header 注入，请求体不带此字段）
 type UpdateProfileReq struct {
-	UserId   int64  `json:"userId"`
+	UserId   int64  `json:"userId,optional"`
 	Nickname string `json:"nickname,optional"`
 	Avatar   string `json:"avatar,optional"`
 	Gender   string `json:"gender,optional"`

@@ -29,10 +29,10 @@ func (l *UnbindDeviceTokenLogic) UnbindDeviceToken(req *types.DeviceTokenUnbindR
 	if userId == "" || token == "" {
 		return nil, common.ErrParamMissing
 	}
-	_, err := l.svcCtx.DeviceTokenModel.Deactivate(l.ctx, userId, token)
+	affected, err := l.svcCtx.DeviceTokenModel.Deactivate(l.ctx, userId, token)
 	if err != nil {
 		l.Errorf("解绑 device token 失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	return &types.DeviceTokenResp{Id: 0, Status: "inactive"}, nil
+	return &types.DeviceTokenResp{Id: affected, Status: "inactive"}, nil
 }

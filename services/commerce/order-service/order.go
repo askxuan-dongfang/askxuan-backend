@@ -39,6 +39,9 @@ func main() {
 	defer cancel()
 	startConsumer(ctx, svcCtx)
 
+	// 启动 Outbox Publisher：轮询 outbox 表，将 pending 消息发送到 MQ
+	startOutboxPublisher(ctx, svcCtx)
+
 	// 优雅退出
 	go func() {
 		ch := make(chan os.Signal, 1)
@@ -49,6 +52,17 @@ func main() {
 
 	fmt.Printf("启动 order-service，监听 %s:%d\n", c.Host, c.Port)
 	server.Start()
+}
+
+// startOutboxPublisher 启动 outbox publisher goroutine，轮询 outbox 表发送待投递消息
+func startOutboxPublisher(ctx context.Context, svcCtx *svc.ServiceContext) {
+	if svcCtx.MqProducer == nil {
+		logx.Info("MqProducer 未配置，跳过 outbox publisher 启动")
+		return
+	}
+	publisher := mq.NewOutboxPublisher(svcCtx.DB, svcCtx.MqProducer)
+	go publisher.Start(ctx)
+	logx.Info("order-service 已启动 outbox publisher")
 }
 
 // startConsumer 启动支付通知和物流同步消费者
@@ -120,7 +134,19 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 				return nil
 			},
 		},
+		// 退款完成事件：payment-service 退款成功后通过 payment.events 发布 action=refunded，
+		// order-service 消费后将 refunding 状态的退货单流转到 completed。
+		// 独立队列 order.refund.completed，与 order.payment.notify 解耦避免相互影响。
+		{
+			Exchange: mq.ExchangePaymentEvents,
+			Queue:    mq.QueueOrderRefundCompleted,
+			Handler: mq.NewRefundCompletedHandler(mq.RefundCompletedDeps{
+				ShopOrderModel:   svcCtx.ShopOrderModel,
+				ReturnOrderModel: svcCtx.ReturnOrderModel,
+				Redis:            svcCtx.Redis,
+			}),
+		},
 	}
 	svcCtx.Consumer.Start(ctx, bindings)
-	logx.Info("order-service 已启动 payment.notify + logistics.sync 消费者")
+	logx.Info("order-service 已启动 payment.notify + logistics.sync + refund.completed 消费者")
 }

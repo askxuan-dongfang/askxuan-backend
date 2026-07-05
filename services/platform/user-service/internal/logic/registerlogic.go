@@ -68,7 +68,7 @@ func (l *RegisterLogic) Register(req *types.RegisterReq) (*types.RegisterResp, e
 
 	// best-effort 同步用户到 OpenIM（失败不影响注册主流程）
 	if l.svcCtx.IMClient != nil {
-		userIDStr := strconv.FormatInt(uid, 10)
+		userIDStr := "u_" + strconv.FormatInt(uid, 10)
 		if syncErr := l.svcCtx.IMClient.RegisterUser(l.ctx, userIDStr, nickname, "/assets/master-avatar-zhihai.jpg"); syncErr != nil {
 			l.Errorf("同步用户到 OpenIM 失败 uid=%d: %v", uid, syncErr)
 		}

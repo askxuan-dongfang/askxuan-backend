@@ -7,10 +7,10 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-const productCategoryTable = "askxuan_shop.product_category"
+const productCategoryTable = "product_category"
 
 // ProductCategory 商品分类表
-// 对应数据库表 askxuan_shop.product_category
+// 对应数据库表 product_category（askxuan_product 库）
 type ProductCategory struct {
 	Id       int64  `db:"id" json:"id"`
 	ParentId int64  `db:"parent_id" json:"parentId"`

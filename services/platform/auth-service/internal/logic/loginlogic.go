@@ -104,7 +104,7 @@ func (l *LoginLogic) Login(req *types.LoginReq) (*types.LoginResp, error) {
 	// best-effort 同步用户到 OpenIM 并获取 IM token
 	var imToken string
 	if l.svcCtx.IMClient != nil {
-		userIDStr := strconv.FormatInt(u.Id, 10)
+		userIDStr := "u_" + strconv.FormatInt(u.Id, 10)
 		_ = l.svcCtx.IMClient.RegisterUser(l.ctx, userIDStr, u.Nickname, u.Avatar)
 		if token, err := l.svcCtx.IMClient.GetUserToken(l.ctx, userIDStr); err == nil {
 			imToken = token

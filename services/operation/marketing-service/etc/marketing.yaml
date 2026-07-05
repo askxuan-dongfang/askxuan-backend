@@ -2,6 +2,12 @@ Name: marketing-service
 Host: 0.0.0.0
 Port: 8096
 
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: marketing.service
+
 Telemetry:
   Name: marketing-service
   Endpoint: http://localhost:2379
@@ -10,4 +16,4 @@ Telemetry:
 
 # MySQL 数据源
 MySQL:
-  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan_marketing?charset=utf8mb4&parseTime=true&loc=Local"
+  DataSource: "marketing_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_marketing?charset=utf8mb4&parseTime=true&loc=Local"

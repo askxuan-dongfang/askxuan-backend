@@ -7,10 +7,10 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-const productSkuTable = "askxuan_shop.product_sku"
+const productSkuTable = "product_sku"
 
 // ProductSku 商品规格表
-// 对应数据库表 askxuan_shop.product_sku
+// 对应数据库表 product_sku（askxuan_product 库）
 type ProductSku struct {
 	Id        int64   `db:"id" json:"id"`
 	ProductId int64   `db:"product_id" json:"productId"`

@@ -14,7 +14,7 @@ const (
 	ExpressStatusDisabled = "disabled"
 )
 
-const expressCompanyTable = "askxuan_logistics.express_company"
+const expressCompanyTable = "express_company"
 
 // ExpressCompany 快递公司结构体
 type ExpressCompany struct {

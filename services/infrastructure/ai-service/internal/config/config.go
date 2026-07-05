@@ -1,6 +1,9 @@
 package config
 
-import "github.com/zeromicro/go-zero/rest"
+import (
+	"github.com/zeromicro/go-zero/core/stores/redis"
+	"github.com/zeromicro/go-zero/rest"
+)
 
 // RabbitMQConf RabbitMQ 连接配置
 type RabbitMQConf struct {
@@ -21,4 +24,5 @@ type Config struct {
 	rest.RestConf
 	MySQL    MySQLConf
 	RabbitMQ RabbitMQConf
+	Redis    redis.RedisConf
 }

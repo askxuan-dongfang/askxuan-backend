@@ -153,4 +153,15 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		}...),
 		rest.WithPrefix("/api/v1/admin/messages/master"),
 	)
+
+	// OpenIM webhook 回调（无 JWT 鉴权，由网关白名单放行）
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodPost,
+				Path:    "/openim/webhook",
+				Handler: OpenIMWebhookHandler(serverCtx),
+			},
+		},
+	)
 }

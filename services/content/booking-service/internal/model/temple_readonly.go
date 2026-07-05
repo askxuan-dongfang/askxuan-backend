@@ -28,10 +28,10 @@ func NewTempleReadonlyModel(conn sqlx.SqlConn) TempleReadonlyModel {
 	return &templeReadonlyModel{conn: conn}
 }
 
-// FindByCode 按寺院编码查询（跨库 askxuan.temple）
+// FindByCode 按寺院编码查询（跨库 askxuan_temple.temple）
 func (m *templeReadonlyModel) FindByCode(ctx context.Context, code string) (*TempleBrief, error) {
 	var t TempleBrief
-	query := `SELECT id, code, name, status FROM askxuan.temple WHERE code = ?`
+	query := `SELECT id, code, name, status FROM askxuan_temple.temple WHERE code = ?`
 	err := m.conn.QueryRowCtx(ctx, &t, query, code)
 	if err != nil {
 		return nil, err

@@ -16,6 +16,10 @@ type GetAdminTokenResp struct {
 
 // UserRegisterReq 用户注册请求
 type UserRegisterReq struct {
+	Users []OpenIMUser `json:"users"`
+}
+
+type OpenIMUser struct {
 	UserID   string `json:"userID"`
 	Nickname string `json:"nickname"`
 	FaceURL  string `json:"faceURL"`
@@ -23,8 +27,8 @@ type UserRegisterReq struct {
 
 // UserTokenReq 获取用户 token 请求
 type UserTokenReq struct {
-	UserID string `json:"userID"`
-	Secret string `json:"secret"`
+	UserID     string `json:"userID"`
+	PlatformID int    `json:"platformID"`
 }
 
 // UserTokenResp 获取用户 token 响应

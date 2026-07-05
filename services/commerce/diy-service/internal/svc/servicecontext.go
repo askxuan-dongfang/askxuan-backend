@@ -28,6 +28,7 @@ type ServiceContext struct {
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	db := sqlx.NewMysql(c.DataSource)
+	rds := redis.MustNewRedis(c.Redis)
 	producer := mq.NewProducer(
 		c.RabbitMQ.Host, c.RabbitMQ.Port,
 		c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost,
@@ -35,11 +36,12 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	consumer := mq.NewConsumer(
 		c.RabbitMQ.Host, c.RabbitMQ.Port,
 		c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost,
+		rds,
 	)
 	return &ServiceContext{
 		Config:                   c,
 		DB:                       db,
-		Redis:                    redis.MustNewRedis(c.Redis),
+		Redis:                    rds,
 		MqProducer:               producer,
 		Consumer:                 consumer,
 		DiyDesignModel:           model.NewDiyDesignModel(db),

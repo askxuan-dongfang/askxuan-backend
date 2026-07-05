@@ -20,7 +20,7 @@ const (
 	FreightTypeByPiece  = "by_piece"
 )
 
-const freightTemplateTable = "askxuan_logistics.freight_template"
+const freightTemplateTable = "freight_template"
 
 // FreightTemplate 运费模板结构体
 type FreightTemplate struct {

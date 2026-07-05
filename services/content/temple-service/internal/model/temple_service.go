@@ -16,8 +16,8 @@ const (
 	TempleServiceStatusOffShelf = "off_shelf" // 下架
 )
 
-// templeServiceTable 寺院服务表（位于 askxuan_temple 库）
-const templeServiceTable = "askxuan_temple.temple_service"
+// templeServiceTable 寺院服务表
+const templeServiceTable = "temple_service"
 
 // TempleServiceRecord 寺院自定义服务（避免与 types.TempleService 混淆，model 层加 Record 后缀）
 type TempleServiceRecord struct {

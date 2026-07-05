@@ -55,7 +55,7 @@ func IsOrderTerminalStatus(s string) bool {
 	return s == OrderStatusCompleted || s == OrderStatusCancelled
 }
 
-const shopOrderTable = "askxuan_shop.shop_order"
+const shopOrderTable = "shop_order"
 
 // ShopOrder 商城订单表
 type ShopOrder struct {

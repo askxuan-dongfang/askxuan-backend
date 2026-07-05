@@ -2,6 +2,12 @@ Name: master-service
 Host: 0.0.0.0
 Port: 8084
 
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: master.service
+
 Telemetry:
   Name: master-service
   Endpoint: http://localhost:2379
@@ -11,7 +17,7 @@ Telemetry:
 # MySQL 数据源（master 表在 askxuan 库；master_credential/master_schedule/master_audit 在 askxuan_master 库；
 # blessing_task 在 askxuan_diy 库，通过 fully-qualified 表名跨库访问）
 MySQL:
-  DataSource: "root:root123@tcp(127.0.0.1:3306)/askxuan?charset=utf8mb4&parseTime=true&loc=Local"
+  DataSource: "master_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_master?charset=utf8mb4&parseTime=true&loc=Local"
 
 # JWT 签名密钥
 AuthSecret: "askxuan-access-secret-change-in-prod"
@@ -23,3 +29,16 @@ RabbitMQ:
   User: admin
   Password: admin
   VHost: "/"
+
+# Redis（消息幂等性检查）
+Redis:
+  Host: localhost:6379
+  Type: node
+
+# diy-service zrpc 客户端（通过 etcd 发现 diy.rpc，查询/更新 blessing_task）
+DiyRpc:
+  Etcd:
+    Hosts:
+      - localhost:2379
+    Key: diy.rpc
+

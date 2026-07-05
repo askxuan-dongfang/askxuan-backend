@@ -16,8 +16,8 @@ const (
 	ImageTypeHero   = "hero"   // Hero图（单张）
 )
 
-// templeImageTable 寺院图片表（位于 askxuan_temple 库）
-const templeImageTable = "askxuan_temple.temple_image"
+// templeImageTable 寺院图片表
+const templeImageTable = "temple_image"
 
 // TempleImage 寺院图片
 type TempleImage struct {

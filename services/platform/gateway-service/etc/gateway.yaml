@@ -7,7 +7,14 @@ Port: 8080
 Auth:
   AccessSecret: "askxuan-access-secret-change-in-prod"
 
-# etcd（预留：MVP-1 使用静态路由，未启用动态服务发现）
+# etcd 动态服务发现
+# 注：go-zero v1.7.2 的 rest 服务暂未自动注册到 etcd，
+# 当前主要走 Target 静态路由；ServiceName 保留用于未来切到动态发现。
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: gateway.service
+
 Telemetry:
   Name: gateway
   Endpoint: http://localhost:2379
@@ -16,108 +23,154 @@ Telemetry:
 
 # 下游服务路由表
 # proxy 按前缀长度降序匹配（最长前缀优先），admin 子路径自动优先于父路径
+# 每条路由同时配置 Target（静态地址，当前主路径）与 ServiceName（etcd service key，未来切换用）
+# proxy 优先用动态发现实例，找不到则 fallback 到 Target
 Upstreams:
   # ============ C 端路由 ============
   - Prefix: /api/v1/auth
     Target: localhost:8081
+    ServiceName: auth.service
   - Prefix: /api/v1/user
     Target: localhost:8082
+    ServiceName: user.service
   - Prefix: /api/v1/temples
     Target: localhost:8083
+    ServiceName: temple.service
   - Prefix: /api/v1/masters
     Target: localhost:8084
+    ServiceName: master.service
   - Prefix: /api/v1/booking
     Target: localhost:8085
+    ServiceName: booking.service
   - Prefix: /api/v1/message
     Target: localhost:8094
+    ServiceName: message.service
   - Prefix: /api/v1/messages
     Target: localhost:8094
+    ServiceName: message.service
   - Prefix: /api/v1/announcements
     Target: localhost:8094
+    ServiceName: message.service
   - Prefix: /api/v1/file
     Target: localhost:8097
+    ServiceName: file.service
   - Prefix: /api/v1/products
     Target: localhost:8086
+    ServiceName: product.service
   - Prefix: /api/v1/diy
     Target: localhost:8088
+    ServiceName: diy.service
   - Prefix: /api/v1/orders
     Target: localhost:8089
+    ServiceName: order.service
   - Prefix: /api/v1/payments
     Target: localhost:8090
+    ServiceName: payment.service
   - Prefix: /api/v1/logistics
     Target: localhost:8095
+    ServiceName: logistics.service
   - Prefix: /api/v1/reviews
     Target: localhost:8092
+    ServiceName: review.service
   - Prefix: /api/v1/audit
     Target: localhost:8093
+    ServiceName: audit.service
   - Prefix: /api/v1/finance
     Target: localhost:8091
+    ServiceName: finance.service
   - Prefix: /api/v1/marketing
     Target: localhost:8096
+    ServiceName: marketing.service
   - Prefix: /api/v1/ai
     Target: localhost:8098
+    ServiceName: ai.service
   - Prefix: /api/v1/im
     Target: localhost:10002
+    ServiceName: im.service
+  - Prefix: /openim
+    Target: localhost:8094
+    ServiceName: message.service
 
   # ============ 管理台路由（/api/v1/admin/*） ============
   # auth 管理台
   - Prefix: /api/v1/admin/auth
     Target: localhost:8081
+    ServiceName: auth.service
   # user 平台管理
   - Prefix: /api/v1/admin/users
     Target: localhost:8082
+    ServiceName: user.service
   # temple 寺院管理台 + 平台审核（需在 /admin/temples 之前匹配 /admin/temples/masters）
   - Prefix: /api/v1/admin/temples/masters
     Target: localhost:8084
+    ServiceName: master.service
   - Prefix: /api/v1/admin/temples
     Target: localhost:8083
+    ServiceName: temple.service
   - Prefix: /api/v1/admin/platform/temples
     Target: localhost:8083
+    ServiceName: temple.service
   # master 法师工作台 + 平台审核
   # 注意：/admin/masters/bookings 属于 booking-service，需在 /admin/masters 之前匹配
   - Prefix: /api/v1/admin/masters/bookings
     Target: localhost:8085
+    ServiceName: booking.service
   - Prefix: /api/v1/admin/masters
     Target: localhost:8084
+    ServiceName: master.service
   - Prefix: /api/v1/admin/platform/masters
     Target: localhost:8084
+    ServiceName: master.service
   # booking 寺院管理台
   - Prefix: /api/v1/admin/bookings
     Target: localhost:8085
+    ServiceName: booking.service
   # message 管理台
   - Prefix: /api/v1/admin/messages
     Target: localhost:8094
+    ServiceName: message.service
   # announcements 管理台
   - Prefix: /api/v1/admin/announcements
     Target: localhost:8094
+    ServiceName: message.service
   # product 商城管理台
   - Prefix: /api/v1/admin/products
     Target: localhost:8086
+    ServiceName: product.service
   # diy 商城管理台
   - Prefix: /api/v1/admin/diy
     Target: localhost:8088
+    ServiceName: diy.service
   # order 商城管理台
   - Prefix: /api/v1/admin/orders
     Target: localhost:8089
+    ServiceName: order.service
   # finance 平台财务
   - Prefix: /api/v1/admin/finance
     Target: localhost:8091
+    ServiceName: finance.service
   # review 管理台 + 平台审核
   - Prefix: /api/v1/admin/platform/reviews
     Target: localhost:8092
+    ServiceName: review.service
   - Prefix: /api/v1/admin/reviews
     Target: localhost:8092
+    ServiceName: review.service
   # audit 平台审核
   - Prefix: /api/v1/admin/audit
     Target: localhost:8093
+    ServiceName: audit.service
   # logistics 管理台
   - Prefix: /api/v1/admin/logistics
     Target: localhost:8095
+    ServiceName: logistics.service
   # marketing 管理台
   - Prefix: /api/v1/admin/marketing
     Target: localhost:8096
+    ServiceName: marketing.service
 
 # 不需要鉴权的白名单路径（登录 / 注册 / 续期 / 支付回调 / 管理台登录 / 公开浏览接口）
+# GET 请求前缀匹配：/api/v1/temples 匹配 /api/v1/temples 和 /api/v1/temples/T001
 NoAuthPaths:
   - /api/v1/auth/login
   - /api/v1/auth/refresh
@@ -127,4 +180,11 @@ NoAuthPaths:
   - /api/v1/payments/callback/alipay
   - /api/v1/temples
   - /api/v1/masters
+  - /api/v1/products
+  - /api/v1/marketing/banners
+  - /api/v1/announcements
+  - /api/v1/diy/designs
+  - /api/v1/diy/materials
   - /api/v1/health
+  - /api/v1/im              # OpenIM REST 透传，由 OpenIM 自身鉴权
+  - /openim/webhook         # OpenIM webhook 回调，不带 JWT

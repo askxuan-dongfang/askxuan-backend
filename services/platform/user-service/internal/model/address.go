@@ -7,8 +7,8 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-// addressTable 用户地址表（位于 askxuan_user 库，需完全限定名跨库查询）
-const addressTable = "askxuan_user.user_address"
+// addressTable 用户地址表
+const addressTable = "user_address"
 
 // UserAddress 收货地址实体（依据 init.sql user_address 表）
 type UserAddress struct {

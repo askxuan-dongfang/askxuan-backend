@@ -13,8 +13,8 @@ const (
 	AccountStatusDisabled = "disabled"
 )
 
-// adminAccountTable 管理台账号表（跨库查询 askxuan_auth.admin_account）
-const adminAccountTable = "askxuan_auth.admin_account"
+// adminAccountTable 管理台账号表
+const adminAccountTable = "admin_account"
 
 // AdminAccount 管理台账号实体（依据 init.sql admin_account 表）
 type AdminAccount struct {

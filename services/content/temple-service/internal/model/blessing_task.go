@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"time"
+
+	"github.com/askxuan/temple-service/rpc/diy"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // ============ 加持任务状态机（修复 Gap-3，参照 state-machines.md 第3节） ============
@@ -61,10 +63,7 @@ func IsBlessingTaskTerminal(s string) bool {
 	return s == BlessingTaskStatusCompleted
 }
 
-// ============ 加持任务 MySQL 存储 ============
-
-// blessingTaskTable 加持任务表（位于 askxuan_diy 库）
-const blessingTaskTable = "askxuan_diy.blessing_task"
+// ============ 加持任务远程访问（通过 zrpc 调用 diy-service） ============
 
 // BlessingTask 加持任务
 type BlessingTask struct {
@@ -74,26 +73,11 @@ type BlessingTask struct {
 	TempleCode      string   `db:"temple_code" json:"templeCode"`
 	MasterCode      string   `db:"master_code" json:"masterCode"`
 	Status          string   `db:"status" json:"status"`
-	CertificateUrls []string `json:"certificateUrls"` // DB 中为 JSON 字符串
+	CertificateUrls []string `json:"certificateUrls"` // RPC 传输为 JSON 字符串，本地转为切片
 	AssignTime      string   `db:"assign_time" json:"assignTime"`
 	CompleteTime    string   `db:"complete_time" json:"completeTime"`
 	CreateTime      string   `db:"create_time" json:"createTime"`
 	UpdateTime      string   `db:"update_time" json:"updateTime"`
-}
-
-// blessingTaskRow 加持任务 DB 行结构（CertificateUrls 为 JSON 字符串）
-type blessingTaskRow struct {
-	Id              int64  `db:"id"`
-	TaskNo          string `db:"task_no"`
-	DiyOrderNo      string `db:"diy_order_no"`
-	TempleCode      string `db:"temple_code"`
-	MasterCode      string `db:"master_code"`
-	Status          string `db:"status"`
-	CertificateUrls string `db:"certificate_urls"`
-	AssignTime      string `db:"assign_time"`
-	CompleteTime    string `db:"complete_time"`
-	CreateTime      string `db:"create_time"`
-	UpdateTime      string `db:"update_time"`
 }
 
 // BlessingTaskModel 加持任务模型接口
@@ -109,176 +93,127 @@ type BlessingTaskModel interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-type defaultBlessingTaskModel struct {
-	conn sqlx.SqlConn
+// remoteBlessingTaskModel 通过 zrpc 调用 diy-service 访问 blessing_task
+type remoteBlessingTaskModel struct {
+	client diy.DiyServiceClient
 }
 
-// NewBlessingTaskModel 构造加持任务模型
-func NewBlessingTaskModel(conn sqlx.SqlConn) BlessingTaskModel {
-	return &defaultBlessingTaskModel{conn: conn}
+// NewBlessingTaskModel 构造加持任务模型（通过 zrpc client 调用 diy-service）
+func NewBlessingTaskModel(client diy.DiyServiceClient) BlessingTaskModel {
+	return &remoteBlessingTaskModel{client: client}
 }
 
-// Insert 新增加持任务，返回自增 ID
-func (m *defaultBlessingTaskModel) Insert(ctx context.Context, data *BlessingTask) (int64, error) {
-	certUrlsJSON := "[]"
-	if len(data.CertificateUrls) > 0 {
-		if b, err := json.Marshal(data.CertificateUrls); err == nil {
-			certUrlsJSON = string(b)
-		}
+// rpcToModel 将 rpc diy.BlessingTask 转为本地 model.BlessingTask
+// certificate_urls 在 RPC 中为 JSON 字符串，这里反序列化为 []string
+func rpcToModel(t *diy.BlessingTask) *BlessingTask {
+	return &BlessingTask{
+		Id:              t.Id,
+		TaskNo:          t.TaskNo,
+		DiyOrderNo:      t.DiyOrderNo,
+		TempleCode:      t.TempleCode,
+		MasterCode:      t.MasterCode,
+		Status:          t.Status,
+		CertificateUrls: jsonStrToUrls(t.CertificateUrls),
+		AssignTime:      t.AssignTime,
+		CompleteTime:    t.CompleteTime,
+		CreateTime:      t.CreateTime,
+		UpdateTime:      t.UpdateTime,
 	}
-	if data.Status == "" {
-		data.Status = BlessingTaskStatusDispatched
-	}
-	query := fmt.Sprintf(`INSERT INTO %s (task_no, diy_order_no, temple_code, master_code, status, certificate_urls) VALUES (?, ?, ?, ?, ?, ?)`,
-		blessingTaskTable)
-	res, err := m.conn.ExecCtx(ctx, query,
-		data.TaskNo, data.DiyOrderNo, data.TempleCode,
-		data.MasterCode, data.Status, certUrlsJSON)
-	if err != nil {
-		return 0, err
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
 }
 
-// FindOne 按 ID 查询加持任务
-func (m *defaultBlessingTaskModel) FindOne(ctx context.Context, id int64) (*BlessingTask, error) {
-	query := fmt.Sprintf(`SELECT id, task_no, diy_order_no, temple_code, master_code, status, certificate_urls, assign_time, complete_time, create_time, update_time FROM %s WHERE id = ?`,
-		blessingTaskTable)
-	var row blessingTaskRow
-	if err := m.conn.QueryRowCtx(ctx, &row, query, id); err != nil {
-		return nil, err
+// jsonStrToUrls 将 JSON 数组字符串反序列化为 []string
+func jsonStrToUrls(s string) []string {
+	if s == "" {
+		return []string{}
 	}
-	return rowToBlessingTask(&row), nil
-}
-
-// FindByTaskNo 按任务编号查找加持任务
-func (m *defaultBlessingTaskModel) FindByTaskNo(ctx context.Context, taskNo string) (*BlessingTask, error) {
-	query := fmt.Sprintf(`SELECT id, task_no, diy_order_no, temple_code, master_code, status, certificate_urls, assign_time, complete_time, create_time, update_time FROM %s WHERE task_no = ? LIMIT 1`,
-		blessingTaskTable)
-	var row blessingTaskRow
-	if err := m.conn.QueryRowCtx(ctx, &row, query, taskNo); err != nil {
-		return nil, err
-	}
-	return rowToBlessingTask(&row), nil
-}
-
-// FindByTempleId 查询寺院的加持任务，支持按 status 筛选 + 分页
-func (m *defaultBlessingTaskModel) FindByTempleId(ctx context.Context, templeCode, status string, page, size int) ([]*BlessingTask, int64, error) {
-	return m.FindList(ctx, templeCode, status, page, size)
-}
-
-// FindList 查询加持任务列表，支持按 templeCode/status 筛选 + 分页
-func (m *defaultBlessingTaskModel) FindList(ctx context.Context, templeCode, status string, page, size int) ([]*BlessingTask, int64, error) {
-	where := "1=1"
-	var args []interface{}
-	if templeCode != "" {
-		where += " AND temple_code = ?"
-		args = append(args, templeCode)
-	}
-	if status != "" {
-		where += " AND status = ?"
-		args = append(args, status)
-	}
-
-	countQuery := fmt.Sprintf(`SELECT COUNT(1) FROM %s WHERE %s`, blessingTaskTable, where)
-	var total int64
-	if err := m.conn.QueryRowCtx(ctx, &total, countQuery, args...); err != nil {
-		return nil, 0, err
-	}
-	if total == 0 {
-		return []*BlessingTask{}, 0, nil
-	}
-
-	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, task_no, diy_order_no, temple_code, master_code, status, certificate_urls, assign_time, complete_time, create_time, update_time FROM %s WHERE %s ORDER BY id DESC LIMIT ?, ?`,
-		blessingTaskTable, where)
-	listArgs := append(args, offset, size)
-	var rows []*blessingTaskRow
-	if err := m.conn.QueryRowsCtx(ctx, &rows, listQuery, listArgs...); err != nil {
-		return nil, 0, err
-	}
-	list := make([]*BlessingTask, 0, len(rows))
-	for _, r := range rows {
-		list = append(list, rowToBlessingTask(r))
-	}
-	return list, total, nil
-}
-
-// Update 更新加持任务
-func (m *defaultBlessingTaskModel) Update(ctx context.Context, data *BlessingTask) error {
-	certUrlsJSON := "[]"
-	if len(data.CertificateUrls) > 0 {
-		if b, err := json.Marshal(data.CertificateUrls); err == nil {
-			certUrlsJSON = string(b)
-		}
-	}
-	query := fmt.Sprintf(`UPDATE %s SET task_no = ?, diy_order_no = ?, temple_code = ?, master_code = ?, status = ?, certificate_urls = ? WHERE id = ?`,
-		blessingTaskTable)
-	_, err := m.conn.ExecCtx(ctx, query,
-		data.TaskNo, data.DiyOrderNo, data.TempleCode,
-		data.MasterCode, data.Status, certUrlsJSON, data.Id)
-	return err
-}
-
-// UpdateStatus 更新任务状态
-func (m *defaultBlessingTaskModel) UpdateStatus(ctx context.Context, id int64, status string) error {
-	query := fmt.Sprintf(`UPDATE %s SET status = ? WHERE id = ?`, blessingTaskTable)
-	_, err := m.conn.ExecCtx(ctx, query, status, id)
-	return err
-}
-
-// Assign 寺院分配法师（dispatched/rejected → assigned）
-// 校验状态流转合法性，更新 master_code/status/assign_time，返回更新后的任务
-func (m *defaultBlessingTaskModel) Assign(ctx context.Context, id int64, masterCode string) (*BlessingTask, error) {
-	task, err := m.FindOne(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if !CanTransitBlessingTask(task.Status, BlessingTaskStatusAssigned) {
-		return nil, errors.New("加持任务状态不允许分配法师")
-	}
-	now := time.Now().Format("2006-01-02 15:04:05")
-	query := fmt.Sprintf(`UPDATE %s SET master_code = ?, status = ?, assign_time = ? WHERE id = ?`, blessingTaskTable)
-	if _, err := m.conn.ExecCtx(ctx, query, masterCode, BlessingTaskStatusAssigned, now, id); err != nil {
-		return nil, err
-	}
-	task.MasterCode = masterCode
-	task.Status = BlessingTaskStatusAssigned
-	task.AssignTime = now
-	return task, nil
-}
-
-// Delete 删除加持任务
-func (m *defaultBlessingTaskModel) Delete(ctx context.Context, id int64) error {
-	query := fmt.Sprintf(`DELETE FROM %s WHERE id = ?`, blessingTaskTable)
-	_, err := m.conn.ExecCtx(ctx, query, id)
-	return err
-}
-
-// rowToBlessingTask 将 DB 行结构转为 BlessingTask（CertificateUrls JSON 反序列化）
-func rowToBlessingTask(row *blessingTaskRow) *BlessingTask {
 	var urls []string
-	if row.CertificateUrls != "" {
-		_ = json.Unmarshal([]byte(row.CertificateUrls), &urls)
+	if err := json.Unmarshal([]byte(s), &urls); err != nil {
+		return []string{}
 	}
 	if urls == nil {
 		urls = []string{}
 	}
-	return &BlessingTask{
-		Id:              row.Id,
-		TaskNo:          row.TaskNo,
-		DiyOrderNo:      row.DiyOrderNo,
-		TempleCode:      row.TempleCode,
-		MasterCode:      row.MasterCode,
-		Status:          row.Status,
-		CertificateUrls: urls,
-		AssignTime:      row.AssignTime,
-		CompleteTime:    row.CompleteTime,
-		CreateTime:      row.CreateTime,
-		UpdateTime:      row.UpdateTime,
+	return urls
+}
+
+// wrapRpcError 将 gRPC NotFound 错误转为 sqlx.ErrNotFound，保持调用方错误处理兼容
+func wrapRpcError(err error) error {
+	if err == nil {
+		return nil
 	}
+	if status.Code(err) == codes.NotFound {
+		return sqlx.ErrNotFound
+	}
+	return err
+}
+
+// Insert 暂不支持（diy-service RPC 未提供插入接口）
+func (m *remoteBlessingTaskModel) Insert(ctx context.Context, data *BlessingTask) (int64, error) {
+	return 0, errors.New("blessing_task Insert 不支持通过 RPC 调用，请通过 diy-service 内部操作")
+}
+
+func (m *remoteBlessingTaskModel) FindOne(ctx context.Context, id int64) (*BlessingTask, error) {
+	resp, err := m.client.GetBlessingTask(ctx, &diy.GetBlessingTaskReq{Id: id})
+	if err != nil {
+		return nil, wrapRpcError(err)
+	}
+	return rpcToModel(resp), nil
+}
+
+func (m *remoteBlessingTaskModel) FindByTaskNo(ctx context.Context, taskNo string) (*BlessingTask, error) {
+	resp, err := m.client.GetBlessingTaskByTaskNo(ctx, &diy.GetBlessingTaskByTaskNoReq{TaskNo: taskNo})
+	if err != nil {
+		return nil, wrapRpcError(err)
+	}
+	return rpcToModel(resp), nil
+}
+
+func (m *remoteBlessingTaskModel) FindByTempleId(ctx context.Context, templeCode, status string, page, size int) ([]*BlessingTask, int64, error) {
+	return m.FindList(ctx, templeCode, status, page, size)
+}
+
+func (m *remoteBlessingTaskModel) FindList(ctx context.Context, templeCode, status string, page, size int) ([]*BlessingTask, int64, error) {
+	resp, err := m.client.ListBlessingTasks(ctx, &diy.ListBlessingTasksReq{
+		TempleCode: templeCode,
+		Status:     status,
+		Page:       int64(page),
+		PageSize:   int64(size),
+	})
+	if err != nil {
+		return nil, 0, wrapRpcError(err)
+	}
+	list := make([]*BlessingTask, 0, len(resp.Tasks))
+	for _, t := range resp.Tasks {
+		list = append(list, rpcToModel(t))
+	}
+	return list, resp.Total, nil
+}
+
+// Update 暂不支持（diy-service RPC 未提供全量更新接口）
+func (m *remoteBlessingTaskModel) Update(ctx context.Context, data *BlessingTask) error {
+	return errors.New("blessing_task Update 不支持通过 RPC 调用，请通过 diy-service 内部操作")
+}
+
+func (m *remoteBlessingTaskModel) UpdateStatus(ctx context.Context, id int64, status string) error {
+	_, err := m.client.UpdateBlessingTaskStatus(ctx, &diy.UpdateBlessingTaskStatusReq{
+		Id:     id,
+		Status: status,
+	})
+	return wrapRpcError(err)
+}
+
+func (m *remoteBlessingTaskModel) Assign(ctx context.Context, id int64, masterCode string) (*BlessingTask, error) {
+	resp, err := m.client.AssignBlessingTask(ctx, &diy.AssignBlessingTaskReq{
+		Id:         id,
+		MasterCode: masterCode,
+	})
+	if err != nil {
+		return nil, wrapRpcError(err)
+	}
+	return rpcToModel(resp), nil
+}
+
+// Delete 暂不支持（diy-service RPC 未提供删除接口）
+func (m *remoteBlessingTaskModel) Delete(ctx context.Context, id int64) error {
+	return errors.New("blessing_task Delete 不支持通过 RPC 调用，请通过 diy-service 内部操作")
 }

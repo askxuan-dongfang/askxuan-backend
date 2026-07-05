@@ -15,10 +15,10 @@ const (
 	ProductStatusOffShelf = "off_shelf" // 下架
 )
 
-const productTable = "askxuan_shop.product"
+const productTable = "product"
 
 // Product 商品表
-// 对应数据库表 askxuan_shop.product
+// 对应数据库表 product（askxuan_product 库）
 type Product struct {
 	Id                int64   `db:"id" json:"id"`
 	ProductNo         string  `db:"product_no" json:"productNo"`

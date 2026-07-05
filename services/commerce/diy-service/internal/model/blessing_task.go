@@ -78,7 +78,7 @@ type blessingTaskRow struct {
 	TempleCode      string          `db:"temple_code"`
 	MasterCode      string          `db:"master_code"`
 	Status          string          `db:"status"`
-	CertificateUrls string          `db:"certificate_urls"`
+	CertificateUrls sql.NullString  `db:"certificate_urls"`
 	AssignTime      sql.NullString  `db:"assign_time"`
 	CompleteTime    sql.NullString  `db:"complete_time"`
 	CreateTime      string          `db:"create_time"`
@@ -90,8 +90,12 @@ type BlessingTaskModel interface {
 	Insert(ctx context.Context, data *BlessingTask) (*BlessingTask, error)
 	FindOne(ctx context.Context, id int64) (*BlessingTask, error)
 	FindByDiyOrderNo(ctx context.Context, diyOrderNo string) (*BlessingTask, error)
+	FindByTaskNo(ctx context.Context, taskNo string) (*BlessingTask, error)
+	FindList(ctx context.Context, masterCode, templeCode, status string, page, size int) ([]*BlessingTask, int64, error)
 	UpdateStatus(ctx context.Context, id int64, status string) (*BlessingTask, error)
 	UpdateCertificate(ctx context.Context, id int64, certificateUrls []string) error
+	UpdateComplete(ctx context.Context, id int64, certificateUrlsJSON string) error
+	Assign(ctx context.Context, id int64, masterCode string) (*BlessingTask, error)
 }
 
 type defaultBlessingTaskModel struct {
@@ -158,6 +162,65 @@ func (m *defaultBlessingTaskModel) FindByDiyOrderNo(ctx context.Context, diyOrde
 	return rowToBlessingTask(&row), nil
 }
 
+func (m *defaultBlessingTaskModel) FindByTaskNo(ctx context.Context, taskNo string) (*BlessingTask, error) {
+	var row blessingTaskRow
+	query := fmt.Sprintf(`SELECT id, task_no, diy_order_no, temple_code, master_code, status, certificate_urls, assign_time, complete_time, create_time, update_time FROM %s WHERE task_no = ? LIMIT 1`, blessingTaskTable)
+	err := m.conn.QueryRowCtx(ctx, &row, query, taskNo)
+	if err != nil {
+		return nil, err
+	}
+	return rowToBlessingTask(&row), nil
+}
+
+// FindList 查询加持任务列表，支持按 masterCode/templeCode/status 筛选 + 分页
+func (m *defaultBlessingTaskModel) FindList(ctx context.Context, masterCode, templeCode, status string, page, size int) ([]*BlessingTask, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 {
+		size = 20
+	}
+	offset := (page - 1) * size
+
+	where := "1=1"
+	var args []interface{}
+	if masterCode != "" {
+		where += " AND master_code = ?"
+		args = append(args, masterCode)
+	}
+	if templeCode != "" {
+		where += " AND temple_code = ?"
+		args = append(args, templeCode)
+	}
+	if status != "" {
+		where += " AND status = ?"
+		args = append(args, status)
+	}
+
+	var total int64
+	countQuery := fmt.Sprintf(`SELECT COUNT(1) FROM %s WHERE %s`, blessingTaskTable, where)
+	err := m.conn.QueryRowCtx(ctx, &total, countQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []*BlessingTask{}, 0, nil
+	}
+
+	var rows []*blessingTaskRow
+	listQuery := fmt.Sprintf(`SELECT id, task_no, diy_order_no, temple_code, master_code, status, certificate_urls, assign_time, complete_time, create_time, update_time FROM %s WHERE %s ORDER BY id DESC LIMIT ?, ?`, blessingTaskTable, where)
+	listArgs := append(args, offset, size)
+	err = m.conn.QueryRowsCtx(ctx, &rows, listQuery, listArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	list := make([]*BlessingTask, 0, len(rows))
+	for _, r := range rows {
+		list = append(list, rowToBlessingTask(r))
+	}
+	return list, total, nil
+}
+
 func (m *defaultBlessingTaskModel) UpdateStatus(ctx context.Context, id int64, status string) (*BlessingTask, error) {
 	now := time.Now().Format("2006-01-02 15:04:05")
 	// complete_time 仅在 completed 状态时设置，其他状态传 nil 保持 NULL
@@ -183,6 +246,34 @@ func (m *defaultBlessingTaskModel) UpdateCertificate(ctx context.Context, id int
 	return err
 }
 
+// UpdateComplete 完成加持任务：设置状态为 completed + 证书 URL + complete_time
+func (m *defaultBlessingTaskModel) UpdateComplete(ctx context.Context, id int64, certificateUrlsJSON string) error {
+	now := time.Now().Format("2006-01-02 15:04:05")
+	query := fmt.Sprintf(`UPDATE %s SET status=?, certificate_urls=?, complete_time=?, update_time=? WHERE id=?`, blessingTaskTable)
+	_, err := m.conn.ExecCtx(ctx, query, BlessingTaskStatusCompleted, certificateUrlsJSON, now, now, id)
+	return err
+}
+
+// Assign 分配法师：更新 master_code/status/assign_time，返回更新后的任务
+func (m *defaultBlessingTaskModel) Assign(ctx context.Context, id int64, masterCode string) (*BlessingTask, error) {
+	task, err := m.FindOne(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if !CanTransitBlessingTask(task.Status, BlessingTaskStatusAssigned) {
+		return nil, fmt.Errorf("加持任务状态不允许分配法师")
+	}
+	now := time.Now().Format("2006-01-02 15:04:05")
+	query := fmt.Sprintf(`UPDATE %s SET master_code=?, status=?, assign_time=?, update_time=? WHERE id=?`, blessingTaskTable)
+	if _, err := m.conn.ExecCtx(ctx, query, masterCode, BlessingTaskStatusAssigned, now, now, id); err != nil {
+		return nil, err
+	}
+	task.MasterCode = masterCode
+	task.Status = BlessingTaskStatusAssigned
+	task.AssignTime = now
+	return task, nil
+}
+
 // rowToBlessingTask 将 DB 行转换为对外结构体
 func rowToBlessingTask(row *blessingTaskRow) *BlessingTask {
 	return &BlessingTask{
@@ -192,7 +283,7 @@ func rowToBlessingTask(row *blessingTaskRow) *BlessingTask {
 		TempleCode:      row.TempleCode,
 		MasterCode:      row.MasterCode,
 		Status:          row.Status,
-		CertificateUrls: jsonToUrls(row.CertificateUrls),
+		CertificateUrls: jsonToUrls(row.CertificateUrls.String),
 		AssignTime:      row.AssignTime.String,
 		CompleteTime:    row.CompleteTime.String,
 		CreateTime:      row.CreateTime,

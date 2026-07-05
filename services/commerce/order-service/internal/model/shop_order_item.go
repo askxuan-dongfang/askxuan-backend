@@ -7,7 +7,7 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-const shopOrderItemTable = "askxuan_shop.shop_order_item"
+const shopOrderItemTable = "shop_order_item"
 
 // ShopOrderItem 订单明细表
 type ShopOrderItem struct {

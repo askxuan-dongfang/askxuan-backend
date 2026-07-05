@@ -2,9 +2,12 @@ package model
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/askxuan/master-service/rpc/diy"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // ============ 加持任务状态机（修复 Gap-4/15，法师侧推进） ============
@@ -56,7 +59,7 @@ func IsBlessingTaskTerminal(s string) bool {
 	return s == BlessingTaskStatusCompleted
 }
 
-// ============ 加持任务 MySQL 存储（法师侧） ============
+// ============ 加持任务远程访问（通过 zrpc 调用 diy-service） ============
 
 // BlessingTask 加持任务（对应 askxuan_diy.blessing_task）
 type BlessingTask struct {
@@ -82,82 +85,89 @@ type BlessingTaskModel interface {
 	UpdateComplete(ctx context.Context, id int64, certificateUrls string) error
 }
 
-type blessingTaskModel struct {
-	conn  sqlx.SqlConn
-	table string
+// remoteBlessingTaskModel 通过 zrpc 调用 diy-service 访问 blessing_task
+type remoteBlessingTaskModel struct {
+	client diy.DiyServiceClient
 }
 
-// NewBlessingTaskModel 构造加持任务模型
-func NewBlessingTaskModel(conn sqlx.SqlConn) BlessingTaskModel {
-	return &blessingTaskModel{conn: conn, table: "askxuan_diy.blessing_task"}
+// NewBlessingTaskModel 构造加持任务模型（通过 zrpc client 调用 diy-service）
+func NewBlessingTaskModel(client diy.DiyServiceClient) BlessingTaskModel {
+	return &remoteBlessingTaskModel{client: client}
 }
 
-const blessingTaskRows = "id, task_no, diy_order_no, temple_code, master_code, status, certificate_urls, assign_time, complete_time, create_time, update_time"
-
-func (m *blessingTaskModel) FindOne(ctx context.Context, id int64) (*BlessingTask, error) {
-	var task BlessingTask
-	query := fmt.Sprintf("SELECT %s FROM %s WHERE id = ?", blessingTaskRows, m.table)
-	err := m.conn.QueryRowCtx(ctx, &task, query, id)
-	if err != nil {
-		return nil, err
+// rpcToModel 将 rpc diy.BlessingTask 转为本地 model.BlessingTask
+func rpcToModel(t *diy.BlessingTask) *BlessingTask {
+	return &BlessingTask{
+		Id:              t.Id,
+		TaskNo:          t.TaskNo,
+		DiyOrderNo:      t.DiyOrderNo,
+		TempleCode:      t.TempleCode,
+		MasterCode:      t.MasterCode,
+		Status:          t.Status,
+		CertificateUrls: t.CertificateUrls,
+		AssignTime:      t.AssignTime,
+		CompleteTime:    t.CompleteTime,
+		CreateTime:      t.CreateTime,
+		UpdateTime:      t.UpdateTime,
 	}
-	return &task, nil
 }
 
-// FindByTaskNo 按任务编号查找加持任务
-func (m *blessingTaskModel) FindByTaskNo(ctx context.Context, taskNo string) (*BlessingTask, error) {
-	var task BlessingTask
-	query := fmt.Sprintf("SELECT %s FROM %s WHERE task_no = ? LIMIT 1", blessingTaskRows, m.table)
-	err := m.conn.QueryRowCtx(ctx, &task, query, taskNo)
-	if err != nil {
-		return nil, err
+// wrapRpcError 将 gRPC NotFound 错误转为 sqlx.ErrNotFound，保持调用方错误处理兼容
+func wrapRpcError(err error) error {
+	if err == nil {
+		return nil
 	}
-	return &task, nil
-}
-
-func (m *blessingTaskModel) FindByMasterId(ctx context.Context, masterCode, status string, page, size int) ([]*BlessingTask, int64, error) {
-	if page < 1 {
-		page = 1
+	if status.Code(err) == codes.NotFound {
+		return sqlx.ErrNotFound
 	}
-	if size < 1 {
-		size = 20
-	}
-	offset := (page - 1) * size
-
-	where := "WHERE master_code = ?"
-	args := []interface{}{masterCode}
-	if status != "" {
-		where += " AND status = ?"
-		args = append(args, status)
-	}
-
-	var total int64
-	countQuery := fmt.Sprintf("SELECT COUNT(1) FROM %s %s", m.table, where)
-	err := m.conn.QueryRowCtx(ctx, &total, countQuery, args...)
-	if err != nil {
-		return nil, 0, err
-	}
-	if total == 0 {
-		return []*BlessingTask{}, 0, nil
-	}
-
-	var list []*BlessingTask
-	listQuery := fmt.Sprintf("SELECT %s FROM %s %s ORDER BY id DESC LIMIT %d, %d", blessingTaskRows, m.table, where, offset, size)
-	err = m.conn.QueryRowsCtx(ctx, &list, listQuery, args...)
-	if err != nil {
-		return nil, 0, err
-	}
-	return list, total, nil
-}
-
-func (m *blessingTaskModel) UpdateStatus(ctx context.Context, id int64, status string) error {
-	query := fmt.Sprintf("UPDATE %s SET status = ? WHERE id = ?", m.table)
-	_, err := m.conn.ExecCtx(ctx, query, status, id)
 	return err
 }
 
-func (m *blessingTaskModel) UpdateComplete(ctx context.Context, id int64, certificateUrls string) error {
-	query := fmt.Sprintf("UPDATE %s SET status = ?, certificate_urls = ?, complete_time = NOW() WHERE id = ?", m.table)
-	_, err := m.conn.ExecCtx(ctx, query, BlessingTaskStatusCompleted, certificateUrls, id)
-	return err
+func (m *remoteBlessingTaskModel) FindOne(ctx context.Context, id int64) (*BlessingTask, error) {
+	resp, err := m.client.GetBlessingTask(ctx, &diy.GetBlessingTaskReq{Id: id})
+	if err != nil {
+		return nil, wrapRpcError(err)
+	}
+	return rpcToModel(resp), nil
+}
+
+func (m *remoteBlessingTaskModel) FindByTaskNo(ctx context.Context, taskNo string) (*BlessingTask, error) {
+	resp, err := m.client.GetBlessingTaskByTaskNo(ctx, &diy.GetBlessingTaskByTaskNoReq{TaskNo: taskNo})
+	if err != nil {
+		return nil, wrapRpcError(err)
+	}
+	return rpcToModel(resp), nil
+}
+
+func (m *remoteBlessingTaskModel) FindByMasterId(ctx context.Context, masterCode, status string, page, size int) ([]*BlessingTask, int64, error) {
+	resp, err := m.client.ListBlessingTasks(ctx, &diy.ListBlessingTasksReq{
+		MasterCode: masterCode,
+		Status:     status,
+		Page:       int64(page),
+		PageSize:   int64(size),
+	})
+	if err != nil {
+		return nil, 0, wrapRpcError(err)
+	}
+	list := make([]*BlessingTask, 0, len(resp.Tasks))
+	for _, t := range resp.Tasks {
+		list = append(list, rpcToModel(t))
+	}
+	return list, resp.Total, nil
+}
+
+func (m *remoteBlessingTaskModel) UpdateStatus(ctx context.Context, id int64, status string) error {
+	_, err := m.client.UpdateBlessingTaskStatus(ctx, &diy.UpdateBlessingTaskStatusReq{
+		Id:     id,
+		Status: status,
+	})
+	return wrapRpcError(err)
+}
+
+func (m *remoteBlessingTaskModel) UpdateComplete(ctx context.Context, id int64, certificateUrls string) error {
+	_, err := m.client.CompleteBlessingTask(ctx, &diy.CompleteBlessingTaskReq{
+		Id:              id,
+		CertificateUrls: certificateUrls,
+	})
+	return wrapRpcError(err)
 }

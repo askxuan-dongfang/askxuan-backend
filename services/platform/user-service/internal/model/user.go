@@ -97,8 +97,9 @@ func (m *defaultUserModel) Insert(ctx context.Context, data *User) (int64, error
 }
 
 // Update 更新用户资料（仅更新非空字段）
+// 注：birthday 为 DATE 类型，空字符串会报 Incorrect date value，用 NULLIF(?, '') 转为 NULL
 func (m *defaultUserModel) Update(ctx context.Context, data *User) error {
-	const query = `UPDATE ` + userTable + ` SET nickname = ?, avatar = ?, gender = ?, birthday = ?, region = ?, bio = ? WHERE id = ?`
+	const query = `UPDATE ` + userTable + ` SET nickname = ?, avatar = ?, gender = ?, birthday = NULLIF(?, ''), region = ?, bio = ? WHERE id = ?`
 	_, err := m.conn.ExecCtx(ctx, query,
 		data.Nickname, data.Avatar, data.Gender, data.Birthday,
 		data.Region, data.Bio, data.Id)
