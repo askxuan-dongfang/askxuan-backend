@@ -73,6 +73,15 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: reportHandleHandler(svcCtx),
 		},
 	})
+
+	// 法师台评价管理接口（JWT 鉴权，masterId 从 JWT 获取）
+	server.AddRoutes(rest.WithMiddleware(svcCtx.AuthConfig.AuthFunc, []rest.Route{
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/masters/reviews",
+			Handler: masterReviewListHandler(svcCtx),
+		},
+	}...))
 }
 
 func createReviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
@@ -220,6 +229,23 @@ func reportHandleHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewReportHandleLogic(r.Context(), svcCtx)
 		resp, err := l.ReportHandle(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func masterReviewListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MasterReviewListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewMasterReviewListLogic(r.Context(), svcCtx)
+		resp, err := l.MasterReviewList(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

@@ -38,6 +38,7 @@ func (l *ReviewDetailLogic) ReviewDetail(req *types.ReviewDetailReq) (*types.Rev
 		UserId:     r.UserId,
 		TargetType: r.TargetType,
 		TargetId:   r.TargetId,
+		MasterCode: r.MasterCode,
 		Rating:     r.Rating,
 		Content:    r.Content,
 		Images:     r.Images,

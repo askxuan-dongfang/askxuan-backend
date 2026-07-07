@@ -153,6 +153,10 @@ Upstreams:
   - Prefix: /api/v1/admin/reviews
     Target: localhost:8092
     ServiceName: review.service
+  # review 法师台评价管理（JWT 鉴权，masterId 从 JWT 获取）
+  - Prefix: /api/v1/admin/masters/reviews
+    Target: localhost:8092
+    ServiceName: review.service
   # audit 平台审核
   - Prefix: /api/v1/admin/audit
     Target: localhost:8093

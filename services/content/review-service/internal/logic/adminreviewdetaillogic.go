@@ -38,6 +38,7 @@ func (l *AdminReviewDetailLogic) AdminReviewDetail(req *types.ReviewDetailReq) (
 		UserId:     r.UserId,
 		TargetType: r.TargetType,
 		TargetId:   r.TargetId,
+		MasterCode: r.MasterCode,
 		Rating:     r.Rating,
 		Content:    r.Content,
 		Images:     r.Images,

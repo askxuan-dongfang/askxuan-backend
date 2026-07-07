@@ -7,6 +7,7 @@ type Review struct {
 	UserId     string `json:"userId"`
 	TargetType string `json:"targetType"`
 	TargetId   string `json:"targetId"`
+	MasterCode string `json:"masterCode"`
 	Rating     int    `json:"rating"`
 	Content    string `json:"content"`
 	Images     string `json:"images"`
@@ -136,4 +137,18 @@ type ReportHandleReq struct {
 type ReportHandleResp struct {
 	Id     int64  `json:"id"`
 	Status string `json:"status"`
+}
+
+// 法师台 - 评价列表（masterId 从 JWT 获取，按 masterCode 过滤）
+type MasterReviewListReq struct {
+	Rating int `form:"rating,optional"`
+	Page   int `form:"page,default=1"`
+	Size   int `form:"size,default=20"`
+}
+
+type MasterReviewListResp struct {
+	Total int64    `json:"total"`
+	List  []Review `json:"list"`
+	Page  int      `json:"page"`
+	Size  int      `json:"size"`
 }

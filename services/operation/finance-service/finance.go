@@ -68,7 +68,8 @@ func startConsumer(ctx context.Context, consumer *mq.Consumer) {
 				}
 				logx.Infof("收到预约状态变更: bookingId=%s action=%s userId=%s",
 					evt.BookingId, evt.Action, evt.UserId)
-				if evt.Action == "completed" {
+				// booking 终态为 reviewed（已评价结案）/ cancelled；reviewed 时记录收入
+				if evt.Action == "reviewed" {
 					model.InsertFinanceLog(model.FinanceLog{
 						Type:        "income",
 						Amount:      0,

@@ -25,3 +25,6 @@ RabbitMQ:
   User: admin
   Password: admin
   VHost: "/"
+
+# JWT 签名密钥（法师台路由鉴权）
+AuthSecret: "askxuan-access-secret-change-in-prod"

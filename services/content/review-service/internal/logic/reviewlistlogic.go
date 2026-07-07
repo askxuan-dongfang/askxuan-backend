@@ -27,7 +27,7 @@ func NewReviewListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Review
 
 // ReviewList C端评价列表，按 target 查询，仅返回 normal 状态
 func (l *ReviewListLogic) ReviewList(req *types.ReviewListReq) (*types.ReviewListResp, error) {
-	list, total := model.ListReviews(req.TargetType, req.TargetId, req.UserId, req.Rating, model.ReviewStatusNormal, req.Page, req.Size)
+	list, total := model.ListReviews(req.TargetType, req.TargetId, req.UserId, req.Rating, model.ReviewStatusNormal, "", req.Page, req.Size)
 
 	result := make([]types.Review, 0, len(list))
 	for _, r := range list {
@@ -37,6 +37,7 @@ func (l *ReviewListLogic) ReviewList(req *types.ReviewListReq) (*types.ReviewLis
 			UserId:     r.UserId,
 			TargetType: r.TargetType,
 			TargetId:   r.TargetId,
+			MasterCode: r.MasterCode,
 			Rating:     r.Rating,
 			Content:    r.Content,
 			Images:     r.Images,

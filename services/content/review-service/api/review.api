@@ -15,6 +15,7 @@ type (
         UserId     string `json:"userId"`
         TargetType string `json:"targetType"` // booking/diy_order/shop_order
         TargetId   string `json:"targetId"`
+        MasterCode string `json:"masterCode"` // 法师编码（target_type=booking 时关联）
         Rating     int    `json:"rating"`     // 1-5
         Content    string `json:"content"`
         Images     string `json:"images"`     // JSON数组
@@ -161,6 +162,22 @@ type (
     }
 )
 
+// 法师台 - 评价列表（masterId 从 JWT 获取，按 masterCode 过滤）
+type (
+    MasterReviewListReq {
+        Rating int `form:"rating,optional"`
+        Page   int `form:"page,default=1"`
+        Size   int `form:"size,default=20"`
+    }
+
+    MasterReviewListResp {
+        Total int64    `json:"total"`
+        List  []Review `json:"list"`
+        Page  int      `json:"page"`
+        Size  int      `json:"size"`
+    }
+)
+
 // C端评价接口
 @server (
     group: review.customer
@@ -207,4 +224,15 @@ service review-service {
 
     @handler reportHandle
     put /reports/:id/handle (ReportHandleReq) returns (ReportHandleResp)
+}
+
+// 法师台评价管理接口（JWT 鉴权，masterId 从 JWT 获取）
+@server (
+    group: review.master
+    prefix: /api/v1/admin/masters/reviews
+    jwt: Auth
+)
+service review-service {
+    @handler masterReviewList
+    get / (MasterReviewListReq) returns (MasterReviewListResp)
 }

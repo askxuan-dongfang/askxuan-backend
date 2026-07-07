@@ -26,6 +26,7 @@ type Review struct {
 	UserId     string `json:"userId"`
 	TargetType string `json:"targetType"`
 	TargetId   string `json:"targetId"`
+	MasterCode string `json:"masterCode"` // 法师编码（target_type=booking 时从预约关联写入）
 	Rating     int    `json:"rating"`
 	Content    string `json:"content"`
 	Images     string `json:"images"`
@@ -49,6 +50,7 @@ var globalReviewStore = &reviewStore{
 			UserId:     "U001",
 			TargetType: TargetTypeBooking,
 			TargetId:   "B20260615003",
+			MasterCode: "M002", // 预约 B20260615003 关联清风道长 M002
 			Rating:     5,
 			Content:    "清风道长非常专业，化太岁仪式庄重，感觉很安心。",
 			Images:     `["https://oss.askxuan.com/rv/1.jpg"]`,
@@ -61,6 +63,7 @@ var globalReviewStore = &reviewStore{
 			UserId:     "U002",
 			TargetType: TargetTypeBooking,
 			TargetId:   "B20260628002",
+			MasterCode: "M003", // 预约 B20260628002 关联释延心法师 M003
 			Rating:     4,
 			Content:    "释延心法师超度法事很用心，整体体验不错。",
 			Images:     `[]`,
@@ -73,6 +76,7 @@ var globalReviewStore = &reviewStore{
 			UserId:     "U001",
 			TargetType: TargetTypeShopOrder,
 			TargetId:   "SO20260620001",
+			MasterCode: "", // 商城订单无法师关联
 			Rating:     5,
 			Content:    "小叶紫檀手串品质很好，包装精美，非常满意！",
 			Images:     `["https://oss.askxuan.com/rv/2.jpg","https://oss.askxuan.com/rv/3.jpg"]`,
@@ -83,8 +87,8 @@ var globalReviewStore = &reviewStore{
 	seq: 3,
 }
 
-// ListReviews 查询评价列表，支持按 targetType/targetId/userId/rating 筛选 + 分页
-func ListReviews(targetType, targetId, userId string, rating int, status string, page, size int) ([]Review, int64) {
+// ListReviews 查询评价列表，支持按 targetType/targetId/userId/rating/masterCode 筛选 + 分页
+func ListReviews(targetType, targetId, userId string, rating int, status, masterCode string, page, size int) ([]Review, int64) {
 	globalReviewStore.mu.RLock()
 	defer globalReviewStore.mu.RUnlock()
 
@@ -103,6 +107,9 @@ func ListReviews(targetType, targetId, userId string, rating int, status string,
 			continue
 		}
 		if status != "" && r.Status != status {
+			continue
+		}
+		if masterCode != "" && r.MasterCode != masterCode {
 			continue
 		}
 		filtered = append(filtered, r)

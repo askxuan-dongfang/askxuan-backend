@@ -27,7 +27,7 @@ func NewAdminReviewListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *A
 
 // AdminReviewList 管理台评价列表，支持按 status 筛选（含hidden）
 func (l *AdminReviewListLogic) AdminReviewList(req *types.AdminReviewListReq) (*types.AdminReviewListResp, error) {
-	list, total := model.ListReviews(req.TargetType, req.TargetId, "", req.Rating, req.Status, req.Page, req.Size)
+	list, total := model.ListReviews(req.TargetType, req.TargetId, "", req.Rating, req.Status, "", req.Page, req.Size)
 
 	result := make([]types.Review, 0, len(list))
 	for _, r := range list {
@@ -37,6 +37,7 @@ func (l *AdminReviewListLogic) AdminReviewList(req *types.AdminReviewListReq) (*
 			UserId:     r.UserId,
 			TargetType: r.TargetType,
 			TargetId:   r.TargetId,
+			MasterCode: r.MasterCode,
 			Rating:     r.Rating,
 			Content:    r.Content,
 			Images:     r.Images,
