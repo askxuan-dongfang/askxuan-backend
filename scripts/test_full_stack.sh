@@ -75,7 +75,7 @@ check "C端-用户信息(JWT)" "0" "$(echo "$R" | json_code)" ""
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/messages/unread-count?userId=1")
 check "C端-未读消息数(JWT)" "0" "$(echo "$R" | json_code)" ""
 
-R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/booking")
+R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/bookings")
 check "C端-我的预约列表(JWT)" "0" "$(echo "$R" | json_code)" ""
 
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/orders?userId=1&page=1&size=20")
@@ -180,7 +180,7 @@ check "zrpc: master→diy(blessing_task)" "0" "$(echo "$R" | json_code)" "通过
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $T_TOKEN" "$GATEWAY/api/v1/admin/temples/blessing-tasks")
 check "zrpc: temple→diy(blessing_task)" "0" "$(echo "$R" | json_code)" "通过zrpc查blessing_task"
 
-R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/booking")
+R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/bookings")
 check "跨库JOIN: booking→temple+master" "0" "$(echo "$R" | json_code)" ""
 
 R=$(curl -s --max-time 10 -X POST "$GATEWAY/api/v1/auth/login" -H "Content-Type: application/json" -d '{"phone":"13800138001","password":"123456"}')

@@ -92,18 +92,18 @@ echo ""
 echo "--- 5. 预约闭环 ---"
 BOOKING_DATE=$(date -v+1d +%Y-%m-%d 2>/dev/null || date -d "+1 day" +%Y-%m-%d)
 R=$(curl -s --max-time 10 -X POST -H "$AUTH" -H "Content-Type: application/json" \
-  "$GATEWAY/api/v1/booking" \
+  "$GATEWAY/api/v1/bookings" \
   -d "{\"userId\":\"$USER_ID\",\"templeId\":\"T001\",\"templeName\":\"灵隐寺\",\"masterId\":\"M001\",\"masterName\":\"智海法师\",\"serviceId\":\"S001\",\"serviceName\":\"禅修\",\"bookingDate\":\"$BOOKING_DATE\",\"timeSlot\":\"09:00-10:00\",\"meritMoney\":99,\"meritMoneyTier\":\"基础\",\"note\":\"自动化测试预约\"}")
 check "5.1 创建预约" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 300)"
 BK_NO=$(echo "$R" | python3 -c "import sys,json;d=json.load(sys.stdin).get('data',{});print(d.get('id','') or d.get('bookingNo',''))" 2>/dev/null)
 echo "  → bookingNo=$BK_NO"
 
 if [ -n "$BK_NO" ]; then
-  R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/booking/$BK_NO")
+  R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/bookings/$BK_NO")
   check "5.2 查询预约详情" "0" "$(echo "$R" | json_code)" ""
 fi
 
-R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/booking?userId=$USER_ID&page=1&size=20")
+R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/bookings?userId=$USER_ID&page=1&size=20")
 check "5.3 查询我的预约列表" "0" "$(echo "$R" | json_code)" "total=$(echo "$R" | json_data total)"
 
 # ===== 6. DIY 设计与下单闭环 =====

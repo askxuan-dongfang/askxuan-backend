@@ -211,13 +211,13 @@ curl http://localhost:8080/api/v1/temples/T001
 
 ```bash
 # 创建预约（需带 token）
-curl -X POST http://localhost:8080/api/v1/booking \
+curl -X POST http://localhost:8080/api/v1/bookings \
   -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
   -d '{"userId":"1001","templeId":"T001","masterId":"M001","serviceId":"S001","bookingDate":"2026-07-10","timeSlot":"09:00-10:00","meritMoney":200,"meritMoneyTier":"大额"}'
 # 创建成功后，message-service 会收到 booking.events 事件并生成站内消息
 
 # 状态流转：pending → confirmed
-curl -X PUT http://localhost:8080/api/v1/booking/B20260630001/status \
+curl -X PUT http://localhost:8080/api/v1/bookings/B20260630001/status \
   -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
   -d '{"status":"confirmed"}'
 

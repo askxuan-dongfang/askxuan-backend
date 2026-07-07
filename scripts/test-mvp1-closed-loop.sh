@@ -115,7 +115,7 @@ fi
 
 # ===== 5. 创建预约 =====
 info "步骤 5/10: 创建预约"
-BOOKING_RESP=$(curl -s -X POST "$BASE/api/v1/booking" \
+BOOKING_RESP=$(curl -s -X POST "$BASE/api/v1/bookings" \
     -H "$AUTH_HEADER" \
     -H 'Content-Type: application/json' \
     -d "{
