@@ -46,6 +46,8 @@ PID_DIR := $(LOG_DIR)/pids
 
 .PHONY: help tidy build run-all start-all start-core stop-core stop-all db-init db-reset clean \
         test test-verbose vet lint fmt docker-build docker-build-all swagger \
+        docker-config docker-up docker-down docker-restart docker-ps docker-logs \
+        stack-preflight stack-up stack-down stack-restart stack-check stack-ps stack-logs \
         start-gateway start-auth start-user start-temple start-master start-booking \
         start-message start-file start-product start-diy start-order start-payment \
         start-finance start-review start-audit start-logistics start-marketing start-ai \
@@ -340,6 +342,58 @@ docker-build: ## 构建单个服务 Docker 镜像（用法: make docker-build SV
 
 docker-build-all: ## 构建所有服务 Docker 镜像
 	@TAG=$(or $(TAG),latest); bash scripts/docker-build-all.sh $$TAG
+
+docker-config: ## 生成 Docker Compose 容器网络配置（.docker/etc）
+	@bash scripts/dev/render-docker-configs.sh
+
+docker-up: ## 一键启动中间件 + 首次初始化数据库 + 18 个后端服务（Docker Compose）
+	@bash scripts/dev/docker-up-all.sh
+
+docker-down: ## 停止 Docker Compose 全量后端（保留 MySQL/Redis 等数据卷）
+	@docker compose -f docker-compose.yml -f docker-compose.full.yml down
+
+docker-restart: docker-down docker-up ## 重启 Docker Compose 全量后端
+
+docker-ps: ## 查看 Docker Compose 全量后端容器状态
+	@docker compose -f docker-compose.yml -f docker-compose.full.yml ps
+
+docker-logs: ## 查看 Docker Compose 后端日志（可传 SVC=gateway-service）
+	@if [ -n "$(SVC)" ]; then \
+		docker compose -f docker-compose.yml -f docker-compose.full.yml logs -f --tail=200 $(SVC); \
+	else \
+		docker compose -f docker-compose.yml -f docker-compose.full.yml logs -f --tail=200; \
+	fi
+
+stack-preflight: ## 全栈启动前预检端口/Docker/Compose（askXuan + OpenIM）
+	@bash scripts/dev/stack-preflight.sh
+
+stack-up: ## 一键启动完整后端栈：OpenIM + askXuan 中间件 + askXuan 18 个服务
+	@bash scripts/dev/stack-up.sh
+
+stack-down: ## 停止完整后端栈（保留数据）
+	@bash scripts/dev/stack-down.sh
+
+stack-restart: stack-down stack-up ## 重启完整后端栈
+
+stack-check: ## 检查完整后端栈健康状态
+	@bash scripts/dev/stack-check.sh
+
+stack-ps: ## 查看 askXuan 与 OpenIM 容器状态
+	@docker compose -f docker-compose.yml -f docker-compose.full.yml ps
+	@echo ""
+	@OPENIM_DIR=".local/openim/open-im-server-3.8.3"; \
+	if [ -f "$$OPENIM_DIR/docker-compose.yml" ]; then \
+		docker compose -f "$$OPENIM_DIR/docker-compose.yml" ps; \
+	else \
+		echo "OpenIM compose file not found: $$OPENIM_DIR/docker-compose.yml"; \
+	fi
+
+stack-logs: ## 查看全栈日志（askXuan 用 SVC=xxx；OpenIM 请用 openim 自带 compose 查看）
+	@if [ -n "$(SVC)" ]; then \
+		docker compose -f docker-compose.yml -f docker-compose.full.yml logs -f --tail=200 $(SVC); \
+	else \
+		docker compose -f docker-compose.yml -f docker-compose.full.yml logs -f --tail=200; \
+	fi
 
 # ---------- Swagger 文档 ----------
 swagger: ## 生成 Swagger API 文档（需安装 goctl-swagger 插件）

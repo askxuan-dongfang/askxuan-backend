@@ -14,7 +14,8 @@ askXuan-backend/
 ├── Makefile                     # 便捷命令（启动/编译/测试/lint/docker）
 ├── .golangci.yml                # 14 个 linter 配置
 ├── .github/workflows/ci.yml     # GitHub Actions CI（lint/build/test/vet）
-├── docker-compose.yml           # 基础设施（MySQL/Redis/RabbitMQ/MinIO/etcd/Zookeeper/Kafka/MongoDB）
+├── docker-compose.yml           # 基础设施（MySQL/Redis/RabbitMQ/MinIO/etcd）
+├── docker-compose.full.yml      # 本地 Docker 全量后端服务（18 个 Go 服务）
 │
 ├── common/                      # 公共模块（JWT/错误码/响应封装/中间件）
 │   ├── response.go              # {code,message,data} 统一响应体
@@ -93,7 +94,7 @@ askXuan-backend/
    ```bash
    docker compose up -d
    ```
-   启动 MySQL 8(3306) / Redis 7(6379) / RabbitMQ(5672) / MinIO(9000) / etcd(2379) / Zookeeper(2181) / Kafka(9092) / MongoDB(27017)
+   启动 MySQL 8(3306) / Redis 7(6379) / RabbitMQ(5672) / MinIO(9000) / etcd(2379)
 4. **初始化数据库**：
    ```bash
    make db-init
@@ -134,6 +135,48 @@ bash scripts/test-mvp3-audit-closed-loop.sh
 ## 快速启动
 
 所有 `make` 命令均在 `askXuan-backend/` 根目录执行。
+
+### Docker 一键启动（推荐）
+
+完整后端栈包含两组：
+
+- `askxuan`：MySQL / Redis / RabbitMQ / MinIO / etcd + 18 个 askXuan Go 服务
+- `open-im-server-383`：OpenIM 的 MongoDB / Redis / Kafka / MinIO / etcd / Web Front / Admin Front，以及本机 OpenIM 服务进程
+
+```bash
+# 推荐：一键启动完整后端栈（先做端口预检）
+make stack-up
+
+# 停止完整后端栈（保留 Docker volume 和 OpenIM 本地数据）
+make stack-down
+
+# 健康检查
+make stack-check
+
+# 只启动 askXuan 这一组：中间件 + 首次初始化数据库 + 18 个后端服务
+make docker-up
+
+# 查看容器状态
+make docker-ps
+
+# 查看全部日志，或只看网关日志
+make docker-logs
+make docker-logs SVC=gateway-service
+
+# 停止全部容器（保留数据卷）
+make docker-down
+```
+
+完整栈端口已错开：askXuan 使用 `3306/6379/5672/15672/9000/9001/2379/2380/8080-8098/9088`；
+OpenIM 使用 `37017/16379/12379/12380/19094/10005/19090/11001/11002/10001/10002`。
+`make stack-preflight` 会在启动前检查端口占用；端口已被对应容器占用视为正常，未知进程占用会直接报错。
+
+`make docker-up` 会先生成 `.docker/etc/*` 容器配置，把本机配置里的
+`localhost/127.0.0.1` 改成 Docker 网络内的 `mysql/redis/rabbitmq/minio/etcd`
+以及各服务名，避免容器重启后服务互相找不到。数据库只在首次检测不到
+`askxuan.temple` 表时初始化；后续重启保留 Docker volume 数据，需要清库时手动执行 `make db-reset`。
+
+askXuan 容器访问 OpenIM REST API 走 `host.docker.internal:10002`，避免把两套 compose 网络强行合并造成容器名和端口冲突。
 
 ```bash
 # 拉取依赖

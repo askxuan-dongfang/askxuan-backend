@@ -1,0 +1,320 @@
+# askXuan backend services for local Docker Compose.
+# Usage:
+#   make docker-up
+#   docker compose -f docker-compose.yml -f docker-compose.full.yml ps
+
+x-backend-common: &backend-common
+  restart: unless-stopped
+  networks:
+    - askxuan-net
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+    minio:
+      condition: service_healthy
+    etcd:
+      condition: service_healthy
+
+x-backend-build: &backend-build
+  context: .
+  dockerfile: build/docker/Dockerfile
+
+services:
+  gateway-service:
+    <<: *backend-common
+    container_name: askxuan-gateway-service
+    image: askxuan/gateway-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/platform/gateway-service
+        BINARY: gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./.docker/etc/gateway:/app/etc:ro
+    depends_on:
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      temple-service:
+        condition: service_started
+      master-service:
+        condition: service_started
+      booking-service:
+        condition: service_started
+      message-service:
+        condition: service_started
+      file-service:
+        condition: service_started
+      product-service:
+        condition: service_started
+      diy-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      finance-service:
+        condition: service_started
+      review-service:
+        condition: service_started
+      audit-service:
+        condition: service_started
+      logistics-service:
+        condition: service_started
+      marketing-service:
+        condition: service_started
+      ai-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    <<: *backend-common
+    container_name: askxuan-auth-service
+    image: askxuan/auth-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/platform/auth-service
+        BINARY: auth
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./.docker/etc/auth:/app/etc:ro
+
+  user-service:
+    <<: *backend-common
+    container_name: askxuan-user-service
+    image: askxuan/user-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/platform/user-service
+        BINARY: user
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./.docker/etc/user:/app/etc:ro
+
+  temple-service:
+    <<: *backend-common
+    container_name: askxuan-temple-service
+    image: askxuan/temple-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/content/temple-service
+        BINARY: temple
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./.docker/etc/temple:/app/etc:ro
+
+  master-service:
+    <<: *backend-common
+    container_name: askxuan-master-service
+    image: askxuan/master-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/content/master-service
+        BINARY: master
+    ports:
+      - "8084:8084"
+    volumes:
+      - ./.docker/etc/master:/app/etc:ro
+
+  booking-service:
+    <<: *backend-common
+    container_name: askxuan-booking-service
+    image: askxuan/booking-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/content/booking-service
+        BINARY: booking
+    ports:
+      - "8085:8085"
+    volumes:
+      - ./.docker/etc/booking:/app/etc:ro
+
+  product-service:
+    <<: *backend-common
+    container_name: askxuan-product-service
+    image: askxuan/product-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/commerce/product-service
+        BINARY: product
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./.docker/etc/product:/app/etc:ro
+
+  diy-service:
+    <<: *backend-common
+    container_name: askxuan-diy-service
+    image: askxuan/diy-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/commerce/diy-service
+        BINARY: diy
+    ports:
+      - "8088:8088"
+      - "9088:9088"
+    volumes:
+      - ./.docker/etc/diy:/app/etc:ro
+
+  order-service:
+    <<: *backend-common
+    container_name: askxuan-order-service
+    image: askxuan/order-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/commerce/order-service
+        BINARY: order
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./.docker/etc/order:/app/etc:ro
+
+  payment-service:
+    <<: *backend-common
+    container_name: askxuan-payment-service
+    image: askxuan/payment-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/commerce/payment-service
+        BINARY: payment
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./.docker/etc/payment:/app/etc:ro
+
+  finance-service:
+    <<: *backend-common
+    container_name: askxuan-finance-service
+    image: askxuan/finance-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/operation/finance-service
+        BINARY: finance
+    ports:
+      - "8091:8091"
+    volumes:
+      - ./.docker/etc/finance:/app/etc:ro
+
+  review-service:
+    <<: *backend-common
+    container_name: askxuan-review-service
+    image: askxuan/review-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/content/review-service
+        BINARY: review
+    ports:
+      - "8092:8092"
+    volumes:
+      - ./.docker/etc/review:/app/etc:ro
+
+  audit-service:
+    <<: *backend-common
+    container_name: askxuan-audit-service
+    image: askxuan/audit-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/operation/audit-service
+        BINARY: audit
+    ports:
+      - "8093:8093"
+    volumes:
+      - ./.docker/etc/audit:/app/etc:ro
+
+  message-service:
+    <<: *backend-common
+    container_name: askxuan-message-service
+    image: askxuan/message-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/infrastructure/message-service
+        BINARY: message
+    ports:
+      - "8094:8094"
+    volumes:
+      - ./.docker/etc/message:/app/etc:ro
+
+  logistics-service:
+    <<: *backend-common
+    container_name: askxuan-logistics-service
+    image: askxuan/logistics-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/operation/logistics-service
+        BINARY: logistics
+    ports:
+      - "8095:8095"
+    volumes:
+      - ./.docker/etc/logistics:/app/etc:ro
+
+  marketing-service:
+    <<: *backend-common
+    container_name: askxuan-marketing-service
+    image: askxuan/marketing-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/operation/marketing-service
+        BINARY: marketing
+    ports:
+      - "8096:8096"
+    volumes:
+      - ./.docker/etc/marketing:/app/etc:ro
+
+  file-service:
+    <<: *backend-common
+    container_name: askxuan-file-service
+    image: askxuan/file-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/infrastructure/file-service
+        BINARY: file
+    ports:
+      - "8097:8097"
+    volumes:
+      - ./.docker/etc/file:/app/etc:ro
+
+  ai-service:
+    <<: *backend-common
+    container_name: askxuan-ai-service
+    image: askxuan/ai-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/infrastructure/ai-service
+        BINARY: ai
+    ports:
+      - "8098:8098"
+    volumes:
+      - ./.docker/etc/ai:/app/etc:ro

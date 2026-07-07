@@ -150,6 +150,10 @@ log_*.txt
 
 # ---------- Docker ----------
 docker-compose.override.yml
+.docker/
+!build/
+!build/docker/
+!build/docker/Dockerfile
 
 # ---------- 数据库本地文件 ----------
 *.sqlite

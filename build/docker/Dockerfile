@@ -1,0 +1,56 @@
+# askXuan-backend 通用 Dockerfile（多阶段构建）
+# 使用方式（在 askXuan-backend/ 根目录执行）：
+#   docker build -f build/docker/Dockerfile --build-arg SERVICE=auth-service --build-arg BINARY=auth -t askxuan/auth-service:latest .
+#   docker build -f build/docker/Dockerfile --build-arg SERVICE=gateway-service --build-arg BINARY=gateway -t askxuan/gateway-service:latest .
+
+# ===== Stage 1: builder =====
+FROM golang:1.22-alpine AS builder
+
+ARG SERVICE
+ARG BINARY
+
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+ENV GOARCH=amd64
+ENV GOPROXY=https://goproxy.cn,direct
+
+WORKDIR /build
+
+# 复制整个 workspace（go.work 模式需要全部模块）
+COPY . .
+
+# 编译指定服务的二进制文件
+RUN cd ${SERVICE} && go build -o /build/${BINARY} ${BINARY}.go
+
+# ===== Stage 2: runner =====
+FROM alpine:3.19
+
+ARG SERVICE
+ARG BINARY
+
+ENV TZ=Asia/Shanghai
+ENV BINARY=${BINARY}
+
+# 安装基础依赖
+RUN apk add --no-cache ca-certificates tzdata && \
+    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone
+
+WORKDIR /app
+
+# 从 builder 阶段复制编译产物
+COPY --from=builder /build/${BINARY} /app/${BINARY}
+COPY --from=builder /build/${SERVICE}/etc /app/etc
+
+# 非 root 用户运行
+RUN adduser -D -u 1000 appuser
+USER appuser
+
+EXPOSE 8080
+
+# 健康检查（go-zero 内置 /healthz 或自定义）
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+    CMD wget -q -O- http://localhost:8080/healthz || exit 1
+
+# shell 形式以展开 BINARY 变量
+CMD /app/${BINARY} -f etc/${BINARY}.yaml
