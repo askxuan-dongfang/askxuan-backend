@@ -50,7 +50,7 @@ echo "================================================"
 info "步骤 1/10: 用户注册"
 USER_ID=""
 MOBILE="13900000$((RANDOM % 10000))"
-REG_RESP=$(curl -s -X POST "$BASE/api/v1/user/register" \
+REG_RESP=$(curl -s -X POST "$BASE/api/v1/users/register" \
     -H 'Content-Type: application/json' \
     -d "{\"mobile\":\"$MOBILE\",\"code\":\"1234\",\"nickname\":\"测试用户\"}")
 REG_CODE=$(echo "$REG_RESP" | jq -r '.code // 0')
@@ -139,7 +139,7 @@ fi
 # ===== 6. 查询站内消息（等待 MQ 消费）=====
 info "步骤 6/10: 查询站内消息（等待 MQ 消费 2s）"
 sleep 2
-MSG_RESP=$(curl -s "$BASE/api/v1/message/list?userId=$USER_ID&page=1&size=20" \
+MSG_RESP=$(curl -s "$BASE/api/v1/messages/list?userId=$USER_ID&page=1&size=20" \
     -H "$AUTH_HEADER")
 MSG_COUNT=$(echo "$MSG_RESP" | jq -r '.data.total // .total // 0')
 if [ "$MSG_COUNT" -gt 0 ] 2>/dev/null; then
@@ -204,7 +204,7 @@ fi
 # ===== 10. 查询消息（应收到确认通知）=====
 info "步骤 10/10: 查询确认通知消息（等待 MQ 消费 2s）"
 sleep 2
-MSG_RESP2=$(curl -s "$BASE/api/v1/message/list?userId=$USER_ID&page=1&size=20" \
+MSG_RESP2=$(curl -s "$BASE/api/v1/messages/list?userId=$USER_ID&page=1&size=20" \
     -H "$AUTH_HEADER")
 MSG_COUNT2=$(echo "$MSG_RESP2" | jq -r '.data.total // .total // 0')
 if [ "$MSG_COUNT2" -gt 0 ] 2>/dev/null; then

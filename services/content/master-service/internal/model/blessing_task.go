@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/askxuan/master-service/rpc/diy"
 
@@ -69,7 +70,7 @@ type BlessingTask struct {
 	TempleCode      string `db:"temple_code" json:"templeCode"`
 	MasterCode      string `db:"master_code" json:"masterCode"`
 	Status          string `db:"status" json:"status"`
-	CertificateUrls string `db:"certificate_urls" json:"certificateUrls"` // JSON 数组字符串
+	CertificateUrls []string `db:"certificate_urls" json:"certificateUrls"` // RPC 传输为 JSON 字符串，本地转为切片
 	AssignTime      string `db:"assign_time" json:"assignTime"`
 	CompleteTime    string `db:"complete_time" json:"completeTime"`
 	CreateTime      string `db:"create_time" json:"createTime"`
@@ -96,6 +97,7 @@ func NewBlessingTaskModel(client diy.DiyServiceClient) BlessingTaskModel {
 }
 
 // rpcToModel 将 rpc diy.BlessingTask 转为本地 model.BlessingTask
+// certificate_urls 在 RPC 中为 JSON 字符串，这里反序列化为 []string
 func rpcToModel(t *diy.BlessingTask) *BlessingTask {
 	return &BlessingTask{
 		Id:              t.Id,
@@ -104,12 +106,27 @@ func rpcToModel(t *diy.BlessingTask) *BlessingTask {
 		TempleCode:      t.TempleCode,
 		MasterCode:      t.MasterCode,
 		Status:          t.Status,
-		CertificateUrls: t.CertificateUrls,
+		CertificateUrls: jsonStrToUrls(t.CertificateUrls),
 		AssignTime:      t.AssignTime,
 		CompleteTime:    t.CompleteTime,
 		CreateTime:      t.CreateTime,
 		UpdateTime:      t.UpdateTime,
 	}
+}
+
+// jsonStrToUrls 将 JSON 数组字符串反序列化为 []string
+func jsonStrToUrls(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	var urls []string
+	if err := json.Unmarshal([]byte(s), &urls); err != nil {
+		return []string{}
+	}
+	if urls == nil {
+		urls = []string{}
+	}
+	return urls
 }
 
 // wrapRpcError 将 gRPC NotFound 错误转为 sqlx.ErrNotFound，保持调用方错误处理兼容

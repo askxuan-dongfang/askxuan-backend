@@ -20,12 +20,12 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodGet,
-			Path:    "/api/v1/file/presigned",
+			Path:    "/api/v1/files/presigned",
 			Handler: presignedHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodPost,
-			Path:    "/api/v1/file/upload",
+			Path:    "/api/v1/files/upload",
 			Handler: uploadHandler(svcCtx),
 		},
 	})

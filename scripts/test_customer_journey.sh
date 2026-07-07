@@ -33,7 +33,7 @@ echo "=========================================="
 echo ""
 echo "--- 1. 用户注册 ---"
 # 注：auth-service/user-service MVP-1 阶段验证码固定 1234
-R=$(curl -s --max-time 10 -X POST "$GATEWAY/api/v1/user/register" \
+R=$(curl -s --max-time 10 -X POST "$GATEWAY/api/v1/users/register" \
   -H "Content-Type: application/json" \
   -d "{\"mobile\":\"$PHONE\",\"code\":\"1234\",\"nickname\":\"$NICKNAME\"}")
 check "1.1 用户注册" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 200)"
@@ -80,10 +80,10 @@ check "3.8 首页 Banner" "0" "$(echo "$R" | json_code)" ""
 # ===== 4. 用户信息 =====
 echo ""
 echo "--- 4. 用户信息 ---"
-R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/user/profile")
+R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/users/profile")
 check "4.1 获取用户信息" "0" "$(echo "$R" | json_code)" ""
 R=$(curl -s --max-time 10 -X PUT -H "$AUTH" -H "Content-Type: application/json" \
-  "$GATEWAY/api/v1/user/profile" \
+  "$GATEWAY/api/v1/users/profile" \
   -d "{\"nickname\":\"$NICKNAME 已更新\",\"avatar\":\"https://cdn.test/avatar.png\"}")
 check "4.2 更新用户信息" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 200)"
 
@@ -140,13 +140,13 @@ PRODUCT_ID=$(curl -s --max-time 10 "$GATEWAY/api/v1/products?page=1&size=10" | \
 
 # 7.1 创建地址
 R=$(curl -s --max-time 10 -X POST -H "$AUTH" -H "Content-Type: application/json" \
-  "$GATEWAY/api/v1/user/addresses" \
+  "$GATEWAY/api/v1/users/addresses" \
   -d "{\"name\":\"测试用户\",\"phone\":\"$PHONE\",\"province\":\"浙江省\",\"city\":\"杭州市\",\"district\":\"西湖区\",\"detail\":\"灵隐路1号\"}")
 check "7.1 新增收货地址" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 300)"
 ADDR_ID=$(echo "$R" | python3 -c "import sys,json;d=json.load(sys.stdin).get('data',{});print(d.get('id','') or d.get('addressId',''))" 2>/dev/null)
 echo "  → addressId=$ADDR_ID"
 
-R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/user/addresses")
+R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/users/addresses")
 check "7.2 地址列表" "0" "$(echo "$R" | json_code)" ""
 
 # 7.2 创建商城订单（ShopOrderItem 需 productId+productName+price+quantity）
@@ -176,7 +176,7 @@ R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/messages/unread-count?user
 check "8.2 未读消息数" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 200)"
 
 # 8.3 站内消息列表
-R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/message/list?userId=$USER_ID&page=1&size=20")
+R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/messages/list?userId=$USER_ID&page=1&size=20")
 check "8.3 站内消息列表" "0" "$(echo "$R" | json_code)" "total=$(echo "$R" | python3 -c "import sys,json;d=json.load(sys.stdin).get('data',{});print(d.get('total',0))" 2>/dev/null)"
 
 # 8.4 标记全部已读

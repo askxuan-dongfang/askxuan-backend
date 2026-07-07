@@ -29,10 +29,10 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPost, Path: "/api/v1/payments/callback/alipay", Handler: callbackAlipayHandler(svcCtx)},
 	})
 
-	// ===== 退款路由（鉴权由网关层 JWT 校验保障） =====
+	// ===== 退款路由（服务侧 JWT 鉴权 + 网关层 JWT 校验，纵深防御） =====
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodPost, Path: "/api/v1/payments/refund", Handler: refundHandler(svcCtx)},
-	})
+	}, rest.WithJwt(svcCtx.Config.Auth.AccessSecret))
 }
 
 func paymentCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

@@ -41,3 +41,8 @@ Alipay:
   PrivateKey: ""
   PublicKey: ""
   NotifyUrl: "https://api.askxuan.com/api/v1/payments/callback/alipay"
+
+# JWT 鉴权配置（退款路由服务侧 JWT 校验，与网关层形成纵深防御）
+Auth:
+  AccessSecret: "askxuan-access-secret-change-in-prod"
+  AccessExpire: 7200

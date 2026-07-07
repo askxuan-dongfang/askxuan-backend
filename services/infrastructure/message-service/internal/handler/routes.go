@@ -46,7 +46,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: message.ListHandler(serverCtx),
 			},
 		},
-		rest.WithPrefix("/api/v1/message"),
+		rest.WithPrefix("/api/v1/messages"),
 	)
 
 	server.AddRoutes(

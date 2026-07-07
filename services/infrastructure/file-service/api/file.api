@@ -34,7 +34,7 @@ type (
 
 @server (
     group: file
-    prefix: /api/v1/file
+    prefix: /api/v1/files
 )
 service file-service {
     @handler presigned

@@ -217,7 +217,7 @@ func (l *WorkspaceBlessingCompleteLogic) WorkspaceBlessingComplete(req *types.Bl
 	}
 
 	task.Status = model.BlessingTaskStatusCompleted
-	task.CertificateUrls = certJSON
+	task.CertificateUrls = req.CertificateUrls
 	resp := toTypeBlessingTask(task)
 	return &resp, nil
 }
@@ -348,7 +348,7 @@ func toTypeBlessingTask(t *model.BlessingTask) types.BlessingTask {
 		TempleCode:      t.TempleCode,
 		MasterCode:      t.MasterCode,
 		Status:          t.Status,
-		CertificateUrls: unmarshalStrSlice(t.CertificateUrls),
+		CertificateUrls: t.CertificateUrls,
 		AssignTime:      t.AssignTime,
 		CompleteTime:    t.CompleteTime,
 		CreateTime:      t.CreateTime,

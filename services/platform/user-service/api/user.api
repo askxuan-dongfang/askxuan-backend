@@ -148,7 +148,7 @@ type (
 // ============ C端用户分组（保留原有接口） ============
 @server (
     group: user
-    prefix: /api/v1/user
+    prefix: /api/v1/users
 )
 service user-service {
     @handler register

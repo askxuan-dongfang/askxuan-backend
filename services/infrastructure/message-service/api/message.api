@@ -190,7 +190,7 @@ type (
 // C 端消息接口（保留原单数前缀，兼容已有调用）
 @server (
 	group:  message
-	prefix: /api/v1/message
+	prefix: /api/v1/messages
 )
 service messageService {
 	@handler list

@@ -38,4 +38,8 @@ type Config struct {
 	RabbitMQ   RabbitMQConf
 	WechatPay  WechatPayConf
 	Alipay     AlipayConf
+	Auth       struct {
+		AccessSecret string
+		AccessExpire int64
+	}
 }

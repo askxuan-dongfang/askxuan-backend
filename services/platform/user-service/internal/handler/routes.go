@@ -22,38 +22,38 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodPost,
-			Path:    "/api/v1/user/register",
+			Path:    "/api/v1/users/register",
 			Handler: registerHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodGet,
-			Path:    "/api/v1/user/profile",
+			Path:    "/api/v1/users/profile",
 			Handler: profileHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodPut,
-			Path:    "/api/v1/user/profile",
+			Path:    "/api/v1/users/profile",
 			Handler: updateProfileHandler(svcCtx),
 		},
 		// 收货地址
 		{
 			Method:  http.MethodGet,
-			Path:    "/api/v1/user/addresses",
+			Path:    "/api/v1/users/addresses",
 			Handler: addressListHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodPost,
-			Path:    "/api/v1/user/addresses",
+			Path:    "/api/v1/users/addresses",
 			Handler: addressCreateHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodPut,
-			Path:    "/api/v1/user/addresses/:id",
+			Path:    "/api/v1/users/addresses/:id",
 			Handler: addressUpdateHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodDelete,
-			Path:    "/api/v1/user/addresses/:id",
+			Path:    "/api/v1/users/addresses/:id",
 			Handler: addressDeleteHandler(svcCtx),
 		},
 	})

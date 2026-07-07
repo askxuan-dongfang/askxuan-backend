@@ -69,7 +69,7 @@ check "C端-商品分类" "0" "$(echo "$R" | json_code)" ""
 R=$(curl -s --max-time 10 "$GATEWAY/api/v1/marketing/banners")
 check "C端-首页Banner" "0" "$(echo "$R" | json_code)" ""
 
-R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/user/profile")
+R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/users/profile")
 check "C端-用户信息(JWT)" "0" "$(echo "$R" | json_code)" ""
 
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/messages/unread-count?userId=1")

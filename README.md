@@ -192,7 +192,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 
 # 返回 {code:0, data:{accessToken, refreshToken, userInfo}}
 # 用返回的 accessToken 访问受保护接口：
-curl http://localhost:8080/api/v1/user/profile \
+curl http://localhost:8080/api/v1/users/profile \
   -H "Authorization: Bearer <accessToken>"
 ```
 
@@ -222,17 +222,17 @@ curl -X PUT http://localhost:8080/api/v1/booking/B20260630001/status \
   -d '{"status":"confirmed"}'
 
 # 查询站内消息
-curl "http://localhost:8080/api/v1/message?userId=1001"
+curl "http://localhost:8080/api/v1/messages?userId=1001"
 ```
 
 ### 4. 文件上传（file + MinIO）
 
 ```bash
 # 获取预签名上传 URL（前端直传）
-curl "http://localhost:8080/api/v1/file/presigned?fileName=test.jpg&objectType=temples"
+curl "http://localhost:8080/api/v1/files/presigned?fileName=test.jpg&objectType=temples"
 
 # 后端代传上传
-curl -X POST http://localhost:8080/api/v1/file/upload \
+curl -X POST http://localhost:8080/api/v1/files/upload \
   -H "Authorization: Bearer <token>" -F "file=@/path/to/image.jpg"
 ```
 
@@ -244,7 +244,7 @@ curl -X POST http://localhost:8080/api/v1/file/upload \
 ### JWT 鉴权链路
 - **auth-service** 签发 Access(2h) + Refresh(7d) Token
 - **gateway-service** 全局鉴权中间件校验 Access Token，校验通过后将 `userId/mobile/userType` 注入 `X-User-Id` 等请求头透传下游
-- **白名单**：`/api/v1/auth/login`、`/api/v1/auth/refresh`、`/api/v1/user/register`
+- **白名单**：`/api/v1/auth/login`、`/api/v1/auth/refresh`、`/api/v1/users/register`
 - **登出**：将 Access Token 写入 Redis 黑名单（key `jwt:blacklist:<token>`，TTL=剩余有效期）
 - **JWT Claims** 包含：`userId`、`mobile`、`userType`、`roles`、`clientId`、`templeId`、`masterId`、`type`（access/refresh）；标准字段 `sub` 用于标记 token 类型（access/refresh），`exp`/`iat` 由框架填充
 
