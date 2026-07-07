@@ -156,7 +156,7 @@ type (
 // ============ C端分组（保留） ============
 @server (
     group: booking
-    prefix: /api/v1/booking
+    prefix: /api/v1/bookings
 )
 service booking-service {
     @handler create

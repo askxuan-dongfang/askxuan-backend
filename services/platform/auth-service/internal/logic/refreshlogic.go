@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/askxuan/auth-service/internal/svc"
@@ -49,11 +50,62 @@ func (l *RefreshLogic) Refresh(req *types.RefreshReq) (*types.RefreshResp, error
 		return nil, common.ErrTokenInvalid
 	}
 
-	// 重签 access token（refresh token 仅携带 userId，用户详细角色信息需客户端重新登录获取）
+	// 重签 access token：根据 UserType 重新查询用户/管理员信息，补齐 Roles/ClientID/TempleID/MasterID
+	// 避免续期后角色信息丢失导致 40301 ErrForbidden
 	info := common.TokenInfo{
-		UserId: claims.UserId,
-		Mobile: claims.Mobile,
+		UserId:   claims.UserId,
+		Mobile:   claims.Mobile,
+		UserType: claims.UserType,
 	}
+
+	if claims.UserType == "user" {
+		// C 端用户：从 user 表补齐信息
+		u, err := l.svcCtx.UserReadonlyModel.FindByMobile(l.ctx, claims.Mobile)
+		if err == nil && u != nil {
+			info.Roles = []string{"customer"}
+			info.ClientID = "customer"
+		}
+	} else {
+		// 管理员/法师：从 admin_account 表补齐信息
+		acc, err := l.svcCtx.AdminAccountModel.FindByID(l.ctx, claims.UserId)
+		if err == nil && acc != nil {
+			// 查询角色；失败时使用默认值 "admin"，避免续期后角色丢失
+			roleCode := "admin"
+			role, roleErr := l.svcCtx.RoleModel.FindByID(l.ctx, acc.RoleId)
+			if roleErr == nil && role != nil && role.Code != "" {
+				roleCode = role.Code
+			}
+			info.Roles = []string{roleCode}
+			info.ClientID = roleCodeToClientID(roleCode)
+
+			// templeId 转换：VARCHAR → int64
+			if acc.TempleId != "" {
+				if id, err := strconv.ParseInt(acc.TempleId, 10, 64); err == nil {
+					info.TempleID = id
+				} else {
+					var tid int64
+					if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &tid,
+						"SELECT id FROM temple WHERE code = ?", acc.TempleId); err == nil {
+						info.TempleID = tid
+					}
+				}
+			}
+
+			// masterId 转换：VARCHAR → int64
+			if acc.MasterId != "" {
+				if id, err := strconv.ParseInt(acc.MasterId, 10, 64); err == nil {
+					info.MasterID = id
+				} else {
+					var mid int64
+					if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &mid,
+						"SELECT id FROM master WHERE code = ?", acc.MasterId); err == nil {
+						info.MasterID = mid
+					}
+				}
+			}
+		}
+	}
+
 	access, err := common.GenAccessToken(
 		l.svcCtx.Config.Auth.AccessSecret,
 		info,

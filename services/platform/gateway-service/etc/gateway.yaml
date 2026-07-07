@@ -39,7 +39,7 @@ Upstreams:
   - Prefix: /api/v1/masters
     Target: localhost:8084
     ServiceName: master.service
-  - Prefix: /api/v1/booking
+  - Prefix: /api/v1/bookings
     Target: localhost:8085
     ServiceName: booking.service
   - Prefix: /api/v1/message

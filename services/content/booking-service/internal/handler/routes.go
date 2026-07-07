@@ -24,33 +24,33 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodPost,
-			Path:    "/api/v1/booking",
+			Path:    "/api/v1/bookings",
 			Handler: createHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodGet,
-			Path:    "/api/v1/booking",
+			Path:    "/api/v1/bookings",
 			Handler: listHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodGet,
-			Path:    "/api/v1/booking/:id",
+			Path:    "/api/v1/bookings/:id",
 			Handler: detailHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodPut,
-			Path:    "/api/v1/booking/:id/status",
+			Path:    "/api/v1/bookings/:id/status",
 			Handler: updateStatusHandler(svcCtx),
 		},
 		// 评价
 		{
 			Method:  http.MethodPost,
-			Path:    "/api/v1/booking/:id/review",
+			Path:    "/api/v1/bookings/:id/review",
 			Handler: createReviewHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodGet,
-			Path:    "/api/v1/booking/:id/review",
+			Path:    "/api/v1/bookings/:id/review",
 			Handler: reviewDetailHandler(svcCtx),
 		},
 	})

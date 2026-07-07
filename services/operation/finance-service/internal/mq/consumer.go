@@ -46,6 +46,7 @@ type OrderNotify struct {
 
 // PaymentNotify 支付通知（与 payment-service 的 mq.PaymentNotify 对齐）
 type PaymentNotify struct {
+	UserId    string  `json:"userId"`    // 用户ID（硬约束：PaymentNotify 必须包含 UserId）
 	PaymentNo string  `json:"paymentNo"`
 	OrderType string  `json:"orderType"` // booking/shop_order/diy_order
 	OrderNo   string  `json:"orderNo"`
