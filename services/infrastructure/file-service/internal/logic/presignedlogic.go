@@ -34,7 +34,7 @@ func NewPresignLogic(ctx context.Context, svcCtx *svc.ServiceContext) *PresignLo
 // - operate=download：返回 PresignedGetObject URL，前端下载
 func (l *PresignLogic) Presigned(req *types.PresignReq) (*types.PresignResp, error) {
 	if l.svcCtx.MinIOClient == nil {
-		return nil, common.NewBizError(7001, "MinIO 未就绪")
+		return nil, common.ErrOssService
 	}
 
 	// 生成 objectName

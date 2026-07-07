@@ -20,7 +20,7 @@ type BookingNotify struct {
 	BookingId string `json:"bookingId"`
 	UserId    string `json:"userId"`
 	TempleId  string `json:"templeId"`
-	Action    string `json:"action"` // created / confirmed / completed / cancelled
+	Action    string `json:"action"` // created / confirmed / completed / reviewed / cancelled
 	Time      string `json:"time"`
 }
 

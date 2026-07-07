@@ -35,7 +35,7 @@ func NewUploadLogic(ctx context.Context, svcCtx *svc.ServiceContext) *UploadLogi
 // 返回对象名与可访问 URL
 func (l *UploadLogic) UploadFromReader(fileName, contentType string, size int64, reader io.Reader) (*types.UploadResp, error) {
 	if l.svcCtx.MinIOClient == nil {
-		return nil, common.NewBizError(7001, "MinIO 未就绪")
+		return nil, common.ErrOssService
 	}
 
 	// 按业务目录 + 时间戳生成对象名，保留原始扩展名

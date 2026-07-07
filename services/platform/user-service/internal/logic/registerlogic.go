@@ -36,7 +36,7 @@ func (l *RegisterLogic) Register(req *types.RegisterReq) (*types.RegisterResp, e
 		return nil, common.ErrParam
 	}
 	if req.Code != "1234" {
-		return nil, common.NewBizError(1006, "验证码错误")
+		return nil, common.NewBizError(40106, "验证码错误")
 	}
 
 	// 检查手机号是否已注册

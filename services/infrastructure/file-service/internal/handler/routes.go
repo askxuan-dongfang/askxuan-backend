@@ -59,7 +59,7 @@ func uploadHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		file, header, err := r.FormFile("file")
 		if err != nil {
-			common.JsonError(w, common.NewBizError(7003, "缺少 file 字段"))
+			common.JsonError(w, common.ErrParamMissing)
 			return
 		}
 		defer file.Close()
