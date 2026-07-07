@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/askxuan/auth-service/internal/svc"
 	"github.com/askxuan/auth-service/internal/types"
@@ -102,13 +103,16 @@ func (l *LoginLogic) Login(req *types.LoginReq) (*types.LoginResp, error) {
 	}
 
 	// best-effort 同步用户到 OpenIM 并获取 IM token
+	// 使用独立短超时 context，避免 OpenIM 响应慢拖垮整个登录请求（go-zero slow call 3s 阈值）
 	var imToken string
 	if l.svcCtx.IMClient != nil {
 		userIDStr := "u_" + strconv.FormatInt(u.Id, 10)
-		_ = l.svcCtx.IMClient.RegisterUser(l.ctx, userIDStr, u.Nickname, u.Avatar)
-		if token, err := l.svcCtx.IMClient.GetUserToken(l.ctx, userIDStr); err == nil {
+		imCtx, imCancel := context.WithTimeout(context.Background(), 2*time.Second)
+		_ = l.svcCtx.IMClient.RegisterUser(imCtx, userIDStr, u.Nickname, u.Avatar)
+		if token, err := l.svcCtx.IMClient.GetUserToken(imCtx, userIDStr); err == nil {
 			imToken = token
 		}
+		imCancel()
 	}
 
 	return &types.LoginResp{

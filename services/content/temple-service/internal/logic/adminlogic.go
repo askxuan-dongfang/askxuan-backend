@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/askxuan/common"
-	"github.com/askxuan/temple-service/internal/mq"
 	"github.com/askxuan/temple-service/internal/model"
+	"github.com/askxuan/temple-service/internal/mq"
 	"github.com/askxuan/temple-service/internal/svc"
 	"github.com/askxuan/temple-service/internal/types"
 
@@ -495,17 +495,41 @@ func getCurrentTemple(ctx context.Context, svcCtx *svc.ServiceContext) (*model.T
 // toTypeTemple model.Temple -> types.Temple（types.Id 为 code 字符串）
 func toTypeTemple(t *model.Temple) types.Temple {
 	return types.Temple{
-		Id:          t.Code,
-		Name:        t.Name,
-		Region:      t.Region,
-		Type:        t.Type,
-		Sect:        t.Sect,
-		Status:      t.Status,
-		Address:     t.Address,
-		CoverImage:  t.CoverImage,
-		Rating:      t.Rating,
-		Description: t.Description,
+		Id:           t.Code,
+		Name:         t.Name,
+		Region:       t.Region,
+		Type:         t.Type,
+		Sect:         t.Sect,
+		Status:       t.Status,
+		Address:      t.Address,
+		CoverImage:   t.CoverImage,
+		Rating:       t.Rating,
+		Description:  t.Description,
+		ServiceCodes: []string{},
+		ServiceTags:  []string{},
 	}
+}
+
+func withTempleServiceSummary(t types.Temple, services []*model.TempleServiceRecord) types.Temple {
+	codes := make([]string, 0, len(services))
+	tags := make([]string, 0, len(services))
+	seen := map[string]bool{}
+	for _, s := range services {
+		if s.Status != model.TempleServiceStatusOnShelf {
+			continue
+		}
+		key := s.ServiceCode + ":" + s.ServiceName
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		codes = append(codes, s.ServiceCode)
+		tags = append(tags, s.ServiceName)
+	}
+	t.ServiceCodes = codes
+	t.ServiceTags = tags
+	t.ServiceCount = len(tags)
+	return t
 }
 
 // toTypeTempleService model.TempleServiceRecord -> types.TempleService

@@ -10,16 +10,19 @@ info (
 // ============ 寺院基础 ============
 type (
     Temple {
-        Id          string  `json:"id"`
-        Name        string  `json:"name"`
-        Region      string  `json:"region"`
-        Type        string  `json:"type"`
-        Sect        string  `json:"sect"`
-        Status      string  `json:"status"`
-        Address     string  `json:"address"`
-        CoverImage  string  `json:"coverImage"`
-        Rating      float64 `json:"rating"`
-        Description string  `json:"description"`
+        Id           string   `json:"id"`
+        Name         string   `json:"name"`
+        Region       string   `json:"region"`
+        Type         string   `json:"type"`
+        Sect         string   `json:"sect"`
+        Status       string   `json:"status"`
+        Address      string   `json:"address"`
+        CoverImage   string   `json:"coverImage"`
+        Rating       float64  `json:"rating"`
+        Description  string   `json:"description"`
+        ServiceCodes []string `json:"serviceCodes"`
+        ServiceTags  []string `json:"serviceTags"`
+        ServiceCount int      `json:"serviceCount"`
     }
 
     TempleDetail {
@@ -29,11 +32,12 @@ type (
     }
 
     ListReq {
-        Sect   string `form:"sect,optional"`
-        Type   string `form:"type,optional"`
-        Region string `form:"region,optional"` // 扩展地区筛选
-        Page   int    `form:"page,default=1"`
-        Size   int    `form:"size,default=20"`
+        Sect        string `form:"sect,optional"`
+        Type        string `form:"type,optional"`
+        Region      string `form:"region,optional"` // 扩展地区筛选
+        ServiceCode string `form:"serviceCode,optional"` // 按寺院可提供服务筛选
+        Page        int    `form:"page,default=1"`
+        Size        int    `form:"size,default=20"`
     }
 
     ListResp {

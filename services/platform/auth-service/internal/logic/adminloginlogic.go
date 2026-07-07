@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/askxuan/auth-service/internal/model"
 	"github.com/askxuan/auth-service/internal/svc"
@@ -72,16 +73,15 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	// 根据 role.Code 映射 clientId
 	clientID := roleCodeToClientID(role.Code)
 
-	// templeId 从 VARCHAR（如 "T001"）解析为 int64；字符串格式需跨库查 askxuan_temple.temple
+	// templeId 从 VARCHAR（如 "T001"）解析为 int64；字符串格式查主库 temple 表。
 	var templeID int64
 	if acc.TempleId != "" {
 		if id, err := strconv.ParseInt(acc.TempleId, 10, 64); err == nil {
 			templeID = id
 		} else {
-			// 字符串格式（如 "T001"），查 temple 表（跨库 askxuan_temple.temple）
 			var tid int64
 			if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &tid,
-				"SELECT id FROM askxuan_temple.temple WHERE code = ?", acc.TempleId); err == nil {
+				"SELECT id FROM temple WHERE code = ?", acc.TempleId); err == nil {
 				templeID = tid
 			}
 		}
@@ -94,12 +94,12 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		if id, err := strconv.ParseInt(acc.MasterId, 10, 64); err == nil {
 			masterID = id
 		} else {
-			// 字符串格式（如 "M001"），查 master 表（跨库 askxuan_master.master）
-		var id int64
-		if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &id,
-			"SELECT id FROM askxuan_master.master WHERE code = ?", acc.MasterId); err == nil {
-			masterID = id
-		}
+			// 字符串格式（如 "M001"），查主库 master 表。
+			var id int64
+			if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &id,
+				"SELECT id FROM master WHERE code = ?", acc.MasterId); err == nil {
+				masterID = id
+			}
 		}
 	}
 
@@ -139,15 +139,18 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	}
 
 	// best-effort 同步法师到 OpenIM 并获取 IM token（仅法师角色需要 imToken）
+	// 使用独立短超时 context，避免 OpenIM 响应慢拖垮整个登录请求（go-zero slow call 3s 阈值）
 	var imToken string
 	if l.svcCtx.IMClient != nil && masterID > 0 {
 		userIDStr := "m_" + strconv.FormatInt(masterID, 10)
 		masterName := acc.Name
 		masterAvatar := ""
-		_ = l.svcCtx.IMClient.RegisterUser(l.ctx, userIDStr, masterName, masterAvatar)
-		if token, err := l.svcCtx.IMClient.GetUserToken(l.ctx, userIDStr); err == nil {
+		imCtx, imCancel := context.WithTimeout(context.Background(), 2*time.Second)
+		_ = l.svcCtx.IMClient.RegisterUser(imCtx, userIDStr, masterName, masterAvatar)
+		if token, err := l.svcCtx.IMClient.GetUserToken(imCtx, userIDStr); err == nil {
 			imToken = token
 		}
+		imCancel()
 	}
 
 	return &types.LoginResp{

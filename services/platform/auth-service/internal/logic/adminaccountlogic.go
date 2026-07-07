@@ -89,6 +89,14 @@ func NewAdminAccountCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminAccountCreateLogic) AdminAccountCreate(req *types.AdminAccountCreateReq) (*types.AdminAccountCreateResp, error) {
+	if req.Account == "" || req.Password == "" || req.Name == "" || req.RoleId == 0 {
+		return nil, common.ErrParamMissing
+	}
+	binding, err := validateAdminAccountBinding(l.ctx, l.svcCtx, req.RoleId, req.TempleId, req.MasterId, req.ShopId)
+	if err != nil {
+		return nil, err
+	}
+
 	// 账号去重
 	exist, err := l.svcCtx.AdminAccountModel.FindByAccount(l.ctx, req.Account)
 	if err != nil && !errors.Is(err, sqlx.ErrNotFound) {
@@ -105,9 +113,9 @@ func (l *AdminAccountCreateLogic) AdminAccountCreate(req *types.AdminAccountCrea
 		Password: req.Password,
 		Name:     req.Name,
 		RoleId:   req.RoleId,
-		TempleId: req.TempleId,
-		MasterId: req.MasterId,
-		ShopId:   req.ShopId,
+		TempleId: binding.templeId,
+		MasterId: binding.masterId,
+		ShopId:   binding.shopId,
 	})
 	if err != nil {
 		l.Errorf("创建账号失败: %v", err)
@@ -163,6 +171,13 @@ func (l *AdminAccountUpdateLogic) AdminAccountUpdate(req *types.AdminAccountUpda
 	if req.ShopId != 0 {
 		updated.ShopId = req.ShopId
 	}
+	binding, err := validateAdminAccountBinding(l.ctx, l.svcCtx, updated.RoleId, updated.TempleId, updated.MasterId, updated.ShopId)
+	if err != nil {
+		return nil, err
+	}
+	updated.TempleId = binding.templeId
+	updated.MasterId = binding.masterId
+	updated.ShopId = binding.shopId
 
 	if err := l.svcCtx.AdminAccountModel.Update(l.ctx, updated); err != nil {
 		l.Errorf("更新账号失败 id=%d: %v", req.Id, err)
@@ -225,4 +240,78 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 		Id:     req.Id,
 		Status: req.Status,
 	}, nil
+}
+
+type adminAccountBinding struct {
+	templeId string
+	masterId string
+	shopId   int64
+}
+
+func validateAdminAccountBinding(ctx context.Context, svcCtx *svc.ServiceContext, roleId int64, templeId, masterId string, shopId int64) (*adminAccountBinding, error) {
+	role, err := svcCtx.RoleModel.FindByID(ctx, roleId)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrParam
+		}
+		return nil, common.ErrSystem
+	}
+
+	switch role.Code {
+	case model.RoleCodeTempleAdmin:
+		if templeId == "" {
+			return nil, common.ErrParamMissing
+		}
+		if err := ensureTempleExists(ctx, svcCtx, templeId); err != nil {
+			return nil, err
+		}
+		return &adminAccountBinding{templeId: templeId}, nil
+
+	case model.RoleCodeMaster:
+		if masterId == "" {
+			return nil, common.ErrParamMissing
+		}
+		ownerTempleId, err := findMasterTempleId(ctx, svcCtx, masterId)
+		if err != nil {
+			return nil, err
+		}
+		if templeId != "" && templeId != ownerTempleId {
+			return nil, common.ErrParam
+		}
+		return &adminAccountBinding{templeId: ownerTempleId, masterId: masterId}, nil
+
+	case model.RoleCodeShopAdmin:
+		if shopId == 0 {
+			return nil, common.ErrParamMissing
+		}
+		return &adminAccountBinding{shopId: shopId}, nil
+
+	case model.RoleCodePlatformSuper, model.RoleCodePlatformService:
+		return &adminAccountBinding{}, nil
+
+	default:
+		return nil, common.ErrParam
+	}
+}
+
+func ensureTempleExists(ctx context.Context, svcCtx *svc.ServiceContext, templeId string) error {
+	var id int64
+	if err := svcCtx.DB.QueryRowCtx(ctx, &id, "SELECT id FROM temple WHERE code = ?", templeId); err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return common.ErrTempleNotFound
+		}
+		return common.ErrSystem
+	}
+	return nil
+}
+
+func findMasterTempleId(ctx context.Context, svcCtx *svc.ServiceContext, masterId string) (string, error) {
+	var templeId string
+	if err := svcCtx.DB.QueryRowCtx(ctx, &templeId, "SELECT temple_code FROM master WHERE code = ?", masterId); err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return "", common.ErrMasterNotFound
+		}
+		return "", common.ErrSystem
+	}
+	return templeId, nil
 }

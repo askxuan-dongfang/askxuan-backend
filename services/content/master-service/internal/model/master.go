@@ -40,7 +40,7 @@ const (
 // Master 法师表（对应 askxuan.master）
 type Master struct {
 	Id             int64   `db:"id" json:"id"`
-	Code           string  `db:"code" json:"code"`           // 法师编码 M001~M006
+	Code           string  `db:"code" json:"code"` // 法师编码 M001~M006
 	DharmaName     string  `db:"dharma_name" json:"dharmaName"`
 	LayName        string  `db:"lay_name" json:"layName"`
 	TempleCode     string  `db:"temple_code" json:"templeCode"`
@@ -67,6 +67,7 @@ type MasterModel interface {
 	FindAll(ctx context.Context, shelfStatus string, page, size int) ([]*Master, int64, error)
 	// FindCList C端公开列表（仅 on_shelf + normal），按 sect/type/templeCode 筛选
 	FindCList(ctx context.Context, sect, mtype, templeCode string, page, size int) ([]*Master, int64, error)
+	FindTempleNameByCode(ctx context.Context, templeCode string) (string, error)
 	Insert(ctx context.Context, data *Master) (int64, error)
 	Update(ctx context.Context, data *Master) error
 	UpdateShelfStatus(ctx context.Context, id int64, status string) error
@@ -142,6 +143,12 @@ func (m *masterModel) FindCList(ctx context.Context, sect, mtype, templeCode str
 		args = append(args, templeCode)
 	}
 	return m.queryPage(ctx, where, args, "ORDER BY rating DESC, id DESC", page, size)
+}
+
+func (m *masterModel) FindTempleNameByCode(ctx context.Context, templeCode string) (string, error) {
+	var name string
+	err := m.conn.QueryRowCtx(ctx, &name, "SELECT name FROM temple WHERE code = ?", templeCode)
+	return name, err
 }
 
 func (m *masterModel) queryPage(ctx context.Context, where string, args []interface{}, orderBy string, page, size int) ([]*Master, int64, error) {

@@ -18,7 +18,7 @@ CREATE TABLE `temple` (
   `code` VARCHAR(16) NOT NULL COMMENT '寺院编码 T001~T006',
   `name` VARCHAR(64) NOT NULL COMMENT '名称',
   `region` VARCHAR(64) NOT NULL COMMENT '地区',
-  `type` VARCHAR(32) NOT NULL COMMENT '类型 汉传佛教/道教/藏传佛教',
+  `type` VARCHAR(32) NOT NULL COMMENT '类型 汉传佛教/藏传佛教/南传佛教/道教道观/民间地方信仰',
   `sect` VARCHAR(32) NOT NULL COMMENT '宗派 禅宗/全真派/格鲁派/正一派',
   `status` VARCHAR(16) NOT NULL DEFAULT '正常' COMMENT '状态 正常/待审核',
   `address` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '地址',
@@ -62,7 +62,9 @@ CREATE TABLE `master` (
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_code` (`code`),
-  KEY `idx_temple_code` (`temple_code`)
+  KEY `idx_temple_code` (`temple_code`),
+  CONSTRAINT `fk_master_temple` FOREIGN KEY (`temple_code`) REFERENCES `temple` (`code`)
+    ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='法师表';
 
 INSERT INTO `master` (`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`) VALUES
@@ -74,12 +76,12 @@ INSERT INTO `master` (`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`
 ('M006','真武道长','张志远','T006','知客','正一派','道教','已认证','on_shelf','normal','内丹,太极,风水,化太岁','/assets/master-avatar-zhangzhishun.jpg',4.70);
 
 -- ----------------------------
--- 3. 服务类型表 service_type（数据字典第3节，7 服务）
+-- 3. 服务类型表 service_type（数据字典第3节，用户端服务）
 -- ----------------------------
 DROP TABLE IF EXISTS `service_type`;
 CREATE TABLE `service_type` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
-  `code` VARCHAR(16) NOT NULL COMMENT '服务编码 S001~S007',
+  `code` VARCHAR(16) NOT NULL COMMENT '服务编码 S001~S013',
   `name` VARCHAR(64) NOT NULL COMMENT '服务名称',
   `type` VARCHAR(32) NOT NULL COMMENT '类型 法事/供养',
   `price_range` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '默认价格区间',
@@ -97,7 +99,13 @@ INSERT INTO `service_type` (`code`,`name`,`type`,`price_range`,`master_codes`) V
 ('S004','还愿','法事','¥100-500','M001,M003,M004'),
 ('S005','超度','法事','¥300-1000','M001,M003,M004'),
 ('S006','开光','法事','¥168-500','M001,M003'),
-('S007','化太岁','法事','¥200-800','M002,M006');
+('S007','化太岁','法事','¥200-800','M002,M006'),
+('S008','求姻缘','祈愿','¥100-500','M001,M005'),
+('S009','求财运','祈愿','¥100-800','M002,M006'),
+('S010','求事业','祈愿','¥100-600','M003,M006'),
+('S011','求风水','咨询','¥200-1000','M002,M006'),
+('S012','求健康','祈愿','¥100-600','M001,M004'),
+('S013','求学业','祈愿','¥100-500','M003,M005');
 
 -- ----------------------------
 -- 4. 加持服务表 extra_service（数据字典第4节，4 项加持，价格精确匹配）
@@ -114,7 +122,13 @@ CREATE TABLE `extra_service` (
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_code` (`code`)
+  UNIQUE KEY `uk_code` (`code`),
+  KEY `idx_extra_temple` (`temple_code`),
+  KEY `idx_extra_master` (`master_code`),
+  CONSTRAINT `fk_extra_service_temple` FOREIGN KEY (`temple_code`) REFERENCES `temple` (`code`)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT `fk_extra_service_master` FOREIGN KEY (`master_code`) REFERENCES `master` (`code`)
+    ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='DIY加持服务表';
 
 INSERT INTO `extra_service` (`code`,`name`,`temple_code`,`master_code`,`price`,`description`) VALUES
@@ -455,14 +469,44 @@ CREATE TABLE IF NOT EXISTS `temple_service` (
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_temple` (`temple_code`),
-  KEY `idx_status` (`status`)
+  KEY `idx_service_code` (`service_code`),
+  KEY `idx_status` (`status`),
+  UNIQUE KEY `uk_temple_service` (`temple_code`,`service_code`),
+  CONSTRAINT `fk_temple_service_temple` FOREIGN KEY (`temple_code`) REFERENCES `temple` (`code`)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT `fk_temple_service_type` FOREIGN KEY (`service_code`) REFERENCES `service_type` (`code`)
+    ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院自定义服务定价';
 
 INSERT INTO `temple_service` (`temple_code`,`service_code`,`service_name`,`price`,`time_slots`,`status`,`create_time`) VALUES
 ('T001','S001','祈福',200.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
-('T001','S003','开光',500.00,'["10:00-11:00"]','on_shelf','2026-06-01 10:00:00'),
-('T001','S007','命理咨询',300.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
-('T003','S005','超度',500.00,'["14:00-15:30"]','on_shelf','2026-06-01 10:00:00');
+('T001','S002','供灯',80.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T001','S006','开光',500.00,'["10:00-11:00"]','on_shelf','2026-06-01 10:00:00'),
+('T001','S008','求姻缘',260.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T001','S012','求健康',260.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T002','S001','祈福',128.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T002','S003','上香',60.00,'["08:00-11:00","14:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T002','S007','化太岁',300.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T002','S009','求财运',300.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T002','S011','求风水',688.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T003','S001','祈福',200.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T003','S005','超度',500.00,'["14:00-15:30"]','on_shelf','2026-06-01 10:00:00'),
+('T003','S006','开光',360.00,'["10:00-11:00"]','on_shelf','2026-06-01 10:00:00'),
+('T003','S010','求事业',280.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T003','S013','求学业',220.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T004','S001','祈福',268.00,'["10:00-12:00","15:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T004','S002','供灯',120.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T004','S005','超度',600.00,'["14:00-16:00"]','on_shelf','2026-06-01 10:00:00'),
+('T004','S012','求健康',360.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T005','S001','祈福',180.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T005','S002','供灯',80.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T005','S008','求姻缘',260.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T005','S013','求学业',220.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T006','S001','祈福',168.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T006','S003','上香',66.00,'["08:00-11:00","14:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T006','S007','化太岁',388.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T006','S010','求事业',280.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T006','S011','求风水',688.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00');
 
 CREATE TABLE IF NOT EXISTS `service_schedule` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,

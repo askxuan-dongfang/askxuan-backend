@@ -26,7 +26,7 @@ func NewListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ListLogic {
 	}
 }
 
-// List 寺院列表查询，支持按宗派(sect)/类型(type)/地区(region)筛选 + 分页
+// List 寺院列表查询，支持按宗派(sect)/类型(type)/地区(region)/服务(serviceCode)筛选 + 分页
 // C端仅返回状态为「正常」的寺院
 func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 	page := req.Page
@@ -51,7 +51,18 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 
 	out := make([]types.Temple, 0, len(list))
 	for _, t := range list {
-		out = append(out, toTypeTemple(t))
+		services, err := l.svcCtx.TempleServiceModel.FindByTempleId(l.ctx, t.Code)
+		if err != nil {
+			l.Errorf("查询寺院服务失败: templeCode=%s err=%v", t.Code, err)
+			return nil, common.ErrSystem
+		}
+		if req.ServiceCode != "" && !hasOnShelfService(services, req.ServiceCode) {
+			continue
+		}
+		out = append(out, withTempleServiceSummary(toTypeTemple(t), services))
+	}
+	if req.ServiceCode != "" {
+		total = int64(len(out))
 	}
 	return &types.ListResp{
 		Total: total,
@@ -59,4 +70,13 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 		Page:  page,
 		Size:  size,
 	}, nil
+}
+
+func hasOnShelfService(services []*model.TempleServiceRecord, serviceCode string) bool {
+	for _, s := range services {
+		if s.Status == model.TempleServiceStatusOnShelf && s.ServiceCode == serviceCode {
+			return true
+		}
+	}
+	return false
 }

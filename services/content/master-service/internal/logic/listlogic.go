@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/askxuan/master-service/internal/model"
@@ -9,6 +10,7 @@ import (
 	"github.com/askxuan/master-service/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 // ListLogic 法师列表查询逻辑
@@ -44,7 +46,7 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 
 	out := make([]types.Master, 0, len(list))
 	for _, m := range list {
-		out = append(out, toTypeMaster(m))
+		out = append(out, l.toTypeMaster(m))
 	}
 
 	return &types.ListResp{
@@ -58,13 +60,21 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 // toTypeMaster 将 model.Master 转为 types.Master
 // model.Master.Code → types.Master.Id（业务编码 M001）
 // model.Master.Specialties（逗号分隔）→ []string
+func (l *ListLogic) toTypeMaster(m *model.Master) types.Master {
+	return toTypeMasterWithTempleName(m, l.templeName(m.TempleCode))
+}
+
 func toTypeMaster(m *model.Master) types.Master {
+	return toTypeMasterWithTempleName(m, "")
+}
+
+func toTypeMasterWithTempleName(m *model.Master, templeName string) types.Master {
 	return types.Master{
 		Id:          m.Code,
 		DharmaName:  m.DharmaName,
 		LayName:     m.LayName,
 		TempleId:    m.TempleCode,
-		TempleName:  "", // 寺院名称由 temple-service 维护，此处不冗余
+		TempleName:  templeName,
 		Position:    m.Position,
 		Sect:        m.Sect,
 		Type:        m.Type,
@@ -74,6 +84,20 @@ func toTypeMaster(m *model.Master) types.Master {
 		Avatar:      m.Avatar,
 		Rating:      m.Rating,
 	}
+}
+
+func (l *ListLogic) templeName(templeCode string) string {
+	if templeCode == "" {
+		return ""
+	}
+	name, err := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, templeCode)
+	if err != nil {
+		if !errors.Is(err, sqlx.ErrNotFound) {
+			l.Errorf("查询法师所属寺院失败: templeCode=%s err=%v", templeCode, err)
+		}
+		return ""
+	}
+	return name
 }
 
 // splitSpecialties 将逗号分隔的专长字符串转为切片

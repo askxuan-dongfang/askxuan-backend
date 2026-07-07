@@ -165,9 +165,11 @@ func buildMasterRanking(stats map[string]*masterStat) []types.MasterRankItem {
 func masterNameByCode(code string) string {
 	names := map[string]string{
 		"M001": "智海法师",
-		"M002": "慧明法师",
-		"M003": "寂空法师",
-		"M004": "法远法师",
+		"M002": "清风道长",
+		"M003": "释延心法师",
+		"M004": "扎西多吉活佛",
+		"M005": "慧明法师",
+		"M006": "真武道长",
 	}
 	if name, ok := names[code]; ok {
 		return name

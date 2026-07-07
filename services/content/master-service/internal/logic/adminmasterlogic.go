@@ -73,6 +73,12 @@ func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateR
 	if req.DharmaName == "" || req.TempleId == "" || req.Position == "" || req.Sect == "" || req.Type == "" {
 		return nil, common.ErrParamMissing
 	}
+	if _, err := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, req.TempleId); err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrTempleNotFound
+		}
+		return nil, err
+	}
 
 	code, err := l.svcCtx.MasterModel.NextCode(l.ctx)
 	if err != nil {

@@ -4,16 +4,19 @@ package types
 
 // Temple 寺院
 type Temple struct {
-	Id          string  `json:"id"`
-	Name        string  `json:"name"`
-	Region      string  `json:"region"`
-	Type        string  `json:"type"`
-	Sect        string  `json:"sect"`
-	Status      string  `json:"status"`
-	Address     string  `json:"address"`
-	CoverImage  string  `json:"coverImage"`
-	Rating      float64 `json:"rating"`
-	Description string  `json:"description"`
+	Id           string   `json:"id"`
+	Name         string   `json:"name"`
+	Region       string   `json:"region"`
+	Type         string   `json:"type"`
+	Sect         string   `json:"sect"`
+	Status       string   `json:"status"`
+	Address      string   `json:"address"`
+	CoverImage   string   `json:"coverImage"`
+	Rating       float64  `json:"rating"`
+	Description  string   `json:"description"`
+	ServiceCodes []string `json:"serviceCodes"`
+	ServiceTags  []string `json:"serviceTags"`
+	ServiceCount int      `json:"serviceCount"`
 }
 
 // TempleDetail 寺院详情（含图片+服务）
@@ -25,11 +28,12 @@ type TempleDetail struct {
 
 // ListReq 列表查询请求
 type ListReq struct {
-	Sect   string `form:"sect,optional"`
-	Type   string `form:"type,optional"`
-	Region string `form:"region,optional"`
-	Page   int    `form:"page,default=1"`
-	Size   int    `form:"size,default=20"`
+	Sect        string `form:"sect,optional"`
+	Type        string `form:"type,optional"`
+	Region      string `form:"region,optional"`
+	ServiceCode string `form:"serviceCode,optional"`
+	Page        int    `form:"page,default=1"`
+	Size        int    `form:"size,default=20"`
 }
 
 // ListResp 列表查询响应

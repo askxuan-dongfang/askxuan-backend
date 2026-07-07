@@ -30,20 +30,20 @@ if [ -z "$OPENIM_SRC" ] || [ ! -d "$OPENIM_SRC" ]; then
   exit 1
 fi
 
-if [ "${OPENIM_MINIMAL:-1}" = "1" ] && [ -f "$OPENIM_SRC/start-config.yml" ]; then
-  echo "==> 使用本地验收最小实例配置（api/auth/user/msggateway=1，其余=0）"
+if [ "${OPENIM_MINIMAL:-0}" = "1" ] && [ -f "$OPENIM_SRC/start-config.yml" ]; then
+  echo "==> 使用本地验收最小实例配置（api/auth/user/msggateway/msg/msgtransfer/conversation=1，其余=0）"
   perl -0pi -e '
     s/openim-api:\s*\d+/openim-api: 1/;
     s/openim-rpc-user:\s*\d+/openim-rpc-user: 1/;
     s/openim-msggateway:\s*\d+/openim-msggateway: 1/;
     s/openim-rpc-auth:\s*\d+/openim-rpc-auth: 1/;
+    s/openim-rpc-msg:\s*\d+/openim-rpc-msg: 1/;
+    s/openim-msgtransfer:\s*\d+/openim-msgtransfer: 1/;
+    s/openim-rpc-conversation:\s*\d+/openim-rpc-conversation: 1/;
     s/openim-crontask:\s*\d+/openim-crontask: 0/;
     s/openim-push:\s*\d+/openim-push: 0/;
-    s/openim-msgtransfer:\s*\d+/openim-msgtransfer: 0/;
-    s/openim-rpc-conversation:\s*\d+/openim-rpc-conversation: 0/;
     s/openim-rpc-group:\s*\d+/openim-rpc-group: 0/;
     s/openim-rpc-friend:\s*\d+/openim-rpc-friend: 0/;
-    s/openim-rpc-msg:\s*\d+/openim-rpc-msg: 0/;
     s/openim-rpc-third:\s*\d+/openim-rpc-third: 0/;
   ' "$OPENIM_SRC/start-config.yml"
 fi
