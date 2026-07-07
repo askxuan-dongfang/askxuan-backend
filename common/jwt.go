@@ -130,9 +130,8 @@ func (c *CustomClaims) HasRole(role string) bool {
 	return false
 }
 
-// IsAdmin 判断用户是否为管理台角色（非 C 端用户）
+// IsAdmin 判断用户是否为平台/寺院/商城管理角色，不包含法师工作台角色
 func (c *CustomClaims) IsAdmin() bool {
 	return c.HasRole("temple_admin") || c.HasRole("shop_admin") ||
-		c.HasRole("platform_super") || c.HasRole("platform_service") ||
-		c.HasRole("master")
+		c.HasRole("platform_super") || c.HasRole("platform_service")
 }

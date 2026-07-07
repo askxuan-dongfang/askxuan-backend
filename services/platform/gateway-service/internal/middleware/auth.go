@@ -62,9 +62,9 @@ func Auth(secret string, noAuthPaths []string) func(http.Handler) http.Handler {
 				return
 			}
 
-			// 管理台路径角色校验：/api/v1/admin/* 需要管理台角色
+			// 管理台/工作台路径角色校验：/api/v1/admin/* 需要管理台角色，法师工作台也使用该前缀
 			if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") {
-				if !claims.IsAdmin() {
+				if !claims.IsAdmin() && !claims.HasRole("master") {
 					common.JsonError(w, common.ErrRoleForbidden)
 					return
 				}
