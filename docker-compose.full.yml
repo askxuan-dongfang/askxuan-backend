@@ -74,6 +74,8 @@ services:
         condition: service_started
       ai-service:
         condition: service_started
+      community-service:
+        condition: service_started
       media-service:
         condition: service_started
     healthcheck:
@@ -320,6 +322,20 @@ services:
       - "8098:8098"
     volumes:
       - ./.docker/etc/ai:/app/etc:ro
+
+  community-service:
+    <<: *backend-common
+    container_name: askxuan-community-service
+    image: askxuan/community-service:local
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: services/content/community-service
+        BINARY: community
+    ports:
+      - "8099:8099"
+    volumes:
+      - ./.docker/etc/community:/app/etc:ro
 
   media-service:
     <<: *backend-common

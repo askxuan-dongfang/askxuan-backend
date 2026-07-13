@@ -9,6 +9,7 @@ use (
 	./services/commerce/payment-service
 	./services/commerce/product-service
 	./services/content/booking-service
+	./services/content/community-service
 	./services/content/master-service
 	./services/content/review-service
 	./services/content/temple-service

@@ -6,7 +6,7 @@
 
 ## 目录结构
 
-按 **5 大业务域** 分组，共 18 个业务服务 + 1 个网关 + 1 个公共模块（20 个 Go module）。
+按 **5 大业务域** 分组，共 19 个下游业务服务 + 1 个网关 + 1 个公共模块（21 个 Go module）。
 
 ```
 askXuan-backend/
@@ -15,7 +15,7 @@ askXuan-backend/
 ├── .golangci.yml                # 14 个 linter 配置
 ├── .github/workflows/ci.yml     # GitHub Actions CI（lint/build/test/vet）
 ├── docker-compose.yml           # 基础设施（MySQL/Redis/RabbitMQ/MinIO/etcd）
-├── docker-compose.full.yml      # 本地 Docker 全量后端服务（19 个 Go 服务）
+├── docker-compose.full.yml      # 本地 Docker 全量后端服务（20 个 Go 服务）
 │
 ├── common/                      # 公共模块（JWT/错误码/响应封装/中间件）
 │   ├── response.go              # {code,message,data} 统一响应体
@@ -33,7 +33,8 @@ askXuan-backend/
 │   │   ├── temple-service/      #   寺院服务 (8083) - 寺院/图片/入驻/加持任务
 │   │   ├── master-service/      #   法师服务 (8084) - 法师/排班/资质/加持任务
 │   │   ├── booking-service/     #   预约服务 (8085) - 预约/状态流转/评价
-│   │   └── review-service/      #   评价服务 (8092) - 评价/回复/举报
+│   │   ├── review-service/      #   评价服务 (8092) - 评价/回复/举报
+│   │   └── community-service/   #   大师广场 (8099) - 帖子/评论/点赞/审核
 │   │
 │   ├── commerce/                # ③ 商城域
 │   │   ├── product-service/     #   商品服务 (8086) - 商品/SKU/分类
@@ -75,6 +76,7 @@ askXuan-backend/
 | 内容 | master-service | services/content/master-service | 8084 | 法师/排班/资质/加持任务 |
 | 内容 | booking-service | services/content/booking-service | 8085 | 预约/状态流转/评价/时段 |
 | 内容 | review-service | services/content/review-service | 8092 | 评价/回复/举报 |
+| 内容 | community-service | services/content/community-service | 8099 | 大师广场/评论/点赞/审核 |
 | 商城 | product-service | services/commerce/product-service | 8086 | 商品/SKU/分类/上下架 |
 | 商城 | diy-service | services/commerce/diy-service | 8088 | DIY设计/材料库/加持任务派发 |
 | 商城 | order-service | services/commerce/order-service | 8089 | 商城订单/退换货 |
@@ -142,7 +144,7 @@ bash scripts/test-mvp3-audit-closed-loop.sh
 
 完整后端栈包含两组：
 
-- `askxuan`：MySQL / Redis / RabbitMQ / MinIO / etcd + 19 个 askXuan Go 服务
+- `askxuan`：MySQL / Redis / RabbitMQ / MinIO / etcd + 20 个 askXuan Go 服务
 - `open-im-server-383`：OpenIM 的 MongoDB / Redis / Kafka / MinIO / etcd / Web Front / Admin Front，以及本机 OpenIM 服务进程
 
 ```bash
@@ -155,7 +157,7 @@ make stack-down
 # 健康检查
 make stack-check
 
-# 只启动 askXuan 这一组：中间件 + 首次初始化数据库 + 19 个后端服务
+# 只启动 askXuan 这一组：中间件 + 首次初始化数据库 + 20 个后端服务
 make docker-up
 
 # 查看容器状态

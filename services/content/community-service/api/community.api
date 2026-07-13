@@ -1,0 +1,181 @@
+syntax = "v1"
+
+info (
+    title: "Community Service"
+    desc: "大师广场内容、互动与审核"
+    version: "v1"
+)
+
+type Asset {
+    Id int64 `json:"id"`
+    MediaId int64 `json:"mediaId"`
+    AssetType string `json:"assetType"`
+    Sort int `json:"sort"`
+}
+
+type Post {
+    Id string `json:"id"`
+    MasterId string `json:"masterId"`
+    OwnerId string `json:"ownerId,optional"`
+    Type string `json:"type"`
+    Title string `json:"title"`
+    Content string `json:"content"`
+    CoverMediaId int64 `json:"coverMediaId"`
+    BeliefCode string `json:"beliefCode"`
+    Status string `json:"status"`
+    AuditRemark string `json:"auditRemark,optional"`
+    LikeCount int64 `json:"likeCount"`
+    CommentCount int64 `json:"commentCount"`
+    Liked bool `json:"liked"`
+    Assets []Asset `json:"assets"`
+    CreateTime string `json:"createTime"`
+    UpdateTime string `json:"updateTime"`
+}
+
+type FeedReq {
+    Type string `form:"type,optional"`
+    BeliefCode string `form:"beliefCode,optional"`
+    Page int `form:"page,optional"`
+    Size int `form:"size,optional"`
+}
+type PostDetailReq {
+    Id string `path:"id"`
+}
+type PostListResp {
+    Total int64 `json:"total"`
+    List []Post `json:"list"`
+    Page int `json:"page"`
+    Size int `json:"size"`
+}
+type LikeReq {
+    Id string `path:"id"`
+    UserId string `json:"userId,optional"`
+}
+type LikeResp {
+    Liked bool `json:"liked"`
+    LikeCount int64 `json:"likeCount"`
+}
+type FollowReq {
+    Id string `path:"id"`
+    UserId string `json:"userId,optional"`
+}
+type FollowResp {
+    Following bool `json:"following"`
+}
+type CommentListReq {
+    Id string `path:"id"`
+    Page int `form:"page,optional"`
+    Size int `form:"size,optional"`
+}
+type CommentCreateReq {
+    Id string `path:"id"`
+    UserId string `json:"userId,optional"`
+    Content string `json:"content"`
+}
+type Comment {
+    Id string `json:"id"`
+    PostId string `json:"postId"`
+    UserId string `json:"userId"`
+    Content string `json:"content"`
+    Status string `json:"status"`
+    AuditRemark string `json:"auditRemark,optional"`
+    CreateTime string `json:"createTime"`
+}
+type CommentListResp {
+    Total int64 `json:"total"`
+    List []Comment `json:"list"`
+    Page int `json:"page"`
+    Size int `json:"size"`
+}
+
+type PostWriteReq {
+    OwnerId string `json:"ownerId,optional"`
+    MasterId string `json:"masterId,optional"`
+    Type string `json:"type"`
+    Title string `json:"title"`
+    Content string `json:"content,optional"`
+    CoverMediaId int64 `json:"coverMediaId,optional"`
+    BeliefCode string `json:"beliefCode,optional"`
+    Assets []Asset `json:"assets,optional"`
+    Submit bool `json:"submit,optional"`
+}
+type PostUpdateReq {
+    Id string `path:"id"`
+    OwnerId string `json:"ownerId,optional"`
+    MasterId string `json:"masterId,optional"`
+    Type string `json:"type"`
+    Title string `json:"title"`
+    Content string `json:"content,optional"`
+    CoverMediaId int64 `json:"coverMediaId,optional"`
+    BeliefCode string `json:"beliefCode,optional"`
+    Assets []Asset `json:"assets,optional"`
+    Submit bool `json:"submit,optional"`
+}
+type MasterPostListReq {
+    Status string `form:"status,optional"`
+    Page int `form:"page,optional"`
+    Size int `form:"size,optional"`
+}
+type PostStatusReq {
+    Id string `path:"id"`
+    OwnerId string `json:"ownerId,optional"`
+    Status string `json:"status"`
+}
+type AdminListReq {
+    Status string `form:"status,optional"`
+    Page int `form:"page,optional"`
+    Size int `form:"size,optional"`
+}
+type AdminReviewReq {
+    Id string `path:"id"`
+    AuditorId string `json:"auditorId,optional"`
+    Remark string `json:"remark,optional"`
+}
+
+@server(group: community, prefix: /api/v1/community)
+service community-service {
+    @handler feed
+    get /feed (FeedReq) returns (PostListResp)
+    @handler postDetail
+    get /posts/:id (PostDetailReq) returns (Post)
+    @handler like
+    post /posts/:id/like (LikeReq) returns (LikeResp)
+    @handler unlike
+    delete /posts/:id/like (LikeReq) returns (LikeResp)
+    @handler comments
+    get /posts/:id/comments (CommentListReq) returns (CommentListResp)
+    @handler createComment
+    post /posts/:id/comments (CommentCreateReq) returns (Comment)
+    @handler follow
+    post /masters/:id/follow (FollowReq) returns (FollowResp)
+    @handler unfollow
+    delete /masters/:id/follow (FollowReq) returns (FollowResp)
+}
+
+@server(group: masterCommunity, prefix: /api/v1/admin/masters/community)
+service community-service {
+    @handler masterPosts
+    get /posts (MasterPostListReq) returns (PostListResp)
+    @handler createPost
+    post /posts (PostWriteReq) returns (Post)
+    @handler updatePost
+    put /posts/:id (PostUpdateReq) returns (Post)
+    @handler postStatus
+    put /posts/:id/status (PostStatusReq) returns (Post)
+}
+
+@server(group: platformCommunity, prefix: /api/v1/admin/platform/community)
+service community-service {
+    @handler adminPosts
+    get /posts (AdminListReq) returns (PostListResp)
+    @handler approvePost
+    put /posts/:id/approve (AdminReviewReq) returns (Post)
+    @handler rejectPost
+    put /posts/:id/reject (AdminReviewReq) returns (Post)
+    @handler adminComments
+    get /comments (AdminListReq) returns (CommentListResp)
+    @handler approveComment
+    put /comments/:id/approve (AdminReviewReq) returns (Comment)
+    @handler rejectComment
+    put /comments/:id/reject (AdminReviewReq) returns (Comment)
+}

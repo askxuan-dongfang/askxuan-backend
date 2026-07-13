@@ -36,6 +36,7 @@ render_service user     "${ROOT}/services/platform/user-service/etc"
 render_service temple   "${ROOT}/services/content/temple-service/etc"
 render_service master   "${ROOT}/services/content/master-service/etc"
 render_service booking  "${ROOT}/services/content/booking-service/etc"
+render_service community "${ROOT}/services/content/community-service/etc"
 render_service review   "${ROOT}/services/content/review-service/etc"
 render_service product  "${ROOT}/services/commerce/product-service/etc"
 render_service order    "${ROOT}/services/commerce/order-service/etc"
@@ -70,6 +71,7 @@ perl -pi -e '
   s/Target: localhost:8096/Target: marketing-service:8096/g;
   s/Target: localhost:8097/Target: file-service:8097/g;
   s/Target: localhost:8098/Target: ai-service:8098/g;
+  s/Target: localhost:8099/Target: community-service:8099/g;
   s/Target: localhost:8100/Target: media-service:8100/g;
   s/Target: localhost:10002/Target: host.docker.internal:10002/g;
 ' "${OUT}/gateway/gateway.yaml"

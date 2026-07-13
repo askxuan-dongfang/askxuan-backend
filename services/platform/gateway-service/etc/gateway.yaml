@@ -87,6 +87,9 @@ Upstreams:
   - Prefix: /api/v1/ai
     Target: localhost:8098
     ServiceName: ai.service
+  - Prefix: /api/v1/community
+    Target: localhost:8099
+    ServiceName: community.service
   - Prefix: /api/v1/media
     Target: localhost:8100
     ServiceName: media.service
@@ -127,12 +130,18 @@ Upstreams:
   - Prefix: /api/v1/admin/masters/bookings
     Target: localhost:8085
     ServiceName: booking.service
+  - Prefix: /api/v1/admin/masters/community
+    Target: localhost:8099
+    ServiceName: community.service
   - Prefix: /api/v1/admin/masters
     Target: localhost:8084
     ServiceName: master.service
   - Prefix: /api/v1/admin/platform/masters
     Target: localhost:8084
     ServiceName: master.service
+  - Prefix: /api/v1/admin/platform/community
+    Target: localhost:8099
+    ServiceName: community.service
   # booking 寺院管理台
   - Prefix: /api/v1/admin/bookings
     Target: localhost:8085
@@ -203,6 +212,8 @@ NoAuthPaths:
   - /api/v1/announcements
   - /api/v1/diy/designs
   - /api/v1/diy/materials
+  - /api/v1/community/feed
+  - /api/v1/community/posts
   - /api/v1/media/callback/transcode
   - /api/v1/media/callback/audit
   - /api/v1/live/capabilities

@@ -1,6 +1,6 @@
 #!/bin/bash
 # 问玄东方 全端闭环测试脚本
-# 覆盖 5 个端侧 + 19 个后端服务 + 跨服务链路
+# 覆盖 5 个端侧 + 20 个后端服务 + 跨服务链路
 GATEWAY="http://127.0.0.1:8080"
 PASS=0; FAIL=0
 RESULTS=()
@@ -19,7 +19,7 @@ check() {
 }
 
 echo "=========================================="
-echo "  问玄东方 全端闭环测试（5端 + 18服务）"
+echo "  问玄东方 全端闭环测试（5端 + 20服务）"
 echo "=========================================="
 
 # ===== 获取 Token =====
@@ -69,6 +69,9 @@ check "C端-商品分类" "0" "$(echo "$R" | json_code)" ""
 R=$(curl -s --max-time 10 "$GATEWAY/api/v1/marketing/banners")
 check "C端-首页Banner" "0" "$(echo "$R" | json_code)" ""
 
+R=$(curl -s --max-time 10 "$GATEWAY/api/v1/community/feed?page=1&size=20")
+check "C端-大师广场" "0" "$(echo "$R" | json_code)" ""
+
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/users/profile")
 check "C端-用户信息(JWT)" "0" "$(echo "$R" | json_code)" ""
 
@@ -102,9 +105,13 @@ check "法师端-法师信息" "0" "$(echo "$R" | json_code)" ""
 
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $M_TOKEN" "$GATEWAY/api/v1/admin/masters/bookings")
 check "法师端-预约列表" "0" "$(echo "$R" | json_code)" ""
+BK_RESP="$R"
+
+R=$(curl -s --max-time 10 -H "Authorization: Bearer $M_TOKEN" "$GATEWAY/api/v1/admin/masters/community/posts?page=1&size=20")
+check "法师端-我的内容" "0" "$(echo "$R" | json_code)" ""
 
 # 法师端预约详情/确认/完成（新补齐的 3 个端点）
-BK_NO=$(echo "$R" | python3 -c "import sys,json;d=json.load(sys.stdin).get('data',{});l=d.get('list',[]);print(l[0].get('id','') if l else '')" 2>/dev/null)
+BK_NO=$(echo "$BK_RESP" | python3 -c "import sys,json;d=json.load(sys.stdin).get('data',{});l=d.get('list',[]);print(l[0].get('id','') if l else '')" 2>/dev/null)
 if [ -n "$BK_NO" ]; then
   R=$(curl -s --max-time 10 -H "Authorization: Bearer $M_TOKEN" "$GATEWAY/api/v1/admin/masters/bookings/$BK_NO")
   check "法师端-预约详情" "0" "$(echo "$R" | json_code)" "bookingNo=$BK_NO"

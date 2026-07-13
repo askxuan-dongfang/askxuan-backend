@@ -17,6 +17,7 @@ declare -A SERVICES=(
     ["temple-service"]="services/content/temple-service"
     ["master-service"]="services/content/master-service"
     ["booking-service"]="services/content/booking-service"
+    ["community-service"]="services/content/community-service"
     ["review-service"]="services/content/review-service"
     ["product-service"]="services/commerce/product-service"
     ["order-service"]="services/commerce/order-service"
