@@ -87,6 +87,12 @@ Upstreams:
   - Prefix: /api/v1/ai
     Target: localhost:8098
     ServiceName: ai.service
+  - Prefix: /api/v1/media
+    Target: localhost:8100
+    ServiceName: media.service
+  - Prefix: /api/v1/live
+    Target: localhost:8100
+    ServiceName: media.service
   - Prefix: /api/v1/im
     Target: localhost:10002
     ServiceName: im.service
@@ -197,6 +203,9 @@ NoAuthPaths:
   - /api/v1/announcements
   - /api/v1/diy/designs
   - /api/v1/diy/materials
+  - /api/v1/media/callback/transcode
+  - /api/v1/media/callback/audit
+  - /api/v1/live/capabilities
   - /api/v1/health
   - /api/v1/im              # OpenIM REST 透传，由 OpenIM 自身鉴权
   - /openim/webhook         # OpenIM webhook 回调，不带 JWT

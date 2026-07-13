@@ -1,0 +1,29 @@
+Name: media-service
+Host: 0.0.0.0
+Port: 8100
+
+MySQL:
+  DataSource: media_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_media?charset=utf8mb4&parseTime=true&loc=Local
+
+MinIO:
+  Endpoint: localhost:9000
+  AccessKey: minioadmin
+  SecretKey: minioadmin
+  Bucket: askxuan-media
+  UseSSL: false
+  PresignExpire: 900
+  PublicBaseURL: http://localhost:9000/askxuan-media
+
+Media:
+  Provider: local_minio
+  CallbackToken: local-media-callback-token
+
+Live:
+  Enabled: false
+  Provider: disabled
+
+Telemetry:
+  Name: media-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger

@@ -2,14 +2,14 @@
 # 使用方式：docker compose up -d
 # 销毁方式：docker compose down（保留数据） / docker compose down -v（清除数据卷）
 #
-# 包含服务（askxuan 后端 18 个微服务实际依赖）：
+# 包含服务（askxuan 后端 19 个微服务实际依赖）：
 #   - MySQL 8.0      : 3306
 #   - Redis 7.0      : 6379
 #   - RabbitMQ 3.13  : 5672 (AMQP) / 15672 (管理台)
 #   - MinIO          : 9000 (S3 API) / 9001 (Console)
 #   - etcd           : 2379 (客户端) / 2380 (peer) [quay.io/coreos/etcd:v3.5.15，非 bitnami]
 #
-# 说明：MongoDB / Zookeeper / Kafka 已移除——后端 18 个服务均无引用；
+# 说明：MongoDB / Zookeeper / Kafka 已移除——后端 19 个服务均无引用；
 #       OpenIM 自带独立的 mongo/kafka/zookeeper 容器（由 scripts/dev/openim-up.sh 启动）。
 
 name: askxuan

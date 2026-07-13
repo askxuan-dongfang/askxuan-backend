@@ -6,7 +6,7 @@
 
 ## 目录结构
 
-按 **5 大业务域** 分组，共 18 个服务 + 1 个网关 + 1 个公共模块（19 个 Go module）。
+按 **5 大业务域** 分组，共 18 个业务服务 + 1 个网关 + 1 个公共模块（20 个 Go module）。
 
 ```
 askXuan-backend/
@@ -15,7 +15,7 @@ askXuan-backend/
 ├── .golangci.yml                # 14 个 linter 配置
 ├── .github/workflows/ci.yml     # GitHub Actions CI（lint/build/test/vet）
 ├── docker-compose.yml           # 基础设施（MySQL/Redis/RabbitMQ/MinIO/etcd）
-├── docker-compose.full.yml      # 本地 Docker 全量后端服务（18 个 Go 服务）
+├── docker-compose.full.yml      # 本地 Docker 全量后端服务（19 个 Go 服务）
 │
 ├── common/                      # 公共模块（JWT/错误码/响应封装/中间件）
 │   ├── response.go              # {code,message,data} 统一响应体
@@ -50,7 +50,8 @@ askXuan-backend/
 │   └── infrastructure/          # ⑤ 基础设施域
 │       ├── message-service/     #   消息服务 (8094) - 站内消息 + MQ 消费
 │       ├── file-service/        #   文件服务 (8097) - MinIO 上传/预签名
-│       └── ai-service/          #   AI服务 (8098) - AI问事/7技能对话
+│       ├── ai-service/          #   AI服务 (8098) - AI问事/7技能对话
+│       └── media-service/       #   媒体服务 (8100) - 上传/回调/直播房间
 │
 ├── build/docker/Dockerfile      # 多阶段构建通用 Dockerfile
 ├── scripts/                     # 运维脚本
@@ -60,7 +61,7 @@ askXuan-backend/
 ├── envs/                        # 环境配置
 │   ├── dev.env                  # 开发环境
 │   └── prod.env                 # 生产环境模板
-└── db/init.sql                     # 数据库初始化（69 表 / 16 域）
+└── db/init.sql                     # 数据库全量初始化
 ```
 
 ## 服务清单与端口
@@ -85,6 +86,7 @@ askXuan-backend/
 | 基础设施 | message-service | services/infrastructure/message-service | 8094 | 站内消息/推送/模板 |
 | 基础设施 | file-service | services/infrastructure/file-service | 8097 | MinIO 文件上传/预签名 |
 | 基础设施 | ai-service | services/infrastructure/ai-service | 8098 | AI问事/7技能对话 |
+| 基础设施 | media-service | services/infrastructure/media-service | 8100 | 媒体上传/处理回调/直播房间 |
 
 ## 环境准备
 
@@ -140,7 +142,7 @@ bash scripts/test-mvp3-audit-closed-loop.sh
 
 完整后端栈包含两组：
 
-- `askxuan`：MySQL / Redis / RabbitMQ / MinIO / etcd + 18 个 askXuan Go 服务
+- `askxuan`：MySQL / Redis / RabbitMQ / MinIO / etcd + 19 个 askXuan Go 服务
 - `open-im-server-383`：OpenIM 的 MongoDB / Redis / Kafka / MinIO / etcd / Web Front / Admin Front，以及本机 OpenIM 服务进程
 
 ```bash
@@ -153,7 +155,7 @@ make stack-down
 # 健康检查
 make stack-check
 
-# 只启动 askXuan 这一组：中间件 + 首次初始化数据库 + 18 个后端服务
+# 只启动 askXuan 这一组：中间件 + 首次初始化数据库 + 19 个后端服务
 make docker-up
 
 # 查看容器状态
@@ -167,7 +169,7 @@ make docker-logs SVC=gateway-service
 make docker-down
 ```
 
-完整栈端口已错开：askXuan 使用 `3306/6379/5672/15672/9000/9001/2379/2380/8080-8098/9088`；
+完整栈端口已错开：askXuan 使用 `3306/6379/5672/15672/9000/9001/2379/2380/8080-8100/9088`（服务端口未连续占满）；
 OpenIM 使用 `37017/16379/12379/12380/19094/10005/19090/11001/11002/10001/10002`。
 `make stack-preflight` 会在启动前检查端口占用；端口已被对应容器占用视为正常，未知进程占用会直接报错。
 

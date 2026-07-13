@@ -1,0 +1,170 @@
+syntax = "v1"
+
+info (
+    title: "Media Service"
+    desc: "媒体上传、处理回调与直播房间"
+    version: "v1"
+)
+
+type UploadCredentialReq {
+    UserId string `json:"userId,optional"`
+    FileName string `json:"fileName"`
+    MediaType string `json:"mediaType"`
+    ContentType string `json:"contentType"`
+    FileSize int64 `json:"fileSize,optional"`
+}
+
+type UploadCredentialResp {
+    MediaId int64 `json:"mediaId"`
+    UploadUrl string `json:"uploadUrl"`
+    ObjectName string `json:"objectName"`
+    ExpiresIn int64 `json:"expiresIn"`
+    UploadHeaders map[string]string `json:"uploadHeaders"`
+}
+
+type UploadCompleteReq {
+    Id int64 `path:"id"`
+    UserId string `json:"userId,optional"`
+    CoverMediaId int64 `json:"coverMediaId,optional"`
+    ETag string `json:"etag,optional"`
+}
+
+type MediaDetailReq {
+    Id int64 `path:"id"`
+}
+
+type Media {
+    Id int64 `json:"id"`
+    MediaNo string `json:"mediaNo"`
+    OwnerId string `json:"ownerId"`
+    MediaType string `json:"mediaType"`
+    ContentType string `json:"contentType"`
+    FileName string `json:"fileName"`
+    ObjectName string `json:"objectName"`
+    Provider string `json:"provider"`
+    Status string `json:"status"`
+    AuditStatus string `json:"auditStatus"`
+    PlaybackUrl string `json:"playbackUrl"`
+    CoverUrl string `json:"coverUrl"`
+    CoverMediaId int64 `json:"coverMediaId"`
+    Duration float64 `json:"duration"`
+    FileSize int64 `json:"fileSize"`
+    ErrorMessage string `json:"errorMessage"`
+}
+
+type MediaCallbackReq {
+    MediaId int64 `json:"mediaId"`
+    ProviderTaskId string `json:"providerTaskId,optional"`
+    Status string `json:"status"`
+    PlaybackUrl string `json:"playbackUrl,optional"`
+    CoverUrl string `json:"coverUrl,optional"`
+    Duration float64 `json:"duration,optional"`
+    ErrorMessage string `json:"errorMessage,optional"`
+}
+
+type AuditCallbackReq {
+    MediaId int64 `json:"mediaId"`
+    AuditStatus string `json:"auditStatus"`
+    Reason string `json:"reason,optional"`
+}
+
+type EmptyResp {
+    Success bool `json:"success"`
+}
+
+type LiveCapabilitiesResp {
+    Enabled bool `json:"enabled"`
+    Provider string `json:"provider"`
+    Configured bool `json:"configured"`
+    CanStart bool `json:"canStart"`
+}
+
+type LiveRoomCreateReq {
+    OwnerId string `json:"ownerId,optional"`
+    MasterId string `json:"masterId,optional"`
+    Title string `json:"title"`
+    CoverMediaId int64 `json:"coverMediaId,optional"`
+    OpenimGroupId string `json:"openimGroupId,optional"`
+}
+
+type LiveRoomActionReq {
+    Id int64 `path:"id"`
+    OwnerId string `json:"ownerId,optional"`
+}
+
+type LiveRoomDetailReq {
+    Id int64 `path:"id"`
+}
+
+type LiveRoomListReq {
+    MasterId string `form:"masterId,optional"`
+    Limit int `form:"limit,optional"`
+}
+
+type LiveBindOpenIMReq {
+    Id int64 `path:"id"`
+    OwnerId string `json:"ownerId,optional"`
+    OpenimGroupId string `json:"openimGroupId"`
+}
+
+type LiveRoom {
+    Id int64 `json:"id"`
+    RoomNo string `json:"roomNo"`
+    OwnerId string `json:"ownerId"`
+    MasterId string `json:"masterId"`
+    Title string `json:"title"`
+    CoverMediaId int64 `json:"coverMediaId"`
+    Provider string `json:"provider"`
+    Status string `json:"status"`
+    OpenimGroupId string `json:"openimGroupId"`
+    PushUrl string `json:"pushUrl"`
+    WatchUrl string `json:"watchUrl"`
+    StartedAt string `json:"startedAt"`
+    EndedAt string `json:"endedAt"`
+}
+
+type LiveRoomListResp {
+    List []LiveRoom `json:"list"`
+}
+
+@server(group: media, prefix: /api/v1/media)
+service media-service {
+    @handler uploadCredential
+    post /uploads/credentials (UploadCredentialReq) returns (UploadCredentialResp)
+
+    @handler uploadComplete
+    post /:id/complete (UploadCompleteReq) returns (Media)
+
+    @handler mediaDetail
+    get /:id (MediaDetailReq) returns (Media)
+
+    @handler transcodeCallback
+    post /callback/transcode (MediaCallbackReq) returns (EmptyResp)
+
+    @handler auditCallback
+    post /callback/audit (AuditCallbackReq) returns (EmptyResp)
+}
+
+@server(group: live, prefix: /api/v1/live)
+service media-service {
+    @handler liveCapabilities
+    get /capabilities returns (LiveCapabilitiesResp)
+
+    @handler liveRoomCreate
+    post /rooms (LiveRoomCreateReq) returns (LiveRoom)
+
+    @handler liveRoomList
+    get /rooms (LiveRoomListReq) returns (LiveRoomListResp)
+
+    @handler liveRoomDetail
+    get /rooms/:id (LiveRoomDetailReq) returns (LiveRoom)
+
+    @handler liveBindOpenIM
+    put /rooms/:id/openim (LiveBindOpenIMReq) returns (LiveRoom)
+
+    @handler liveStart
+    post /rooms/:id/start (LiveRoomActionReq) returns (LiveRoom)
+
+    @handler liveClose
+    post /rooms/:id/close (LiveRoomActionReq) returns (LiveRoom)
+}

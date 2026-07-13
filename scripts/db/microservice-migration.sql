@@ -22,6 +22,7 @@ CREATE USER IF NOT EXISTS 'logistics_user'@'%' IDENTIFIED BY 'Askxuan2026!';
 CREATE USER IF NOT EXISTS 'marketing_user'@'%' IDENTIFIED BY 'Askxuan2026!';
 CREATE USER IF NOT EXISTS 'file_user'@'%' IDENTIFIED BY 'Askxuan2026!';
 CREATE USER IF NOT EXISTS 'ai_user'@'%' IDENTIFIED BY 'Askxuan2026!';
+CREATE USER IF NOT EXISTS 'media_user'@'%' IDENTIFIED BY 'Askxuan2026!';
 
 -- ============ 2. 拆分 askxuan_shop 共享库 ============
 -- payment 表 → askxuan_payment
@@ -30,6 +31,7 @@ CREATE DATABASE IF NOT EXISTS askxuan_payment CHARACTER SET utf8mb4 COLLATE utf8
 CREATE DATABASE IF NOT EXISTS askxuan_product CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- order 表 → askxuan_order
 CREATE DATABASE IF NOT EXISTS askxuan_order CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS askxuan_media CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- 迁移 payment 相关表（如果 askxuan_shop 中存在）
 -- 注意：RENAME TABLE 跨库迁移会丢失外键约束，本项目无外键约束
@@ -64,6 +66,7 @@ GRANT ALL PRIVILEGES ON askxuan_logistics.* TO 'logistics_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_marketing.* TO 'marketing_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_file.* TO 'file_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_ai.* TO 'ai_user'@'%';
+GRANT ALL PRIVILEGES ON askxuan_media.* TO 'media_user'@'%';
 
 FLUSH PRIVILEGES;
 

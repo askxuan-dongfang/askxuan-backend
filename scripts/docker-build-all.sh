@@ -29,6 +29,7 @@ declare -A SERVICES=(
     ["message-service"]="services/infrastructure/message-service"
     ["file-service"]="services/infrastructure/file-service"
     ["ai-service"]="services/infrastructure/ai-service"
+    ["media-service"]="services/infrastructure/media-service"
 )
 
 echo "==> 批量构建 Docker 镜像 (tag=${TAG})"

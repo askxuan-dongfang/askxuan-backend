@@ -48,6 +48,7 @@ render_service audit    "${ROOT}/services/operation/audit-service/etc"
 render_service message  "${ROOT}/services/infrastructure/message-service/etc"
 render_service file     "${ROOT}/services/infrastructure/file-service/etc"
 render_service ai       "${ROOT}/services/infrastructure/ai-service/etc"
+render_service media    "${ROOT}/services/infrastructure/media-service/etc"
 
 # Gateway uses static in-compose service names so it remains stable even before
 # any optional etcd discovery data is available.
@@ -69,6 +70,7 @@ perl -pi -e '
   s/Target: localhost:8096/Target: marketing-service:8096/g;
   s/Target: localhost:8097/Target: file-service:8097/g;
   s/Target: localhost:8098/Target: ai-service:8098/g;
+  s/Target: localhost:8100/Target: media-service:8100/g;
   s/Target: localhost:10002/Target: host.docker.internal:10002/g;
 ' "${OUT}/gateway/gateway.yaml"
 

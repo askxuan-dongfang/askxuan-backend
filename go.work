@@ -15,6 +15,7 @@ use (
 	./services/infrastructure/ai-service
 	./services/infrastructure/file-service
 	./services/infrastructure/message-service
+	./services/infrastructure/media-service
 	./services/operation/audit-service
 	./services/operation/finance-service
 	./services/operation/logistics-service

@@ -25,16 +25,17 @@ AUDIT_PATH      := services/operation/audit-service
 MESSAGE_PATH    := services/infrastructure/message-service
 FILE_PATH       := services/infrastructure/file-service
 AI_PATH         := services/infrastructure/ai-service
+MEDIA_PATH      := services/infrastructure/media-service
 
 # 全部服务路径列表
 SERVICE_PATHS := $(GATEWAY_PATH) $(AUTH_PATH) $(USER_PATH) $(TEMPLE_PATH) \
                  $(MASTER_PATH) $(BOOKING_PATH) $(REVIEW_PATH) $(PRODUCT_PATH) \
                  $(ORDER_PATH) $(PAYMENT_PATH) $(DIY_PATH) $(MARKETING_PATH) \
                  $(LOGISTICS_PATH) $(FINANCE_PATH) $(AUDIT_PATH) $(MESSAGE_PATH) \
-                 $(FILE_PATH) $(AI_PATH)
+                 $(FILE_PATH) $(AI_PATH) $(MEDIA_PATH)
 
-SERVICE_BINS := gateway auth user temple master booking review product order payment diy marketing logistics finance audit message file ai
-SERVICE_PORTS := gateway:8080 auth:8081 user:8082 temple:8083 master:8084 booking:8085 product:8086 diy:8088 order:8089 payment:8090 finance:8091 review:8092 audit:8093 message:8094 logistics:8095 marketing:8096 file:8097 ai:8098
+SERVICE_BINS := gateway auth user temple master booking review product order payment diy marketing logistics finance audit message file ai media
+SERVICE_PORTS := gateway:8080 auth:8081 user:8082 temple:8083 master:8084 booking:8085 product:8086 diy:8088 order:8089 payment:8090 finance:8091 review:8092 audit:8093 message:8094 logistics:8095 marketing:8096 file:8097 ai:8098 media:8100
 CORE_SERVICE_PATHS := $(GATEWAY_PATH) $(AUTH_PATH) $(MESSAGE_PATH)
 CORE_SERVICE_BINS := gateway auth message
 CORE_SERVICE_PORTS := gateway:8080 auth:8081 message:8094
@@ -50,10 +51,10 @@ PID_DIR := $(LOG_DIR)/pids
         stack-preflight stack-up stack-down stack-restart stack-check stack-ps stack-logs \
         start-gateway start-auth start-user start-temple start-master start-booking \
         start-message start-file start-product start-diy start-order start-payment \
-        start-finance start-review start-audit start-logistics start-marketing start-ai \
+        start-finance start-review start-audit start-logistics start-marketing start-ai start-media \
         build-gateway build-auth build-user build-temple build-master build-booking \
         build-message build-file build-product build-diy build-order build-payment \
-        build-finance build-review build-audit build-logistics build-marketing build-ai
+        build-finance build-review build-audit build-logistics build-marketing build-ai build-media
 
 help: ## 查看所有命令
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -119,6 +120,9 @@ start-marketing: ## 启动营销服务 (8096)
 start-ai: ## 启动AI服务 (8098)
 	cd $(AI_PATH) && go run ai.go -f etc/ai.yaml
 
+start-media: ## 启动媒体服务 (8100)
+	cd $(MEDIA_PATH) && go run media.go -f etc/media.yaml
+
 # ---------- 单服务编译 ----------
 build-gateway:
 	cd $(GATEWAY_PATH) && go build -o gateway gateway.go
@@ -174,10 +178,13 @@ build-marketing:
 build-ai:
 	cd $(AI_PATH) && go build -o ai ai.go
 
+build-media:
+	cd $(MEDIA_PATH) && go build -o media media.go
+
 build: ## 编译所有服务
 build: build-gateway build-auth build-user build-temple build-master build-booking \
        build-message build-file build-product build-diy build-order build-payment \
-       build-finance build-review build-audit build-logistics build-marketing build-ai
+       build-finance build-review build-audit build-logistics build-marketing build-ai build-media
 	@echo "==> 所有服务编译完成"
 
 # ---------- 全部启动（后台并发，日志输出到 logs/） ----------
@@ -270,7 +277,7 @@ stop-all: ## 停止所有服务
 			rm -f $(PID_DIR)/$$bin.pid; \
 		fi; \
 	done
-	@-pkill -f "/askXuan-backend/services/.*/\(gateway\|auth\|user\|temple\|master\|booking\|review\|product\|order\|payment\|diy\|marketing\|logistics\|finance\|audit\|message\|file\|ai\) " 2>/dev/null || true
+	@-pkill -f "/askXuan-backend/services/.*/\(gateway\|auth\|user\|temple\|master\|booking\|review\|product\|order\|payment\|diy\|marketing\|logistics\|finance\|audit\|message\|file\|ai\|media\) " 2>/dev/null || true
 	@echo "==> 已停止"
 
 # ---------- 数据库 ----------
@@ -280,7 +287,7 @@ db-init: ## 初始化数据库（建表 + 种子数据）
 
 db-reset: ## 重置本地数据库（危险：删除 askxuan* 业务库后重新初始化）
 	@echo "==> 即将删除 askxuan* 业务库并重新初始化..."
-	@docker exec askxuan-mysql mysql -uroot -proot123 -e "SET FOREIGN_KEY_CHECKS=0; DROP DATABASE IF EXISTS askxuan; DROP DATABASE IF EXISTS askxuan_auth; DROP DATABASE IF EXISTS askxuan_user; DROP DATABASE IF EXISTS askxuan_temple; DROP DATABASE IF EXISTS askxuan_master; DROP DATABASE IF EXISTS askxuan_booking; DROP DATABASE IF EXISTS askxuan_message; DROP DATABASE IF EXISTS askxuan_shop; DROP DATABASE IF EXISTS askxuan_diy; DROP DATABASE IF EXISTS askxuan_finance; DROP DATABASE IF EXISTS askxuan_review; DROP DATABASE IF EXISTS askxuan_audit; DROP DATABASE IF EXISTS askxuan_logistics; DROP DATABASE IF EXISTS askxuan_marketing; DROP DATABASE IF EXISTS askxuan_ai; DROP DATABASE IF EXISTS askxuan_system; CREATE DATABASE askxuan DEFAULT CHARACTER SET utf8mb4; SET FOREIGN_KEY_CHECKS=1;"
+	@docker exec askxuan-mysql mysql -uroot -proot123 -e "SET FOREIGN_KEY_CHECKS=0; DROP DATABASE IF EXISTS askxuan; DROP DATABASE IF EXISTS askxuan_auth; DROP DATABASE IF EXISTS askxuan_user; DROP DATABASE IF EXISTS askxuan_temple; DROP DATABASE IF EXISTS askxuan_master; DROP DATABASE IF EXISTS askxuan_booking; DROP DATABASE IF EXISTS askxuan_message; DROP DATABASE IF EXISTS askxuan_shop; DROP DATABASE IF EXISTS askxuan_diy; DROP DATABASE IF EXISTS askxuan_finance; DROP DATABASE IF EXISTS askxuan_review; DROP DATABASE IF EXISTS askxuan_audit; DROP DATABASE IF EXISTS askxuan_logistics; DROP DATABASE IF EXISTS askxuan_marketing; DROP DATABASE IF EXISTS askxuan_ai; DROP DATABASE IF EXISTS askxuan_media; DROP DATABASE IF EXISTS askxuan_system; CREATE DATABASE askxuan DEFAULT CHARACTER SET utf8mb4; SET FOREIGN_KEY_CHECKS=1;"
 	@$(MAKE) -s db-init
 
 # ---------- 清理 ----------
@@ -289,7 +296,7 @@ clean: ## 清理编译产物
 		-o -name "master" -o -name "booking" -o -name "message" -o -name "file" \
 		-o -name "product" -o -name "diy" -o -name "order" -o -name "payment" \
 		-o -name "finance" -o -name "review" -o -name "audit" \
-		-o -name "logistics" -o -name "marketing" -o -name "ai" \) -delete
+		-o -name "logistics" -o -name "marketing" -o -name "ai" -o -name "media" \) -delete
 	@-rm -rf logs
 	@echo "==> 已清理"
 
@@ -346,7 +353,7 @@ docker-build-all: ## 构建所有服务 Docker 镜像
 docker-config: ## 生成 Docker Compose 容器网络配置（.docker/etc）
 	@bash scripts/dev/render-docker-configs.sh
 
-docker-up: ## 一键启动中间件 + 首次初始化数据库 + 18 个后端服务（Docker Compose）
+docker-up: ## 一键启动中间件 + 首次初始化数据库 + 19 个后端服务（Docker Compose）
 	@bash scripts/dev/docker-up-all.sh
 
 docker-down: ## 停止 Docker Compose 全量后端（保留 MySQL/Redis 等数据卷）
@@ -367,7 +374,7 @@ docker-logs: ## 查看 Docker Compose 后端日志（可传 SVC=gateway-service�
 stack-preflight: ## 全栈启动前预检端口/Docker/Compose（askXuan + OpenIM）
 	@bash scripts/dev/stack-preflight.sh
 
-stack-up: ## 一键启动完整后端栈：OpenIM + askXuan 中间件 + askXuan 18 个服务
+stack-up: ## 一键启动完整后端栈：OpenIM + askXuan 中间件 + askXuan 19 个服务
 	@bash scripts/dev/stack-up.sh
 
 stack-down: ## 停止完整后端栈（保留数据）
