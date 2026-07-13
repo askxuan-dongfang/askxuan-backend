@@ -10,6 +10,7 @@ type Master struct {
 	TempleId    string   `json:"templeId"`
 	TempleName  string   `json:"templeName"`
 	Position    string   `json:"position"`
+	BeliefCode  string   `json:"beliefCode"`
 	Sect        string   `json:"sect"`
 	Type        string   `json:"type"`
 	AuthStatus  string   `json:"authStatus"`
@@ -21,11 +22,12 @@ type Master struct {
 
 // ListReq 列表查询请求
 type ListReq struct {
-	Sect     string `form:"sect,optional"`
-	Type     string `form:"type,optional"`
-	TempleId string `form:"templeId,optional"`
-	Page     int    `form:"page,default=1"`
-	Size     int    `form:"size,default=20"`
+	BeliefCode string `form:"beliefCode,optional"`
+	Sect       string `form:"sect,optional"`
+	Type       string `form:"type,optional"`
+	TempleId   string `form:"templeId,optional"`
+	Page       int    `form:"page,default=1"`
+	Size       int    `form:"size,default=20"`
 }
 
 // ListResp 列表查询响应
@@ -66,6 +68,7 @@ type AdminMasterCreateReq struct {
 	TempleId    string   `json:"templeId"`
 	TempleName  string   `json:"templeName,optional"`
 	Position    string   `json:"position"`
+	BeliefCode  string   `json:"beliefCode"`
 	Sect        string   `json:"sect"`
 	Type        string   `json:"type"`
 	Specialties []string `json:"specialties"`
@@ -83,6 +86,8 @@ type AdminMasterUpdateReq struct {
 	DharmaName  string   `json:"dharmaName,optional"`
 	LayName     string   `json:"layName,optional"`
 	Position    string   `json:"position,optional"`
+	BeliefCode  string   `json:"beliefCode,optional"`
+	Sect        string   `json:"sect,optional"`
 	Specialties []string `json:"specialties,optional"`
 	Avatar      string   `json:"avatar,optional"`
 }
@@ -167,10 +172,10 @@ type ScheduleListReq struct {
 
 // ScheduleListResp 日程列表响应
 type ScheduleListResp struct {
-	Total int64           `json:"total"`
+	Total int64            `json:"total"`
 	List  []MasterSchedule `json:"list"`
-	Page  int             `json:"page"`
-	Size  int             `json:"size"`
+	Page  int              `json:"page"`
+	Size  int              `json:"size"`
 }
 
 // ScheduleUpdateReq 更新日程请求
@@ -224,7 +229,7 @@ type EarningsDetailItem struct {
 
 // EarningsDetailResp 收益明细响应
 type EarningsDetailResp struct {
-	Total int64               `json:"total"`
+	Total int64                `json:"total"`
 	List  []EarningsDetailItem `json:"list"`
 	Page  int                  `json:"page"`
 	Size  int                  `json:"size"`

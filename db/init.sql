@@ -19,6 +19,7 @@ CREATE TABLE `temple` (
   `name` VARCHAR(64) NOT NULL COMMENT '名称',
   `region` VARCHAR(64) NOT NULL COMMENT '地区',
   `type` VARCHAR(32) NOT NULL COMMENT '类型 汉传佛教/藏传佛教/南传佛教/道教道观/民间地方信仰',
+  `belief_code` VARCHAR(32) NOT NULL DEFAULT 'han_buddhism' COMMENT '一级信仰流派编码',
   `sect` VARCHAR(32) NOT NULL COMMENT '宗派 禅宗/全真派/格鲁派/正一派',
   `status` VARCHAR(16) NOT NULL DEFAULT '正常' COMMENT '状态 正常/待审核',
   `address` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '地址',
@@ -28,16 +29,37 @@ CREATE TABLE `temple` (
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_code` (`code`)
+  UNIQUE KEY `uk_code` (`code`),
+  KEY `idx_belief_code` (`belief_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院表';
 
-INSERT INTO `temple` (`code`,`name`,`region`,`type`,`sect`,`status`,`address`,`cover_image`,`rating`,`description`) VALUES
-('T001','灵隐寺','浙江杭州','汉传佛教','禅宗','正常','杭州市西湖区灵隐路法云弄1号','/assets/temple-card-lingyinsi.jpg',4.90,'杭州最早的名刹，江南禅宗五大名山之一，以禅修、祈福、开光法事闻名。'),
-('T002','白云观','北京','道教','全真派','正常','北京市西城区白云观街1号','/assets/temple-card-baimasi.jpg',4.70,'道教全真派三大祖庭之一，北京最大道观，以道教科仪、祈福、化太岁闻名。'),
-('T003','少林寺','河南嵩山','汉传佛教','禅宗','正常','河南省郑州市登封市嵩山少林景区','/assets/temple-card-shaolinsi.jpg',4.80,'禅宗祖庭，少林武术发源地，以禅修、武术、超度、开光法事闻名。'),
-('T004','大昭寺','西藏拉萨','藏传佛教','格鲁派','正常','拉萨市城关区八廓街','/assets/temple-card-dazhaosi.jpg',4.90,'藏传佛教圣地，拉萨城市中心，以藏密仪轨、灌顶、超度、祈福闻名。'),
-('T005','普陀山','浙江舟山','汉传佛教','禅宗','待审核','舟山市普陀区普陀山','/assets/temple-card-famensi.jpg',4.60,'观音菩萨道场，佛教四大名山之一，以净土法门、观音法门、祈福闻名。'),
-('T006','武当山','湖北十堰','道教','正一派','正常','十堰市丹江口市武当山特区','/assets/temple-card-qingyanggong.jpg',4.70,'道教圣地，真武大帝道场，以内丹、太极、风水、化太岁闻名。');
+INSERT INTO `temple` (`code`,`name`,`region`,`type`,`belief_code`,`sect`,`status`,`address`,`cover_image`,`rating`,`description`) VALUES
+('T001','灵隐寺','浙江杭州','汉传佛教','han_buddhism','禅宗','正常','杭州市西湖区灵隐路法云弄1号','/assets/temple-card-lingyinsi.jpg',4.90,'杭州最早的名刹，江南禅宗五大名山之一，以禅修、祈福、开光法事闻名。'),
+('T002','白云观','北京','道教','daoism','全真派','正常','北京市西城区白云观街1号','/assets/temple-card-baimasi.jpg',4.70,'道教全真派三大祖庭之一，北京最大道观，以道教科仪、祈福、化太岁闻名。'),
+('T003','少林寺','河南嵩山','汉传佛教','han_buddhism','禅宗','正常','河南省郑州市登封市嵩山少林景区','/assets/temple-card-shaolinsi.jpg',4.80,'禅宗祖庭，少林武术发源地，以禅修、武术、超度、开光法事闻名。'),
+('T004','大昭寺','西藏拉萨','藏传佛教','tibetan_buddhism','格鲁派','正常','拉萨市城关区八廓街','/assets/temple-card-dazhaosi.jpg',4.90,'藏传佛教圣地，拉萨城市中心，以藏密仪轨、灌顶、超度、祈福闻名。'),
+('T005','普陀山','浙江舟山','汉传佛教','han_buddhism','禅宗','待审核','舟山市普陀区普陀山','/assets/temple-card-famensi.jpg',4.60,'观音菩萨道场，佛教四大名山之一，以净土法门、观音法门、祈福闻名。'),
+('T006','武当山','湖北十堰','道教','daoism','正一派','正常','十堰市丹江口市武当山特区','/assets/temple-card-qingyanggong.jpg',4.70,'道教圣地，真武大帝道场，以内丹、太极、风水、化太岁闻名。');
+
+DROP TABLE IF EXISTS `belief_profile`;
+CREATE TABLE `belief_profile` (
+  `code` VARCHAR(32) NOT NULL,
+  `name` VARCHAR(64) NOT NULL,
+  `summary` VARCHAR(255) NOT NULL DEFAULT '',
+  `description` TEXT NOT NULL,
+  `cover_image` VARCHAR(500) NOT NULL DEFAULT '',
+  `sort` INT NOT NULL DEFAULT 0,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'enabled',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='一级信仰流派运营资料';
+
+INSERT INTO `belief_profile` (`code`,`name`,`summary`,`description`,`sort`) VALUES
+('han_buddhism','汉传佛教','慈悲与智慧并行','汉传佛教在中国长期发展，形成禅、净土、天台、华严等具体宗派。平台以一级流派聚合寺院和法师，同时保留具体宗派信息。',10),
+('tibetan_buddhism','藏传佛教','传承、修持与慈悲','藏传佛教具有清晰的传承体系，包含格鲁、宁玛、噶举、萨迦等具体宗派。',20),
+('daoism','道教','道法自然，清静修持','道教是中国本土宗教传统，平台一级归类为道教，并保留全真、正一等具体宗派。',30),
+('folk','民间信仰','乡土传统与民俗传承','民间信仰承载地域性祭祀、祈愿和文化传统，相关内容须遵循平台审核与合规要求。',40);
 
 -- ----------------------------
 -- 2. 法师表 master（数据字典第2节，6 法师）
@@ -50,6 +72,7 @@ CREATE TABLE `master` (
   `lay_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '俗名',
   `temple_code` VARCHAR(16) NOT NULL COMMENT '所属寺院编码',
   `position` VARCHAR(32) NOT NULL COMMENT '职位',
+  `belief_code` VARCHAR(32) NOT NULL DEFAULT 'han_buddhism' COMMENT '一级信仰流派编码',
   `sect` VARCHAR(32) NOT NULL COMMENT '宗派',
   `type` VARCHAR(16) NOT NULL COMMENT '类型 佛教/道教',
   `auth_status` VARCHAR(16) NOT NULL COMMENT '认证状态 已认证/待审核',
@@ -63,17 +86,18 @@ CREATE TABLE `master` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_code` (`code`),
   KEY `idx_temple_code` (`temple_code`),
+  KEY `idx_belief_code` (`belief_code`),
   CONSTRAINT `fk_master_temple` FOREIGN KEY (`temple_code`) REFERENCES `temple` (`code`)
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='法师表';
 
-INSERT INTO `master` (`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`) VALUES
-('M001','智海法师','陈建华','T001','住持','汉传佛教','佛教','已认证','on_shelf','normal','佛学,禅修,开光,祈福','/assets/master-avatar-zhihai.jpg',4.90),
-('M002','清风道长','李信军','T002','监院','全真道派','道教','已认证','on_shelf','normal','道学,风水,命理,祈福','/assets/master-avatar-qingfeng.jpg',4.80),
-('M003','释延心法师','王建军','T003','首座','禅宗','佛教','已认证','on_shelf','normal','武术,禅修,超度,开光','/assets/master-avatar-zhihai.jpg',4.80),
-('M004','扎西多吉活佛','—','T004','活佛','藏密佛教','佛教','已认证','on_shelf','normal','藏密仪轨,灌顶,超度,祈福','/assets/master-avatar-zhaxiduoji.jpg',5.00),
-('M005','慧明法师','周明华','T005','副住持','汉传佛教','佛教','待审核','off_shelf','normal','净土,观音法门,祈福','/assets/master-avatar-shimingyuan.jpg',4.50),
-('M006','真武道长','张志远','T006','知客','正一派','道教','已认证','on_shelf','normal','内丹,太极,风水,化太岁','/assets/master-avatar-zhangzhishun.jpg',4.70);
+INSERT INTO `master` (`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`belief_code`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`) VALUES
+('M001','智海法师','陈建华','T001','住持','han_buddhism','禅宗','佛教','已认证','on_shelf','normal','佛学,禅修,开光,祈福','/assets/master-avatar-zhihai.jpg',4.90),
+('M002','清风道长','李信军','T002','监院','daoism','全真道派','道教','已认证','on_shelf','normal','道学,风水,命理,祈福','/assets/master-avatar-qingfeng.jpg',4.80),
+('M003','释延心法师','王建军','T003','首座','han_buddhism','禅宗','佛教','已认证','on_shelf','normal','武术,禅修,超度,开光','/assets/master-avatar-zhihai.jpg',4.80),
+('M004','扎西多吉活佛','—','T004','活佛','tibetan_buddhism','藏密佛教','佛教','已认证','on_shelf','normal','藏密仪轨,灌顶,超度,祈福','/assets/master-avatar-zhaxiduoji.jpg',5.00),
+('M005','慧明法师','周明华','T005','副住持','han_buddhism','净土宗','佛教','待审核','off_shelf','normal','净土,观音法门,祈福','/assets/master-avatar-shimingyuan.jpg',4.50),
+('M006','真武道长','张志远','T006','知客','daoism','正一派','道教','已认证','on_shelf','normal','内丹,太极,风水,化太岁','/assets/master-avatar-zhangzhishun.jpg',4.70);
 
 -- ----------------------------
 -- 3. 服务类型表 service_type（数据字典第3节，用户端服务）

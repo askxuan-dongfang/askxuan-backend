@@ -1,5 +1,26 @@
 package types
 
+type BeliefProfile struct {
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Summary     string `json:"summary"`
+	Description string `json:"description"`
+	CoverImage  string `json:"coverImage"`
+	Sort        int    `json:"sort"`
+}
+
+type BeliefReq struct {
+	Code string `path:"code"`
+}
+type BeliefUpdateReq struct {
+	Code        string `path:"code"`
+	Name        string `json:"name"`
+	Summary     string `json:"summary,optional"`
+	Description string `json:"description"`
+	CoverImage  string `json:"coverImage,optional"`
+	Sort        int    `json:"sort,optional"`
+}
+
 // ============ 寺院基础 ============
 
 // Temple 寺院
@@ -8,6 +29,7 @@ type Temple struct {
 	Name         string   `json:"name"`
 	Region       string   `json:"region"`
 	Type         string   `json:"type"`
+	BeliefCode   string   `json:"beliefCode"`
 	Sect         string   `json:"sect"`
 	Status       string   `json:"status"`
 	Address      string   `json:"address"`
@@ -28,6 +50,7 @@ type TempleDetail struct {
 
 // ListReq 列表查询请求
 type ListReq struct {
+	BeliefCode  string `form:"beliefCode,optional"`
 	Sect        string `form:"sect,optional"`
 	Type        string `form:"type,optional"`
 	Region      string `form:"region,optional"`
@@ -143,6 +166,9 @@ type TempleUpdateReq struct {
 	Id          string `json:"id"`
 	Name        string `json:"name,optional"`
 	Region      string `json:"region,optional"`
+	Type        string `json:"type,optional"`
+	BeliefCode  string `json:"beliefCode,optional"`
+	Sect        string `json:"sect,optional"`
 	Address     string `json:"address,optional"`
 	CoverImage  string `json:"coverImage,optional"`
 	Description string `json:"description,optional"`

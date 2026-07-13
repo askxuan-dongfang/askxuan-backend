@@ -16,6 +16,7 @@ type (
         TempleId    string   `json:"templeId"`    // 所属寺院编码
         TempleName  string   `json:"templeName"`  // 所属寺院名称
         Position    string   `json:"position"`    // 职位
+        BeliefCode  string   `json:"beliefCode"`  // 一级信仰流派
         Sect        string   `json:"sect"`        // 宗派
         Type        string   `json:"type"`        // 类型 佛教/道教
         AuthStatus  string   `json:"authStatus"`  // 认证状态
@@ -25,6 +26,7 @@ type (
     }
 
     ListReq {
+        BeliefCode string `form:"beliefCode,optional"`
         Sect     string `form:"sect,optional"`
         Type     string `form:"type,optional"`
         TempleId string `form:"templeId,optional"`
@@ -66,6 +68,7 @@ type (
         TempleId    string   `json:"templeId"`
         TempleName  string   `json:"templeName,optional"`
         Position    string   `json:"position"`
+        BeliefCode  string   `json:"beliefCode"`
         Sect        string   `json:"sect"`
         Type        string   `json:"type"`
         Specialties []string `json:"specialties"`
@@ -81,6 +84,8 @@ type (
         DharmaName  string   `json:"dharmaName,optional"`
         LayName     string   `json:"layName,optional"`
         Position    string   `json:"position,optional"`
+        BeliefCode  string   `json:"beliefCode,optional"`
+        Sect        string   `json:"sect,optional"`
         Specialties []string `json:"specialties,optional"`
         Avatar      string   `json:"avatar,optional"`
     }

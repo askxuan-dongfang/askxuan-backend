@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -14,6 +15,31 @@ const (
 	MasterShelfStatusOnShelf  = "on_shelf"  // 上架（C端可见）
 	MasterShelfStatusOffShelf = "off_shelf" // 下架（C端不可见）
 )
+
+func NormalizeBeliefCode(code, masterType, sect string) string {
+	if code != "" {
+		return code
+	}
+	if strings.Contains(masterType, "道") || strings.Contains(sect, "全真") || strings.Contains(sect, "正一") {
+		return "daoism"
+	}
+	if strings.Contains(masterType, "藏") || strings.Contains(sect, "格鲁") || strings.Contains(sect, "藏") {
+		return "tibetan_buddhism"
+	}
+	if strings.Contains(masterType, "民间") {
+		return "folk"
+	}
+	return "han_buddhism"
+}
+
+func IsValidBeliefCode(code string) bool {
+	switch code {
+	case "han_buddhism", "tibetan_buddhism", "daoism", "folk":
+		return true
+	default:
+		return false
+	}
+}
 
 // 法师平台状态常量
 const (
@@ -45,6 +71,7 @@ type Master struct {
 	LayName        string  `db:"lay_name" json:"layName"`
 	TempleCode     string  `db:"temple_code" json:"templeCode"`
 	Position       string  `db:"position" json:"position"`
+	BeliefCode     string  `db:"belief_code" json:"beliefCode"`
 	Sect           string  `db:"sect" json:"sect"`
 	Type           string  `db:"type" json:"type"` // 佛教/道教
 	AuthStatus     string  `db:"auth_status" json:"authStatus"`
@@ -66,7 +93,7 @@ type MasterModel interface {
 	// FindAll 平台查询所有法师（按 shelfStatus 筛选，空则全部）
 	FindAll(ctx context.Context, shelfStatus string, page, size int) ([]*Master, int64, error)
 	// FindCList C端公开列表（仅 on_shelf + normal），按 sect/type/templeCode 筛选
-	FindCList(ctx context.Context, sect, mtype, templeCode string, page, size int) ([]*Master, int64, error)
+	FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode string, page, size int) ([]*Master, int64, error)
 	FindTempleNameByCode(ctx context.Context, templeCode string) (string, error)
 	Insert(ctx context.Context, data *Master) (int64, error)
 	Update(ctx context.Context, data *Master) error
@@ -127,9 +154,13 @@ func (m *masterModel) FindAll(ctx context.Context, shelfStatus string, page, siz
 	return m.queryPage(ctx, where, args, "ORDER BY id DESC", page, size)
 }
 
-func (m *masterModel) FindCList(ctx context.Context, sect, mtype, templeCode string, page, size int) ([]*Master, int64, error) {
+func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode string, page, size int) ([]*Master, int64, error) {
 	where := "WHERE shelf_status = ? AND platform_status = ?"
 	args := []interface{}{MasterShelfStatusOnShelf, MasterPlatformStatusNormal}
+	if beliefCode != "" {
+		where += " AND belief_code = ?"
+		args = append(args, beliefCode)
+	}
 	if sect != "" {
 		where += " AND sect = ?"
 		args = append(args, sect)
@@ -180,9 +211,9 @@ func (m *masterModel) queryPage(ctx context.Context, where string, args []interf
 }
 
 func (m *masterModel) Insert(ctx context.Context, data *Master) (int64, error) {
-	query := fmt.Sprintf("INSERT INTO %s (code, dharma_name, lay_name, temple_code, position, sect, type, auth_status, shelf_status, platform_status, specialties, avatar, rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table)
+	query := fmt.Sprintf("INSERT INTO %s (code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, specialties, avatar, rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table)
 	res, err := m.conn.ExecCtx(ctx, query,
-		data.Code, data.DharmaName, data.LayName, data.TempleCode, data.Position,
+		data.Code, data.DharmaName, data.LayName, data.TempleCode, data.Position, data.BeliefCode,
 		data.Sect, data.Type, data.AuthStatus, data.ShelfStatus, data.PlatformStatus,
 		data.Specialties, data.Avatar, data.Rating)
 	if err != nil {
@@ -196,9 +227,9 @@ func (m *masterModel) Insert(ctx context.Context, data *Master) (int64, error) {
 }
 
 func (m *masterModel) Update(ctx context.Context, data *Master) error {
-	query := fmt.Sprintf("UPDATE %s SET dharma_name = ?, lay_name = ?, position = ?, sect = ?, type = ?, specialties = ?, avatar = ? WHERE id = ?", m.table)
+	query := fmt.Sprintf("UPDATE %s SET dharma_name = ?, lay_name = ?, position = ?, belief_code = ?, sect = ?, type = ?, specialties = ?, avatar = ? WHERE id = ?", m.table)
 	_, err := m.conn.ExecCtx(ctx, query,
-		data.DharmaName, data.LayName, data.Position, data.Sect, data.Type,
+		data.DharmaName, data.LayName, data.Position, data.BeliefCode, data.Sect, data.Type,
 		data.Specialties, data.Avatar, data.Id)
 	return err
 }
@@ -232,4 +263,4 @@ func (m *masterModel) NextCode(ctx context.Context) (string, error) {
 }
 
 // masterRows 法师表查询字段
-const masterRows = "id, code, dharma_name, lay_name, temple_code, position, sect, type, auth_status, shelf_status, platform_status, specialties, avatar, rating, create_time, update_time"
+const masterRows = "id, code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, specialties, avatar, rating, create_time, update_time"

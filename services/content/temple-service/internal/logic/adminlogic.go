@@ -61,6 +61,18 @@ func (l *AdminTempleUpdateLogic) AdminTempleUpdate(req *types.TempleUpdateReq) (
 	if req.Region != "" {
 		t.Region = req.Region
 	}
+	if req.Type != "" {
+		t.Type = req.Type
+	}
+	if req.BeliefCode != "" {
+		if !model.IsValidBeliefCode(req.BeliefCode) {
+			return nil, common.ErrParamInvalid
+		}
+		t.BeliefCode = req.BeliefCode
+	}
+	if req.Sect != "" {
+		t.Sect = req.Sect
+	}
 	if req.Address != "" {
 		t.Address = req.Address
 	}
@@ -499,6 +511,7 @@ func toTypeTemple(t *model.Temple) types.Temple {
 		Name:         t.Name,
 		Region:       t.Region,
 		Type:         t.Type,
+		BeliefCode:   t.BeliefCode,
 		Sect:         t.Sect,
 		Status:       t.Status,
 		Address:      t.Address,

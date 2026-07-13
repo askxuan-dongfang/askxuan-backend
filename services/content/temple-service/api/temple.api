@@ -9,11 +9,32 @@ info (
 
 // ============ 寺院基础 ============
 type (
+    BeliefProfile {
+        Code string `json:"code"`
+        Name string `json:"name"`
+        Summary string `json:"summary"`
+        Description string `json:"description"`
+        CoverImage string `json:"coverImage"`
+        Sort int `json:"sort"`
+    }
+
+    BeliefReq { Code string `path:"code"` }
+
+    BeliefUpdateReq {
+        Code string `path:"code"`
+        Name string `json:"name"`
+        Summary string `json:"summary,optional"`
+        Description string `json:"description"`
+        CoverImage string `json:"coverImage,optional"`
+        Sort int `json:"sort,optional"`
+    }
+
     Temple {
         Id           string   `json:"id"`
         Name         string   `json:"name"`
         Region       string   `json:"region"`
         Type         string   `json:"type"`
+        BeliefCode   string   `json:"beliefCode"`
         Sect         string   `json:"sect"`
         Status       string   `json:"status"`
         Address      string   `json:"address"`
@@ -32,6 +53,7 @@ type (
     }
 
     ListReq {
+        BeliefCode  string `form:"beliefCode,optional"`
         Sect        string `form:"sect,optional"`
         Type        string `form:"type,optional"`
         Region      string `form:"region,optional"` // 扩展地区筛选
@@ -51,6 +73,22 @@ type (
         Id string `path:"id"`
     }
 )
+
+@server (group: belief)
+service temple-service {
+    @handler beliefDetail
+    get /api/v1/beliefs/:code (BeliefReq) returns (BeliefProfile)
+}
+
+@server (
+    group: belief.platform
+    prefix: /api/v1/admin/platform/beliefs
+    jwt: Auth
+)
+service temple-service {
+    @handler platformBeliefUpdate
+    put /:code (BeliefUpdateReq) returns (BeliefProfile)
+}
 
 // ============ 寺院图片 ============
 type (
@@ -134,6 +172,9 @@ type (
         Id          string `json:"id"`
         Name        string `json:"name,optional"`
         Region      string `json:"region,optional"`
+        Type        string `json:"type,optional"`
+        BeliefCode  string `json:"beliefCode,optional"`
+        Sect        string `json:"sect,optional"`
         Address     string `json:"address,optional"`
         CoverImage  string `json:"coverImage,optional"`
         Description string `json:"description,optional"`

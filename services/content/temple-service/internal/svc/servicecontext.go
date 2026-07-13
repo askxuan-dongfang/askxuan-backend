@@ -74,6 +74,7 @@ type ServiceContext struct {
 	MqProducer         *mq.Producer
 	Consumer           *mq.Consumer
 	TempleModel        model.TempleModel
+	BeliefModel        model.BeliefModel
 	TempleImageModel   model.TempleImageModel
 	TempleAdminModel   model.TempleAdminModel
 	TempleAuditModel   model.TempleAuditModel
@@ -104,6 +105,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		MqProducer:         producer,
 		Consumer:           consumer,
 		TempleModel:        model.NewTempleModel(db),
+		BeliefModel:        model.NewBeliefModel(db),
 		TempleImageModel:   model.NewTempleImageModel(db),
 		TempleAdminModel:   model.NewTempleAdminModel(db),
 		TempleAuditModel:   model.NewTempleAuditModel(db),

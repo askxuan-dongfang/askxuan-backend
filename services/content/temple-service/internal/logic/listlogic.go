@@ -39,10 +39,11 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 	}
 
 	list, total, err := l.svcCtx.TempleModel.FindList(l.ctx, model.TempleFilter{
-		Sect:   req.Sect,
-		Type:   req.Type,
-		Region: req.Region,
-		Status: model.TempleStatusNormal,
+		BeliefCode: req.BeliefCode,
+		Sect:       req.Sect,
+		Type:       req.Type,
+		Region:     req.Region,
+		Status:     model.TempleStatusNormal,
 	}, page, size)
 	if err != nil {
 		l.Errorf("查询寺院列表失败: %v", err)

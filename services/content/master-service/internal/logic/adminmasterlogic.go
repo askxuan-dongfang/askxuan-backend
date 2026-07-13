@@ -73,6 +73,9 @@ func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateR
 	if req.DharmaName == "" || req.TempleId == "" || req.Position == "" || req.Sect == "" || req.Type == "" {
 		return nil, common.ErrParamMissing
 	}
+	if req.BeliefCode != "" && !model.IsValidBeliefCode(req.BeliefCode) {
+		return nil, common.ErrParamInvalid
+	}
 	if _, err := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, req.TempleId); err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
 			return nil, common.ErrTempleNotFound
@@ -91,6 +94,7 @@ func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateR
 		LayName:        req.LayName,
 		TempleCode:     req.TempleId,
 		Position:       req.Position,
+		BeliefCode:     model.NormalizeBeliefCode(req.BeliefCode, req.Type, req.Sect),
 		Sect:           req.Sect,
 		Type:           req.Type,
 		AuthStatus:     model.MasterAuthStatusPending, // 新建法师默认待审核
@@ -144,6 +148,15 @@ func (l *AdminMasterUpdateLogic) AdminMasterUpdate(req *types.AdminMasterUpdateR
 	}
 	if req.Position != "" {
 		master.Position = req.Position
+	}
+	if req.BeliefCode != "" {
+		if !model.IsValidBeliefCode(req.BeliefCode) {
+			return nil, common.ErrParamInvalid
+		}
+		master.BeliefCode = req.BeliefCode
+	}
+	if req.Sect != "" {
+		master.Sect = req.Sect
 	}
 	if req.Specialties != nil {
 		master.Specialties = joinSpecialties(req.Specialties)

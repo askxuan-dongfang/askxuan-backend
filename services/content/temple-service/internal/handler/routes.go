@@ -19,6 +19,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 
 	// ============ C端分组（公开） ============
 	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/beliefs/:code", Handler: beliefDetailHandler(svcCtx)},
 		{
 			Method:  http.MethodGet,
 			Path:    "/api/v1/temples",
@@ -115,6 +116,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 
 	// ============ 平台管理台分组（需JWT + 平台超管） ============
 	platformRoutes := []rest.Route{
+		{Method: http.MethodPut, Path: "/api/v1/admin/platform/beliefs/:code", Handler: platformBeliefUpdateHandler(svcCtx)},
 		{
 			Method:  http.MethodGet,
 			Path:    "/api/v1/admin/platform/temples",
@@ -147,6 +149,38 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		},
 	}
 	server.AddRoutes(rest.WithMiddleware(adminContextMiddleware, platformRoutes...))
+}
+
+func beliefDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.BeliefReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.GetBelief(r.Context(), svcCtx, req.Code)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func platformBeliefUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.BeliefUpdateReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.UpdateBelief(r.Context(), svcCtx, &req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
 }
 
 // adminContextMiddleware 将网关注入的 X-Temple-Id / X-User-Id 请求头解析到 context

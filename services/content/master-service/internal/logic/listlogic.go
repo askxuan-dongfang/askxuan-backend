@@ -39,7 +39,7 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 		size = 20
 	}
 
-	list, total, err := l.svcCtx.MasterModel.FindCList(l.ctx, req.Sect, req.Type, req.TempleId, page, size)
+	list, total, err := l.svcCtx.MasterModel.FindCList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, page, size)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +76,7 @@ func toTypeMasterWithTempleName(m *model.Master, templeName string) types.Master
 		TempleId:    m.TempleCode,
 		TempleName:  templeName,
 		Position:    m.Position,
+		BeliefCode:  m.BeliefCode,
 		Sect:        m.Sect,
 		Type:        m.Type,
 		AuthStatus:  m.AuthStatus,
