@@ -178,7 +178,7 @@ func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, te
 
 func (m *masterModel) FindTempleNameByCode(ctx context.Context, templeCode string) (string, error) {
 	var name string
-	err := m.conn.QueryRowCtx(ctx, &name, "SELECT name FROM temple WHERE code = ?", templeCode)
+	err := m.conn.QueryRowCtx(ctx, &name, "SELECT name FROM askxuan_temple.temple WHERE code = ?", templeCode)
 	return name, err
 }
 

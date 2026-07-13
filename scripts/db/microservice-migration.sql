@@ -35,23 +35,53 @@ CREATE DATABASE IF NOT EXISTS askxuan_order CHARACTER SET utf8mb4 COLLATE utf8mb
 CREATE DATABASE IF NOT EXISTS askxuan_media CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS askxuan_community CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 迁移 payment 相关表（如果 askxuan_shop 中存在）
--- 注意：RENAME TABLE 跨库迁移会丢失外键约束，本项目无外键约束
-INSERT IGNORE INTO askxuan_payment.payment SELECT * FROM askxuan_shop.payment WHERE 1=0;
-INSERT IGNORE INTO askxuan_payment.payment_log SELECT * FROM askxuan_shop.payment_log WHERE 1=0;
-INSERT IGNORE INTO askxuan_payment.refund SELECT * FROM askxuan_shop.refund WHERE 1=0;
+-- 将仍在默认/共享库的核心表复制到服务实际使用的数据库。
+CREATE TABLE IF NOT EXISTS askxuan_user.user LIKE askxuan.user;
+INSERT IGNORE INTO askxuan_user.user SELECT * FROM askxuan.user;
+CREATE TABLE IF NOT EXISTS askxuan_temple.temple LIKE askxuan.temple;
+INSERT IGNORE INTO askxuan_temple.temple (id,code,name,region,type,sect,status,address,cover_image,rating,description,create_time,update_time)
+SELECT id,code,name,region,type,sect,status,address,cover_image,rating,description,create_time,update_time FROM askxuan.temple;
+CREATE TABLE IF NOT EXISTS askxuan_temple.service_type LIKE askxuan.service_type;
+INSERT IGNORE INTO askxuan_temple.service_type SELECT * FROM askxuan.service_type;
+CREATE TABLE IF NOT EXISTS askxuan_master.master LIKE askxuan.master;
+INSERT IGNORE INTO askxuan_master.master (id,code,dharma_name,lay_name,temple_code,position,sect,type,auth_status,shelf_status,platform_status,specialties,avatar,rating,create_time,update_time)
+SELECT id,code,dharma_name,lay_name,temple_code,position,sect,type,auth_status,shelf_status,platform_status,specialties,avatar,rating,create_time,update_time FROM askxuan.master;
+CREATE TABLE IF NOT EXISTS askxuan_booking.booking LIKE askxuan.booking;
+INSERT IGNORE INTO askxuan_booking.booking SELECT * FROM askxuan.booking;
+CREATE TABLE IF NOT EXISTS askxuan_message.message LIKE askxuan.message;
+INSERT IGNORE INTO askxuan_message.message SELECT * FROM askxuan.message;
 
--- 实际迁移数据（取消 WHERE 1=0）
--- 注意：执行前请确认 askxuan_payment 等库中已创建对应表结构
--- 如果表结构未创建，需要先执行 init.sql 中的对应部分
+CREATE TABLE IF NOT EXISTS askxuan_order.shop_order LIKE askxuan_shop.shop_order;
+CREATE TABLE IF NOT EXISTS askxuan_order.shop_order_item LIKE askxuan_shop.shop_order_item;
+CREATE TABLE IF NOT EXISTS askxuan_order.shop_order_logistics LIKE askxuan_shop.shop_order_logistics;
+CREATE TABLE IF NOT EXISTS askxuan_order.return_order LIKE askxuan_shop.return_order;
+INSERT IGNORE INTO askxuan_order.shop_order SELECT * FROM askxuan_shop.shop_order;
+INSERT IGNORE INTO askxuan_order.shop_order_item SELECT * FROM askxuan_shop.shop_order_item;
+INSERT IGNORE INTO askxuan_order.shop_order_logistics SELECT * FROM askxuan_shop.shop_order_logistics;
+INSERT IGNORE INTO askxuan_order.return_order SELECT * FROM askxuan_shop.return_order;
+CREATE TABLE IF NOT EXISTS askxuan_payment.payment LIKE askxuan_shop.payment;
+CREATE TABLE IF NOT EXISTS askxuan_payment.payment_log LIKE askxuan_shop.payment_log;
+CREATE TABLE IF NOT EXISTS askxuan_payment.refund LIKE askxuan_shop.refund;
+
+-- 迁移 payment 相关表；主键/唯一键保证脚本可重复执行。
+INSERT IGNORE INTO askxuan_payment.payment SELECT * FROM askxuan_shop.payment;
+INSERT IGNORE INTO askxuan_payment.payment_log SELECT * FROM askxuan_shop.payment_log;
+INSERT IGNORE INTO askxuan_payment.refund SELECT * FROM askxuan_shop.refund;
 
 -- ============ 3. 授权各账户访问自己的库 ============
 
 GRANT ALL PRIVILEGES ON askxuan_auth.* TO 'auth_user'@'%';
+GRANT SELECT ON askxuan_user.user TO 'auth_user'@'%';
+GRANT SELECT ON askxuan_temple.temple TO 'auth_user'@'%';
+GRANT SELECT ON askxuan_master.master TO 'auth_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_user.* TO 'user_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_temple.* TO 'temple_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_master.* TO 'master_user'@'%';
+GRANT SELECT ON askxuan_temple.temple TO 'master_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_booking.* TO 'booking_user'@'%';
+GRANT SELECT ON askxuan_temple.temple TO 'booking_user'@'%';
+GRANT SELECT ON askxuan_temple.service_type TO 'booking_user'@'%';
+GRANT SELECT ON askxuan_master.master TO 'booking_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_review.* TO 'review_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_product.* TO 'product_user'@'%';
 GRANT SELECT ON askxuan_temple.temple TO 'product_user'@'%';

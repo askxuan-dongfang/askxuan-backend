@@ -81,7 +81,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		} else {
 			var tid int64
 			if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &tid,
-				"SELECT id FROM temple WHERE code = ?", acc.TempleId); err == nil {
+				"SELECT id FROM askxuan_temple.temple WHERE code = ?", acc.TempleId); err == nil {
 				templeID = tid
 			}
 		}
@@ -97,7 +97,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 			// 字符串格式（如 "M001"），查主库 master 表。
 			var id int64
 			if err := l.svcCtx.DB.QueryRowCtx(l.ctx, &id,
-				"SELECT id FROM master WHERE code = ?", acc.MasterId); err == nil {
+				"SELECT id FROM askxuan_master.master WHERE code = ?", acc.MasterId); err == nil {
 				masterID = id
 			}
 		}

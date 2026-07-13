@@ -104,6 +104,25 @@ askXuan-backend/
    make db-init
    ```
 
+### 已有数据库升级
+
+全新环境使用 `make db-init`。已有数据库按需求落地顺序执行幂等前向迁移，再刷新服务账户授权：
+
+```bash
+for migration in \
+  scripts/db/20260713_belief_codes.sql \
+  scripts/db/20260713_intention_hub.sql \
+  scripts/db/20260713_ai_persistence.sql \
+  scripts/db/20260713_diy_design_order_pricing.sql \
+  scripts/db/20260713_media_live.sql \
+  scripts/db/20260713_community.sql; do
+  docker exec -i askxuan-mysql mysql -uroot -proot123 < "$migration"
+done
+docker exec -i askxuan-mysql mysql -uroot -proot123 < scripts/db/microservice-migration.sql
+```
+
+`20260713_belief_codes.sql` 会把默认库中的寺院和法师存量数据同步到服务分库，再补充一级流派字段；脚本可重复执行。
+
 ## 闭环测试
 
 ```bash
@@ -132,6 +151,12 @@ bash scripts/test-mvp3-finance-closed-loop.sh
 
 # MVP-3 审核闭环（10 步）：审核队列/通过/驳回/举报/敏感词/统计
 bash scripts/test-mvp3-audit-closed-loop.sh
+
+# App 改进：媒体/直播基础闭环
+bash scripts/test-mvp4-media-live-closed-loop.sh
+
+# App 改进：大师广场发布、审核、互动闭环
+bash scripts/test-mvp6-community-closed-loop.sh
 ```
 
 > MVP-3 四个服务使用内存存储（sync.RWMutex + slice + seq），重启后状态重置；若测试因数据被消费失败，重启对应服务后重跑即可。

@@ -388,10 +388,13 @@ INSERT INTO `role_permission` (`role_id`,`permission_id`) VALUES
 (3,8);
 
 -- ============================================================
--- 二、用户域 askxuan_user（user_address/user_profile，user 表保留在 askxuan 库）
+-- 二、用户域 askxuan_user（user/user_address/user_profile）
 -- ============================================================
 CREATE DATABASE IF NOT EXISTS `askxuan_user` DEFAULT CHARACTER SET utf8mb4;
 USE `askxuan_user`;
+
+CREATE TABLE IF NOT EXISTS `user` LIKE `askxuan`.`user`;
+INSERT IGNORE INTO `user` SELECT * FROM `askxuan`.`user`;
 
 CREATE TABLE IF NOT EXISTS `user_address` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -430,6 +433,16 @@ INSERT INTO `user_profile` (`user_id`,`preference_tags`,`total_orders`,`total_sp
 -- ============================================================
 CREATE DATABASE IF NOT EXISTS `askxuan_temple` DEFAULT CHARACTER SET utf8mb4;
 USE `askxuan_temple`;
+
+-- 核心寺院、服务类型与流派资料由默认库同步到寺院服务分库。
+-- CREATE TABLE ... LIKE 不复制外键，避免分库初始化依赖默认库约束。
+CREATE TABLE IF NOT EXISTS `temple` LIKE `askxuan`.`temple`;
+INSERT IGNORE INTO `temple` (`id`,`code`,`name`,`region`,`type`,`sect`,`status`,`address`,`cover_image`,`rating`,`description`,`create_time`,`update_time`)
+SELECT `id`,`code`,`name`,`region`,`type`,`sect`,`status`,`address`,`cover_image`,`rating`,`description`,`create_time`,`update_time` FROM `askxuan`.`temple`;
+CREATE TABLE IF NOT EXISTS `service_type` LIKE `askxuan`.`service_type`;
+INSERT IGNORE INTO `service_type` SELECT * FROM `askxuan`.`service_type`;
+CREATE TABLE IF NOT EXISTS `belief_profile` LIKE `askxuan`.`belief_profile`;
+INSERT IGNORE INTO `belief_profile` SELECT * FROM `askxuan`.`belief_profile`;
 
 CREATE TABLE IF NOT EXISTS `temple_image` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -572,6 +585,11 @@ CREATE TABLE IF NOT EXISTS `service_schedule` (
 CREATE DATABASE IF NOT EXISTS `askxuan_master` DEFAULT CHARACTER SET utf8mb4;
 USE `askxuan_master`;
 
+-- 法师服务使用独立数据库，保留默认库数据作为向后兼容副本。
+CREATE TABLE IF NOT EXISTS `master` LIKE `askxuan`.`master`;
+INSERT IGNORE INTO `master` (`id`,`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`,`create_time`,`update_time`)
+SELECT `id`,`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`,`create_time`,`update_time` FROM `askxuan`.`master`;
+
 CREATE TABLE IF NOT EXISTS `master_credential` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `master_code` VARCHAR(16) NOT NULL COMMENT '法师编码',
@@ -625,10 +643,13 @@ INSERT INTO `master_audit` (`master_code`,`temple_code`,`credential_urls`,`statu
 ('M005','T005','["/assets/master-cert-m005-1.jpg"]','pending','2026-06-29 14:00:00');
 
 -- ============================================================
--- 五、预约域 askxuan_booking（booking_status_log/booking_review，booking 表保留在 askxuan 库）
+-- 五、预约域 askxuan_booking（booking/booking_status_log/booking_review）
 -- ============================================================
 CREATE DATABASE IF NOT EXISTS `askxuan_booking` DEFAULT CHARACTER SET utf8mb4;
 USE `askxuan_booking`;
+
+CREATE TABLE IF NOT EXISTS `booking` LIKE `askxuan`.`booking`;
+INSERT IGNORE INTO `booking` SELECT * FROM `askxuan`.`booking`;
 
 CREATE TABLE IF NOT EXISTS `booking_status_log` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -664,10 +685,13 @@ INSERT INTO `booking_review` (`booking_id`,`user_id`,`rating`,`content`,`images`
 ('B20260615003','1001',5,'白云观化太岁法事非常灵验，清风道长态度慈悲。','["/assets/review-baimasi-1.jpg"]','感恩居士加持，福生无量天尊。','2026-06-21 10:00:00');
 
 -- ============================================================
--- 六、消息域 askxuan_message（message_template/push_log，message 表保留在 askxuan 库）
+-- 六、消息域 askxuan_message（message/message_template/push_log）
 -- ============================================================
 CREATE DATABASE IF NOT EXISTS `askxuan_message` DEFAULT CHARACTER SET utf8mb4;
 USE `askxuan_message`;
+
+CREATE TABLE IF NOT EXISTS `message` LIKE `askxuan`.`message`;
+INSERT IGNORE INTO `message` SELECT * FROM `askxuan`.`message`;
 
 CREATE TABLE IF NOT EXISTS `message_template` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -858,7 +882,7 @@ INSERT INTO `product_image` (`product_id`,`image_url`,`sort`,`type`) VALUES
 
 -- ============================================================
 -- 八、DIY域 askxuan_diy（material_sku/diy_design/diy_order/diy_order_item/blessing_task）
--- material 表保留在 askxuan 库
+-- 从默认兼容库同步材料与附加服务主数据
 -- ============================================================
 CREATE DATABASE IF NOT EXISTS `askxuan_diy` DEFAULT CHARACTER SET utf8mb4;
 USE `askxuan_diy`;
@@ -1132,6 +1156,25 @@ CREATE TABLE IF NOT EXISTS `refund` (
   KEY `idx_payment` (`payment_id`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='退款';
+
+-- 订单与支付服务已经使用独立 DSN，保留 askxuan_shop 仅用于旧环境兼容。
+CREATE DATABASE IF NOT EXISTS `askxuan_order` DEFAULT CHARACTER SET utf8mb4;
+CREATE TABLE IF NOT EXISTS `askxuan_order`.`shop_order` LIKE `askxuan_shop`.`shop_order`;
+INSERT IGNORE INTO `askxuan_order`.`shop_order` SELECT * FROM `askxuan_shop`.`shop_order`;
+CREATE TABLE IF NOT EXISTS `askxuan_order`.`shop_order_item` LIKE `askxuan_shop`.`shop_order_item`;
+INSERT IGNORE INTO `askxuan_order`.`shop_order_item` SELECT * FROM `askxuan_shop`.`shop_order_item`;
+CREATE TABLE IF NOT EXISTS `askxuan_order`.`shop_order_logistics` LIKE `askxuan_shop`.`shop_order_logistics`;
+INSERT IGNORE INTO `askxuan_order`.`shop_order_logistics` SELECT * FROM `askxuan_shop`.`shop_order_logistics`;
+CREATE TABLE IF NOT EXISTS `askxuan_order`.`return_order` LIKE `askxuan_shop`.`return_order`;
+INSERT IGNORE INTO `askxuan_order`.`return_order` SELECT * FROM `askxuan_shop`.`return_order`;
+
+CREATE DATABASE IF NOT EXISTS `askxuan_payment` DEFAULT CHARACTER SET utf8mb4;
+CREATE TABLE IF NOT EXISTS `askxuan_payment`.`payment` LIKE `askxuan_shop`.`payment`;
+INSERT IGNORE INTO `askxuan_payment`.`payment` SELECT * FROM `askxuan_shop`.`payment`;
+CREATE TABLE IF NOT EXISTS `askxuan_payment`.`payment_log` LIKE `askxuan_shop`.`payment_log`;
+INSERT IGNORE INTO `askxuan_payment`.`payment_log` SELECT * FROM `askxuan_shop`.`payment_log`;
+CREATE TABLE IF NOT EXISTS `askxuan_payment`.`refund` LIKE `askxuan_shop`.`refund`;
+INSERT IGNORE INTO `askxuan_payment`.`refund` SELECT * FROM `askxuan_shop`.`refund`;
 
 -- ============================================================
 -- 十一、财务域 askxuan_finance（settlement/withdrawal/commission_config/finance_log）

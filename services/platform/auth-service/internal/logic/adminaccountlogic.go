@@ -296,7 +296,7 @@ func validateAdminAccountBinding(ctx context.Context, svcCtx *svc.ServiceContext
 
 func ensureTempleExists(ctx context.Context, svcCtx *svc.ServiceContext, templeId string) error {
 	var id int64
-	if err := svcCtx.DB.QueryRowCtx(ctx, &id, "SELECT id FROM temple WHERE code = ?", templeId); err != nil {
+	if err := svcCtx.DB.QueryRowCtx(ctx, &id, "SELECT id FROM askxuan_temple.temple WHERE code = ?", templeId); err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
 			return common.ErrTempleNotFound
 		}
@@ -307,7 +307,7 @@ func ensureTempleExists(ctx context.Context, svcCtx *svc.ServiceContext, templeI
 
 func findMasterTempleId(ctx context.Context, svcCtx *svc.ServiceContext, masterId string) (string, error) {
 	var templeId string
-	if err := svcCtx.DB.QueryRowCtx(ctx, &templeId, "SELECT temple_code FROM master WHERE code = ?", masterId); err != nil {
+	if err := svcCtx.DB.QueryRowCtx(ctx, &templeId, "SELECT temple_code FROM askxuan_master.master WHERE code = ?", masterId); err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
 			return "", common.ErrMasterNotFound
 		}
