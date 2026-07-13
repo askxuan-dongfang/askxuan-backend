@@ -2,16 +2,16 @@ package logic
 
 import (
 	"context"
+	"errors"
 
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/types"
 	"github.com/askxuan/common"
-
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-// SessionCreateLogic 创建对话会话逻辑
 type SessionCreateLogic struct {
 	logx.Logger
 	ctx    context.Context
@@ -21,41 +21,34 @@ type SessionCreateLogic struct {
 func NewSessionCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SessionCreateLogic {
 	return &SessionCreateLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
 }
-
-// Create 创建会话（校验技能编码，生成会话单号）
 func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.SessionCreateResp, error) {
-	if req.UserId == "" || req.SkillCode == "" {
+	if req.UserId == "" {
 		return nil, common.ErrParam
 	}
-	skill, ok := model.FindSkillByCode(req.SkillCode)
-	if !ok || skill.Status != model.SkillStatusEnabled {
-		return nil, common.ErrParam
+	if req.SkillCode == "" {
+		req.SkillCode = model.SkillCodeGeneral
 	}
-	session := model.InsertSession(model.AISession{
-		UserId:    req.UserId,
-		SkillCode: req.SkillCode,
-	})
-	if req.Question != "" {
-		model.InsertMessage(model.AIMessage{
-			SessionId: session.Id,
-			Role:      model.RoleUser,
-			Content:   req.Question,
-		})
-		model.InsertMessage(model.AIMessage{
-			SessionId: session.Id,
-			Role:      model.RoleAssistant,
-			Content:   buildAssistantPlaceholder(skill.Name),
-		})
+	skill, err := l.svcCtx.SkillModel.FindByCode(l.ctx, req.SkillCode)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrParamInvalid
+		}
+		return nil, common.ErrSystem
 	}
-	return &types.SessionCreateResp{
-		Id:        session.Id,
-		SessionNo: session.SessionNo,
-		SkillCode: session.SkillCode,
-		Status:    session.Status,
-	}, nil
+	if skill.Status != model.SkillStatusEnabled {
+		return nil, common.ErrParamInvalid
+	}
+	session, pendingId, err := l.svcCtx.ConversationModel.CreateSession(l.ctx, req.UserId, req.SkillCode, req.Question)
+	if err != nil {
+		l.Errorf("创建AI会话失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	if pendingId > 0 {
+		processAsync(l.svcCtx, session.Id, pendingId)
+	}
+	return &types.SessionCreateResp{Id: session.Id, SessionNo: session.SessionNo, SkillCode: session.SkillCode, Status: session.Status}, nil
 }
 
-// SessionListLogic 我的对话历史逻辑
 type SessionListLogic struct {
 	logx.Logger
 	ctx    context.Context
@@ -65,22 +58,22 @@ type SessionListLogic struct {
 func NewSessionListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SessionListLogic {
 	return &SessionListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
 }
-
-// List 我的会话列表（按 userId 筛选 + 分页）
 func (l *SessionListLogic) List(req *types.SessionListReq) (*types.SessionListResp, error) {
 	if req.UserId == "" {
 		return nil, common.ErrParam
 	}
-	list, total := model.ListSessions(req.UserId, req.Status, req.Page, req.Size)
-	resp := &types.SessionListResp{Total: total, Page: normalizePage(req.Page), Size: normalizeSize(req.Size)}
-	resp.List = make([]types.AISession, 0, len(list))
-	for _, session := range list {
-		resp.List = append(resp.List, toTypesSession(session))
+	page, size := normalizePage(req.Page), normalizeSize(req.Size)
+	list, total, err := l.svcCtx.ConversationModel.ListSessions(l.ctx, req.UserId, req.Status, page, size)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	resp := &types.SessionListResp{Total: total, Page: page, Size: size, List: make([]types.AISession, 0, len(list))}
+	for _, s := range list {
+		resp.List = append(resp.List, toTypesSession(*s))
 	}
 	return resp, nil
 }
 
-// SessionDetailLogic 会话详情逻辑
 type SessionDetailLogic struct {
 	logx.Logger
 	ctx    context.Context
@@ -90,22 +83,31 @@ type SessionDetailLogic struct {
 func NewSessionDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SessionDetailLogic {
 	return &SessionDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
 }
-
-// Detail 会话详情（含消息列表）
 func (l *SessionDetailLogic) Detail(req *types.SessionDetailReq) (*types.SessionDetailResp, error) {
-	session, ok := model.FindSessionByID(req.Id)
-	if !ok {
-		return nil, common.ErrSessionNotFound
+	if req.UserId == "" {
+		return nil, common.ErrForbidden
 	}
-	messages := model.ListMessagesBySession(req.Id)
-	resp := &types.SessionDetailResp{Session: toTypesSession(session), Messages: make([]types.AIMessage, 0, len(messages))}
-	for _, message := range messages {
-		resp.Messages = append(resp.Messages, toTypesMessage(message))
+	s, err := l.svcCtx.ConversationModel.FindSession(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrSessionNotFound
+		}
+		return nil, common.ErrSystem
+	}
+	if s.UserId != req.UserId {
+		return nil, common.ErrForbidden
+	}
+	messages, _, err := l.svcCtx.ConversationModel.ListMessages(l.ctx, req.Id, 1, 100)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	resp := &types.SessionDetailResp{Session: toTypesSession(*s), Messages: make([]types.AIMessage, 0, len(messages))}
+	for _, m := range messages {
+		resp.Messages = append(resp.Messages, toTypesMessage(*m))
 	}
 	return resp, nil
 }
 
-// SessionDeleteLogic 关闭对话逻辑
 type SessionDeleteLogic struct {
 	logx.Logger
 	ctx    context.Context
@@ -115,52 +117,32 @@ type SessionDeleteLogic struct {
 func NewSessionDeleteLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SessionDeleteLogic {
 	return &SessionDeleteLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
 }
-
-// Delete 关闭会话（status=active → closed）
 func (l *SessionDeleteLogic) Delete(req *types.SessionDeleteReq) (*types.IdResp, error) {
-	if req.Id == 0 {
+	if req.Id == 0 || req.UserId == "" {
 		return nil, common.ErrParam
 	}
-	if _, ok := model.CloseSession(req.Id); !ok {
+	ok, err := l.svcCtx.ConversationModel.CloseSession(l.ctx, req.Id, req.UserId)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	if !ok {
 		return nil, common.ErrSessionNotFound
 	}
 	return &types.IdResp{Id: req.Id}, nil
 }
 
-func toTypesSession(session model.AISession) types.AISession {
-	return types.AISession{
-		Id:        session.Id,
-		SessionNo: session.SessionNo,
-		UserId:    session.UserId,
-		SkillCode: session.SkillCode,
-		Status:    session.Status,
-		CreatedAt: session.CreatedAt,
-		UpdatedAt: session.UpdatedAt,
-	}
+func toTypesSession(s model.AISession) types.AISession {
+	return types.AISession{Id: s.Id, SessionNo: s.SessionNo, UserId: s.UserId, SkillCode: s.SkillCode, Title: s.Title, Status: s.Status, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt}
 }
-
-func toTypesMessage(message model.AIMessage) types.AIMessage {
-	return types.AIMessage{
-		Id:        message.Id,
-		SessionId: message.SessionId,
-		Role:      message.Role,
-		Content:   message.Content,
-		Tokens:    message.Tokens,
-		CreatedAt: message.CreatedAt,
-	}
+func toTypesMessage(m model.AIMessage) types.AIMessage {
+	return types.AIMessage{Id: m.Id, SessionId: m.SessionId, Role: m.Role, Content: m.Content, Tokens: m.Tokens, Status: m.Status, ErrorMessage: m.ErrorMessage, Retryable: m.Role == model.RoleAssistant && m.Status == model.MessageStatusFailed, CreatedAt: m.CreatedAt}
 }
-
-func buildAssistantPlaceholder(skillName string) string {
-	return "已收到你的" + skillName + "问题。当前为原型联调回复，请继续补充出生时间、地点或具体事项，正式 AI 推理服务接入后会返回完整解读。"
-}
-
 func normalizePage(page int) int {
 	if page < 1 {
 		return 1
 	}
 	return page
 }
-
 func normalizeSize(size int) int {
 	if size < 1 || size > 100 {
 		return 20

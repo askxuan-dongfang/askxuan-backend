@@ -24,6 +24,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id", Handler: sessionDetailHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id/messages", Handler: messageListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions/:id/messages", Handler: messageSendHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/ai/sessions/:id/messages/:messageId/retry", Handler: messageRetryHandler(svcCtx)},
 		{Method: http.MethodDelete, Path: "/api/v1/ai/sessions/:id", Handler: sessionDeleteHandler(svcCtx)},
 	})
 }
@@ -47,6 +48,12 @@ func sessionCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
+		if userId, err := resolveUserID(r, req.UserId); err != nil {
+			common.JsonError(w, err)
+			return
+		} else {
+			req.UserId = userId
+		}
 		resp, err := logic.NewSessionCreateLogic(r.Context(), svcCtx).Create(&req)
 		respond(w, resp, err)
 	}
@@ -58,6 +65,12 @@ func sessionListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		if err := httpx.Parse(r, &req); err != nil {
 			common.JsonError(w, common.ErrParam)
 			return
+		}
+		if userId, err := resolveUserID(r, req.UserId); err != nil {
+			common.JsonError(w, err)
+			return
+		} else {
+			req.UserId = userId
 		}
 		resp, err := logic.NewSessionListLogic(r.Context(), svcCtx).List(&req)
 		respond(w, resp, err)
@@ -71,6 +84,12 @@ func sessionDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
+		if userId, err := resolveUserID(r, req.UserId); err != nil {
+			common.JsonError(w, err)
+			return
+		} else {
+			req.UserId = userId
+		}
 		resp, err := logic.NewSessionDetailLogic(r.Context(), svcCtx).Detail(&req)
 		respond(w, resp, err)
 	}
@@ -82,6 +101,12 @@ func messageListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		if err := httpx.Parse(r, &req); err != nil {
 			common.JsonError(w, common.ErrParam)
 			return
+		}
+		if userId, err := resolveUserID(r, req.UserId); err != nil {
+			common.JsonError(w, err)
+			return
+		} else {
+			req.UserId = userId
 		}
 		resp, err := logic.NewMessageListLogic(r.Context(), svcCtx).List(&req)
 		respond(w, resp, err)
@@ -95,6 +120,12 @@ func messageSendHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
+		if userId, err := resolveUserID(r, req.UserId); err != nil {
+			common.JsonError(w, err)
+			return
+		} else {
+			req.UserId = userId
+		}
 		resp, err := logic.NewMessageSendLogic(r.Context(), svcCtx).Send(&req)
 		respond(w, resp, err)
 	}
@@ -107,9 +138,47 @@ func sessionDeleteHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
+		if userId, err := resolveUserID(r, req.UserId); err != nil {
+			common.JsonError(w, err)
+			return
+		} else {
+			req.UserId = userId
+		}
 		resp, err := logic.NewSessionDeleteLogic(r.Context(), svcCtx).Delete(&req)
 		respond(w, resp, err)
 	}
+}
+
+func messageRetryHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MessageRetryReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		if userId, err := resolveUserID(r, req.UserId); err != nil {
+			common.JsonError(w, err)
+			return
+		} else {
+			req.UserId = userId
+		}
+		resp, err := logic.NewMessageRetryLogic(r.Context(), svcCtx).Retry(&req)
+		respond(w, resp, err)
+	}
+}
+
+func resolveUserID(r *http.Request, requested string) (string, error) {
+	trusted := r.Header.Get("X-User-Id")
+	if trusted != "" {
+		if requested != "" && requested != trusted {
+			return "", common.ErrForbidden
+		}
+		return trusted, nil
+	}
+	if requested == "" {
+		return "", common.ErrForbidden
+	}
+	return requested, nil
 }
 
 func respond(w http.ResponseWriter, resp interface{}, err error) {

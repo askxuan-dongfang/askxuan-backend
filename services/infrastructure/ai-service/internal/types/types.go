@@ -3,7 +3,7 @@ package types
 // AISkill AI 问事技能
 type AISkill struct {
 	Id             int64  `json:"id"`
-	Code           string `json:"code"` // bazi/marriage/tarot/fengshui/qimen/ziwei/liuyao
+	Code           string `json:"code"` // general/bazi/marriage/tarot/fengshui/qimen/ziwei/liuyao
 	Name           string `json:"name"`
 	Description    string `json:"description"`
 	Icon           string `json:"icon"`
@@ -33,6 +33,7 @@ type AISession struct {
 	SessionNo string `json:"sessionNo"`
 	UserId    string `json:"userId"`
 	SkillCode string `json:"skillCode"`
+	Title     string `json:"title"`
 	Status    string `json:"status"` // active/closed
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`
@@ -41,7 +42,7 @@ type AISession struct {
 // SessionCreateReq 创建会话请求
 type SessionCreateReq struct {
 	UserId    string `json:"userId"`
-	SkillCode string `json:"skillCode"`
+	SkillCode string `json:"skillCode,optional"`
 	Question  string `json:"question,optional"`
 }
 
@@ -71,17 +72,21 @@ type SessionListResp struct {
 
 // SessionDetailReq 会话详情请求
 type SessionDetailReq struct {
-	Id int64 `path:"id"`
+	Id     int64  `path:"id"`
+	UserId string `form:"userId,optional"`
 }
 
 // AIMessage 对话消息
 type AIMessage struct {
-	Id        int64  `json:"id"`
-	SessionId int64  `json:"sessionId"`
-	Role      string `json:"role"` // user/assistant
-	Content   string `json:"content"`
-	Tokens    int    `json:"tokens"`
-	CreatedAt string `json:"createdAt"`
+	Id           int64  `json:"id"`
+	SessionId    int64  `json:"sessionId"`
+	Role         string `json:"role"` // user/assistant
+	Content      string `json:"content"`
+	Tokens       int    `json:"tokens"`
+	Status       string `json:"status"`
+	ErrorMessage string `json:"errorMessage"`
+	Retryable    bool   `json:"retryable"`
+	CreatedAt    string `json:"createdAt"`
 }
 
 // SessionDetailResp 会话详情响应（含消息列表）
@@ -92,9 +97,10 @@ type SessionDetailResp struct {
 
 // MessageListReq 会话消息列表请求
 type MessageListReq struct {
-	Id   int64 `path:"id"`
-	Page int   `form:"page,default=1"`
-	Size int   `form:"size,default=20"`
+	Id     int64  `path:"id"`
+	UserId string `form:"userId,optional"`
+	Page   int    `form:"page,default=1"`
+	Size   int    `form:"size,default=20"`
 }
 
 // MessageListResp 会话消息列表响应
@@ -107,7 +113,8 @@ type MessageListResp struct {
 
 // SessionDeleteReq 关闭会话请求
 type SessionDeleteReq struct {
-	Id int64 `path:"id"`
+	Id     int64  `path:"id"`
+	UserId string `form:"userId,optional"`
 }
 
 // MessageSendReq 发送问事消息请求
@@ -120,5 +127,12 @@ type MessageSendReq struct {
 // MessageSendResp 发送消息响应（异步处理，返回受理状态）
 type MessageSendResp struct {
 	SessionId int64  `json:"sessionId"`
-	Status    string `json:"status"` // accepted（已受理，等待异步结果）
+	MessageId int64  `json:"messageId"`
+	Status    string `json:"status"` // pending/completed
+}
+
+type MessageRetryReq struct {
+	Id        int64  `path:"id"`
+	MessageId int64  `path:"messageId"`
+	UserId    string `json:"userId,optional"`
 }

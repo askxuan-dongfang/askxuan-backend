@@ -32,6 +32,7 @@ type (
         SessionNo string `json:"sessionNo"`
         UserId    string `json:"userId"`
         SkillCode string `json:"skillCode"`
+        Title     string `json:"title"`
         Status    string `json:"status"` // active/closed
         CreatedAt string `json:"createdAt"`
         UpdatedAt string `json:"updatedAt"`
@@ -39,7 +40,7 @@ type (
 
     SessionCreateReq {
         UserId    string `json:"userId"`
-        SkillCode string `json:"skillCode"`
+        SkillCode string `json:"skillCode,optional"`
         Question  string `json:"question,optional"`
     }
 
@@ -66,6 +67,7 @@ type (
 
     SessionDetailReq {
         Id int64 `path:"id"`
+        UserId string `form:"userId,optional"`
     }
 
     AIMessage {
@@ -74,6 +76,9 @@ type (
         Role      string `json:"role"` // user/assistant
         Content   string `json:"content"`
         Tokens    int    `json:"tokens"`
+        Status    string `json:"status"` // pending/completed/failed
+        ErrorMessage string `json:"errorMessage"`
+        Retryable bool `json:"retryable"`
         CreatedAt string `json:"createdAt"`
     }
 
@@ -84,6 +89,7 @@ type (
 
     MessageListReq {
         Id   int64 `path:"id"`
+        UserId string `form:"userId,optional"`
         Page int   `form:"page,default=1"`
         Size int   `form:"size,default=20"`
     }
@@ -97,6 +103,7 @@ type (
 
     SessionDeleteReq {
         Id int64 `path:"id"`
+        UserId string `form:"userId,optional"`
     }
 
     IdResp {
@@ -111,7 +118,14 @@ type (
 
     MessageSendResp {
         SessionId int64  `json:"sessionId"`
+        MessageId int64 `json:"messageId"`
         Status    string `json:"status"` // accepted
+    }
+
+    MessageRetryReq {
+        Id int64 `path:"id"`
+        MessageId int64 `path:"messageId"`
+        UserId string `json:"userId,optional"`
     }
 )
 
@@ -137,6 +151,9 @@ service ai-service {
 
     @handler messageSend
     post /sessions/:id/messages (MessageSendReq) returns (MessageSendResp)
+
+    @handler messageRetry
+    post /sessions/:id/messages/:messageId/retry (MessageRetryReq) returns (MessageSendResp)
 
     @handler sessionDelete
     delete /sessions/:id (SessionDeleteReq) returns (IdResp)

@@ -1494,6 +1494,7 @@ CREATE TABLE IF NOT EXISTS `ai_skill` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI技能配置';
 
 INSERT INTO `ai_skill` (`code`,`name`,`description`,`icon`,`prompt_template`,`status`,`create_time`) VALUES
+('general','直接问事','不限定术数方向的日常问事入口','/icons/general.png','你是问玄东方的AI问事助手。请以审慎、尊重的方式回应，不把玄学内容表述为确定事实，也不替代医疗、法律或财务专业建议。','enabled','2026-07-13 10:00:00'),
 ('bazi','八字命理','依据生辰八字推演命格运势','/icons/bazi.png','你是一位精通八字命理的师傅，请根据用户八字解答...','enabled','2026-06-28 10:00:00'),
 ('marriage','姻缘测算','测算姻缘婚恋走势','/icons/marriage.png','你是一位姻缘测算师，请根据用户信息解答感情问题...','enabled','2026-06-28 10:00:00'),
 ('tarot','塔罗牌','塔罗牌占卜指引','/icons/tarot.png','你是一位塔罗牌占卜师，请为用户抽牌并解读...','enabled','2026-06-28 10:00:00'),
@@ -1507,6 +1508,7 @@ CREATE TABLE IF NOT EXISTS `ai_session` (
   `session_no` VARCHAR(32) NOT NULL COMMENT '会话编码',
   `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
   `skill_code` VARCHAR(32) NOT NULL COMMENT '技能编码',
+  `title` VARCHAR(100) NOT NULL DEFAULT '新对话' COMMENT '会话标题',
   `status` VARCHAR(32) NOT NULL DEFAULT 'active' COMMENT 'active/closed',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1516,8 +1518,8 @@ CREATE TABLE IF NOT EXISTS `ai_session` (
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI会话';
 
-INSERT INTO `ai_session` (`session_no`,`user_id`,`skill_code`,`status`,`create_time`,`update_time`) VALUES
-('AI20260630001','1001','bazi','active','2026-06-30 09:00:00','2026-06-30 09:00:00');
+INSERT INTO `ai_session` (`session_no`,`user_id`,`skill_code`,`title`,`status`,`create_time`,`update_time`) VALUES
+('AI20260630001','1001','bazi','今年的事业运势','active','2026-06-30 09:00:00','2026-06-30 09:00:00');
 
 CREATE TABLE IF NOT EXISTS `ai_message` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -1525,14 +1527,18 @@ CREATE TABLE IF NOT EXISTS `ai_message` (
   `role` VARCHAR(32) NOT NULL COMMENT 'user/assistant',
   `content` TEXT COMMENT '消息内容',
   `tokens` INT NOT NULL DEFAULT 0 COMMENT 'token消耗',
+  `status` VARCHAR(16) NOT NULL DEFAULT 'completed' COMMENT 'pending/completed/failed',
+  `error_message` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'Provider失败原因',
+  `retry_count` INT NOT NULL DEFAULT 0 COMMENT '重试次数',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_session` (`session_id`)
+  KEY `idx_session` (`session_id`),
+  KEY `idx_message_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI消息';
 
-INSERT INTO `ai_message` (`session_id`,`role`,`content`,`tokens`,`create_time`) VALUES
-(1,'user','请帮我看看今年的事业运势',0,'2026-06-30 09:01:00'),
-(1,'assistant','好的，请问您的出生年月日时是？',0,'2026-06-30 09:01:05');
+INSERT INTO `ai_message` (`session_id`,`role`,`content`,`tokens`,`status`,`create_time`) VALUES
+(1,'user','请帮我看看今年的事业运势',0,'completed','2026-06-30 09:01:00'),
+(1,'assistant','好的，请问您的出生年月日时是？',0,'completed','2026-06-30 09:01:05');
 
 -- ============================================================
 -- 十七、系统域 askxuan_system（operation_log/dictionary/system_config）

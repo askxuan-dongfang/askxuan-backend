@@ -1,18 +1,8 @@
 package config
 
 import (
-	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/rest"
 )
-
-// RabbitMQConf RabbitMQ 连接配置
-type RabbitMQConf struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	VHost    string
-}
 
 // MySQLConf MySQL 连接配置
 type MySQLConf struct {
@@ -22,7 +12,13 @@ type MySQLConf struct {
 // Config ai 服务配置
 type Config struct {
 	rest.RestConf
-	MySQL    MySQLConf
-	RabbitMQ RabbitMQConf
-	Redis    redis.RedisConf
+	MySQL MySQLConf
+	AI    AIConf
+}
+
+type AIConf struct {
+	Provider string
+	BaseURL  string
+	APIKey   string `json:",optional"`
+	Model    string
 }

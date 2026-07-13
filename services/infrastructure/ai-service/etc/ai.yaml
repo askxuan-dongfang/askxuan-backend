@@ -18,15 +18,9 @@ Telemetry:
 MySQL:
   DataSource: "ai_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_ai?charset=utf8mb4&parseTime=true&loc=Local"
 
-# RabbitMQ（发送 ai.divination 异步问事事件）
-RabbitMQ:
-  Host: localhost
-  Port: 5672
-  User: admin
-  Password: admin
-  VHost: "/"
-
-# Redis（消息幂等性检查）
-Redis:
-  Host: localhost:6379
-  Type: node
+# 环境变量 AI_PROVIDER/AI_BASE_URL/AI_API_KEY/AI_MODEL 会覆盖下列值。
+AI:
+  Provider: mock
+  BaseURL: ""
+  APIKey: ""
+  Model: ""

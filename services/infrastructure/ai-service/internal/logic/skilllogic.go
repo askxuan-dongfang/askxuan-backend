@@ -6,6 +6,7 @@ import (
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/types"
+	"github.com/askxuan/common"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -23,10 +24,14 @@ func NewSkillListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SkillLi
 
 // SkillList 返回 7 个 AI 问事技能列表
 func (l *SkillListLogic) SkillList(req *types.SkillListReq) (*types.SkillListResp, error) {
-	skills := model.ListSkills(req.Status)
+	skills, err := l.svcCtx.SkillModel.List(l.ctx, req.Status)
+	if err != nil {
+		l.Errorf("查询AI技能失败: %v", err)
+		return nil, common.ErrSystem
+	}
 	resp := &types.SkillListResp{List: make([]types.AISkill, 0, len(skills))}
 	for _, skill := range skills {
-		resp.List = append(resp.List, toTypesSkill(skill))
+		resp.List = append(resp.List, toTypesSkill(*skill))
 	}
 	return resp, nil
 }
