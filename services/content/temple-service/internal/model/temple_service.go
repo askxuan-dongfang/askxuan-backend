@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -53,7 +54,19 @@ type TempleServiceModel interface {
 	FindList(ctx context.Context, templeCode, status string, page, size int) ([]*TempleServiceRecord, int64, error)
 	Update(ctx context.Context, data *TempleServiceRecord) error
 	UpdateStatus(ctx context.Context, id int64, status string) error
+	FindIntentTags(ctx context.Context, id int64) ([]string, error)
+	ReplaceIntentTags(ctx context.Context, id int64, tags []string) error
 	Delete(ctx context.Context, id int64) error
+}
+
+func ValidIntentTags(tags []string) bool {
+	valid := map[string]bool{"peace": true, "wealth": true, "love": true, "career": true, "study": true, "taisui": true, "diy": true, "rite": true}
+	for _, raw := range tags {
+		if !valid[strings.TrimSpace(raw)] {
+			return false
+		}
+	}
+	return true
 }
 
 type defaultTempleServiceModel struct {
@@ -182,6 +195,43 @@ func (m *defaultTempleServiceModel) Delete(ctx context.Context, id int64) error 
 	query := fmt.Sprintf(`DELETE FROM %s WHERE id = ?`, templeServiceTable)
 	_, err := m.conn.ExecCtx(ctx, query, id)
 	return err
+}
+
+func (m *defaultTempleServiceModel) FindIntentTags(ctx context.Context, id int64) ([]string, error) {
+	var rows []struct {
+		Code string `db:"tag_code"`
+	}
+	if err := m.conn.QueryRowsCtx(ctx, &rows, "SELECT tag_code FROM temple_service_intent_tag WHERE temple_service_id=? ORDER BY tag_code", id); err != nil {
+		return nil, err
+	}
+	tags := make([]string, 0, len(rows))
+	for _, row := range rows {
+		tags = append(tags, row.Code)
+	}
+	return tags, nil
+}
+
+func (m *defaultTempleServiceModel) ReplaceIntentTags(ctx context.Context, id int64, tags []string) error {
+	if !ValidIntentTags(tags) {
+		return fmt.Errorf("invalid intent tags")
+	}
+	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		if _, err := session.ExecCtx(ctx, "DELETE FROM temple_service_intent_tag WHERE temple_service_id=?", id); err != nil {
+			return err
+		}
+		seen := map[string]bool{}
+		for _, raw := range tags {
+			code := strings.TrimSpace(raw)
+			if seen[code] {
+				continue
+			}
+			seen[code] = true
+			if _, err := session.ExecCtx(ctx, "INSERT INTO temple_service_intent_tag(temple_service_id,tag_code) VALUES(?,?)", id, code); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // rowToService 将 DB 行结构转为 TempleServiceRecord（TimeSlots JSON 反序列化）

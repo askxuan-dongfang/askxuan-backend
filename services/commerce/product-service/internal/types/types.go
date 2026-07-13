@@ -14,6 +14,7 @@ type Product struct {
 	MarketPrice       float64        `json:"marketPrice"`
 	Stock             int            `json:"stock"`
 	Tags              string         `json:"tags"`
+	IntentTags        []string       `json:"intentTags"`
 	FreightTemplateId int64          `json:"freightTemplateId"`
 	Skus              []ProductSku   `json:"skus"`
 	Images            []ProductImage `json:"images"`
@@ -77,6 +78,40 @@ type CustomerCategoryTreeResp struct {
 	List []ProductCategory `json:"list"`
 }
 
+type IntentionTag struct {
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Icon        string `json:"icon"`
+	Sort        int    `json:"sort"`
+}
+
+type IntentionResource struct {
+	ResourceType string  `json:"resourceType"`
+	SourceId     string  `json:"sourceId"`
+	Title        string  `json:"title"`
+	Subtitle     string  `json:"subtitle"`
+	Price        float64 `json:"price"`
+	Image        string  `json:"image"`
+	OrderTarget  string  `json:"orderTarget"`
+	TempleCode   string  `json:"templeCode,omitempty"`
+	ServiceCode  string  `json:"serviceCode,omitempty"`
+}
+
+type CustomerIntentionReq struct {
+	Code string `form:"code,optional"`
+	Page int    `form:"page,default=1"`
+	Size int    `form:"size,default=20"`
+}
+
+type CustomerIntentionResp struct {
+	Tags  []IntentionTag      `json:"tags"`
+	Total int64               `json:"total"`
+	List  []IntentionResource `json:"list"`
+	Page  int                 `json:"page"`
+	Size  int                 `json:"size"`
+}
+
 // ===== 商城台请求/响应 =====
 
 type AdminProductListReq struct {
@@ -95,15 +130,16 @@ type AdminProductListResp struct {
 }
 
 type AdminProductCreateReq struct {
-	Name              string  `json:"name"`
-	CategoryId        int64   `json:"categoryId"`
-	Description       string  `json:"description"`
-	MainImage         string  `json:"mainImage"`
-	Price             float64 `json:"price"`
-	MarketPrice       float64 `json:"marketPrice"`
-	Stock             int     `json:"stock"`
-	Tags              string  `json:"tags"`
-	FreightTemplateId int64   `json:"freightTemplateId"`
+	Name              string   `json:"name"`
+	CategoryId        int64    `json:"categoryId"`
+	Description       string   `json:"description"`
+	MainImage         string   `json:"mainImage"`
+	Price             float64  `json:"price"`
+	MarketPrice       float64  `json:"marketPrice"`
+	Stock             int      `json:"stock"`
+	Tags              string   `json:"tags"`
+	IntentTags        []string `json:"intentTags,optional"`
+	FreightTemplateId int64    `json:"freightTemplateId"`
 }
 
 type AdminProductCreateResp struct {
@@ -115,16 +151,17 @@ type AdminProductDetailReq struct {
 }
 
 type AdminProductUpdateReq struct {
-	Id                int64   `path:"id"`
-	Name              string  `json:"name"`
-	CategoryId        int64   `json:"categoryId"`
-	Description       string  `json:"description"`
-	MainImage         string  `json:"mainImage"`
-	Price             float64 `json:"price"`
-	MarketPrice       float64 `json:"marketPrice"`
-	Stock             int     `json:"stock"`
-	Tags              string  `json:"tags"`
-	FreightTemplateId int64   `json:"freightTemplateId"`
+	Id                int64    `path:"id"`
+	Name              string   `json:"name"`
+	CategoryId        int64    `json:"categoryId"`
+	Description       string   `json:"description"`
+	MainImage         string   `json:"mainImage"`
+	Price             float64  `json:"price"`
+	MarketPrice       float64  `json:"marketPrice"`
+	Stock             int      `json:"stock"`
+	Tags              string   `json:"tags"`
+	IntentTags        []string `json:"intentTags,optional"`
+	FreightTemplateId int64    `json:"freightTemplateId"`
 }
 
 type AdminProductDeleteReq struct {
@@ -171,10 +208,10 @@ type AdminCategoryListReq struct {
 }
 
 type AdminCategoryListResp struct {
-	Total int64            `json:"total"`
+	Total int64             `json:"total"`
 	List  []ProductCategory `json:"list"`
-	Page  int              `json:"page"`
-	Size  int              `json:"size"`
+	Page  int               `json:"page"`
+	Size  int               `json:"size"`
 }
 
 type AdminCategoryCreateReq struct {

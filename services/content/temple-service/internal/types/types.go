@@ -112,6 +112,7 @@ type TempleService struct {
 	ServiceName string   `json:"serviceName"`
 	Price       float64  `json:"price"`
 	TimeSlots   []string `json:"timeSlots"`
+	IntentTags  []string `json:"intentTags"`
 	Status      string   `json:"status"`
 	CreateTime  string   `json:"createTime"`
 }
@@ -132,6 +133,7 @@ type TempleServiceCreateReq struct {
 	ServiceName string   `json:"serviceName"`
 	Price       float64  `json:"price"`
 	TimeSlots   []string `json:"timeSlots"`
+	IntentTags  []string `json:"intentTags,optional"`
 }
 
 // TempleServiceCreateResp 创建服务响应
@@ -145,6 +147,7 @@ type TempleServiceUpdateReq struct {
 	ServiceName string   `json:"serviceName,optional"`
 	Price       float64  `json:"price,optional"`
 	TimeSlots   []string `json:"timeSlots,optional"`
+	IntentTags  []string `json:"intentTags,optional"`
 }
 
 // TempleServiceStatusReq 服务上下架请求

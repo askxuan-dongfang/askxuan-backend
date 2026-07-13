@@ -125,6 +125,7 @@ type (
         ServiceName string   `json:"serviceName"`
         Price       float64  `json:"price"`
         TimeSlots   []string `json:"timeSlots"`
+        IntentTags  []string `json:"intentTags"`
         Status      string   `json:"status"` // on_shelf/off_shelf
         CreateTime  string   `json:"createTime"`
     }
@@ -142,6 +143,7 @@ type (
         ServiceName string   `json:"serviceName"`
         Price       float64  `json:"price"`
         TimeSlots   []string `json:"timeSlots"`
+        IntentTags  []string `json:"intentTags,optional"`
     }
 
     TempleServiceCreateResp {
@@ -153,6 +155,7 @@ type (
         ServiceName string   `json:"serviceName,optional"`
         Price       float64  `json:"price,optional"`
         TimeSlots   []string `json:"timeSlots,optional"`
+        IntentTags  []string `json:"intentTags,optional"`
     }
 
     TempleServiceStatusReq {

@@ -206,7 +206,11 @@ func (l *AdminServiceListLogic) AdminServiceList() (*types.TempleServiceListResp
 	}
 	list := make([]types.TempleService, 0, len(records))
 	for _, s := range records {
-		list = append(list, toTypeTempleService(s))
+		item := toTypeTempleService(s)
+		if tags, tagErr := l.svcCtx.TempleServiceModel.FindIntentTags(l.ctx, s.Id); tagErr == nil {
+			item.IntentTags = tags
+		}
+		list = append(list, item)
 	}
 	return &types.TempleServiceListResp{List: list}, nil
 }
@@ -230,6 +234,9 @@ func (l *AdminServiceCreateLogic) AdminServiceCreate(req *types.TempleServiceCre
 	if req.ServiceCode == "" || req.ServiceName == "" {
 		return nil, common.ErrParam
 	}
+	if !model.ValidIntentTags(req.IntentTags) {
+		return nil, common.ErrParamInvalid
+	}
 	id, err := l.svcCtx.TempleServiceModel.Insert(l.ctx, &model.TempleServiceRecord{
 		TempleCode:  t.Code,
 		ServiceCode: req.ServiceCode,
@@ -239,6 +246,10 @@ func (l *AdminServiceCreateLogic) AdminServiceCreate(req *types.TempleServiceCre
 	})
 	if err != nil {
 		l.Errorf("创建寺院服务失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	if err := l.svcCtx.TempleServiceModel.ReplaceIntentTags(l.ctx, id, req.IntentTags); err != nil {
+		l.Errorf("保存服务诉求标签失败: %v", err)
 		return nil, common.ErrSystem
 	}
 	return &types.TempleServiceCreateResp{Id: id}, nil
@@ -256,6 +267,9 @@ func NewAdminServiceUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminServiceUpdateLogic) AdminServiceUpdate(req *types.TempleServiceUpdateReq) (*types.TempleService, error) {
+	if req.IntentTags != nil && !model.ValidIntentTags(req.IntentTags) {
+		return nil, common.ErrParamInvalid
+	}
 	t, err := getCurrentTemple(l.ctx, l.svcCtx)
 	if err != nil {
 		return nil, err
@@ -285,7 +299,16 @@ func (l *AdminServiceUpdateLogic) AdminServiceUpdate(req *types.TempleServiceUpd
 		l.Errorf("更新寺院服务失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	if req.IntentTags != nil {
+		if err := l.svcCtx.TempleServiceModel.ReplaceIntentTags(l.ctx, req.Id, req.IntentTags); err != nil {
+			l.Errorf("更新服务诉求标签失败: %v", err)
+			return nil, common.ErrSystem
+		}
+	}
 	resp := toTypeTempleService(record)
+	if tags, tagErr := l.svcCtx.TempleServiceModel.FindIntentTags(l.ctx, req.Id); tagErr == nil {
+		resp.IntentTags = tags
+	}
 	return &resp, nil
 }
 
@@ -554,6 +577,7 @@ func toTypeTempleService(s *model.TempleServiceRecord) types.TempleService {
 		ServiceName: s.ServiceName,
 		Price:       s.Price,
 		TimeSlots:   s.TimeSlots,
+		IntentTags:  []string{},
 		Status:      s.Status,
 		CreateTime:  s.CreateTime,
 	}

@@ -502,6 +502,16 @@ CREATE TABLE IF NOT EXISTS `temple_service` (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院自定义服务定价';
 
+CREATE TABLE IF NOT EXISTS `temple_service_intent_tag` (
+  `temple_service_id` BIGINT NOT NULL COMMENT '寺院服务ID',
+  `tag_code` VARCHAR(32) NOT NULL COMMENT '诉求标签编码',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`temple_service_id`,`tag_code`),
+  KEY `idx_intent_tag_code` (`tag_code`),
+  CONSTRAINT `fk_intent_temple_service` FOREIGN KEY (`temple_service_id`) REFERENCES `temple_service` (`id`)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院服务诉求标签映射';
+
 INSERT INTO `temple_service` (`temple_code`,`service_code`,`service_name`,`price`,`time_slots`,`status`,`create_time`) VALUES
 ('T001','S001','祈福',200.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
 ('T001','S002','供灯',80.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
@@ -531,6 +541,14 @@ INSERT INTO `temple_service` (`temple_code`,`service_code`,`service_name`,`price
 ('T006','S007','化太岁',388.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
 ('T006','S010','求事业',280.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
 ('T006','S011','求风水',688.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00');
+
+INSERT IGNORE INTO `temple_service_intent_tag` (`temple_service_id`,`tag_code`)
+SELECT id, CASE service_code
+  WHEN 'S001' THEN 'peace' WHEN 'S002' THEN 'love' WHEN 'S003' THEN 'wealth'
+  WHEN 'S005' THEN 'rite' WHEN 'S006' THEN 'career' WHEN 'S007' THEN 'taisui'
+  WHEN 'S008' THEN 'love' WHEN 'S009' THEN 'wealth' WHEN 'S010' THEN 'career'
+  WHEN 'S011' THEN 'career' WHEN 'S012' THEN 'peace' WHEN 'S013' THEN 'study'
+END FROM `temple_service` WHERE service_code IN ('S001','S002','S003','S005','S006','S007','S008','S009','S010','S011','S012','S013');
 
 CREATE TABLE IF NOT EXISTS `service_schedule` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -722,10 +740,10 @@ INSERT INTO `system_announcement` (`title`,`content`,`type`,`target_audience`,`s
 ('欢迎使用问玄东方平台', '连接信众与寺院/法师的一站式服务平台，预约祈福、AI问事、DIY手串。','system','all','published','2026-07-01 00:00:00');
 
 -- ============================================================
--- 七、商品域 askxuan_shop（product/product_sku/product_category/product_image）
+-- 七、商品域 askxuan_product（product/product_sku/product_category/product_image/intent_tag）
 -- ============================================================
-CREATE DATABASE IF NOT EXISTS `askxuan_shop` DEFAULT CHARACTER SET utf8mb4;
-USE `askxuan_shop`;
+CREATE DATABASE IF NOT EXISTS `askxuan_product` DEFAULT CHARACTER SET utf8mb4;
+USE `askxuan_product`;
 
 CREATE TABLE IF NOT EXISTS `product_category` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -794,6 +812,44 @@ CREATE TABLE IF NOT EXISTS `product_image` (
   PRIMARY KEY (`id`),
   KEY `idx_product` (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品图片';
+
+CREATE TABLE IF NOT EXISTS `intent_tag` (
+  `code` VARCHAR(32) NOT NULL,
+  `name` VARCHAR(64) NOT NULL,
+  `description` VARCHAR(255) NOT NULL DEFAULT '',
+  `icon` VARCHAR(64) NOT NULL DEFAULT '',
+  `sort` INT NOT NULL DEFAULT 0,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'enabled',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`code`),
+  KEY `idx_intent_status_sort` (`status`,`sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='诉求标签';
+
+CREATE TABLE IF NOT EXISTS `product_intent_tag` (
+  `product_id` BIGINT NOT NULL,
+  `tag_code` VARCHAR(32) NOT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`product_id`,`tag_code`),
+  KEY `idx_product_intent_code` (`tag_code`),
+  CONSTRAINT `fk_intent_product` FOREIGN KEY (`product_id`) REFERENCES `product` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_product_intent_tag` FOREIGN KEY (`tag_code`) REFERENCES `intent_tag` (`code`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品诉求标签映射';
+
+INSERT INTO `intent_tag` (`code`,`name`,`description`,`icon`,`sort`) VALUES
+('peace','求平安','祈福、护佑与健康相关商品和服务','shield.lefthalf.filled',10),
+('wealth','求财运','财运、供养与事业助力相关商品和服务','banknote.fill',20),
+('love','求姻缘','姻缘、人际与家庭相关商品和服务','heart.fill',30),
+('career','求事业','事业、风水与开光相关商品和服务','briefcase.fill',40),
+('study','求学业','学业、智慧与考试相关商品和服务','book.fill',50),
+('taisui','化太岁','本命年与化太岁相关服务','circle.hexagongrid.fill',60),
+('diy','定手串','手串材料与定制相关商品','circle.grid.cross.fill',70),
+('rite','做法事','超度等法事服务','hands.sparkles.fill',80);
+
+INSERT IGNORE INTO `product_intent_tag` (`product_id`,`tag_code`)
+SELECT id, 'diy' FROM `product` WHERE product_no IN ('P20260600001','P20260600002');
+INSERT IGNORE INTO `product_intent_tag` (`product_id`,`tag_code`)
+SELECT id, 'peace' FROM `product` WHERE product_no='P20260600001';
 
 INSERT INTO `product_image` (`product_id`,`image_url`,`sort`,`type`) VALUES
 (1,'/assets/product-xiaoyezitan.jpg',0,'main'),
@@ -905,6 +961,7 @@ INSERT INTO `blessing_task` (`task_no`,`diy_order_no`,`temple_code`,`master_code
 -- ============================================================
 -- 九、订单域 askxuan_shop（shop_order/shop_order_item/shop_order_logistics/return_order）
 -- ============================================================
+CREATE DATABASE IF NOT EXISTS `askxuan_shop` DEFAULT CHARACTER SET utf8mb4;
 USE `askxuan_shop`;
 
 CREATE TABLE IF NOT EXISTS `shop_order` (

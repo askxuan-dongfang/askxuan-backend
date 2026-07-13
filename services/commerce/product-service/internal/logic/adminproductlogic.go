@@ -52,6 +52,9 @@ func NewAdminProductCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminProductCreateLogic) Create(req *types.AdminProductCreateReq) (*types.AdminProductCreateResp, error) {
+	if err := model.ValidateIntentCodes(req.IntentTags); err != nil {
+		return nil, common.ErrParamInvalid
+	}
 	p, err := l.svcCtx.ProductModel.Insert(l.ctx, &model.Product{
 		Name:              req.Name,
 		CategoryId:        req.CategoryId,
@@ -65,6 +68,10 @@ func (l *AdminProductCreateLogic) Create(req *types.AdminProductCreateReq) (*typ
 	})
 	if err != nil {
 		l.Errorf("创建商品失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	if err := l.svcCtx.IntentionModel.ReplaceProductTags(l.ctx, p.Id, req.IntentTags); err != nil {
+		l.Errorf("保存商品诉求标签失败: %v", err)
 		return nil, common.ErrSystem
 	}
 	return &types.AdminProductCreateResp{Id: p.Id}, nil
@@ -92,6 +99,9 @@ func (l *AdminProductDetailLogic) Detail(req *types.AdminProductDetailReq) (*typ
 		return nil, common.ErrSystem
 	}
 	resp := toTypesProduct(p)
+	if tags, tagErr := l.svcCtx.IntentionModel.FindProductTags(l.ctx, req.Id); tagErr == nil {
+		resp.IntentTags = tags
+	}
 
 	skus, err := l.svcCtx.ProductSkuModel.ListByProductId(l.ctx, req.Id)
 	if err == nil {
@@ -123,6 +133,11 @@ func NewAdminProductUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminProductUpdateLogic) Update(req *types.AdminProductUpdateReq) (*types.Product, error) {
+	if req.IntentTags != nil {
+		if err := model.ValidateIntentCodes(req.IntentTags); err != nil {
+			return nil, common.ErrParamInvalid
+		}
+	}
 	err := l.svcCtx.ProductModel.Update(l.ctx, &model.Product{
 		Id:                req.Id,
 		Name:              req.Name,
@@ -139,6 +154,12 @@ func (l *AdminProductUpdateLogic) Update(req *types.AdminProductUpdateReq) (*typ
 		l.Errorf("更新商品失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	if req.IntentTags != nil {
+		if err := l.svcCtx.IntentionModel.ReplaceProductTags(l.ctx, req.Id, req.IntentTags); err != nil {
+			l.Errorf("更新商品诉求标签失败: %v", err)
+			return nil, common.ErrSystem
+		}
+	}
 	// 失效详情缓存
 	_, _ = l.svcCtx.Redis.Del("product:detail:" + strconv.FormatInt(req.Id, 10))
 	p, err := l.svcCtx.ProductModel.FindOne(l.ctx, req.Id)
@@ -146,6 +167,9 @@ func (l *AdminProductUpdateLogic) Update(req *types.AdminProductUpdateReq) (*typ
 		return nil, common.ErrSystem
 	}
 	resp := toTypesProduct(p)
+	if tags, tagErr := l.svcCtx.IntentionModel.FindProductTags(l.ctx, req.Id); tagErr == nil {
+		resp.IntentTags = tags
+	}
 	return &resp, nil
 }
 

@@ -71,6 +71,9 @@ func (l *CustomerProductDetailLogic) Detail(req *types.CustomerProductDetailReq)
 		return nil, common.ErrSystem
 	}
 	resp := toTypesProduct(p)
+	if tags, tagErr := l.svcCtx.IntentionModel.FindProductTags(l.ctx, req.Id); tagErr == nil {
+		resp.IntentTags = tags
+	}
 
 	// 查 SKU
 	skus, err := l.svcCtx.ProductSkuModel.ListByProductId(l.ctx, req.Id)
@@ -94,6 +97,49 @@ func (l *CustomerProductDetailLogic) Detail(req *types.CustomerProductDetailReq)
 	}
 
 	return &resp, nil
+}
+
+// ===== C端诉求聚合 =====
+
+type CustomerIntentionLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewCustomerIntentionLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CustomerIntentionLogic {
+	return &CustomerIntentionLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *CustomerIntentionLogic) List(req *types.CustomerIntentionReq) (*types.CustomerIntentionResp, error) {
+	if req.Code != "" && !model.IsValidIntentCode(req.Code) {
+		return nil, common.ErrParamInvalid
+	}
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.Size < 1 || req.Size > 100 {
+		req.Size = 20
+	}
+	tags, err := l.svcCtx.IntentionModel.FindTags(l.ctx)
+	if err != nil {
+		l.Errorf("查询诉求标签失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	resources, total, err := l.svcCtx.IntentionModel.FindResources(l.ctx, req.Code, req.Page, req.Size)
+	if err != nil {
+		l.Errorf("查询诉求聚合失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	outTags := make([]types.IntentionTag, 0, len(tags))
+	for _, tag := range tags {
+		outTags = append(outTags, types.IntentionTag{Code: tag.Code, Name: tag.Name, Description: tag.Description, Icon: tag.Icon, Sort: tag.Sort})
+	}
+	out := make([]types.IntentionResource, 0, len(resources))
+	for _, item := range resources {
+		out = append(out, types.IntentionResource{ResourceType: item.ResourceType, SourceId: item.SourceId, Title: item.Title, Subtitle: item.Subtitle, Price: item.Price, Image: item.Image, OrderTarget: item.OrderTarget, TempleCode: item.TempleCode, ServiceCode: item.ServiceCode})
+	}
+	return &types.CustomerIntentionResp{Tags: outTags, Total: total, List: out, Page: req.Page, Size: req.Size}, nil
 }
 
 // ===== C端分类树 =====

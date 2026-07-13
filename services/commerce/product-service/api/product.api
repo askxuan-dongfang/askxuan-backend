@@ -23,6 +23,7 @@ type (
         MarketPrice      float64        `json:"marketPrice"`
         Stock            int            `json:"stock"`
         Tags             string         `json:"tags"`
+        IntentTags       []string       `json:"intentTags,optional"`
         FreightTemplateId int64         `json:"freightTemplateId"`
         Skus             []ProductSku   `json:"skus,optional"`
         Images           []ProductImage `json:"images,optional"`
@@ -85,6 +86,40 @@ type (
     CustomerCategoryTreeResp {
         List []ProductCategory `json:"list"`
     }
+
+    IntentionTag {
+        Code        string `json:"code"`
+        Name        string `json:"name"`
+        Description string `json:"description"`
+        Icon        string `json:"icon"`
+        Sort        int    `json:"sort"`
+    }
+
+    IntentionResource {
+        ResourceType string  `json:"resourceType"`
+        SourceId     string  `json:"sourceId"`
+        Title        string  `json:"title"`
+        Subtitle     string  `json:"subtitle"`
+        Price        float64 `json:"price"`
+        Image        string  `json:"image"`
+        OrderTarget  string  `json:"orderTarget"`
+        TempleCode   string  `json:"templeCode,optional"`
+        ServiceCode  string  `json:"serviceCode,optional"`
+    }
+
+    CustomerIntentionReq {
+        Code string `form:"code,optional"`
+        Page int    `form:"page,default=1"`
+        Size int    `form:"size,default=20"`
+    }
+
+    CustomerIntentionResp {
+        Tags  []IntentionTag      `json:"tags"`
+        Total int64               `json:"total"`
+        List  []IntentionResource `json:"list"`
+        Page  int                 `json:"page"`
+        Size  int                 `json:"size"`
+    }
 )
 
 // ==================== 商城台接口 ====================
@@ -114,6 +149,7 @@ type (
         MarketPrice       float64 `json:"marketPrice,optional"`
         Stock             int     `json:"stock"`
         Tags              string  `json:"tags,optional"`
+        IntentTags        []string `json:"intentTags,optional"`
         FreightTemplateId int64   `json:"freightTemplateId,optional"`
     }
 
@@ -135,6 +171,7 @@ type (
         MarketPrice       float64 `json:"marketPrice,optional"`
         Stock             int     `json:"stock"`
         Tags              string  `json:"tags,optional"`
+        IntentTags        []string `json:"intentTags,optional"`
         FreightTemplateId int64   `json:"freightTemplateId,optional"`
     }
 
@@ -227,6 +264,9 @@ service product-service {
 
     @handler customerCategoryTree
     get /products/categories (CustomerCategoryTreeReq) returns (CustomerCategoryTreeResp)
+
+    @handler customerIntention
+    get /intentions (CustomerIntentionReq) returns (CustomerIntentionResp)
 }
 
 // ==================== 商城台路由（需鉴权） ====================

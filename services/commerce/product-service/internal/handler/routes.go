@@ -22,6 +22,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/products", Handler: customerProductListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/products/:id", Handler: customerProductDetailHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/products/categories", Handler: customerCategoryTreeHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/intentions", Handler: customerIntentionHandler(svcCtx)},
 	})
 
 	// ===== 商城台路由 =====
@@ -39,6 +40,22 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPut, Path: "/api/v1/admin/products/categories/:id", Handler: adminCategoryUpdateHandler(svcCtx)},
 		{Method: http.MethodDelete, Path: "/api/v1/admin/products/categories/:id", Handler: adminCategoryDeleteHandler(svcCtx)},
 	})
+}
+
+func customerIntentionHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.CustomerIntentionReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewCustomerIntentionLogic(r.Context(), svcCtx).List(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
 }
 
 // ===== C端 handler =====

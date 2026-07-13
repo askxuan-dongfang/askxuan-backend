@@ -57,6 +57,9 @@ Upstreams:
   - Prefix: /api/v1/products
     Target: localhost:8086
     ServiceName: product.service
+  - Prefix: /api/v1/intentions
+    Target: localhost:8086
+    ServiceName: product.service
   - Prefix: /api/v1/diy
     Target: localhost:8088
     ServiceName: diy.service
@@ -179,6 +182,7 @@ Upstreams:
 # 不需要鉴权的白名单路径（登录 / 注册 / 续期 / 支付回调 / 管理台登录 / 公开浏览接口）
 # GET 请求前缀匹配：/api/v1/temples 匹配 /api/v1/temples 和 /api/v1/temples/T001
 NoAuthPaths:
+  - /api/v1/intentions
   - /api/v1/beliefs
   - /api/v1/auth/login
   - /api/v1/auth/refresh

@@ -51,7 +51,11 @@ func (l *ServiceListLogic) ServiceList(req *types.TempleServiceListReq) (*types.
 		if s.Status != model.TempleServiceStatusOnShelf {
 			continue
 		}
-		list = append(list, toTypeTempleService(s))
+		item := toTypeTempleService(s)
+		if tags, tagErr := l.svcCtx.TempleServiceModel.FindIntentTags(l.ctx, s.Id); tagErr == nil {
+			item.IntentTags = tags
+		}
+		list = append(list, item)
 	}
 	return &types.TempleServiceListResp{List: list}, nil
 }
