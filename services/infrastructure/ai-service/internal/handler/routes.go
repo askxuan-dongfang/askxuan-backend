@@ -22,6 +22,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions", Handler: sessionCreateHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/sessions", Handler: sessionListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id", Handler: sessionDetailHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id/messages", Handler: messageListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions/:id/messages", Handler: messageSendHandler(svcCtx)},
 		{Method: http.MethodDelete, Path: "/api/v1/ai/sessions/:id", Handler: sessionDeleteHandler(svcCtx)},
 	})
@@ -71,6 +72,18 @@ func sessionDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewSessionDetailLogic(r.Context(), svcCtx).Detail(&req)
+		respond(w, resp, err)
+	}
+}
+
+func messageListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MessageListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewMessageListLogic(r.Context(), svcCtx).List(&req)
 		respond(w, resp, err)
 	}
 }

@@ -3,7 +3,7 @@ package types
 // AISkill AI 问事技能
 type AISkill struct {
 	Id             int64  `json:"id"`
-	Code           string `json:"code"`           // bazi/marriage/tarot/fengshui/qimen/ziwei/liuyao
+	Code           string `json:"code"` // bazi/marriage/tarot/fengshui/qimen/ziwei/liuyao
 	Name           string `json:"name"`
 	Description    string `json:"description"`
 	Icon           string `json:"icon"`
@@ -42,6 +42,7 @@ type AISession struct {
 type SessionCreateReq struct {
 	UserId    string `json:"userId"`
 	SkillCode string `json:"skillCode"`
+	Question  string `json:"question,optional"`
 }
 
 // SessionCreateResp 创建会话响应
@@ -62,10 +63,10 @@ type SessionListReq struct {
 
 // SessionListResp 会话列表响应
 type SessionListResp struct {
-	Total int64      `json:"total"`
+	Total int64       `json:"total"`
 	List  []AISession `json:"list"`
-	Page  int        `json:"page"`
-	Size  int        `json:"size"`
+	Page  int         `json:"page"`
+	Size  int         `json:"size"`
 }
 
 // SessionDetailReq 会话详情请求
@@ -85,8 +86,23 @@ type AIMessage struct {
 
 // SessionDetailResp 会话详情响应（含消息列表）
 type SessionDetailResp struct {
-	Session  AISession  `json:"session"`
+	Session  AISession   `json:"session"`
 	Messages []AIMessage `json:"messages"`
+}
+
+// MessageListReq 会话消息列表请求
+type MessageListReq struct {
+	Id   int64 `path:"id"`
+	Page int   `form:"page,default=1"`
+	Size int   `form:"size,default=20"`
+}
+
+// MessageListResp 会话消息列表响应
+type MessageListResp struct {
+	Total int64       `json:"total"`
+	List  []AIMessage `json:"list"`
+	Page  int         `json:"page"`
+	Size  int         `json:"size"`
 }
 
 // SessionDeleteReq 关闭会话请求

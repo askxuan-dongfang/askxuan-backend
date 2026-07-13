@@ -3,9 +3,9 @@ package logic
 import (
 	"context"
 
+	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/types"
-	"github.com/askxuan/common"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -23,5 +23,23 @@ func NewSkillListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SkillLi
 
 // SkillList 返回 7 个 AI 问事技能列表
 func (l *SkillListLogic) SkillList(req *types.SkillListReq) (*types.SkillListResp, error) {
-	return nil, common.ErrNotImplemented
+	skills := model.ListSkills(req.Status)
+	resp := &types.SkillListResp{List: make([]types.AISkill, 0, len(skills))}
+	for _, skill := range skills {
+		resp.List = append(resp.List, toTypesSkill(skill))
+	}
+	return resp, nil
+}
+
+func toTypesSkill(skill model.AISkill) types.AISkill {
+	return types.AISkill{
+		Id:             skill.Id,
+		Code:           skill.Code,
+		Name:           skill.Name,
+		Description:    skill.Description,
+		Icon:           skill.Icon,
+		PromptTemplate: skill.PromptTemplate,
+		Status:         skill.Status,
+		CreatedAt:      skill.CreatedAt,
+	}
 }

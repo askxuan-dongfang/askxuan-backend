@@ -23,6 +23,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/diy/designs", Handler: designListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/diy/designs", Handler: designSaveHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/designs/:id", Handler: designDetailHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/diy/designs/:id/order", Handler: diyDesignOrderCreateHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/materials", Handler: materialListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/diy/orders", Handler: diyOrderCreateHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/orders", Handler: diyOrderListHandler(svcCtx)},
@@ -89,6 +90,23 @@ func designDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewDesignDetailLogic(r.Context(), svcCtx).Detail(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func diyDesignOrderCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.DiyDesignOrderCreateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			logx.Errorf("diyDesignOrderCreate parse error: %v", err)
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewDiyDesignOrderCreateLogic(r.Context(), svcCtx).Create(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

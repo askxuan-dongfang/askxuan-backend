@@ -127,6 +127,13 @@ type (
         AddressId       int64          `json:"addressId"`
     }
 
+    DiyDesignOrderCreateReq {
+        Id               int64  `path:"id"`
+        UserId           string `json:"userId"`
+        BlessServiceCode string `json:"blessServiceCode,optional"`
+        AddressId        int64  `json:"addressId"`
+    }
+
     DiyOrderCreateResp {
         Id     int64  `json:"id"`
         OrderNo string `json:"orderNo"`
@@ -301,6 +308,9 @@ service diy-service {
 
     @handler designDetail
     get /designs/:id (DesignDetailReq) returns (DiyDesign)
+
+    @handler diyDesignOrderCreate
+    post /designs/:id/order (DiyDesignOrderCreateReq) returns (DiyOrderCreateResp)
 
     @handler materialList
     get /materials (MaterialListReq) returns (MaterialListResp)

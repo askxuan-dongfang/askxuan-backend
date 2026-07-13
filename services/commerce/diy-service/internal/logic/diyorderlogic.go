@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/diy-service/internal/model"
@@ -98,6 +99,75 @@ func (l *DiyOrderCreateLogic) Create(req *types.DiyOrderCreateReq) (*types.DiyOr
 	}
 
 	return &types.DiyOrderCreateResp{Id: orderId, OrderNo: orderNo}, nil
+}
+
+// DiyDesignOrderCreateLogic 从设计广场作品直接创建DIY订单
+type DiyDesignOrderCreateLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewDiyDesignOrderCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *DiyDesignOrderCreateLogic {
+	return &DiyDesignOrderCreateLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *DiyDesignOrderCreateLogic) Create(req *types.DiyDesignOrderCreateReq) (*types.DiyOrderCreateResp, error) {
+	if req.Id == 0 || req.UserId == "" || req.AddressId == 0 {
+		return nil, common.ErrParam
+	}
+
+	design, err := l.svcCtx.DiyDesignModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if err == sqlx.ErrNotFound {
+			return nil, ErrDesignNotFound
+		}
+		l.Errorf("查询DIY设计失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	if design.Status != model.DesignStatusPublic && design.Status != model.DesignStatusApproved {
+		return nil, common.ErrParam
+	}
+
+	items, err := parseDesignOrderItems(design.DesignData)
+	if err != nil || len(items) == 0 {
+		l.Errorf("解析DIY设计材料失败: designId=%d err=%v", design.Id, err)
+		return nil, common.ErrParam
+	}
+
+	createReq := &types.DiyOrderCreateReq{
+		UserId:           req.UserId,
+		DesignId:         design.Id,
+		Items:            items,
+		BlessServiceCode: req.BlessServiceCode,
+		AddressId:        req.AddressId,
+	}
+	if createReq.BlessServiceCode == "" {
+		createReq.BlessServiceCode = design.BlessServiceCode
+	}
+	return NewDiyOrderCreateLogic(l.ctx, l.svcCtx).Create(createReq)
+}
+
+func parseDesignOrderItems(raw string) ([]types.DiyOrderItem, error) {
+	if raw == "" {
+		return nil, common.ErrParam
+	}
+	var direct []types.DiyOrderItem
+	if err := json.Unmarshal([]byte(raw), &direct); err == nil && len(direct) > 0 {
+		return direct, nil
+	}
+
+	var wrapped struct {
+		Items     []types.DiyOrderItem `json:"items"`
+		Materials []types.DiyOrderItem `json:"materials"`
+	}
+	if err := json.Unmarshal([]byte(raw), &wrapped); err != nil {
+		return nil, err
+	}
+	if len(wrapped.Items) > 0 {
+		return wrapped.Items, nil
+	}
+	return wrapped.Materials, nil
 }
 
 // DiyOrderListLogic 我的DIY订单列表

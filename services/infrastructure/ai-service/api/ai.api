@@ -40,6 +40,7 @@ type (
     SessionCreateReq {
         UserId    string `json:"userId"`
         SkillCode string `json:"skillCode"`
+        Question  string `json:"question,optional"`
     }
 
     SessionCreateResp {
@@ -81,6 +82,19 @@ type (
         Messages []AIMessage `json:"messages"`
     }
 
+    MessageListReq {
+        Id   int64 `path:"id"`
+        Page int   `form:"page,default=1"`
+        Size int   `form:"size,default=20"`
+    }
+
+    MessageListResp {
+        Total int64       `json:"total"`
+        List  []AIMessage `json:"list"`
+        Page  int         `json:"page"`
+        Size  int         `json:"size"`
+    }
+
     SessionDeleteReq {
         Id int64 `path:"id"`
     }
@@ -117,6 +131,9 @@ service ai-service {
 
     @handler sessionDetail
     get /sessions/:id (SessionDetailReq) returns (SessionDetailResp)
+
+    @handler messageList
+    get /sessions/:id/messages (MessageListReq) returns (MessageListResp)
 
     @handler messageSend
     post /sessions/:id/messages (MessageSendReq) returns (MessageSendResp)

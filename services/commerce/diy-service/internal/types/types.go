@@ -134,6 +134,13 @@ type DiyOrderCreateReq struct {
 	AddressId        int64          `json:"addressId"`
 }
 
+type DiyDesignOrderCreateReq struct {
+	Id               int64  `path:"id"`
+	UserId           string `json:"userId"`
+	BlessServiceCode string `json:"blessServiceCode,optional"`
+	AddressId        int64  `json:"addressId"`
+}
+
 type DiyOrderCreateResp struct {
 	Id      int64  `json:"id"`
 	OrderNo string `json:"orderNo"`
