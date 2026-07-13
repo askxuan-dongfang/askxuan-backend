@@ -46,7 +46,7 @@ type OrderNotify struct {
 
 // PaymentNotify 支付通知（与 payment-service 的 mq.PaymentNotify 对齐）
 type PaymentNotify struct {
-	UserId    string  `json:"userId"`    // 用户ID（硬约束：PaymentNotify 必须包含 UserId）
+	UserId    string  `json:"userId"` // 用户ID（硬约束：PaymentNotify 必须包含 UserId）
 	PaymentNo string  `json:"paymentNo"`
 	OrderType string  `json:"orderType"` // booking/shop_order/diy_order
 	OrderNo   string  `json:"orderNo"`
@@ -161,7 +161,7 @@ func (c *Consumer) consumeLoop(ctx context.Context, bindings []Binding) error {
 					// 幂等性检查：防止消息重试导致重复处理
 					if c.redis != nil {
 						messageId := common.ResolveMessageId(msg.MessageId, msg.Body)
-						alreadyProcessed, err := common.CheckMessageProcessed(c.redis, qc.exchange, messageId)
+						alreadyProcessed, err := common.CheckMessageProcessed(c.redis, qc.name, messageId)
 						if err != nil {
 							logx.Errorf("幂等性检查失败(queue=%s)，nack 重投: %v", qc.name, err)
 							_ = msg.Nack(false, true)
@@ -178,7 +178,7 @@ func (c *Consumer) consumeLoop(ctx context.Context, bindings []Binding) error {
 						// 回滚幂等标记，允许下次重试
 						if c.redis != nil {
 							messageId := common.ResolveMessageId(msg.MessageId, msg.Body)
-							common.RollbackMessageProcessed(c.redis, qc.exchange, messageId)
+							common.RollbackMessageProcessed(c.redis, qc.name, messageId)
 						}
 						_ = msg.Nack(false, true)
 					} else {

@@ -56,6 +56,7 @@ GRANT SELECT ON askxuan_temple.temple_service_intent_tag TO 'product_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_diy.* TO 'diy_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_order.* TO 'order_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_payment.* TO 'payment_user'@'%';
+GRANT SELECT ON askxuan_diy.diy_order TO 'payment_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_finance.* TO 'finance_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_audit.* TO 'audit_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_message.* TO 'message_user'@'%';

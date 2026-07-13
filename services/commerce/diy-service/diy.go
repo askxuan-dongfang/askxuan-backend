@@ -57,7 +57,7 @@ func main() {
 
 // startConsumer 启动 3 个 MQ 消费者：
 //  1. blessing.complete — master-service 加持完成回传，更新 blessing_task + diy_order 状态
-//  2. payment.notify    — payment-service 支付成功，diy_order pending_review → in_making
+//  2. payment.notify    — payment-service 支付成功，更新独立支付状态并生成作者待结算记录
 //  3. logistics.sync    — logistics-service 签收回传，diy_order shipped → completed
 func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 	if svcCtx.Consumer == nil {
@@ -123,7 +123,7 @@ func handleBlessingComplete(ctx context.Context, svcCtx *svc.ServiceContext) fun
 	}
 }
 
-// handlePaymentNotify 支付成功 → diy_order pending_review → in_making
+// handlePaymentNotify 支付成功后更新支付状态并生成设计作者待结算记录。
 func handlePaymentNotify(ctx context.Context, svcCtx *svc.ServiceContext) func([]byte) error {
 	return func(body []byte) error {
 		evt, ok := mq.ParsePaymentNotify(body)
@@ -135,14 +135,7 @@ func handlePaymentNotify(ctx context.Context, svcCtx *svc.ServiceContext) func([
 		}
 		logx.Infof("收到支付成功通知: orderNo=%s orderType=%s", evt.OrderNo, evt.OrderType)
 
-		order, err := svcCtx.DiyOrderModel.FindByOrderNo(ctx, evt.OrderNo)
-		if err != nil {
-			return nil
-		}
-		if model.CanDiyTransit(order.Status, model.DiyStatusInMaking) {
-			_, _ = svcCtx.DiyOrderModel.UpdateStatus(ctx, order.Id, model.DiyStatusInMaking)
-		}
-		return nil
+		return svcCtx.CreatorEarningModel.RecordPaymentSuccess(ctx, evt.OrderNo, evt.PaymentNo)
 	}
 }
 

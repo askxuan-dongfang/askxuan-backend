@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/diy-service/internal/model"
@@ -25,80 +26,27 @@ func NewDiyOrderCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Di
 }
 
 func (l *DiyOrderCreateLogic) Create(req *types.DiyOrderCreateReq) (*types.DiyOrderCreateResp, error) {
-	if req.DesignId == 0 || len(req.Items) == 0 {
+	if req.UserId == "" || req.DesignId == 0 || req.AddressId == 0 || len(req.Items) == 0 {
 		return nil, common.ErrParam
 	}
-
-	// 校验设计存在
-	_, err := l.svcCtx.DiyDesignModel.FindOne(l.ctx, req.DesignId)
+	design, err := l.svcCtx.DiyDesignModel.FindOne(l.ctx, req.DesignId)
 	if err != nil {
-		if err == sqlx.ErrNotFound {
+		if errors.Is(err, sqlx.ErrNotFound) {
 			return nil, ErrDesignNotFound
 		}
 		return nil, common.ErrSystem
 	}
-
-	// 计算材料费
-	var materialFee float64
-	for _, it := range req.Items {
-		materialFee += it.UnitPrice * float64(it.Quantity)
+	if design.UserId != req.UserId {
+		return nil, common.ErrForbidden
 	}
-
-	// 计算加持费（如有 blessServiceCode，查 extra_service 获取价格）
-	var blessFee float64
-	if req.BlessServiceCode != "" {
-		services, serr := l.svcCtx.ExtraServiceModel.FindList(l.ctx, 1, 100)
-		if serr == nil {
-			for _, s := range services {
-				if s.Code == req.BlessServiceCode {
-					blessFee = s.Price
-					break
-				}
-			}
-		}
-	}
-	totalFee := materialFee + blessFee
-
-	// 事务写 order + items
-	var orderNo string
-	var orderId int64
-	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, session sqlx.Session) error {
-		o, err := l.svcCtx.DiyOrderModel.Insert(l.ctx, &model.DiyOrder{
-			UserId:      req.UserId,
-			DesignId:    req.DesignId,
-			MaterialFee: materialFee,
-			BlessFee:    blessFee,
-			TotalFee:    totalFee,
-			Status:      model.DiyStatusPendingReview,
-			AddressId:   req.AddressId,
-		})
-		if err != nil {
-			return err
-		}
-		orderNo = o.OrderNo
-		orderId = o.Id
-		for _, it := range req.Items {
-			_, err := l.svcCtx.DiyOrderItemModel.Insert(l.ctx, &model.DiyOrderItem{
-				OrderId:      o.Id,
-				MaterialId:   it.MaterialId,
-				MaterialName: it.MaterialName,
-				Spec:         it.Spec,
-				UnitPrice:    it.UnitPrice,
-				Quantity:     it.Quantity,
-				Subtype:      it.Subtype,
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+	result, err := model.CreatePricedOrder(l.ctx, l.svcCtx.DB, l.svcCtx.DiyOrderModel, l.svcCtx.DiyOrderItemModel, model.PricedOrderInput{
+		UserId: req.UserId, Design: design, Items: toPricedInputs(req.Items), BlessServiceCode: req.BlessServiceCode,
+		AddressId: req.AddressId, Source: "custom",
 	})
 	if err != nil {
-		l.Errorf("创建DIY订单失败: %v", err)
-		return nil, common.ErrSystem
+		return nil, mapPricingError(err)
 	}
-
-	return &types.DiyOrderCreateResp{Id: orderId, OrderNo: orderNo}, nil
+	return toOrderCreateResp(result), nil
 }
 
 // DiyDesignOrderCreateLogic 从设计广场作品直接创建DIY订单
@@ -126,7 +74,7 @@ func (l *DiyDesignOrderCreateLogic) Create(req *types.DiyDesignOrderCreateReq) (
 		return nil, common.ErrSystem
 	}
 	if design.Status != model.DesignStatusPublic && design.Status != model.DesignStatusApproved {
-		return nil, common.ErrParam
+		return nil, common.NewBizError(40907, "作品尚未上架，无法下单")
 	}
 
 	items, err := parseDesignOrderItems(design.DesignData)
@@ -135,17 +83,65 @@ func (l *DiyDesignOrderCreateLogic) Create(req *types.DiyDesignOrderCreateReq) (
 		return nil, common.ErrParam
 	}
 
-	createReq := &types.DiyOrderCreateReq{
-		UserId:           req.UserId,
-		DesignId:         design.Id,
-		Items:            items,
-		BlessServiceCode: req.BlessServiceCode,
-		AddressId:        req.AddressId,
+	blessCode := req.BlessServiceCode
+	if blessCode == "" {
+		blessCode = design.BlessServiceCode
 	}
-	if createReq.BlessServiceCode == "" {
-		createReq.BlessServiceCode = design.BlessServiceCode
+	result, err := model.CreatePricedOrder(l.ctx, l.svcCtx.DB, l.svcCtx.DiyOrderModel, l.svcCtx.DiyOrderItemModel, model.PricedOrderInput{
+		UserId: req.UserId, Design: design, Items: toPricedInputs(items), BlessServiceCode: blessCode,
+		AddressId: req.AddressId, Source: "design_square", CreatorId: design.UserId,
+	})
+	if err != nil {
+		l.Errorf("设计广场下单失败 designId=%d: %v", design.Id, err)
+		return nil, mapPricingError(err)
 	}
-	return NewDiyOrderCreateLogic(l.ctx, l.svcCtx).Create(createReq)
+	return toOrderCreateResp(result), nil
+}
+
+func toPricedInputs(items []types.DiyOrderItem) []model.PricedOrderItemInput {
+	result := make([]model.PricedOrderItemInput, 0, len(items))
+	for _, item := range items {
+		result = append(result, model.PricedOrderItemInput{
+			MaterialId: item.MaterialId, Spec: item.Spec, Quantity: item.Quantity,
+			Subtype: item.Subtype, SnapshotUnitPrice: item.UnitPrice,
+		})
+	}
+	return result
+}
+
+func mapPricingError(err error) error {
+	switch {
+	case errors.Is(err, model.ErrOrderMaterialUnavailable):
+		return common.NewBizError(40907, "材料已下架或规格不可用，请重新选择")
+	case errors.Is(err, model.ErrOrderStockInsufficient):
+		return common.ErrStockInsufficient
+	case errors.Is(err, model.ErrOrderBlessingUnavailable):
+		return common.NewBizError(40908, "加持服务已不可用，请重新选择")
+	case errors.Is(err, model.ErrOrderPricingInvalid):
+		return common.ErrParamInvalid
+	default:
+		return common.ErrSystem
+	}
+}
+
+func toOrderCreateResp(result *model.PricedOrderResult) *types.DiyOrderCreateResp {
+	order := result.Order
+	items := make([]types.DiyOrderItem, 0, len(result.Items))
+	for _, item := range result.Items {
+		items = append(items, types.DiyOrderItem{
+			Id: item.Id, OrderId: item.OrderId, MaterialId: item.MaterialId, SkuId: item.SkuId,
+			MaterialName: item.MaterialName, Spec: item.Spec, UnitPrice: item.UnitPrice,
+			Quantity: item.Quantity, Subtype: item.Subtype,
+		})
+	}
+	return &types.DiyOrderCreateResp{
+		Id: order.Id, OrderNo: order.OrderNo, UserId: order.UserId, DesignId: order.DesignId,
+		MaterialFee: order.MaterialFee, BlessFee: order.BlessFee, TotalFee: order.TotalFee,
+		Status: order.Status, PaymentStatus: order.PaymentStatus, AddressId: order.AddressId, Items: items, Source: order.Source,
+		CreatorId: order.CreatorId, CreatorShareRate: order.CreatorShareRate,
+		OriginalMaterialFee: order.OriginalMaterialFee, PriceChanged: order.PriceChanged == 1,
+		DesignSnapshot: order.DesignSnapshot, PricingSnapshot: order.PricingSnapshot, CreateTime: order.CreateTime,
+	}
 }
 
 func parseDesignOrderItems(raw string) ([]types.DiyOrderItem, error) {

@@ -85,13 +85,26 @@ func (l *AdminDiyOrderReviewLogic) Review(req *types.AdminDiyOrderReviewReq) (*t
 		}
 		return nil, common.ErrSystem
 	}
+	if o.Status != model.DiyStatusPendingReview {
+		return nil, common.ErrStatusInvalid
+	}
 
 	var targetStatus string
 	switch req.Action {
 	case "approve":
+		if o.PaymentStatus != "success" {
+			return nil, common.NewBizError(common.ErrOrderStatusConflict.Code, "订单尚未支付，不能进入制作")
+		}
 		targetStatus = model.DiyStatusInMaking
 	case "reject":
-		targetStatus = model.DiyStatusCancelled
+		updated, cancelErr := l.svcCtx.DiyOrderModel.CancelAndRestock(l.ctx, req.Id)
+		if cancelErr != nil {
+			if cancelErr == model.ErrDiyOrderStateConflict {
+				return nil, common.ErrStatusInvalid
+			}
+			return nil, common.ErrSystem
+		}
+		return toTypesDiyOrderDetail(l.ctx, l.svcCtx, updated), nil
 	default:
 		return nil, common.ErrParam
 	}
@@ -100,8 +113,11 @@ func (l *AdminDiyOrderReviewLogic) Review(req *types.AdminDiyOrderReviewReq) (*t
 		return nil, common.ErrStatusInvalid
 	}
 
-	updated, err := l.svcCtx.DiyOrderModel.UpdateStatus(l.ctx, req.Id, targetStatus)
+	updated, err := l.svcCtx.DiyOrderModel.UpdateStatusIfCurrent(l.ctx, req.Id, model.DiyStatusPendingReview, targetStatus)
 	if err != nil {
+		if err == model.ErrDiyOrderStateConflict {
+			return nil, common.ErrStatusInvalid
+		}
 		return nil, common.ErrSystem
 	}
 	return toTypesDiyOrderDetail(l.ctx, l.svcCtx, updated), nil

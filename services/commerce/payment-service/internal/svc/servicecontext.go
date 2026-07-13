@@ -18,6 +18,7 @@ type ServiceContext struct {
 	PaymentModel    model.PaymentModel
 	PaymentLogModel model.PaymentLogModel
 	RefundModel     model.RefundModel
+	DiyOrderModel   model.DiyPaymentOrderModel
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -34,5 +35,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		PaymentModel:    model.NewPaymentModel(db),
 		PaymentLogModel: model.NewPaymentLogModel(db),
 		RefundModel:     model.NewRefundModel(db),
+		DiyOrderModel:   model.NewDiyPaymentOrderModel(db),
 	}
 }

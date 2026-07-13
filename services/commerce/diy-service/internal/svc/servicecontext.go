@@ -19,6 +19,7 @@ type ServiceContext struct {
 	DiyDesignModel           model.DiyDesignModel
 	DiyOrderModel            model.DiyOrderModel
 	DiyOrderItemModel        model.DiyOrderItemModel
+	CreatorEarningModel      model.CreatorEarningModel
 	MaterialModel            model.MaterialModel
 	MaterialSkuModel         model.MaterialSkuModel
 	BlessingTaskModel        model.BlessingTaskModel
@@ -47,6 +48,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		DiyDesignModel:           model.NewDiyDesignModel(db),
 		DiyOrderModel:            model.NewDiyOrderModel(db),
 		DiyOrderItemModel:        model.NewDiyOrderItemModel(db),
+		CreatorEarningModel:      model.NewCreatorEarningModel(db),
 		MaterialModel:            model.NewMaterialModel(db),
 		MaterialSkuModel:         model.NewMaterialSkuModel(db),
 		BlessingTaskModel:        model.NewBlessingTaskModel(db),

@@ -72,17 +72,17 @@ type BlessingTask struct {
 // blessingTaskRow DB 行结构（certificate_urls 为 string）
 // AssignTime/CompleteTime 使用 sql.NullString 处理 NULL 值
 type blessingTaskRow struct {
-	Id              int64           `db:"id"`
-	TaskNo          string          `db:"task_no"`
-	DiyOrderNo      string          `db:"diy_order_no"`
-	TempleCode      string          `db:"temple_code"`
-	MasterCode      string          `db:"master_code"`
-	Status          string          `db:"status"`
-	CertificateUrls sql.NullString  `db:"certificate_urls"`
-	AssignTime      sql.NullString  `db:"assign_time"`
-	CompleteTime    sql.NullString  `db:"complete_time"`
-	CreateTime      string          `db:"create_time"`
-	UpdateTime      string          `db:"update_time"`
+	Id              int64          `db:"id"`
+	TaskNo          string         `db:"task_no"`
+	DiyOrderNo      string         `db:"diy_order_no"`
+	TempleCode      string         `db:"temple_code"`
+	MasterCode      string         `db:"master_code"`
+	Status          string         `db:"status"`
+	CertificateUrls sql.NullString `db:"certificate_urls"`
+	AssignTime      sql.NullString `db:"assign_time"`
+	CompleteTime    sql.NullString `db:"complete_time"`
+	CreateTime      string         `db:"create_time"`
+	UpdateTime      string         `db:"update_time"`
 }
 
 // BlessingTaskModel 加持任务模型接口

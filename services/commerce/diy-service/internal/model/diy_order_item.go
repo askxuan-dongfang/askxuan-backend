@@ -14,6 +14,7 @@ type DiyOrderItem struct {
 	Id           int64   `db:"id" json:"id"`
 	OrderId      int64   `db:"order_id" json:"orderId"`
 	MaterialId   int64   `db:"material_id" json:"materialId"`
+	SkuId        int64   `db:"sku_id" json:"skuId"`
 	MaterialName string  `db:"material_name" json:"materialName"`
 	Spec         string  `db:"spec" json:"spec"`
 	UnitPrice    float64 `db:"unit_price" json:"unitPrice"`
@@ -24,6 +25,7 @@ type DiyOrderItem struct {
 // DiyOrderItemModel 订单明细接口
 type DiyOrderItemModel interface {
 	Insert(ctx context.Context, data *DiyOrderItem) (*DiyOrderItem, error)
+	InsertSession(ctx context.Context, session sqlx.Session, data *DiyOrderItem) (*DiyOrderItem, error)
 	ListByOrderId(ctx context.Context, orderId int64) ([]*DiyOrderItem, error)
 }
 
@@ -36,8 +38,12 @@ func NewDiyOrderItemModel(conn sqlx.SqlConn) DiyOrderItemModel {
 }
 
 func (m *defaultDiyOrderItemModel) Insert(ctx context.Context, data *DiyOrderItem) (*DiyOrderItem, error) {
-	query := fmt.Sprintf(`INSERT INTO %s (order_id, material_id, material_name, spec, unit_price, quantity, subtype) VALUES (?, ?, ?, ?, ?, ?, ?)`, diyOrderItemTable)
-	result, err := m.conn.ExecCtx(ctx, query, data.OrderId, data.MaterialId, data.MaterialName, data.Spec, data.UnitPrice, data.Quantity, data.Subtype)
+	return m.InsertSession(ctx, m.conn, data)
+}
+
+func (m *defaultDiyOrderItemModel) InsertSession(ctx context.Context, session sqlx.Session, data *DiyOrderItem) (*DiyOrderItem, error) {
+	query := fmt.Sprintf(`INSERT INTO %s (order_id,material_id,sku_id,material_name,spec,unit_price,quantity,subtype) VALUES (?,?,?,?,?,?,?,?)`, diyOrderItemTable)
+	result, err := session.ExecCtx(ctx, query, data.OrderId, data.MaterialId, data.SkuId, data.MaterialName, data.Spec, data.UnitPrice, data.Quantity, data.Subtype)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +56,7 @@ func (m *defaultDiyOrderItemModel) Insert(ctx context.Context, data *DiyOrderIte
 }
 
 func (m *defaultDiyOrderItemModel) ListByOrderId(ctx context.Context, orderId int64) ([]*DiyOrderItem, error) {
-	query := fmt.Sprintf(`SELECT id, order_id, material_id, material_name, spec, unit_price, quantity, subtype FROM %s WHERE order_id = ?`, diyOrderItemTable)
+	query := fmt.Sprintf(`SELECT id,order_id,material_id,sku_id,material_name,spec,unit_price,quantity,subtype FROM %s WHERE order_id = ?`, diyOrderItemTable)
 	var list []*DiyOrderItem
 	err := m.conn.QueryRowsCtx(ctx, &list, query, orderId)
 	if err != nil {

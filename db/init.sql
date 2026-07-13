@@ -863,6 +863,16 @@ INSERT INTO `product_image` (`product_id`,`image_url`,`sort`,`type`) VALUES
 CREATE DATABASE IF NOT EXISTS `askxuan_diy` DEFAULT CHARACTER SET utf8mb4;
 USE `askxuan_diy`;
 
+CREATE TABLE IF NOT EXISTS `material` LIKE `askxuan`.`material`;
+INSERT INTO `material` (`id`,`name`,`spec`,`unit_price`,`unit`,`category`,`five_elements`,`image`,`stock`,`status`,`create_time`,`update_time`)
+SELECT `id`,`name`,`spec`,`unit_price`,`unit`,`category`,`five_elements`,`image`,`stock`,`status`,`create_time`,`update_time` FROM `askxuan`.`material`
+ON DUPLICATE KEY UPDATE `name`=VALUES(`name`),`spec`=VALUES(`spec`),`unit_price`=VALUES(`unit_price`),`unit`=VALUES(`unit`),`category`=VALUES(`category`),`five_elements`=VALUES(`five_elements`),`image`=VALUES(`image`),`stock`=VALUES(`stock`),`status`=VALUES(`status`);
+
+CREATE TABLE IF NOT EXISTS `extra_service` LIKE `askxuan`.`extra_service`;
+INSERT INTO `extra_service` (`id`,`code`,`name`,`temple_code`,`master_code`,`price`,`description`,`create_time`,`update_time`)
+SELECT `id`,`code`,`name`,`temple_code`,`master_code`,`price`,`description`,`create_time`,`update_time` FROM `askxuan`.`extra_service`
+ON DUPLICATE KEY UPDATE `name`=VALUES(`name`),`temple_code`=VALUES(`temple_code`),`master_code`=VALUES(`master_code`),`price`=VALUES(`price`),`description`=VALUES(`description`);
+
 CREATE TABLE IF NOT EXISTS `material_sku` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `material_id` BIGINT NOT NULL COMMENT '材料ID',
@@ -907,7 +917,15 @@ CREATE TABLE IF NOT EXISTS `diy_order` (
   `bless_fee` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '加持费',
   `total_fee` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '总价',
   `status` VARCHAR(32) NOT NULL DEFAULT 'pending_review' COMMENT 'pending_review/in_making/awaiting_blessing/blessing_in_progress/blessing_completed/awaiting_shipment/shipped/completed/cancelled/in_return',
+  `payment_status` VARCHAR(16) NOT NULL DEFAULT 'pending' COMMENT 'pending/success/refunded',
   `address_id` BIGINT NOT NULL DEFAULT 0 COMMENT '收货地址ID',
+  `source` VARCHAR(16) NOT NULL DEFAULT 'custom' COMMENT 'custom/design_square',
+  `creator_id` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '设计作者ID快照',
+  `creator_share_rate` DECIMAL(7,6) NOT NULL DEFAULT 0 COMMENT '作者分成比例快照',
+  `original_material_fee` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '设计展示材料费快照',
+  `price_changed` TINYINT NOT NULL DEFAULT 0 COMMENT '下单时价格是否变化',
+  `design_snapshot` LONGTEXT COMMENT '不可变设计快照JSON',
+  `pricing_snapshot` LONGTEXT COMMENT '不可变计价快照JSON',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -923,6 +941,7 @@ CREATE TABLE IF NOT EXISTS `diy_order_item` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `order_id` BIGINT NOT NULL COMMENT 'DIY订单ID',
   `material_id` BIGINT NOT NULL COMMENT '材料ID',
+  `sku_id` BIGINT NOT NULL DEFAULT 0 COMMENT '材料SKU ID，0表示基础规格',
   `material_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '材料名称',
   `spec` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '规格',
   `unit_price` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '单价',
@@ -935,6 +954,38 @@ CREATE TABLE IF NOT EXISTS `diy_order_item` (
 INSERT INTO `diy_order_item` (`order_id`,`material_id`,`material_name`,`spec`,`unit_price`,`quantity`,`subtype`) VALUES
 (1,1,'小叶紫檀圆珠','10mm',28.00,10,'main_bead'),
 (1,10,'蜜蜡佛头','12mm',68.00,1,'buddha_head');
+
+CREATE TABLE IF NOT EXISTS `diy_config` (
+  `config_key` VARCHAR(64) NOT NULL,
+  `config_value` VARCHAR(255) NOT NULL DEFAULT '',
+  `description` VARCHAR(255) NOT NULL DEFAULT '',
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`config_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='DIY业务配置';
+
+INSERT INTO `diy_config` (`config_key`,`config_value`,`description`) VALUES
+('diy_design_creator_share','0','设计广场作者分成比例，范围0-1，默认0')
+ON DUPLICATE KEY UPDATE `description`=VALUES(`description`);
+
+CREATE TABLE IF NOT EXISTS `diy_creator_earning` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `earning_no` VARCHAR(32) NOT NULL,
+  `order_id` BIGINT NOT NULL,
+  `order_no` VARCHAR(32) NOT NULL,
+  `design_id` BIGINT NOT NULL,
+  `creator_id` VARCHAR(64) NOT NULL,
+  `payment_no` VARCHAR(32) NOT NULL DEFAULT '',
+  `base_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `share_rate` DECIMAL(7,6) NOT NULL DEFAULT 0,
+  `earning_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'pending' COMMENT 'pending/settled/cancelled',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_earning_no` (`earning_no`),
+  UNIQUE KEY `uk_order` (`order_id`),
+  KEY `idx_creator_status` (`creator_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='设计广场作者收益';
 
 CREATE TABLE IF NOT EXISTS `blessing_task` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,

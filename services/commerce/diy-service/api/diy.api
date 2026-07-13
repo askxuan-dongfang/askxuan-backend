@@ -31,7 +31,15 @@ type (
         BlessFee    float64          `json:"blessFee"`
         TotalFee    float64          `json:"totalFee"`
         Status      string           `json:"status"`
+        PaymentStatus string         `json:"paymentStatus"`
         AddressId   int64            `json:"addressId"`
+        Source      string           `json:"source"`
+        CreatorId   string           `json:"creatorId"`
+        CreatorShareRate float64     `json:"creatorShareRate"`
+        OriginalMaterialFee float64  `json:"originalMaterialFee"`
+        PriceChanged bool            `json:"priceChanged"`
+        DesignSnapshot string        `json:"designSnapshot"`
+        PricingSnapshot string       `json:"pricingSnapshot"`
         Items       []DiyOrderItem   `json:"items,optional"`
         BlessingTask BlessingTask    `json:"blessingTask,optional"`
         CreateTime  string           `json:"createTime"`
@@ -41,6 +49,7 @@ type (
         Id           int64   `json:"id"`
         OrderId      int64   `json:"orderId"`
         MaterialId   int64   `json:"materialId"`
+        SkuId        int64   `json:"skuId"`
         MaterialName string  `json:"materialName"`
         Spec         string  `json:"spec"`
         UnitPrice    float64 `json:"unitPrice"`
@@ -135,8 +144,25 @@ type (
     }
 
     DiyOrderCreateResp {
-        Id     int64  `json:"id"`
-        OrderNo string `json:"orderNo"`
+        Id                  int64          `json:"id"`
+        OrderNo             string         `json:"orderNo"`
+        UserId              string         `json:"userId"`
+        DesignId            int64          `json:"designId"`
+        MaterialFee         float64        `json:"materialFee"`
+        BlessFee            float64        `json:"blessFee"`
+        TotalFee            float64        `json:"totalFee"`
+        Status              string         `json:"status"`
+        PaymentStatus       string         `json:"paymentStatus"`
+        AddressId           int64          `json:"addressId"`
+        Items               []DiyOrderItem `json:"items"`
+        Source              string         `json:"source"`
+        CreatorId           string         `json:"creatorId"`
+        CreatorShareRate    float64        `json:"creatorShareRate"`
+        OriginalMaterialFee float64        `json:"originalMaterialFee"`
+        PriceChanged        bool           `json:"priceChanged"`
+        DesignSnapshot      string         `json:"designSnapshot"`
+        PricingSnapshot     string         `json:"pricingSnapshot"`
+        CreateTime          string         `json:"createTime"`
     }
 
     DiyOrderListReq {

@@ -2,8 +2,8 @@
 # ============================================================
 # MVP-2 P4 DIY 全链路闭环测试
 # 前置：docker compose up -d && make db-init && make start-all
-# 测试链路：创建材料 → 用户登录 → 创建设计(有加持) → 创建DIY订单
-#          → 审核通过 → 支付 → mock回调 → 制作完成(有加持)
+# 测试链路：创建材料 → 用户登录 → 创建设计(有加持) → 篡改单价创建DIY订单
+#          → 服务端重定价/支付前禁止审核 → 支付 → mock回调 → 审核通过 → 制作完成(有加持)
 #          → mock加持完成 → 发货 → 物流签收 → DIY订单完成
 # ============================================================
 
@@ -15,7 +15,7 @@ RABBIT_USER=admin
 RABBIT_PASS=admin
 PASS_COUNT=0
 FAIL_COUNT=0
-TOTAL=16
+TOTAL=17
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -46,11 +46,11 @@ if ! curl -s --connect-timeout 3 "$BASE/api/v1/auth/admin/login" -o /dev/null; t
     exit 1
 fi
 
-info "开始 MVP-2 P4 DIY 全链路闭环测试（共 $TOTAL 步）"
+info "开始 MVP-2 P4 DIY 安全计价全链路闭环测试（共 $TOTAL 步）"
 echo "================================================"
 
 # ===== 1. 管理台登录 =====
-info "步骤 1/16: 管理台登录"
+info "步骤 1/17: 管理台登录"
 ADMIN_RESP=$(curl -s -X POST "$BASE/api/v1/auth/admin/login" \
     -H 'Content-Type: application/json' \
     -d '{"account":"admin","password":"123456"}')
@@ -64,7 +64,7 @@ fi
 ADMIN_AUTH="Authorization: Bearer $ADMIN_TOKEN"
 
 # ===== 2. 管理台创建材料（使用时间戳避免唯一键冲突） =====
-info "步骤 2/16: 管理台创建材料"
+info "步骤 2/17: 管理台创建材料"
 MAT_NAME="测试檀木珠$(date +%s)"
 MAT_RESP=$(curl -s -X POST "$BASE/api/v1/admin/diy/materials" \
     -H "$ADMIN_AUTH" \
@@ -87,7 +87,7 @@ else
 fi
 
 # ===== 3. 用户登录 =====
-info "步骤 3/16: 用户登录"
+info "步骤 3/17: 用户登录"
 LOGIN_RESP=$(curl -s -X POST "$BASE/api/v1/auth/login" \
     -H 'Content-Type: application/json' \
     -d '{"phone":"13800138000","code":"1234"}')
@@ -101,79 +101,74 @@ fi
 [ -z "$TOKEN" ] && echo "无法继续测试，缺少 accessToken" && exit 1
 AUTH="Authorization: Bearer $TOKEN"
 
-# ===== 4. 用户创建设计（有加持 E001） =====
-info "步骤 4/16: 用户创建设计（blessServiceCode=E001）"
+# ===== 4. 用户创建公开设计（快照内伪造材料单价） =====
+info "步骤 4/17: 创建公开设计（快照单价=0.01）"
+DESIGN_DATA=$(jq -nc \
+    --argjson materialId "${MAT_ID:-1}" \
+    --arg materialName "$MAT_NAME" \
+    '[{materialId:$materialId,materialName:$materialName,spec:"8mm",unitPrice:0.01,quantity:1,subtype:"main"}]')
+DESIGN_BODY=$(jq -nc \
+    --arg userId "$USER_ID" \
+    --arg designData "$DESIGN_DATA" \
+    '{userId:$userId,name:"测试设计广场安全计价",designData:$designData,totalPrice:0.01,status:"public",blessServiceCode:"E001"}')
 DESIGN_RESP=$(curl -s -X POST "$BASE/api/v1/diy/designs" \
     -H "$AUTH" \
     -H 'Content-Type: application/json' \
-    -d "{
-        \"userId\":\"$USER_ID\",
-        \"name\":\"测试加持手串设计\",
-        \"designData\":\"test-design-v1\",
-        \"totalPrice\":234.00,
-        \"status\":\"draft\",
-        \"blessServiceCode\":\"E001\"
-    }")
+    -d "$DESIGN_BODY")
 DESIGN_ID=$(echo "$DESIGN_RESP" | jq -r '.data.id // empty')
 if [ -n "$DESIGN_ID" ]; then
-    pass "用户创建设计（id=$DESIGN_ID, blessServiceCode=E001）"
+    pass "公开设计已创建（id=$DESIGN_ID, snapshotPrice=0.01）"
 else
     fail "用户创建设计失败: $DESIGN_RESP"
 fi
 
-# ===== 5. 用户创建 DIY 订单 =====
-info "步骤 5/16: 用户创建 DIY 订单"
-ORDER_RESP=$(curl -s -X POST "$BASE/api/v1/diy/orders" \
+# ===== 5. 用篡改单价创建 DIY 订单，服务端必须按材料现价重定价 =====
+info "步骤 5/17: 篡改单价创建 DIY 订单并验证服务端重定价"
+ORDER_RESP=$(curl -s -X POST "$BASE/api/v1/diy/designs/${DESIGN_ID:-1}/order" \
     -H "$AUTH" \
     -H 'Content-Type: application/json' \
     -d "{
         \"userId\":\"$USER_ID\",
-        \"designId\":${DESIGN_ID:-1},
         \"blessServiceCode\":\"E001\",
-        \"addressId\":1,
-        \"items\":[{
-            \"materialId\":${MAT_ID:-1},
-            \"materialName\":\"$MAT_NAME\",
-            \"spec\":\"8mm\",
-            \"unitPrice\":66.00,
-            \"quantity\":1,
-            \"subtype\":\"main\"
-        }]
+        \"addressId\":1
     }")
 ORDER_ID=$(echo "$ORDER_RESP" | jq -r '.data.id // empty')
 ORDER_NO=$(echo "$ORDER_RESP" | jq -r '.data.orderNo // empty')
-if [ -n "$ORDER_NO" ]; then
-    pass "创建DIY订单（id=$ORDER_ID, orderNo=$ORDER_NO）"
+FINAL_TOTAL=$(echo "$ORDER_RESP" | jq -r '.data.totalFee // empty')
+MATERIAL_FEE=$(echo "$ORDER_RESP" | jq -r '.data.materialFee // empty')
+PRICE_CHANGED=$(echo "$ORDER_RESP" | jq -r '.data.priceChanged // false')
+if [ -n "$ORDER_NO" ] && [ "$MATERIAL_FEE" = "66" ] && [ "$PRICE_CHANGED" = "true" ]; then
+    pass "服务端忽略篡改单价（materialFee=$MATERIAL_FEE, totalFee=$FINAL_TOTAL, priceChanged=$PRICE_CHANGED）"
 else
-    fail "创建DIY订单失败: $ORDER_RESP"
+    fail "服务端重定价验证失败: $ORDER_RESP"
 fi
 
-# ===== 6. 管理台审核通过 =====
-info "步骤 6/16: 管理台审核通过"
+# ===== 6. 支付前禁止管理台审核通过 =====
+info "步骤 6/17: 验证支付前禁止审核"
 if [ -n "$ORDER_ID" ]; then
     REVIEW_RESP=$(curl -s -X PUT "$BASE/api/v1/admin/diy/orders/$ORDER_ID/review" \
         -H "$ADMIN_AUTH" \
         -H 'Content-Type: application/json' \
         -d '{"action":"approve","reason":""}')
-    REVIEW_STATUS=$(echo "$REVIEW_RESP" | jq -r '.data.status // empty')
-    if [ "$REVIEW_STATUS" = "in_making" ]; then
-        pass "管理台审核通过（status=$REVIEW_STATUS）"
+    REVIEW_CODE=$(echo "$REVIEW_RESP" | jq -r '.code // 0')
+    if [ "$REVIEW_CODE" != "0" ]; then
+        pass "支付前审核被拒绝（code=$REVIEW_CODE）"
     else
-        fail "管理台审核通过失败，期望 in_making 实际 $REVIEW_STATUS: $REVIEW_RESP"
+        fail "支付前审核未被拒绝: $REVIEW_RESP"
     fi
 else
-    fail "管理台审核通过（无 orderId，跳过）"
+    fail "支付前审核校验（无 orderId，跳过）"
 fi
 
 # ===== 7. 创建支付 =====
-info "步骤 7/16: 创建支付"
+info "步骤 7/17: 按服务端最终金额创建支付"
 PAY_RESP=$(curl -s -X POST "$BASE/api/v1/payments" \
     -H "$AUTH" \
     -H 'Content-Type: application/json' \
     -d "{
         \"orderType\":\"diy_order\",
         \"orderNo\":\"$ORDER_NO\",
-        \"amount\":234.00,
+        \"amount\":${FINAL_TOTAL:-0},
         \"channel\":\"wechat\",
         \"userId\":\"$USER_ID\"
     }")
@@ -185,7 +180,7 @@ else
 fi
 
 # ===== 8. Mock 微信支付回调 =====
-info "步骤 8/16: Mock 微信支付回调"
+info "步骤 8/17: Mock 微信支付回调"
 if [ -n "$PAYMENT_NO" ]; then
     # 用 jq 构建完整的 rawBody JSON，避免 shell 转义问题
     CALLBACK_PAYLOAD=$(jq -n --arg pn "$PAYMENT_NO" '{paymentNo:$pn,tradeNo:"MOCK_DIY_TX_001",result:"success"}')
@@ -203,23 +198,41 @@ else
     fail "Mock 微信支付回调（无 paymentNo，跳过）"
 fi
 
-# ===== 9. 验证 DIY 订单已进入制作中 =====
-info "步骤 9/16: 验证 DIY 订单状态（等待 MQ 消费 3s）"
+# ===== 9. 支付成功只更新支付状态，不越过商城审核 =====
+info "步骤 9/17: 验证支付成功后仍为待审核（等待 MQ 消费 3s）"
 sleep 3
 if [ -n "$ORDER_ID" ]; then
     DETAIL_RESP=$(curl -s "$BASE/api/v1/diy/orders/$ORDER_ID" -H "$AUTH")
     ORDER_STATUS=$(echo "$DETAIL_RESP" | jq -r '.data.status // empty')
-    if [ "$ORDER_STATUS" = "in_making" ]; then
-        pass "验证 DIY 订单状态（status=$ORDER_STATUS）"
+    PAYMENT_STATUS=$(echo "$DETAIL_RESP" | jq -r '.data.paymentStatus // empty')
+    if [ "$ORDER_STATUS" = "pending_review" ] && [ "$PAYMENT_STATUS" = "success" ]; then
+        pass "支付与业务状态分离（status=$ORDER_STATUS, paymentStatus=$PAYMENT_STATUS）"
     else
-        fail "验证 DIY 订单状态失败，期望 in_making 实际 $ORDER_STATUS: $DETAIL_RESP"
+        fail "支付状态验证失败，期望 pending_review/success: $DETAIL_RESP"
     fi
 else
     fail "验证 DIY 订单状态（无 orderId，跳过）"
 fi
 
-# ===== 10. 管理台制作完成（有加持） =====
-info "步骤 10/16: 管理台制作完成（有加持，创建加持任务）"
+# ===== 10. 支付后管理台审核通过 =====
+info "步骤 10/17: 支付后管理台审核通过"
+if [ -n "$ORDER_ID" ]; then
+    REVIEW_RESP=$(curl -s -X PUT "$BASE/api/v1/admin/diy/orders/$ORDER_ID/review" \
+        -H "$ADMIN_AUTH" \
+        -H 'Content-Type: application/json' \
+        -d '{"action":"approve","reason":""}')
+    REVIEW_STATUS=$(echo "$REVIEW_RESP" | jq -r '.data.status // empty')
+    if [ "$REVIEW_STATUS" = "in_making" ]; then
+        pass "支付后审核通过（status=$REVIEW_STATUS）"
+    else
+        fail "支付后审核失败，期望 in_making: $REVIEW_RESP"
+    fi
+else
+    fail "支付后审核（无 orderId，跳过）"
+fi
+
+# ===== 11. 管理台制作完成（有加持） =====
+info "步骤 11/17: 管理台制作完成（有加持，创建加持任务）"
 if [ -n "$ORDER_ID" ]; then
     MAKE_RESP=$(curl -s -X PUT "$BASE/api/v1/admin/diy/orders/$ORDER_ID/make-complete" \
         -H "$ADMIN_AUTH" \
@@ -235,8 +248,8 @@ else
     fail "管理台制作完成（无 orderId，跳过）"
 fi
 
-# ===== 11. Mock 加持完成（通过 RabbitMQ HTTP API 发布 blessing.complete） =====
-info "步骤 11/16: Mock 加持完成（RabbitMQ HTTP API 发布 blessing.complete）"
+# ===== 12. Mock 加持完成（通过 RabbitMQ HTTP API 发布 blessing.complete） =====
+info "步骤 12/17: Mock 加持完成（RabbitMQ HTTP API 发布 blessing.complete）"
 if [ -n "$TASK_NO" ] && [ -n "$ORDER_NO" ]; then
     BLESSING_PAYLOAD=$(jq -n \
         --arg tn "$TASK_NO" \
@@ -258,8 +271,8 @@ else
     fail "Mock 加持完成（无 taskNo/orderNo，跳过）"
 fi
 
-# ===== 12. 验证 DIY 订单进入待发货 =====
-info "步骤 12/16: 验证 DIY 订单状态（等待 MQ 消费 3s）"
+# ===== 13. 验证 DIY 订单进入待发货 =====
+info "步骤 13/17: 验证 DIY 订单状态（等待 MQ 消费 3s）"
 sleep 3
 if [ -n "$ORDER_ID" ]; then
     DETAIL_RESP=$(curl -s "$BASE/api/v1/diy/orders/$ORDER_ID" -H "$AUTH")
@@ -273,8 +286,8 @@ else
     fail "验证 DIY 订单状态（无 orderId，跳过）"
 fi
 
-# ===== 13. 管理台发货 =====
-info "步骤 13/16: 管理台发货"
+# ===== 14. 管理台发货 =====
+info "步骤 14/17: 管理台发货"
 if [ -n "$ORDER_ID" ]; then
     SHIP_RESP=$(curl -s -X PUT "$BASE/api/v1/admin/diy/orders/$ORDER_ID/ship" \
         -H "$ADMIN_AUTH" \
@@ -290,8 +303,8 @@ else
     fail "管理台发货（无 orderId，跳过）"
 fi
 
-# ===== 14. 验证物流追踪记录创建 =====
-info "步骤 14/16: 验证物流追踪记录创建（等待 MQ 消费 3s）"
+# ===== 15. 验证物流追踪记录创建 =====
+info "步骤 15/17: 验证物流追踪记录创建（等待 MQ 消费 3s）"
 sleep 3
 if [ -n "$ORDER_NO" ]; then
     TRACK_RESP=$(curl -s "$BASE/api/v1/admin/logistics/tracks/$ORDER_NO" \
@@ -306,8 +319,8 @@ else
     fail "验证物流追踪记录（无 orderNo，跳过）"
 fi
 
-# ===== 15. 物流批量同步（3 轮推进到 signed） =====
-info "步骤 15/16: 物流批量同步（3 轮：pending → in_transit → delivered → signed）"
+# ===== 16. 物流批量同步（3 轮推进到 signed） =====
+info "步骤 16/17: 物流批量同步（3 轮：pending → in_transit → delivered → signed）"
 SYNC_OK=true
 for i in 1 2 3; do
     SYNC_RESP=$(curl -s -X POST "$BASE/api/v1/admin/logistics/tracks/batch-sync" \
@@ -328,8 +341,8 @@ else
     fail "物流批量同步失败，期望 signed 实际 $TRACK_STATUS: $TRACK_RESP"
 fi
 
-# ===== 16. 验证 DIY 订单自动完成 =====
-info "步骤 16/16: 验证 DIY 订单自动完成（等待 MQ 消费 3s）"
+# ===== 17. 验证 DIY 订单自动完成 =====
+info "步骤 17/17: 验证 DIY 订单自动完成（等待 MQ 消费 3s）"
 sleep 3
 if [ -n "$ORDER_ID" ]; then
     DETAIL_RESP=$(curl -s "$BASE/api/v1/diy/orders/$ORDER_ID" -H "$AUTH")

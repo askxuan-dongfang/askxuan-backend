@@ -25,9 +25,9 @@ const (
 )
 
 const (
-	materialTable     = "material"       // 已迁入 askxuan_diy 库
+	materialTable     = "material" // 已迁入 askxuan_diy 库
 	materialSkuTable  = "material_sku"
-	extraServiceTable = "extra_service"  // 已迁入 askxuan_diy 库
+	extraServiceTable = "extra_service" // 已迁入 askxuan_diy 库
 )
 
 // Material 材料表

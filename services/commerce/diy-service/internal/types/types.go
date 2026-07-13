@@ -15,18 +15,26 @@ type DiyDesign struct {
 
 // DiyOrder DIY订单
 type DiyOrder struct {
-	Id           int64          `json:"id"`
-	OrderNo      string         `json:"orderNo"`
-	UserId       string         `json:"userId"`
-	DesignId     int64          `json:"designId"`
-	MaterialFee  float64        `json:"materialFee"`
-	BlessFee     float64        `json:"blessFee"`
-	TotalFee     float64        `json:"totalFee"`
-	Status       string         `json:"status"`
-	AddressId    int64          `json:"addressId"`
-	Items        []DiyOrderItem `json:"items"`
-	BlessingTask BlessingTask   `json:"blessingTask"`
-	CreateTime   string         `json:"createTime"`
+	Id                  int64          `json:"id"`
+	OrderNo             string         `json:"orderNo"`
+	UserId              string         `json:"userId"`
+	DesignId            int64          `json:"designId"`
+	MaterialFee         float64        `json:"materialFee"`
+	BlessFee            float64        `json:"blessFee"`
+	TotalFee            float64        `json:"totalFee"`
+	Status              string         `json:"status"`
+	PaymentStatus       string         `json:"paymentStatus"`
+	AddressId           int64          `json:"addressId"`
+	Source              string         `json:"source"`
+	CreatorId           string         `json:"creatorId"`
+	CreatorShareRate    float64        `json:"creatorShareRate"`
+	OriginalMaterialFee float64        `json:"originalMaterialFee"`
+	PriceChanged        bool           `json:"priceChanged"`
+	DesignSnapshot      string         `json:"designSnapshot"`
+	PricingSnapshot     string         `json:"pricingSnapshot"`
+	Items               []DiyOrderItem `json:"items"`
+	BlessingTask        BlessingTask   `json:"blessingTask"`
+	CreateTime          string         `json:"createTime"`
 }
 
 // DiyOrderItem DIY订单明细
@@ -34,6 +42,7 @@ type DiyOrderItem struct {
 	Id           int64   `json:"id,optional"`
 	OrderId      int64   `json:"orderId,optional"`
 	MaterialId   int64   `json:"materialId"`
+	SkuId        int64   `json:"skuId,optional"`
 	MaterialName string  `json:"materialName"`
 	Spec         string  `json:"spec,optional"`
 	UnitPrice    float64 `json:"unitPrice"`
@@ -142,8 +151,25 @@ type DiyDesignOrderCreateReq struct {
 }
 
 type DiyOrderCreateResp struct {
-	Id      int64  `json:"id"`
-	OrderNo string `json:"orderNo"`
+	Id                  int64          `json:"id"`
+	OrderNo             string         `json:"orderNo"`
+	UserId              string         `json:"userId"`
+	DesignId            int64          `json:"designId"`
+	MaterialFee         float64        `json:"materialFee"`
+	BlessFee            float64        `json:"blessFee"`
+	TotalFee            float64        `json:"totalFee"`
+	Status              string         `json:"status"`
+	PaymentStatus       string         `json:"paymentStatus"`
+	AddressId           int64          `json:"addressId"`
+	Items               []DiyOrderItem `json:"items"`
+	Source              string         `json:"source"`
+	CreatorId           string         `json:"creatorId"`
+	CreatorShareRate    float64        `json:"creatorShareRate"`
+	OriginalMaterialFee float64        `json:"originalMaterialFee"`
+	PriceChanged        bool           `json:"priceChanged"`
+	DesignSnapshot      string         `json:"designSnapshot"`
+	PricingSnapshot     string         `json:"pricingSnapshot"`
+	CreateTime          string         `json:"createTime"`
 }
 
 type DiyOrderListReq struct {
@@ -186,7 +212,7 @@ type AdminDiyOrderDetailReq struct {
 type AdminDiyOrderReviewReq struct {
 	Id     int64  `path:"id"`
 	Action string `json:"action"`
-	Reason string `json:"reason"`
+	Reason string `json:"reason,optional"`
 }
 
 type AdminDiyOrderMakeCompleteReq struct {

@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -31,6 +32,21 @@ func (l *PaymentCreateLogic) Create(req *types.PaymentCreateReq) (*types.Payment
 	}
 	if !isValidChannel(req.Channel) || !isValidOrderType(req.OrderType) {
 		return nil, common.ErrParam
+	}
+	if req.OrderType == model.OrderTypeDiyOrder {
+		if err := l.svcCtx.DiyOrderModel.ValidatePayment(l.ctx, req.OrderNo, req.UserId, req.Amount); err != nil {
+			switch {
+			case errors.Is(err, model.ErrDiyOrderOwnerMismatch):
+				return nil, common.NewBizError(common.ErrForbidden.Code, "无权支付该DIY订单")
+			case errors.Is(err, model.ErrDiyOrderNotPayable):
+				return nil, common.NewBizError(common.ErrOrderStatusConflict.Code, "DIY订单当前状态不可支付")
+			case errors.Is(err, model.ErrDiyOrderAmountChanged):
+				return nil, common.NewBizError(common.ErrOrderStatusConflict.Code, "订单金额已变化，请刷新后重试")
+			default:
+				l.Errorf("校验DIY订单支付信息失败: %v", err)
+				return nil, common.ErrSystem
+			}
+		}
 	}
 
 	created, err := l.svcCtx.PaymentModel.Insert(l.ctx, &model.Payment{
