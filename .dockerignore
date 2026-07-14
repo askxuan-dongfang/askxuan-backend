@@ -6,6 +6,8 @@
 .idea
 .vscode
 .trae
+.local/
+.docker/
 
 # 编译产物
 **/*.exe

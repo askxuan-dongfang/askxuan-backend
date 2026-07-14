@@ -13,14 +13,29 @@ import (
 
 type MinIOProvider struct {
 	client        *minio.Client
+	presignClient *minio.Client
 	bucket        string
 	expires       int64
 	publicBaseURL string
 }
 
 func NewMinIOProvider(c config.MinIOConf) (*MinIOProvider, error) {
+	region := c.Region
+	if region == "" {
+		region = "us-east-1"
+	}
 	client, err := minio.New(c.Endpoint, &minio.Options{
-		Creds: credentials.NewStaticV4(c.AccessKey, c.SecretKey, ""), Secure: c.UseSSL,
+		Creds: credentials.NewStaticV4(c.AccessKey, c.SecretKey, ""), Secure: c.UseSSL, Region: region,
+	})
+	if err != nil {
+		return nil, err
+	}
+	presignEndpoint := c.PresignEndpoint
+	if presignEndpoint == "" {
+		presignEndpoint = c.Endpoint
+	}
+	presignClient, err := minio.New(presignEndpoint, &minio.Options{
+		Creds: credentials.NewStaticV4(c.AccessKey, c.SecretKey, ""), Secure: c.UseSSL, Region: region,
 	})
 	if err != nil {
 		return nil, err
@@ -29,7 +44,7 @@ func NewMinIOProvider(c config.MinIOConf) (*MinIOProvider, error) {
 	if expires <= 0 {
 		expires = 900
 	}
-	p := &MinIOProvider{client: client, bucket: c.Bucket, expires: expires, publicBaseURL: strings.TrimRight(c.PublicBaseURL, "/")}
+	p := &MinIOProvider{client: client, presignClient: presignClient, bucket: c.Bucket, expires: expires, publicBaseURL: strings.TrimRight(c.PublicBaseURL, "/")}
 	if err := p.ensureBucket(context.Background()); err != nil {
 		return nil, err
 	}
@@ -39,7 +54,7 @@ func NewMinIOProvider(c config.MinIOConf) (*MinIOProvider, error) {
 func (p *MinIOProvider) Name() string { return "local_minio" }
 
 func (p *MinIOProvider) PrepareUpload(ctx context.Context, objectName, contentType string) (string, map[string]string, int64, error) {
-	presigned, err := p.client.PresignedPutObject(ctx, p.bucket, objectName, time.Duration(p.expires)*time.Second)
+	presigned, err := p.presignClient.PresignedPutObject(ctx, p.bucket, objectName, time.Duration(p.expires)*time.Second)
 	if err != nil {
 		return "", nil, 0, err
 	}

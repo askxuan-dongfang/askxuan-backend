@@ -6,7 +6,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="${ROOT}/.docker/etc"
 
-rm -rf "${OUT}"
 mkdir -p "${OUT}"
 
 render_service() {
@@ -15,6 +14,7 @@ render_service() {
   local dst="${OUT}/${name}"
 
   mkdir -p "${dst}"
+  rm -f "${dst}"/*.yaml
   cp "${src}"/*.yaml "${dst}/"
 
   perl -pi -e '
@@ -23,7 +23,7 @@ render_service() {
     s/localhost:2379/etcd:2379/g;
     s/http:\/\/localhost:2379/http:\/\/etcd:2379/g;
     s/Host: localhost/Host: rabbitmq/g;
-    s/Endpoint: localhost:9000/Endpoint: minio:9000/g;
+    s/^  Endpoint: localhost:9000/  Endpoint: minio:9000/gm;
     s/http:\/\/127\.0\.0\.1:10002/http:\/\/host.docker.internal:10002/g;
     s/http:\/\/localhost:8080/http:\/\/gateway-service:8080/g;
     s/ListenOn: 127\.0\.0\.1:9088/ListenOn: 0.0.0.0:9088/g;
@@ -75,5 +75,9 @@ perl -pi -e '
   s/Target: localhost:8100/Target: media-service:8100/g;
   s/Target: localhost:10002/Target: host.docker.internal:10002/g;
 ' "${OUT}/gateway/gateway.yaml"
+
+# Compose must use its container DNS targets. Removing discovery keys prevents
+# stale host registrations in a shared local etcd from shadowing those targets.
+perl -ni -e 'print unless /^\s*ServiceName:/' "${OUT}/gateway/gateway.yaml"
 
 echo "Rendered docker configs to ${OUT}"

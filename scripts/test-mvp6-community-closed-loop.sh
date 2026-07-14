@@ -18,20 +18,31 @@ upload_media() {
   local credential media_id upload_url body
   credential="$(curl -fsS -X POST "$MEDIA_URL/media/uploads/credentials" -H 'Content-Type: application/json' \
     -d "{\"userId\":\"$OWNER_ID\",\"fileName\":\"$file_name\",\"mediaType\":\"$media_type\",\"contentType\":\"$content_type\",\"fileSize\":$(wc -c < "$file" | tr -d ' ')}")"
+  [[ "$(jq -r '.code' <<<"$credential")" == "0" ]]
   media_id="$(jq -r '.data.mediaId' <<<"$credential")"
   upload_url="$(jq -r '.data.uploadUrl' <<<"$credential")"
-  curl -fsS -X PUT "$upload_url" -H "Content-Type: $content_type" --data-binary "@$file" >/dev/null
+  [[ "$media_id" =~ ^[0-9]+$ && -n "$upload_url" ]]
+  if ! curl -fsS -X PUT "$upload_url" -H "Content-Type: $content_type" --data-binary "@$file" >/dev/null; then
+    return 1
+  fi
   body="{\"userId\":\"$OWNER_ID\"}"
   [[ "$cover_id" == "0" ]] || body="{\"userId\":\"$OWNER_ID\",\"coverMediaId\":$cover_id}"
-  curl -fsS -X POST "$MEDIA_URL/media/$media_id/complete" -H 'Content-Type: application/json' -d "$body" | jq -r '.data.id'
+  local result result_id
+  result="$(curl -fsS -X POST "$MEDIA_URL/media/$media_id/complete" -H 'Content-Type: application/json' -d "$body")"
+  [[ "$(jq -r '.code' <<<"$result")" == "0" ]]
+  result_id="$(jq -r '.data.id // empty' <<<"$result")"
+  [[ "$result_id" == "$media_id" ]]
+  printf '%s' "$result_id"
 }
 
 cover_id="$(upload_media "$TMP_DIR/cover.jpg" cover.jpg image image/jpeg)"
 video_id="$(upload_media "$TMP_DIR/video.mp4" video.mp4 video video/mp4 "$cover_id")"
+[[ "$cover_id" =~ ^[0-9]+$ && "$video_id" =~ ^[0-9]+$ ]]
 
 post="$(curl -fsS -X POST "$COMMUNITY_URL/admin/masters/community/posts" -H 'Content-Type: application/json' \
   -d "{\"ownerId\":\"$OWNER_ID\",\"masterId\":\"$MASTER_ID\",\"type\":\"video\",\"title\":\"大师广场闭环\",\"content\":\"真实媒体引用\",\"coverMediaId\":$cover_id,\"beliefCode\":\"han_buddhism\",\"assets\":[{\"mediaId\":$video_id,\"assetType\":\"video\",\"sort\":0}],\"submit\":true}")"
 post_id="$(jq -r '.data.id' <<<"$post")"
+[[ -n "$post_id" && "$post_id" != "null" ]]
 [[ "$(jq -r '.data.status' <<<"$post")" == "pending" ]]
 
 hidden="$(curl -fsS "$COMMUNITY_URL/community/feed")"
@@ -50,6 +61,7 @@ second_like="$(curl -fsS -X POST "$COMMUNITY_URL/community/posts/$post_id/like" 
 
 comment="$(curl -fsS -X POST "$COMMUNITY_URL/community/posts/$post_id/comments" -H 'Content-Type: application/json' -d "{\"userId\":\"$USER_ID\",\"content\":\"评论先审后显\"}")"
 comment_id="$(jq -r '.data.id' <<<"$comment")"
+[[ -n "$comment_id" && "$comment_id" != "null" ]]
 [[ "$(jq -r '.data.status' <<<"$comment")" == "pending" ]]
 before_review="$(curl -fsS "$COMMUNITY_URL/community/posts/$post_id/comments")"
 [[ "$(jq --arg id "$comment_id" '[.data.list[] | select(.id == $id)] | length' <<<"$before_review")" == "0" ]]

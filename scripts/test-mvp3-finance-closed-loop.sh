@@ -40,12 +40,23 @@ fi
 info "开始 MVP-3 财务闭环测试（共 $TOTAL 步）"
 echo "================================================"
 
-# ===== 0. 重启服务（重置内存数据，确保幂等）=====
-info "步骤 0: 重启 finance-service 重置内存数据"
-lsof -ti:8091 | xargs kill -9 2>/dev/null
-sleep 1
-(cd services/operation/finance-service && go run finance.go -f etc/finance.yaml > /dev/null 2>&1) &
-sleep 5
+# ===== 0. 恢复固定测试数据并重启 Docker 服务，确保幂等 =====
+info "步骤 0: 恢复财务测试数据并重启 finance-service"
+docker exec askxuan-mysql mysql -uroot -proot123 askxuan_finance -e \
+  "UPDATE settlement SET status='pending' WHERE id=2; UPDATE withdrawal SET status='pending',audit_time=NULL,process_time=NULL WHERE id=1; UPDATE commission_config SET rate=0.1500,description='预约服务平台抽成15%' WHERE id=1;" >/dev/null
+docker restart askxuan-finance-service >/dev/null
+READY=0
+for _ in $(seq 1 30); do
+    if curl -fsS "$BASE/api/v1/admin/finance/overview" >/dev/null 2>&1; then
+        READY=1
+        break
+    fi
+    sleep 1
+done
+if [ "$READY" != "1" ]; then
+    echo "错误：finance-service 重启后未就绪"
+    exit 1
+fi
 
 # ===== 1. 总览 =====
 info "步骤 1/$TOTAL: 财务总览"

@@ -285,6 +285,7 @@ stop-all: ## 停止所有服务
 		fi; \
 	done
 	@-pkill -f "/askXuan-backend/services/.*/\(gateway\|auth\|user\|temple\|master\|booking\|review\|product\|order\|payment\|diy\|marketing\|logistics\|finance\|audit\|message\|file\|ai\|community\|media\) " 2>/dev/null || true
+	@-pkill -f "^\./\(gateway\|auth\|user\|temple\|master\|booking\|review\|product\|order\|payment\|diy\|marketing\|logistics\|finance\|audit\|message\|file\|ai\|community\|media\) -f etc/" 2>/dev/null || true
 	@echo "==> 已停止"
 
 # ---------- 数据库 ----------

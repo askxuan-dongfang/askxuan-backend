@@ -20,7 +20,7 @@ for _ in $(seq 1 60); do
 done
 
 echo "==> Checking database schema..."
-table_count="$(docker exec askxuan-mysql mysql -N -uroot -proot123 -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='askxuan' AND table_name='temple';" 2>/dev/null || echo 0)"
+table_count="$(docker exec askxuan-mysql mysql -N -uroot -proot123 -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='askxuan_temple' AND table_name='temple';" 2>/dev/null || echo 0)"
 if [ "${table_count}" = "0" ]; then
   echo "==> First startup detected, initializing database..."
   docker exec -i askxuan-mysql mysql -uroot -proot123 askxuan < db/init.sql

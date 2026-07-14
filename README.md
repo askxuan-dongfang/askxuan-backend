@@ -152,6 +152,18 @@ bash scripts/test-mvp3-finance-closed-loop.sh
 # MVP-3 审核闭环（10 步）：审核队列/通过/驳回/举报/敏感词/统计
 bash scripts/test-mvp3-audit-closed-loop.sh
 
+# App 改进：信仰流派专题、筛选和管理闭环
+bash scripts/test-app5-belief-closed-loop.sh
+
+# App 改进：诉求聚合商品/寺院服务混排闭环
+bash scripts/test-app6-intention-closed-loop.sh
+
+# App 改进：AI 默认会话、所有权、异步回复和重启恢复闭环
+bash scripts/test-app1-ai-closed-loop.sh
+
+# App 改进：设计广场服务端计价、事务、支付后作者收益闭环
+bash scripts/test-mvp2-diy-closed-loop.sh
+
 # App 改进：媒体/直播基础闭环
 bash scripts/test-mvp4-media-live-closed-loop.sh
 
@@ -159,7 +171,7 @@ bash scripts/test-mvp4-media-live-closed-loop.sh
 bash scripts/test-mvp6-community-closed-loop.sh
 ```
 
-> MVP-3 四个服务使用内存存储（sync.RWMutex + slice + seq），重启后状态重置；若测试因数据被消费失败，重启对应服务后重跑即可。
+> 六项 App 改进均使用 MySQL 持久化。AI、媒体、社区闭环脚本还覆盖服务重启、真实 MinIO 对象与审核可见性；脚本失败应按真实回归处理，不使用内存重置规避。
 
 ## 快速启动
 

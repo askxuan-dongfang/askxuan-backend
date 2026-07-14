@@ -183,7 +183,9 @@ fi
 info "步骤 8/17: Mock 微信支付回调"
 if [ -n "$PAYMENT_NO" ]; then
     # 用 jq 构建完整的 rawBody JSON，避免 shell 转义问题
-    CALLBACK_PAYLOAD=$(jq -n --arg pn "$PAYMENT_NO" '{paymentNo:$pn,tradeNo:"MOCK_DIY_TX_001",result:"success"}')
+    CALLBACK_TRADE_NO="MOCK_DIY_${PAYMENT_NO}_$(date +%s)"
+    CALLBACK_PAYLOAD=$(jq -n --arg pn "$PAYMENT_NO" --arg tn "$CALLBACK_TRADE_NO" \
+        '{paymentNo:$pn,tradeNo:$tn,result:"success"}')
     CB_BODY=$(jq -n --arg rb "$CALLBACK_PAYLOAD" '{rawBody:$rb}')
     CB_RESP=$(curl -s -X POST "$BASE/api/v1/payments/callback/wechat" \
         -H 'Content-Type: application/json' \

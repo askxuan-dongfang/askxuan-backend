@@ -11,13 +11,15 @@ type Config struct {
 }
 
 type MinIOConf struct {
-	Endpoint      string
-	AccessKey     string
-	SecretKey     string
-	Bucket        string
-	UseSSL        bool
-	PresignExpire int64
-	PublicBaseURL string
+	Endpoint        string
+	PresignEndpoint string
+	Region          string
+	AccessKey       string
+	SecretKey       string
+	Bucket          string
+	UseSSL          bool
+	PresignExpire   int64
+	PublicBaseURL   string
 }
 
 type MediaConf struct {

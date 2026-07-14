@@ -1,14 +1,28 @@
 -- Requirement 5: canonical belief categories. Safe to run repeatedly.
 -- Existing installations may still keep the core tables in askxuan, so first
 -- seed the service databases before adding the new columns.
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS askxuan_temple CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS askxuan_master CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE TABLE IF NOT EXISTS askxuan_temple.temple LIKE askxuan.temple;
-INSERT IGNORE INTO askxuan_temple.temple (id,code,name,region,type,sect,status,address,cover_image,rating,description,create_time,update_time)
-SELECT id,code,name,region,type,sect,status,address,cover_image,rating,description,create_time,update_time FROM askxuan.temple;
-CREATE TABLE IF NOT EXISTS askxuan_master.master LIKE askxuan.master;
-INSERT IGNORE INTO askxuan_master.master (id,code,dharma_name,lay_name,temple_code,position,sect,type,auth_status,shelf_status,platform_status,specialties,avatar,rating,create_time,update_time)
-SELECT id,code,dharma_name,lay_name,temple_code,position,sect,type,auth_status,shelf_status,platform_status,specialties,avatar,rating,create_time,update_time FROM askxuan.master;
+
+SET @source_temple_exists = EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='askxuan' AND table_name='temple');
+SET @target_temple_exists = EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='askxuan_temple' AND table_name='temple');
+SET @sql = IF(@target_temple_exists, 'SELECT 1', 'CREATE TABLE askxuan_temple.temple LIKE askxuan.temple');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @sql = IF(@source_temple_exists,
+  'INSERT IGNORE INTO askxuan_temple.temple (id,code,name,region,type,sect,status,address,cover_image,rating,description,create_time,update_time) SELECT id,code,name,region,type,sect,status,address,cover_image,rating,description,create_time,update_time FROM askxuan.temple',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @source_master_exists = EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='askxuan' AND table_name='master');
+SET @target_master_exists = EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='askxuan_master' AND table_name='master');
+SET @sql = IF(@target_master_exists, 'SELECT 1', 'CREATE TABLE askxuan_master.master LIKE askxuan.master');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @sql = IF(@source_master_exists,
+  'INSERT IGNORE INTO askxuan_master.master (id,code,dharma_name,lay_name,temple_code,position,sect,type,auth_status,shelf_status,platform_status,specialties,avatar,rating,create_time,update_time) SELECT id,code,dharma_name,lay_name,temple_code,position,sect,type,auth_status,shelf_status,platform_status,specialties,avatar,rating,create_time,update_time FROM askxuan.master',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @sql = IF(
   EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='askxuan_temple' AND table_name='temple' AND column_name='belief_code'),
@@ -41,11 +55,13 @@ UPDATE askxuan_temple.temple SET belief_code = CASE
   WHEN type LIKE '%道教%' OR sect IN ('全真派','正一派') THEN 'daoism'
   WHEN type LIKE '%民间%' THEN 'folk'
   ELSE 'han_buddhism' END;
-UPDATE askxuan_master.master SET belief_code = CASE
-  WHEN type LIKE '%藏%' OR sect IN ('格鲁派','宁玛派','噶举派','萨迦派') THEN 'tibetan_buddhism'
-  WHEN type LIKE '%道教%' OR sect IN ('全真派','全真道派','正一派') THEN 'daoism'
-  WHEN type LIKE '%民间%' THEN 'folk'
-  ELSE 'han_buddhism' END;
+UPDATE askxuan_master.master AS m
+LEFT JOIN askxuan_temple.temple AS t ON t.code = m.temple_code
+SET m.belief_code = COALESCE(t.belief_code, CASE
+  WHEN m.type LIKE '%藏%' OR m.sect LIKE '%藏密%' OR m.sect IN ('格鲁派','宁玛派','噶举派','萨迦派') THEN 'tibetan_buddhism'
+  WHEN m.type LIKE '%道教%' OR m.sect IN ('全真派','全真道派','正一派') THEN 'daoism'
+  WHEN m.type LIKE '%民间%' THEN 'folk'
+  ELSE 'han_buddhism' END);
 
 CREATE TABLE IF NOT EXISTS askxuan_temple.belief_profile (
   code VARCHAR(32) NOT NULL PRIMARY KEY,
