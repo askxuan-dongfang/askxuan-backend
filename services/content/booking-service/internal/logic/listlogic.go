@@ -27,6 +27,10 @@ func NewListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ListLogic {
 
 // List 预约列表查询，支持按 userId/status/templeId 筛选 + 分页
 func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
+	userID, err := authenticatedUserID(l.ctx)
+	if err != nil {
+		return nil, err
+	}
 	page := req.Page
 	size := req.Size
 	if page < 1 {
@@ -36,7 +40,7 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 		size = 20
 	}
 
-	list, total, err := l.svcCtx.BookingModel.FindList(l.ctx, req.UserId, req.Status, req.TempleId, page, size)
+	list, total, err := l.svcCtx.BookingModel.FindList(l.ctx, userID, req.Status, req.TempleId, page, size)
 	if err != nil {
 		l.Errorf("查询预约列表失败: %v", err)
 		return nil, common.ErrSystem

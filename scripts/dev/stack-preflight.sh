@@ -88,7 +88,7 @@ check_port 9000 'askxuan-minio' 'askXuan MinIO API'
 check_port 9001 'askxuan-minio' 'askXuan MinIO Console'
 check_port 2379 'askxuan-etcd' 'askXuan etcd client'
 check_port 2380 'askxuan-etcd' 'askXuan etcd peer'
-for port in 8080 8081 8082 8083 8084 8085 8086 8088 8089 8090 8091 8092 8093 8094 8095 8096 8097 8098 8099 8100 9088; do
+for port in 8080 8081 8082 8083 8084 8085 8086 8088 8089 8090 8091 8092 8093 8094 8095 8096 8097 8098 8099 8100 9083 9084 9088 9090; do
   check_port "${port}" 'askxuan-.*-service|gateway|auth-serv|user|temple|master|booking|community|product|diy|order|payment|finance|review|audit|message|logistics|marketing|file|ai|media' "askXuan backend service ${port}"
 done
 

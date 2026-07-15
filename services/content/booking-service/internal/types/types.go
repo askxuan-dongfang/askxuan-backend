@@ -4,26 +4,37 @@ package types
 
 // Booking 预约
 type Booking struct {
-	Id             string  `json:"id"`
-	UserId         string  `json:"userId"`
-	TempleId       string  `json:"templeId"`
-	TempleName     string  `json:"templeName"`
-	MasterId       string  `json:"masterId"`
-	MasterName     string  `json:"masterName"`
-	ServiceId      string  `json:"serviceId"`
-	ServiceName    string  `json:"serviceName"`
-	BookingDate    string  `json:"bookingDate"`
-	TimeSlot       string  `json:"timeSlot"`
-	MeritMoney     float64 `json:"meritMoney"`
-	MeritMoneyTier string  `json:"meritMoneyTier"`
-	Status         string  `json:"status"`
-	Note           string  `json:"note"`
-	CreatedAt      string  `json:"createdAt"`
+	Id                string  `json:"id"`
+	RequestId         string  `json:"requestId"`
+	UserId            string  `json:"userId"`
+	TempleId          string  `json:"templeId"`
+	TempleName        string  `json:"templeName"`
+	MasterId          string  `json:"masterId"`
+	MasterName        string  `json:"masterName"`
+	ServiceId         string  `json:"serviceId"`
+	ServiceName       string  `json:"serviceName"`
+	BookingDate       string  `json:"bookingDate"`
+	SlotCode          string  `json:"slotCode"`
+	TimeSlot          string  `json:"timeSlot"`
+	ServiceFee        float64 `json:"serviceFee"`
+	MeritMoney        float64 `json:"meritMoney"`
+	MeritMoneyTier    string  `json:"meritMoneyTier"`
+	TotalFee          float64 `json:"totalFee"`
+	PriceSnapshot     string  `json:"priceSnapshot"`
+	PaymentNo         string  `json:"paymentNo"`
+	PaymentChannel    string  `json:"paymentChannel"`
+	PaymentStatus     string  `json:"paymentStatus"`
+	PaymentExpireTime string  `json:"paymentExpireTime"`
+	SlotReserved      int     `json:"-"`
+	Status            string  `json:"status"`
+	Note              string  `json:"note"`
+	CreatedAt         string  `json:"createdAt"`
 }
 
 // CreateReq 创建预约请求
 type CreateReq struct {
-	UserId         string  `json:"userId"`
+	RequestId      string  `json:"requestId,optional"`
+	UserId         string  `json:"userId,optional"`
 	TempleId       string  `json:"templeId"`
 	TempleName     string  `json:"templeName,optional"`
 	MasterId       string  `json:"masterId"`
@@ -31,7 +42,8 @@ type CreateReq struct {
 	ServiceId      string  `json:"serviceId"`
 	ServiceName    string  `json:"serviceName,optional"`
 	BookingDate    string  `json:"bookingDate"`
-	TimeSlot       string  `json:"timeSlot"`
+	SlotCode       string  `json:"slotCode,optional"`
+	TimeSlot       string  `json:"timeSlot,optional"`
 	MeritMoney     float64 `json:"meritMoney"`
 	MeritMoneyTier string  `json:"meritMoneyTier"`
 	Note           string  `json:"note,optional"`
@@ -39,8 +51,39 @@ type CreateReq struct {
 
 // CreateResp 创建预约响应
 type CreateResp struct {
-	Id     string `json:"id"`
-	Status string `json:"status"`
+	Id            string  `json:"id"`
+	Status        string  `json:"status"`
+	PaymentStatus string  `json:"paymentStatus"`
+	PaymentNo     string  `json:"paymentNo"`
+	ServiceFee    float64 `json:"serviceFee"`
+	MeritMoney    float64 `json:"meritMoney"`
+	TotalFee      float64 `json:"totalFee"`
+	Simulated     bool    `json:"simulated"`
+}
+
+type AvailabilityReq struct {
+	TempleId    string `form:"templeId"`
+	ServiceId   string `form:"serviceId"`
+	BookingDate string `form:"date"`
+}
+type AvailableSlot struct {
+	SlotCode  string `json:"slotCode"`
+	Label     string `json:"label"`
+	TimeRange string `json:"timeRange"`
+	Capacity  int    `json:"capacity"`
+	Remaining int    `json:"remaining"`
+	Available bool   `json:"available"`
+}
+type AvailabilityResp struct {
+	TempleId    string          `json:"templeId"`
+	ServiceId   string          `json:"serviceId"`
+	ServiceName string          `json:"serviceName"`
+	BookingDate string          `json:"bookingDate"`
+	ServiceFee  float64         `json:"serviceFee"`
+	Slots       []AvailableSlot `json:"slots"`
+}
+type PayReq struct {
+	Id string `path:"id"`
 }
 
 // ListReq 列表请求

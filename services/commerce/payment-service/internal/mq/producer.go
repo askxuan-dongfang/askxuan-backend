@@ -29,12 +29,12 @@ type PaymentNotify struct {
 // 比 PaymentNotify(action=refunded) 更结构化，包含 returnNo 便于消费端精确关联退货单。
 // 复用 payment.events exchange 发布，order-service 可按需消费。
 type RefundCompletedEvent struct {
-	ReturnNo  string  `json:"returnNo"`          // 退货单号
-	PaymentNo string  `json:"paymentNo"`         // 支付单号
-	RefundNo  string  `json:"refundNo"`          // 退款单号
-	Status    string  `json:"status"`            // 退款状态: success / failed
-	Amount    float64 `json:"amount,omitempty"`  // 退款金额
-	Time      string  `json:"time"`              // 事件时间
+	ReturnNo  string  `json:"returnNo"`         // 退货单号
+	PaymentNo string  `json:"paymentNo"`        // 支付单号
+	RefundNo  string  `json:"refundNo"`         // 退款单号
+	Status    string  `json:"status"`           // 退款状态: success / failed
+	Amount    float64 `json:"amount,omitempty"` // 退款金额
+	Time      string  `json:"time"`             // 事件时间
 }
 
 // Producer RabbitMQ 生产者

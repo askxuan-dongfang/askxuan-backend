@@ -13,6 +13,7 @@ import (
 	"github.com/askxuan/temple-service/internal/handler"
 	"github.com/askxuan/temple-service/internal/mq"
 	"github.com/askxuan/temple-service/internal/svc"
+	"github.com/askxuan/temple-service/rpc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -32,6 +33,8 @@ func main() {
 
 	svcCtx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, svcCtx)
+	rpcServer := rpc.MustStartTempleRpcServer(c, svcCtx)
+	defer rpcServer.Stop()
 
 	// 启动 RabbitMQ 消费者：监听 blessing.dispatch 派单事件
 	ctx, cancel := context.WithCancel(context.Background())

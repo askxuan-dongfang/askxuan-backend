@@ -22,15 +22,26 @@ const templeServiceTable = "temple_service"
 
 // TempleServiceRecord 寺院自定义服务（避免与 types.TempleService 混淆，model 层加 Record 后缀）
 type TempleServiceRecord struct {
-	Id          int64    `db:"id" json:"id"`
-	TempleCode  string   `db:"temple_code" json:"templeCode"`
-	ServiceCode string   `db:"service_code" json:"serviceCode"`
-	ServiceName string   `db:"service_name" json:"serviceName"`
-	Price       float64  `db:"price" json:"price"`
-	TimeSlots   []string `json:"timeSlots"` // DB 中为 JSON 字符串
-	Status      string   `db:"status" json:"status"`
-	CreateTime  string   `db:"create_time" json:"createTime"`
-	UpdateTime  string   `db:"update_time" json:"updateTime"`
+	Id          int64               `db:"id" json:"id"`
+	TempleCode  string              `db:"temple_code" json:"templeCode"`
+	ServiceCode string              `db:"service_code" json:"serviceCode"`
+	ServiceName string              `db:"service_name" json:"serviceName"`
+	Price       float64             `db:"price" json:"price"`
+	TimeSlots   []string            `json:"timeSlots"` // DB 中为 JSON 字符串
+	Slots       []TempleServiceSlot `json:"slots"`
+	Status      string              `db:"status" json:"status"`
+	CreateTime  string              `db:"create_time" json:"createTime"`
+	UpdateTime  string              `db:"update_time" json:"updateTime"`
+}
+
+type TempleServiceSlot struct {
+	Code      string `db:"slot_code" json:"code"`
+	Label     string `db:"label" json:"label"`
+	StartTime string `db:"start_time" json:"startTime"`
+	EndTime   string `db:"end_time" json:"endTime"`
+	Capacity  int    `db:"capacity" json:"capacity"`
+	Status    string `db:"status" json:"status"`
+	Sort      int    `db:"sort" json:"sort"`
 }
 
 // templeServiceRow 服务 DB 行结构（TimeSlots 为 JSON 字符串）
@@ -50,12 +61,14 @@ type templeServiceRow struct {
 type TempleServiceModel interface {
 	Insert(ctx context.Context, data *TempleServiceRecord) (int64, error)
 	FindOne(ctx context.Context, id int64) (*TempleServiceRecord, error)
+	FindByCodes(ctx context.Context, templeCode, serviceCode string) (*TempleServiceRecord, error)
 	FindByTempleId(ctx context.Context, templeCode string) ([]*TempleServiceRecord, error)
 	FindList(ctx context.Context, templeCode, status string, page, size int) ([]*TempleServiceRecord, int64, error)
 	Update(ctx context.Context, data *TempleServiceRecord) error
 	UpdateStatus(ctx context.Context, id int64, status string) error
 	FindIntentTags(ctx context.Context, id int64) ([]string, error)
 	ReplaceIntentTags(ctx context.Context, id int64, tags []string) error
+	ReplaceSlots(ctx context.Context, id int64, slots []TempleServiceSlot) error
 	Delete(ctx context.Context, id int64) error
 }
 
@@ -112,7 +125,20 @@ func (m *defaultTempleServiceModel) FindOne(ctx context.Context, id int64) (*Tem
 	if err := m.conn.QueryRowCtx(ctx, &row, query, id); err != nil {
 		return nil, err
 	}
-	return rowToService(&row), nil
+	service := rowToService(&row)
+	service.Slots, _ = m.findSlots(ctx, service.Id)
+	return service, nil
+}
+
+func (m *defaultTempleServiceModel) FindByCodes(ctx context.Context, templeCode, serviceCode string) (*TempleServiceRecord, error) {
+	const query = `SELECT id, temple_code, service_code, service_name, price, time_slots, status, create_time, update_time FROM temple_service WHERE temple_code=? AND service_code=?`
+	var row templeServiceRow
+	if err := m.conn.QueryRowCtx(ctx, &row, query, templeCode, serviceCode); err != nil {
+		return nil, err
+	}
+	service := rowToService(&row)
+	service.Slots, _ = m.findSlots(ctx, service.Id)
+	return service, nil
 }
 
 // FindByTempleId 查询寺院的服务列表（含下架）
@@ -125,7 +151,9 @@ func (m *defaultTempleServiceModel) FindByTempleId(ctx context.Context, templeCo
 	}
 	list := make([]*TempleServiceRecord, 0, len(rows))
 	for _, r := range rows {
-		list = append(list, rowToService(r))
+		service := rowToService(r)
+		service.Slots, _ = m.findSlots(ctx, service.Id)
+		list = append(list, service)
 	}
 	return list, nil
 }
@@ -162,7 +190,9 @@ func (m *defaultTempleServiceModel) FindList(ctx context.Context, templeCode, st
 	}
 	list := make([]*TempleServiceRecord, 0, len(rows))
 	for _, r := range rows {
-		list = append(list, rowToService(r))
+		service := rowToService(r)
+		service.Slots, _ = m.findSlots(ctx, service.Id)
+		list = append(list, service)
 	}
 	return list, total, nil
 }
@@ -192,9 +222,56 @@ func (m *defaultTempleServiceModel) UpdateStatus(ctx context.Context, id int64, 
 
 // Delete 删除寺院服务
 func (m *defaultTempleServiceModel) Delete(ctx context.Context, id int64) error {
-	query := fmt.Sprintf(`DELETE FROM %s WHERE id = ?`, templeServiceTable)
-	_, err := m.conn.ExecCtx(ctx, query, id)
-	return err
+	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		if _, err := session.ExecCtx(ctx, `DELETE FROM temple_service_slot WHERE temple_service_id=?`, id); err != nil {
+			return err
+		}
+		_, err := session.ExecCtx(ctx, `DELETE FROM temple_service WHERE id=?`, id)
+		return err
+	})
+}
+
+func (m *defaultTempleServiceModel) findSlots(ctx context.Context, id int64) ([]TempleServiceSlot, error) {
+	var slots []TempleServiceSlot
+	if err := m.conn.QueryRowsCtx(ctx, &slots, `SELECT slot_code,label,start_time,end_time,capacity,status,sort FROM temple_service_slot WHERE temple_service_id=? ORDER BY sort,id`, id); err != nil {
+		return nil, err
+	}
+	if slots == nil {
+		slots = []TempleServiceSlot{}
+	}
+	return slots, nil
+}
+
+func (m *defaultTempleServiceModel) ReplaceSlots(ctx context.Context, id int64, slots []TempleServiceSlot) error {
+	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		if _, err := session.ExecCtx(ctx, `DELETE FROM temple_service_slot WHERE temple_service_id=?`, id); err != nil {
+			return err
+		}
+		for i, slot := range slots {
+			if slot.Code == "" {
+				slot.Code = fmt.Sprintf("slot_%02d", i+1)
+			}
+			if slot.Label == "" {
+				slot.Label = fmt.Sprintf("时段%d", i+1)
+			}
+			if slot.Capacity < 1 {
+				slot.Capacity = 10
+			}
+			if slot.Status == "" {
+				slot.Status = "enabled"
+			}
+			if slot.Sort == 0 {
+				slot.Sort = i + 1
+			}
+			if slot.StartTime == "" || slot.EndTime == "" || slot.StartTime >= slot.EndTime {
+				return fmt.Errorf("invalid service slot")
+			}
+			if _, err := session.ExecCtx(ctx, `INSERT INTO temple_service_slot(temple_service_id,slot_code,label,start_time,end_time,capacity,status,sort) VALUES(?,?,?,?,?,?,?,?)`, id, slot.Code, slot.Label, slot.StartTime, slot.EndTime, slot.Capacity, slot.Status, slot.Sort); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (m *defaultTempleServiceModel) FindIntentTags(ctx context.Context, id int64) ([]string, error) {

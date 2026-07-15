@@ -12,6 +12,8 @@ import (
 
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // ============ 法师工作台 - 预约 Logic ============
@@ -34,14 +36,14 @@ func (l *MasterBookingListLogic) MasterBookingList(req *types.MasterBookingListR
 		return nil, common.ErrUnauthorized
 	}
 
-	// 通过 masterId 查询 master_code（booking 表按 master_code 关联）
-	master, err := l.svcCtx.MasterReadonlyModel.FindByID(l.ctx, masterID)
+	// 通过 gRPC 查询 master_code（booking 表按不可变快照关联）
+	master, err := l.svcCtx.MasterClient.GetByID(l.ctx, masterID)
 	if err != nil {
-		if errors.Is(err, sqlx.ErrNotFound) {
+		if status.Code(err) == codes.NotFound {
 			return nil, common.ErrMasterNotFound
 		}
 		l.Errorf("法师工作台查询法师信息失败: %v", err)
-		return nil, common.ErrSystem
+		return nil, common.ErrDependencyUnavailable
 	}
 	masterCode := master.Code
 
@@ -100,10 +102,10 @@ func (l *MasterBookingDetailLogic) MasterBookingDetail(req *types.DetailReq) (*t
 		return nil, common.ErrSystem
 	}
 	// 校验归属：仅可查看分配给自己的预约
-	master, err := l.svcCtx.MasterReadonlyModel.FindByID(l.ctx, masterID)
+	master, err := l.svcCtx.MasterClient.GetByID(l.ctx, masterID)
 	if err != nil {
 		l.Errorf("法师信息查询失败: %v", err)
-		return nil, common.ErrSystem
+		return nil, common.ErrDependencyUnavailable
 	}
 	if b.MasterId != master.Code {
 		return nil, common.ErrForbidden
@@ -136,9 +138,9 @@ func (l *MasterBookingConfirmLogic) MasterBookingConfirm(req *types.AdminBooking
 		}
 		return nil, common.ErrSystem
 	}
-	master, err := l.svcCtx.MasterReadonlyModel.FindByID(l.ctx, masterID)
+	master, err := l.svcCtx.MasterClient.GetByID(l.ctx, masterID)
 	if err != nil {
-		return nil, common.ErrSystem
+		return nil, common.ErrDependencyUnavailable
 	}
 	if b.MasterId != master.Code {
 		return nil, common.ErrForbidden
@@ -171,9 +173,9 @@ func (l *MasterBookingCompleteLogic) MasterBookingComplete(req *types.AdminBooki
 		}
 		return nil, common.ErrSystem
 	}
-	master, err := l.svcCtx.MasterReadonlyModel.FindByID(l.ctx, masterID)
+	master, err := l.svcCtx.MasterClient.GetByID(l.ctx, masterID)
 	if err != nil {
-		return nil, common.ErrSystem
+		return nil, common.ErrDependencyUnavailable
 	}
 	if b.MasterId != master.Code {
 		return nil, common.ErrForbidden

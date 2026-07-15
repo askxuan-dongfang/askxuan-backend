@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/askxuan/booking-service/internal/mq"
 	"github.com/askxuan/booking-service/internal/model"
+	"github.com/askxuan/booking-service/internal/mq"
 	"github.com/askxuan/booking-service/internal/svc"
 	"github.com/askxuan/booking-service/internal/types"
 	"github.com/askxuan/common"

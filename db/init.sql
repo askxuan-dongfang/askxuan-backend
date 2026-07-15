@@ -233,28 +233,47 @@ DROP TABLE IF EXISTS `booking`;
 CREATE TABLE `booking` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `booking_no` VARCHAR(32) NOT NULL COMMENT '预约单号 B20260630001',
+	`request_id` VARCHAR(64) DEFAULT NULL COMMENT '客户端幂等请求号',
   `user_id` BIGINT NOT NULL COMMENT '用户ID',
   `temple_code` VARCHAR(16) NOT NULL COMMENT '寺院编码',
+	`temple_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '寺院名称快照',
   `master_code` VARCHAR(16) NOT NULL COMMENT '法师编码',
+	`master_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '法师名称快照',
   `service_code` VARCHAR(16) NOT NULL COMMENT '服务编码',
+	`service_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '服务名称快照',
   `booking_date` DATE NOT NULL COMMENT '预约日期',
+	`slot_code` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '结构化时段编码',
   `time_slot` VARCHAR(32) NOT NULL COMMENT '时段',
+	`service_fee` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '服务端服务费快照',
   `merit_money` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '功德金',
   `merit_money_tier` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '功德金档位',
-  `status` VARCHAR(16) NOT NULL DEFAULT 'pending' COMMENT 'pending/confirmed/in_progress/completed/cancelled/reviewed',
+	`total_fee` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '服务费加功德金',
+	`price_snapshot` JSON DEFAULT NULL COMMENT '不可变计价快照',
+	`payment_no` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '支付单号',
+	`payment_channel` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '支付渠道',
+	`payment_status` VARCHAR(32) NOT NULL DEFAULT 'legacy' COMMENT 'legacy/pending/success/failed',
+	`payment_expire_time` DATETIME DEFAULT NULL COMMENT '支付过期时间',
+	`slot_reserved` TINYINT NOT NULL DEFAULT 0 COMMENT '时段是否仍占位',
+	`status` VARCHAR(32) NOT NULL DEFAULT 'pending' COMMENT 'pending_payment/pending/confirmed/in_progress/completed/cancelled/reviewed',
   `note` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '备注',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_booking_no` (`booking_no`),
+	UNIQUE KEY `uk_booking_request` (`user_id`,`request_id`),
   KEY `idx_user` (`user_id`),
-  KEY `idx_status` (`status`)
+	KEY `idx_status` (`status`),
+	KEY `idx_payment_status` (`payment_status`,`payment_expire_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预约订单表';
 
 INSERT INTO `booking` (`booking_no`,`user_id`,`temple_code`,`master_code`,`service_code`,`booking_date`,`time_slot`,`merit_money`,`merit_money_tier`,`status`,`note`,`create_time`) VALUES
 ('B20260630001',1,'T001','M001','S001','2026-07-05','09:00-10:00',200.00,'大额','pending','为家人祈求平安健康。','2026-06-30 08:30:00'),
 ('B20260628002',2,'T003','M003','S005','2026-07-02','14:00-15:30',500.00,'不限额','confirmed','为先人超度往生，请法师主持法事。','2026-06-28 16:20:00'),
 ('B20260615003',1,'T002','M002','S007','2026-06-20','10:00-11:00',100.00,'中额','completed','本命年化太岁，祈求流年顺利。','2026-06-15 19:45:00');
+
+UPDATE `booking`
+SET `total_fee` = `merit_money`, `payment_status` = 'legacy'
+WHERE `payment_status` = 'legacy';
 
 -- ----------------------------
 -- 8. 站内消息表 message
@@ -516,6 +535,23 @@ CREATE TABLE IF NOT EXISTS `temple_service` (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院自定义服务定价';
 
+CREATE TABLE IF NOT EXISTS `temple_service_slot` (
+	`id` BIGINT NOT NULL AUTO_INCREMENT,
+	`temple_service_id` BIGINT NOT NULL,
+	`slot_code` VARCHAR(32) NOT NULL,
+	`label` VARCHAR(64) NOT NULL DEFAULT '',
+	`start_time` VARCHAR(5) NOT NULL,
+	`end_time` VARCHAR(5) NOT NULL,
+	`capacity` INT NOT NULL DEFAULT 10,
+	`status` VARCHAR(16) NOT NULL DEFAULT 'enabled',
+	`sort` INT NOT NULL DEFAULT 0,
+	`create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uk_service_slot` (`temple_service_id`,`slot_code`),
+	CONSTRAINT `fk_slot_temple_service` FOREIGN KEY (`temple_service_id`) REFERENCES `temple_service` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院服务结构化预约时段';
+
 CREATE TABLE IF NOT EXISTS `temple_service_intent_tag` (
   `temple_service_id` BIGINT NOT NULL COMMENT '寺院服务ID',
   `tag_code` VARCHAR(32) NOT NULL COMMENT '诉求标签编码',
@@ -555,6 +591,21 @@ INSERT INTO `temple_service` (`temple_code`,`service_code`,`service_name`,`price
 ('T006','S007','化太岁',388.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
 ('T006','S010','求事业',280.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
 ('T006','S011','求风水',688.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00');
+
+INSERT IGNORE INTO `temple_service_slot`
+	(`temple_service_id`,`slot_code`,`label`,`start_time`,`end_time`,`capacity`,`status`,`sort`)
+SELECT ts.id,
+	CONCAT('slot_', LPAD(j.ord, 2, '0')),
+	j.time_range,
+	SUBSTRING_INDEX(j.time_range, '-', 1),
+	SUBSTRING_INDEX(j.time_range, '-', -1),
+	10, 'enabled', j.ord
+FROM `temple_service` ts
+JOIN JSON_TABLE(ts.time_slots, '$[*]' COLUMNS (
+	ord FOR ORDINALITY,
+	time_range VARCHAR(32) PATH '$'
+)) j
+WHERE JSON_VALID(ts.time_slots);
 
 INSERT IGNORE INTO `temple_service_intent_tag` (`temple_service_id`,`tag_code`)
 SELECT id, CASE service_code
@@ -651,6 +702,21 @@ USE `askxuan_booking`;
 
 CREATE TABLE IF NOT EXISTS `booking` LIKE `askxuan`.`booking`;
 INSERT IGNORE INTO `booking` SELECT * FROM `askxuan`.`booking`;
+
+CREATE TABLE IF NOT EXISTS `booking_slot_inventory` (
+	`id` BIGINT NOT NULL AUTO_INCREMENT,
+	`temple_code` VARCHAR(16) NOT NULL,
+	`service_code` VARCHAR(16) NOT NULL,
+	`booking_date` DATE NOT NULL,
+	`slot_code` VARCHAR(32) NOT NULL,
+	`time_slot` VARCHAR(32) NOT NULL,
+	`capacity` INT NOT NULL,
+	`reserved_count` INT NOT NULL DEFAULT 0,
+	`create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uk_booking_slot` (`temple_code`,`service_code`,`booking_date`,`slot_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预约日期时段库存';
 
 CREATE TABLE IF NOT EXISTS `booking_status_log` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -1114,6 +1180,7 @@ USE `askxuan_shop`;
 CREATE TABLE IF NOT EXISTS `payment` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `payment_no` VARCHAR(32) NOT NULL COMMENT '支付单号',
+	`idempotency_key` VARCHAR(96) DEFAULT NULL COMMENT '业务支付幂等键',
   `user_id` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '用户ID',
   `order_type` VARCHAR(32) NOT NULL COMMENT 'booking/shop_order/diy_order',
   `order_no` VARCHAR(32) NOT NULL COMMENT '业务订单号',
@@ -1125,6 +1192,7 @@ CREATE TABLE IF NOT EXISTS `payment` (
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_payment_no` (`payment_no`),
+	UNIQUE KEY `uk_payment_idempotency` (`idempotency_key`),
   KEY `idx_order` (`order_type`,`order_no`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付单';

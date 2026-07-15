@@ -28,10 +28,22 @@ func NewUpdateStatusLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Upda
 
 // UpdateStatus 预约状态流转（C 端）
 // 合法流转：pending → confirmed/cancelled，confirmed → in_progress/cancelled，
-//          in_progress → completed/cancelled，completed → reviewed
+//
+//	in_progress → completed/cancelled，completed → reviewed
 func (l *UpdateStatusLogic) UpdateStatus(req *types.StatusReq) (*types.StatusResp, error) {
-	if req.Status == "" {
+	if req.Status != model.StatusCancelled {
 		return nil, common.ErrParam
 	}
-	return transitBookingStatus(l.Logger, l.ctx, l.svcCtx, req.Id, req.Status, "", "user", model.OperatorTypeUser, req.Status)
+	userID, err := authenticatedUserID(l.ctx)
+	if err != nil {
+		return nil, err
+	}
+	booking, err := l.svcCtx.BookingModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		return nil, common.ErrBookingNotFound
+	}
+	if booking.UserId != userID {
+		return nil, common.ErrForbidden
+	}
+	return transitBookingStatus(l.Logger, l.ctx, l.svcCtx, req.Id, req.Status, "", userID, model.OperatorTypeUser, req.Status)
 }

@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package payment;
+
+option go_package = "./payment;payment";
+
+message AutoPayBookingReq {
+  string order_no = 1;
+  string user_id = 2;
+  double amount = 3;
+  string idempotency_key = 4;
+}
+
+message GetOrderPaymentReq {
+  string order_type = 1;
+  string order_no = 2;
+}
+
+message BookingPayment {
+  int64 id = 1;
+  string payment_no = 2;
+  string order_type = 3;
+  string order_no = 4;
+  double amount = 5;
+  string channel = 6;
+  string status = 7;
+  string trade_no = 8;
+  bool simulated = 9;
+}
+
+service PaymentBookingService {
+  rpc AutoPayBooking(AutoPayBookingReq) returns (BookingPayment);
+  rpc GetOrderPayment(GetOrderPaymentReq) returns (BookingPayment);
+}

@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/rest"
+	"github.com/zeromicro/go-zero/zrpc"
 )
 
 // RabbitMQConf RabbitMQ 连接配置
@@ -33,7 +34,10 @@ type AlipayConf struct {
 // Config payment 服务配置
 type Config struct {
 	rest.RestConf
-	DataSource string      // MySQL 数据源
+	AppEnv     string `json:",default=development"`
+	Provider   string `json:",default=mock"`
+	PaymentRpc zrpc.RpcServerConf
+	DataSource string // MySQL 数据源
 	Redis      redis.RedisConf
 	RabbitMQ   RabbitMQConf
 	WechatPay  WechatPayConf

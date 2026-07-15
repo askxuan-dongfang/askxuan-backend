@@ -29,6 +29,10 @@ func NewDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *DetailLogi
 
 // Detail 按 ID 查询预约详情
 func (l *DetailLogic) Detail(req *types.DetailReq) (*types.Booking, error) {
+	userID, authErr := authenticatedUserID(l.ctx)
+	if authErr != nil {
+		return nil, authErr
+	}
 	b, err := l.svcCtx.BookingModel.FindOne(l.ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
@@ -36,6 +40,9 @@ func (l *DetailLogic) Detail(req *types.DetailReq) (*types.Booking, error) {
 		}
 		l.Errorf("查询预约详情失败: %v", err)
 		return nil, common.ErrSystem
+	}
+	if b.UserId != userID {
+		return nil, common.ErrForbidden
 	}
 	resp := types.Booking(*b)
 	return &resp, nil

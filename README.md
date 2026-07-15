@@ -116,13 +116,14 @@ for migration in \
   scripts/db/20260713_diy_design_order_pricing.sql \
   scripts/db/20260713_media_live.sql \
   scripts/db/20260713_community.sql \
+	  scripts/db/20260715_booking_payment_slots_grpc.sql \
   scripts/db/20260715_seed_data_consistency.sql; do
   docker exec -i askxuan-mysql mysql -uroot -proot123 < "$migration"
 done
 docker exec -i askxuan-mysql mysql -uroot -proot123 < scripts/db/microservice-migration.sql
 ```
 
-`20260713_belief_codes.sql` 会把默认库中的寺院和法师存量数据同步到服务分库，再补充一级流派字段。`20260715_seed_data_consistency.sql` 会统一演示用户 ID、修复旧 DIY 金额、补齐寺院服务目录及缺失唯一索引；以上脚本均可重复执行。
+`20260713_belief_codes.sql` 会把默认库中的寺院和法师存量数据同步到服务分库，再补充一级流派字段。`20260715_booking_payment_slots_grpc.sql` 会迁移结构化时段、预约计价/支付快照和支付幂等键；`20260715_seed_data_consistency.sql` 会统一演示用户 ID、修复旧 DIY 金额、补齐寺院服务目录及缺失唯一索引。以上脚本均可重复执行。
 
 ## 闭环测试
 
@@ -134,6 +135,9 @@ make start-all
 
 # MVP-1 预约祈福闭环（10 步）：注册→登录→寺院/法师→预约→消息→管理台确认
 bash scripts/test-mvp1-closed-loop.sh
+
+# 预约权威计价、模拟支付、容量防超卖与 gRPC/响应丢失恢复（10 项）
+RUN_DISRUPTION=1 bash scripts/test-booking-payment-closed-loop.sh
 
 # MVP-2 DIY 定制闭环（16 步）：材料→设计→DIY订单→支付→加持→发货→物流→完成
 bash scripts/test-mvp2-diy-closed-loop.sh
@@ -295,16 +299,19 @@ curl http://localhost:8080/api/v1/temples/T001
 ### 3. 预约闭环（booking + message 经 RabbitMQ 联动）
 
 ```bash
-# 创建预约（需带 token）
+# 先查询指定日期的权威价格和剩余时段
+curl "http://localhost:8080/api/v1/bookings/availability?templeId=T001&serviceId=S001&date=2026-08-10"
+
+# 创建预约（需带 token；userId 和价格由服务端确定）
 curl -X POST http://localhost:8080/api/v1/bookings \
   -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
-  -d '{"userId":"1001","templeId":"T001","masterId":"M001","serviceId":"S001","bookingDate":"2026-07-10","timeSlot":"09:00-10:00","meritMoney":200,"meritMoneyTier":"大额"}'
-# 创建成功后，message-service 会收到 booking.events 事件并生成站内消息
+  -d '{"requestId":"client-uuid","templeId":"T001","masterId":"M001","serviceId":"S001","bookingDate":"2026-08-10","slotCode":"slot-1","meritMoney":200,"meritMoneyTier":"大额"}'
+# 本地 mock 支付成功后预约进入 pending，message-service 收到 booking.events 并生成站内消息
 
-# 状态流转：pending → confirmed
+# 用户只可取消自己的预约，寺院/法师确认使用管理端接口
 curl -X PUT http://localhost:8080/api/v1/bookings/B20260630001/status \
   -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
-  -d '{"status":"confirmed"}'
+  -d '{"status":"cancelled"}'
 
 # 查询站内消息
 curl "http://localhost:8080/api/v1/messages?userId=1001"

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package master;
+
+option go_package = "./master;master";
+
+message GetBookingMasterReq {
+  string master_code = 1;
+  int64 master_id = 2;
+}
+
+message BookingMaster {
+  int64 id = 1;
+  string code = 2;
+  string dharma_name = 3;
+  string temple_code = 4;
+  string shelf_status = 5;
+  string platform_status = 6;
+}
+
+service MasterBookingService {
+  rpc GetBookingMaster(GetBookingMasterReq) returns (BookingMaster);
+}

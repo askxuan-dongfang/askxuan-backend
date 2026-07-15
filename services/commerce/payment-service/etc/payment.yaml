@@ -1,6 +1,16 @@
 Name: payment-service
 Host: 0.0.0.0
 Port: 8090
+AppEnv: development
+Provider: mock
+
+PaymentRpc:
+  Name: payment.rpc
+  ListenOn: 127.0.0.1:9090
+  Etcd:
+    Hosts:
+      - localhost:2379
+    Key: payment.rpc
 
 # etcd 服务注册（供 gateway-service 动态发现）
 Etcd:

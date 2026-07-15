@@ -53,20 +53,24 @@ var (
 	ErrSessionNotFound       = &BizError{Code: 40412, Msg: "AI会话不存在"}
 	ErrBlessingNotFound      = &BizError{Code: 40413, Msg: "加持任务不存在"}
 	ErrTempleServiceNotFound = &BizError{Code: 40414, Msg: "寺院未提供该服务"}
+	ErrBookingSlotNotFound   = &BizError{Code: 40415, Msg: "预约时段不存在或已停用"}
 
 	// 业务冲突 40901-40999
-	ErrUserAlreadyExists    = &BizError{Code: 40901, Msg: "用户已存在"}
-	ErrBookingStatusInvalid = &BizError{Code: 40902, Msg: "预约状态流转非法"}
-	ErrStatusInvalid        = &BizError{Code: 40903, Msg: "状态流转非法"}
-	ErrDuplicateOperation   = &BizError{Code: 40904, Msg: "重复操作"}
-	ErrStockInsufficient    = &BizError{Code: 40905, Msg: "库存不足"}
-	ErrOrderStatusConflict  = &BizError{Code: 40906, Msg: "订单状态不允许此操作"}
+	ErrUserAlreadyExists     = &BizError{Code: 40901, Msg: "用户已存在"}
+	ErrBookingStatusInvalid  = &BizError{Code: 40902, Msg: "预约状态流转非法"}
+	ErrStatusInvalid         = &BizError{Code: 40903, Msg: "状态流转非法"}
+	ErrDuplicateOperation    = &BizError{Code: 40904, Msg: "重复操作"}
+	ErrStockInsufficient     = &BizError{Code: 40905, Msg: "库存不足"}
+	ErrOrderStatusConflict   = &BizError{Code: 40906, Msg: "订单状态不允许此操作"}
+	ErrBookingSlotFull       = &BizError{Code: 40907, Msg: "预约时段已满"}
+	ErrBookingPaymentExpired = &BizError{Code: 40908, Msg: "预约支付已过期"}
 
 	// 第三方服务错误 50201-50299
-	ErrPaymentService   = &BizError{Code: 50201, Msg: "支付服务异常"}
-	ErrLogisticsService = &BizError{Code: 50202, Msg: "物流服务异常"}
-	ErrOssService       = &BizError{Code: 50203, Msg: "对象存储服务异常"}
-	ErrAiService        = &BizError{Code: 50204, Msg: "AI服务异常"}
+	ErrPaymentService        = &BizError{Code: 50201, Msg: "支付服务异常"}
+	ErrLogisticsService      = &BizError{Code: 50202, Msg: "物流服务异常"}
+	ErrOssService            = &BizError{Code: 50203, Msg: "对象存储服务异常"}
+	ErrAiService             = &BizError{Code: 50204, Msg: "AI服务异常"}
+	ErrDependencyUnavailable = &BizError{Code: 50205, Msg: "依赖服务暂不可用"}
 )
 
 // BizError 业务错误类型，实现 error 接口

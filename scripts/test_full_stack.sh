@@ -188,7 +188,7 @@ R=$(curl -s --max-time 10 -H "Authorization: Bearer $T_TOKEN" "$GATEWAY/api/v1/a
 check "zrpc: temple→diy(blessing_task)" "0" "$(echo "$R" | json_code)" "通过zrpc查blessing_task"
 
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $C_TOKEN" "$GATEWAY/api/v1/bookings")
-check "跨库JOIN: booking→temple+master" "0" "$(echo "$R" | json_code)" ""
+check "预约独立库快照列表（无运行时跨库）" "0" "$(echo "$R" | json_code)" ""
 
 R=$(curl -s --max-time 10 -X POST "$GATEWAY/api/v1/auth/login" -H "Content-Type: application/json" -d '{"phone":"13800138001","password":"123456"}')
 check "跨库: auth→user(登录)" "0" "$(echo "$R" | json_code)" ""
@@ -214,20 +214,22 @@ else
   printf "  ✗ Redis 连接失败\n"
 fi
 
-# etcd: 检查 diy.rpc 注册（zrpc server 自动注册到 etcd）
-ETCD_KEYS=$(docker exec askxuan-etcd etcdctl --endpoints=http://127.0.0.1:2379 get "diy.rpc" --prefix --keys-only 2>/dev/null | grep -c "diy.rpc")
-if [ "$ETCD_KEYS" -ge 1 ]; then
-  PASS=$((PASS+1)); RESULTS+=("PASS etcd: diy.rpc 已注册")
-  printf "  ✓ etcd: diy.rpc 已注册 (%d 个实例)\n" "$ETCD_KEYS"
-else
-  if lsof -tiTCP:9088 -sTCP:LISTEN >/dev/null 2>&1; then
-    PASS=$((PASS+1)); RESULTS+=("PASS diy.rpc gRPC 9088 监听中")
-    printf "  ✓ diy.rpc gRPC 端口 9088 监听中\n"
+# etcd: 检查全部业务 zrpc 服务注册；端口监听作为本机开发兜底。
+for rpc in temple.rpc:9083 master.rpc:9084 diy.rpc:9088 payment.rpc:9090; do
+  key="${rpc%:*}"
+  port="${rpc#*:}"
+  ETCD_KEYS=$(docker exec askxuan-etcd etcdctl --endpoints=http://127.0.0.1:2379 get "$key" --prefix --keys-only 2>/dev/null | grep -c "$key")
+  if [ "$ETCD_KEYS" -ge 1 ]; then
+    PASS=$((PASS+1)); RESULTS+=("PASS etcd: $key 已注册")
+    printf "  ✓ etcd: %s 已注册 (%d 个实例)\n" "$key" "$ETCD_KEYS"
+  elif lsof -tiTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+    PASS=$((PASS+1)); RESULTS+=("PASS $key gRPC $port 监听中")
+    printf "  ✓ %s gRPC 端口 %s 监听中\n" "$key" "$port"
   else
-    FAIL=$((FAIL+1)); RESULTS+=("FAIL diy.rpc 未注册")
-    printf "  ✗ diy.rpc 未注册且 9088 未监听\n"
+    FAIL=$((FAIL+1)); RESULTS+=("FAIL $key 未注册")
+    printf "  ✗ %s 未注册且 %s 未监听\n" "$key" "$port"
   fi
-fi
+done
 
 # ===== 汇总 =====
 echo ""

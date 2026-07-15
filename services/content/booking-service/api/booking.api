@@ -19,15 +19,21 @@ type (
         ServiceId     string  `json:"serviceId"`     // 服务编码 S001
         ServiceName   string  `json:"serviceName"`   // 服务名称
         BookingDate   string  `json:"bookingDate"`   // 预约日期 yyyy-MM-dd
+        SlotCode      string  `json:"slotCode"`
         TimeSlot      string  `json:"timeSlot"`      // 时段 09:00-10:00
+        ServiceFee    float64 `json:"serviceFee"`
         MeritMoney    float64 `json:"meritMoney"`    // 功德金
         MeritMoneyTier string `json:"meritMoneyTier"` // 功德金档位
+        TotalFee      float64 `json:"totalFee"`
+        PaymentNo     string  `json:"paymentNo"`
+        PaymentStatus string  `json:"paymentStatus"`
         Status        string  `json:"status"`        // pending/confirmed/in_progress/completed/cancelled/reviewed
         Note          string  `json:"note"`          // 备注
         CreatedAt     string  `json:"createdAt"`     // 创建时间
     }
 
     CreateReq {
+        RequestId      string  `json:"requestId,optional"`
         UserId         string  `json:"userId"`
         TempleId       string  `json:"templeId"`
         TempleName     string  `json:"templeName,optional"`
@@ -36,16 +42,49 @@ type (
         ServiceId      string  `json:"serviceId"`
         ServiceName    string  `json:"serviceName,optional"`
         BookingDate    string  `json:"bookingDate"`
-        TimeSlot       string  `json:"timeSlot"`
+        SlotCode       string  `json:"slotCode,optional"`
+        TimeSlot       string  `json:"timeSlot,optional"`
         MeritMoney     float64 `json:"meritMoney"`
         MeritMoneyTier string  `json:"meritMoneyTier"`
         Note           string  `json:"note,optional"`
     }
 
     CreateResp {
-        Id     string `json:"id"`
-        Status string `json:"status"`
+        Id            string  `json:"id"`
+        Status        string  `json:"status"`
+        PaymentStatus string  `json:"paymentStatus"`
+        PaymentNo     string  `json:"paymentNo"`
+        ServiceFee    float64 `json:"serviceFee"`
+        MeritMoney    float64 `json:"meritMoney"`
+        TotalFee      float64 `json:"totalFee"`
+        Simulated     bool    `json:"simulated"`
     }
+
+    AvailabilityReq {
+        TempleId   string `form:"templeId"`
+        ServiceId  string `form:"serviceId"`
+        BookingDate string `form:"date"`
+    }
+
+    AvailableSlot {
+        SlotCode string `json:"slotCode"`
+        Label string `json:"label"`
+        TimeRange string `json:"timeRange"`
+        Capacity int `json:"capacity"`
+        Remaining int `json:"remaining"`
+        Available bool `json:"available"`
+    }
+
+    AvailabilityResp {
+        TempleId string `json:"templeId"`
+        ServiceId string `json:"serviceId"`
+        ServiceName string `json:"serviceName"`
+        BookingDate string `json:"bookingDate"`
+        ServiceFee float64 `json:"serviceFee"`
+        Slots []AvailableSlot `json:"slots"`
+    }
+
+    PayReq { Id string `path:"id"` }
 
     ListReq {
         UserId string `form:"userId,optional"`
@@ -159,8 +198,14 @@ type (
     prefix: /api/v1/bookings
 )
 service booking-service {
+    @handler availability
+    get /availability (AvailabilityReq) returns (AvailabilityResp)
+
     @handler create
     post / (CreateReq) returns (CreateResp)
+
+    @handler pay
+    post /:id/pay (PayReq) returns (CreateResp)
 
     @handler list
     get / (ListReq) returns (ListResp)

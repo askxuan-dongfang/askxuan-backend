@@ -42,3 +42,10 @@ DiyRpc:
       - localhost:2379
     Key: diy.rpc
 
+MasterRpc:
+  Name: master.rpc
+  ListenOn: 127.0.0.1:9084
+  Etcd:
+    Hosts:
+      - localhost:2379
+    Key: master.rpc

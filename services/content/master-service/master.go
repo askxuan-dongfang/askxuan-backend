@@ -12,6 +12,7 @@ import (
 	"github.com/askxuan/master-service/internal/handler"
 	"github.com/askxuan/master-service/internal/mq"
 	"github.com/askxuan/master-service/internal/svc"
+	"github.com/askxuan/master-service/rpc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -31,6 +32,8 @@ func main() {
 
 	svcCtx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, svcCtx)
+	rpcServer := rpc.MustStartMasterRpcServer(c, svcCtx)
+	defer rpcServer.Stop()
 
 	// 启动 RabbitMQ 消费者：监听 blessing.assign 分配事件
 	ctx, cancel := context.WithCancel(context.Background())

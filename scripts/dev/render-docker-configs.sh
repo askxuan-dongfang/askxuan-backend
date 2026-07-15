@@ -28,6 +28,9 @@ render_service() {
     s/http:\/\/127\.0\.0\.1:10002/http:\/\/host.docker.internal:10002/g;
     s/http:\/\/localhost:8080/http:\/\/gateway-service:8080/g;
     s/ListenOn: 127\.0\.0\.1:9088/ListenOn: 0.0.0.0:9088/g;
+    s/ListenOn: 127\.0\.0\.1:9083/ListenOn: 0.0.0.0:9083/g;
+    s/ListenOn: 127\.0\.0\.1:9084/ListenOn: 0.0.0.0:9084/g;
+    s/ListenOn: 127\.0\.0\.1:9090/ListenOn: 0.0.0.0:9090/g;
   ' "${dst}"/*.yaml
 }
 
@@ -51,6 +54,9 @@ render_service message  "${ROOT}/services/infrastructure/message-service/etc"
 render_service file     "${ROOT}/services/infrastructure/file-service/etc"
 render_service ai       "${ROOT}/services/infrastructure/ai-service/etc"
 render_service media    "${ROOT}/services/infrastructure/media-service/etc"
+
+# zrpc clients discover the container-local servers through the compose etcd.
+# The generic localhost replacement above also rewrites these etcd hosts.
 
 # Gateway uses static in-compose service names so it remains stable even before
 # any optional etcd discovery data is available.

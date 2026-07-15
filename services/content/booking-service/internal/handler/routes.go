@@ -20,8 +20,15 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	// JWT 鉴权配置（法师工作台接口需要登录）
 	authCfg := &middleware.AuthConfig{Secret: svcCtx.Config.AuthSecret}
 
-	// ============ C端分组 ============
-	server.AddRoutes([]rest.Route{
+	// 可用时段无需登录，金额与剩余容量均由服务端返回。
+	server.AddRoute(rest.Route{
+		Method:  http.MethodGet,
+		Path:    "/api/v1/bookings/availability",
+		Handler: availabilityHandler(svcCtx),
+	})
+
+	// ============ C端分组（需JWT） ============
+	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 		{
 			Method:  http.MethodPost,
 			Path:    "/api/v1/bookings",
@@ -36,6 +43,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Method:  http.MethodGet,
 			Path:    "/api/v1/bookings/:id",
 			Handler: detailHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/bookings/:id/pay",
+			Handler: payHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodPut,
@@ -53,7 +65,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/bookings/:id/review",
 			Handler: reviewDetailHandler(svcCtx),
 		},
-	})
+	}...))
 
 	// ============ 寺院管理台分组 ============
 	server.AddRoutes([]rest.Route{
@@ -125,6 +137,38 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 }
 
 // ============ C端 Handler ============
+
+func availabilityHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AvailabilityReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAvailabilityLogic(r.Context(), svcCtx).Availability(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func payHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.PayReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewPayLogic(r.Context(), svcCtx).Pay(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
 
 func createHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -56,7 +56,7 @@ ADMIN_RESP=$(curl -s -X POST "$BASE/api/v1/auth/admin/login" \
     -d '{"account":"admin","password":"123456"}')
 ADMIN_TOKEN=$(echo "$ADMIN_RESP" | jq -r '.data.accessToken // empty')
 if [ -n "$ADMIN_TOKEN" ]; then
-    pass "管理台登录（token=${ADMIN_TOKEN:0:20}...）"
+    pass "管理台登录（已取得 access token）"
 else
     fail "管理台登录失败: $ADMIN_RESP"
 fi
@@ -94,7 +94,7 @@ LOGIN_RESP=$(curl -s -X POST "$BASE/api/v1/auth/login" \
 TOKEN=$(echo "$LOGIN_RESP" | jq -r '.data.accessToken // empty')
 USER_ID=$(echo "$LOGIN_RESP" | jq -r '.data.userInfo.userId // empty')
 if [ -n "$TOKEN" ]; then
-    pass "用户登录（userId=$USER_ID, token=${TOKEN:0:20}...）"
+    pass "用户登录（userId=$USER_ID，已取得 access token）"
 else
     fail "用户登录失败: $LOGIN_RESP"
 fi

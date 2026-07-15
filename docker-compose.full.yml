@@ -123,6 +123,7 @@ services:
         BINARY: temple
     ports:
       - "8083:8083"
+      - "9083:9083"
     volumes:
       - ./.docker/etc/temple:/app/etc:ro
 
@@ -137,6 +138,7 @@ services:
         BINARY: master
     ports:
       - "8084:8084"
+      - "9084:9084"
     volumes:
       - ./.docker/etc/master:/app/etc:ro
 
@@ -208,6 +210,7 @@ services:
         BINARY: payment
     ports:
       - "8090:8090"
+      - "9090:9090"
     volumes:
       - ./.docker/etc/payment:/app/etc:ro
 

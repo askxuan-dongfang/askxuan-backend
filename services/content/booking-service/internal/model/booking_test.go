@@ -12,6 +12,8 @@ func TestCanTransit(t *testing.T) {
 		expect bool
 	}{
 		// 合法流转
+		{"pending_payment→pending", StatusPendingPayment, StatusPending, true},
+		{"pending_payment→cancelled", StatusPendingPayment, StatusCancelled, true},
 		{"pending→confirmed", StatusPending, StatusConfirmed, true},
 		{"pending→cancelled", StatusPending, StatusCancelled, true},
 		{"confirmed→in_progress", StatusConfirmed, StatusInProgress, true},
@@ -21,6 +23,7 @@ func TestCanTransit(t *testing.T) {
 		{"completed→reviewed", StatusCompleted, StatusReviewed, true},
 
 		// 非法流转（不能跳跃）
+		{"pending_payment→confirmed(未支付不能确认)", StatusPendingPayment, StatusConfirmed, false},
 		{"pending→in_progress(跳过确认)", StatusPending, StatusInProgress, false},
 		{"pending→completed(跳过确认和进行)", StatusPending, StatusCompleted, false},
 		{"confirmed→reviewed(跳过完成)", StatusConfirmed, StatusReviewed, false},

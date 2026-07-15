@@ -37,3 +37,11 @@ DiyRpc:
     Hosts:
       - localhost:2379
     Key: diy.rpc
+
+TempleRpc:
+  Name: temple.rpc
+  ListenOn: 127.0.0.1:9083
+  Etcd:
+    Hosts:
+      - localhost:2379
+    Key: temple.rpc

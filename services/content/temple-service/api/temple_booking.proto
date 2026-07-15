@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package temple;
+
+option go_package = "./temple;temple";
+
+message BookingSlot {
+  string code = 1;
+  string label = 2;
+  string start_time = 3;
+  string end_time = 4;
+  int64 capacity = 5;
+  string status = 6;
+}
+
+message GetBookingServiceReq {
+  string temple_code = 1;
+  string service_code = 2;
+}
+
+message BookingService {
+  string temple_code = 1;
+  string temple_name = 2;
+  string temple_status = 3;
+  string service_code = 4;
+  string service_name = 5;
+  double price = 6;
+  string service_status = 7;
+  repeated BookingSlot slots = 8;
+}
+
+service TempleBookingService {
+  rpc GetBookingService(GetBookingServiceReq) returns (BookingService);
+}

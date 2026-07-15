@@ -79,7 +79,7 @@ if [ -n "$TOKEN" ]; then
     if [ -z "$USER_ID" ]; then
         USER_ID=$(echo "$LOGIN_RESP" | jq -r '.data.userInfo.userId // empty')
     fi
-    pass "用户登录（token=${TOKEN:0:20}...）"
+    pass "用户登录（已取得 access token）"
 else
     fail "用户登录失败: $LOGIN_RESP"
 fi
@@ -115,16 +115,24 @@ fi
 
 # ===== 5. 创建预约 =====
 info "步骤 5/10: 创建预约"
+if date -v+30d +%F >/dev/null 2>&1; then
+    BOOKING_DATE=$(date -v+30d +%F)
+else
+    BOOKING_DATE=$(date -d '+30 days' +%F)
+fi
+AVAIL_RESP=$(curl -s "$BASE/api/v1/bookings/availability?templeId=T001&serviceId=S001&date=$BOOKING_DATE")
+SLOT_CODE=$(echo "$AVAIL_RESP" | jq -r '[.data.slots[] | select(.available == true) | .slotCode][0] // empty')
 BOOKING_RESP=$(curl -s -X POST "$BASE/api/v1/bookings" \
     -H "$AUTH_HEADER" \
     -H 'Content-Type: application/json' \
     -d "{
+        \"requestId\":\"mvp1-$MOBILE-$RANDOM\",
         \"userId\":\"$USER_ID\",
         \"templeId\":\"T001\",
         \"masterId\":\"M001\",
         \"serviceId\":\"S001\",
-        \"bookingDate\":\"2026-08-15\",
-        \"timeSlot\":\"09:00-10:00\",
+        \"bookingDate\":\"$BOOKING_DATE\",
+        \"slotCode\":\"$SLOT_CODE\",
         \"meritMoney\":200,
         \"meritMoneyTier\":\"中额\"
     }")
@@ -155,7 +163,7 @@ ADMIN_RESP=$(curl -s -X POST "$BASE/api/v1/auth/admin/login" \
     -d '{"account":"admin","password":"123456"}')
 ADMIN_TOKEN=$(echo "$ADMIN_RESP" | jq -r '.data.accessToken // empty')
 if [ -n "$ADMIN_TOKEN" ]; then
-    pass "管理台登录（token=${ADMIN_TOKEN:0:20}...）"
+    pass "管理台登录（已取得 access token）"
 else
     fail "管理台登录失败: $ADMIN_RESP"
 fi

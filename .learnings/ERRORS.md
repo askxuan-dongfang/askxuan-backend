@@ -28,6 +28,96 @@ Verify deployed columns with `SHOW COLUMNS` before writing cross-version data mi
 
 ---
 
+## [ERR-20260715-011] mysql-multitable-delete-needs-default-database
+
+**Logged**: 2026-07-15T23:59:00+08:00
+**Priority**: medium
+**Status**: resolved
+**Area**: acceptance-tests
+
+### Summary
+Fully qualified tables in a multi-table MySQL delete still failed with `ERROR 1046: No database selected` in the cleanup session.
+
+### Resolution
+Start the cleanup block with `USE askxuan_booking`; the acceptance rerun now leaves zero `accept-%` bookings and zero inventory mismatches.
+
+---
+
+## [ERR-20260715-009] docker-exec-heredoc-without-stdin
+
+**Logged**: 2026-07-15T23:56:00+08:00
+**Priority**: medium
+**Status**: resolved
+**Area**: acceptance-tests
+
+### Summary
+Acceptance cleanup used a heredoc with `docker exec` but omitted `-i`, so MySQL received no SQL while the command still exited successfully.
+
+### Resolution
+Use `docker exec -i` for heredoc input and target the payment service database `askxuan_payment`.
+
+---
+
+## [ERR-20260715-010] shell-backticks-in-rg-pattern
+
+**Logged**: 2026-07-15T23:56:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: inspection
+
+### Summary
+A double-quoted ripgrep pattern containing Markdown backticks triggered shell command substitution.
+
+### Resolution
+Use a single-quoted regex when searching SQL identifiers that contain backticks.
+
+---
+
+## [ERR-20260715-008] frontend-mock-package-path
+
+**Logged**: 2026-07-15T23:52:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: frontend-tests
+
+### Summary
+The Mock build was first invoked from nonexistent `packages/mock`.
+
+### Resolution
+Discover package paths from tracked `package.json` files; the actual package is `packages/mock-server`.
+
+---
+
+## [ERR-20260715-007] jwt-authoritative-user-still-required-by-parser
+
+**Logged**: 2026-07-15T23:46:00+08:00
+**Priority**: high
+**Status**: resolved
+**Area**: booking-api
+
+### Summary
+The booking create handler rejected the new JWT-authoritative request before business logic because `CreateReq.UserId` was still required by the go-zero HTTP parser.
+
+### Resolution
+Mark the compatibility `userId` field optional; business logic continues to reject a supplied ID that differs from the JWT subject.
+
+---
+
+## [ERR-20260715-006] go-work-root-recursive-pattern
+
+**Logged**: 2026-07-15T23:32:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+`go test ./common/... ./services/...` at the repository root fails because `services` is only a container for independent modules listed in `go.work`.
+
+### Resolution
+Read `go.work` and run `go test ./...` from each listed module; do not report the root recursive pattern as a full test.
+
+---
+
 ## [ERR-20260715-004] workspace root go test
 
 **Logged**: 2026-07-15T22:00:00+08:00
@@ -109,5 +199,33 @@ Add the least-privilege SELECT grant and distinguish `sqlx.ErrNotFound` from inf
 ### Metadata
 - Reproducible: yes
 - Related Files: scripts/db/microservice-migration.sql, services/content/booking-service/internal/logic/createlogic.go
+
+---
+## [ERR-20260715-004] gofmt-deleted-files
+
+**Logged**: 2026-07-15T22:20:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Formatting a raw `git diff --name-only` list failed because it included deleted Go files.
+
+### Resolution
+Format existing files from scoped service directories; when formatting a diff list, filter deleted paths first.
+
+---
+## [ERR-20260715-005] mobile-booking-query-inference
+
+**Logged**: 2026-07-15T23:20:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+The backup React Native client did not preserve callback parameter inference through its React Query setup.
+
+### Resolution
+Annotate service and availability slot callback values with the shared contract types.
 
 ---

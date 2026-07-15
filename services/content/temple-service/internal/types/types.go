@@ -106,15 +106,26 @@ type TempleImageDeleteReq struct {
 
 // TempleService 寺院自定义服务
 type TempleService struct {
-	Id          int64    `json:"id"`
-	TempleCode  string   `json:"templeCode"`
-	ServiceCode string   `json:"serviceCode"`
-	ServiceName string   `json:"serviceName"`
-	Price       float64  `json:"price"`
-	TimeSlots   []string `json:"timeSlots"`
-	IntentTags  []string `json:"intentTags"`
-	Status      string   `json:"status"`
-	CreateTime  string   `json:"createTime"`
+	Id          int64               `json:"id"`
+	TempleCode  string              `json:"templeCode"`
+	ServiceCode string              `json:"serviceCode"`
+	ServiceName string              `json:"serviceName"`
+	Price       float64             `json:"price"`
+	TimeSlots   []string            `json:"timeSlots"`
+	Slots       []TempleServiceSlot `json:"slots"`
+	IntentTags  []string            `json:"intentTags"`
+	Status      string              `json:"status"`
+	CreateTime  string              `json:"createTime"`
+}
+
+type TempleServiceSlot struct {
+	Code      string `json:"code"`
+	Label     string `json:"label"`
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
+	Capacity  int    `json:"capacity"`
+	Status    string `json:"status"`
+	Sort      int    `json:"sort"`
 }
 
 // TempleServiceListReq 服务列表请求（C端按寺院ID查询）
@@ -129,11 +140,12 @@ type TempleServiceListResp struct {
 
 // TempleServiceCreateReq 创建服务请求
 type TempleServiceCreateReq struct {
-	ServiceCode string   `json:"serviceCode"`
-	ServiceName string   `json:"serviceName"`
-	Price       float64  `json:"price"`
-	TimeSlots   []string `json:"timeSlots"`
-	IntentTags  []string `json:"intentTags,optional"`
+	ServiceCode string              `json:"serviceCode"`
+	ServiceName string              `json:"serviceName"`
+	Price       float64             `json:"price"`
+	TimeSlots   []string            `json:"timeSlots"`
+	Slots       []TempleServiceSlot `json:"slots,optional"`
+	IntentTags  []string            `json:"intentTags,optional"`
 }
 
 // TempleServiceCreateResp 创建服务响应
@@ -143,11 +155,12 @@ type TempleServiceCreateResp struct {
 
 // TempleServiceUpdateReq 更新服务请求
 type TempleServiceUpdateReq struct {
-	Id          int64    `path:"id"`
-	ServiceName string   `json:"serviceName,optional"`
-	Price       float64  `json:"price,optional"`
-	TimeSlots   []string `json:"timeSlots,optional"`
-	IntentTags  []string `json:"intentTags,optional"`
+	Id          int64               `path:"id"`
+	ServiceName string              `json:"serviceName,optional"`
+	Price       float64             `json:"price,optional"`
+	TimeSlots   []string            `json:"timeSlots,optional"`
+	Slots       []TempleServiceSlot `json:"slots,optional"`
+	IntentTags  []string            `json:"intentTags,optional"`
 }
 
 // TempleServiceStatusReq 服务上下架请求

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/askxuan/booking-service/internal/mq"
 	"github.com/askxuan/booking-service/internal/model"
+	"github.com/askxuan/booking-service/internal/mq"
 	"github.com/askxuan/booking-service/internal/svc"
 	"github.com/askxuan/booking-service/internal/types"
 	"github.com/askxuan/common"
@@ -45,6 +45,13 @@ func (l *CreateReviewLogic) CreateReview(req *types.ReviewCreateReq) (*types.Rev
 	}
 	if b.Status != model.StatusCompleted {
 		return nil, common.ErrBookingStatusInvalid
+	}
+	userID, authErr := authenticatedUserID(l.ctx)
+	if authErr != nil {
+		return nil, authErr
+	}
+	if b.UserId != userID {
+		return nil, common.ErrForbidden
 	}
 
 	// 2. 防重复评价（uk_booking 约束保证唯一）
@@ -115,6 +122,17 @@ func NewReviewDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Revi
 }
 
 func (l *ReviewDetailLogic) ReviewDetail(req *types.ReviewDetailReq) (*types.BookingReview, error) {
+	userID, authErr := authenticatedUserID(l.ctx)
+	if authErr != nil {
+		return nil, authErr
+	}
+	booking, err := l.svcCtx.BookingModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		return nil, common.ErrBookingNotFound
+	}
+	if booking.UserId != userID {
+		return nil, common.ErrForbidden
+	}
 	r, err := l.svcCtx.ReviewModel.FindOne(l.ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {

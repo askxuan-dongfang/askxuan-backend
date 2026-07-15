@@ -74,16 +74,17 @@ const (
 
 // Payment 支付表
 type Payment struct {
-	Id         int64   `db:"id" json:"id"`
-	PaymentNo  string  `db:"payment_no" json:"paymentNo"`
-	UserId     string  `db:"user_id" json:"userId"`
-	OrderType  string  `db:"order_type" json:"orderType"`
-	OrderNo    string  `db:"order_no" json:"orderNo"`
-	Amount     float64 `db:"amount" json:"amount"`
-	Channel    string  `db:"channel" json:"channel"`
-	Status     string  `db:"status" json:"status"`
-	TradeNo    string  `db:"trade_no" json:"tradeNo"`
-	CreateTime string  `db:"create_time" json:"createTime"`
+	Id             int64   `db:"id" json:"id"`
+	PaymentNo      string  `db:"payment_no" json:"paymentNo"`
+	IdempotencyKey string  `db:"idempotency_key" json:"idempotencyKey"`
+	UserId         string  `db:"user_id" json:"userId"`
+	OrderType      string  `db:"order_type" json:"orderType"`
+	OrderNo        string  `db:"order_no" json:"orderNo"`
+	Amount         float64 `db:"amount" json:"amount"`
+	Channel        string  `db:"channel" json:"channel"`
+	Status         string  `db:"status" json:"status"`
+	TradeNo        string  `db:"trade_no" json:"tradeNo"`
+	CreateTime     string  `db:"create_time" json:"createTime"`
 }
 
 // PaymentModel 支付模型接口
@@ -91,6 +92,8 @@ type PaymentModel interface {
 	Insert(ctx context.Context, data *Payment) (*Payment, error)
 	FindOne(ctx context.Context, id int64) (*Payment, error)
 	FindByPaymentNo(ctx context.Context, paymentNo string) (*Payment, error)
+	FindByIdempotencyKey(ctx context.Context, key string) (*Payment, error)
+	FindByOrder(ctx context.Context, orderType, orderNo string) (*Payment, error)
 	UpdateStatus(ctx context.Context, id int64, status, tradeNo string) (*Payment, error)
 }
 
@@ -112,8 +115,8 @@ func (m *defaultPaymentModel) Insert(ctx context.Context, data *Payment) (*Payme
 	}
 	data.CreateTime = time.Now().Format("2006-01-02 15:04:05")
 
-	const query = `INSERT INTO ` + paymentTable + ` (payment_no, user_id, order_type, order_no, amount, channel, status, trade_no, create_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	result, err := m.conn.ExecCtx(ctx, query, data.PaymentNo, data.UserId, data.OrderType, data.OrderNo, data.Amount, data.Channel, data.Status, data.TradeNo, data.CreateTime)
+	const query = `INSERT INTO ` + paymentTable + ` (payment_no, idempotency_key, user_id, order_type, order_no, amount, channel, status, trade_no, create_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	result, err := m.conn.ExecCtx(ctx, query, data.PaymentNo, nullIfEmpty(data.IdempotencyKey), data.UserId, data.OrderType, data.OrderNo, data.Amount, data.Channel, data.Status, data.TradeNo, data.CreateTime)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +131,7 @@ func (m *defaultPaymentModel) Insert(ctx context.Context, data *Payment) (*Payme
 // FindOne 按 ID 查询
 func (m *defaultPaymentModel) FindOne(ctx context.Context, id int64) (*Payment, error) {
 	var p Payment
-	query := `SELECT id, payment_no, user_id, order_type, order_no, amount, channel, status, trade_no, create_time FROM ` + paymentTable + ` WHERE id = ?`
+	query := `SELECT id, payment_no, COALESCE(idempotency_key,'') idempotency_key, user_id, order_type, order_no, amount, channel, status, trade_no, create_time FROM ` + paymentTable + ` WHERE id = ?`
 	err := m.conn.QueryRowCtx(ctx, &p, query, id)
 	if err != nil {
 		return nil, err
@@ -139,12 +142,37 @@ func (m *defaultPaymentModel) FindOne(ctx context.Context, id int64) (*Payment, 
 // FindByPaymentNo 按支付单号查询
 func (m *defaultPaymentModel) FindByPaymentNo(ctx context.Context, paymentNo string) (*Payment, error) {
 	var p Payment
-	query := `SELECT id, payment_no, user_id, order_type, order_no, amount, channel, status, trade_no, create_time FROM ` + paymentTable + ` WHERE payment_no = ?`
+	query := `SELECT id, payment_no, COALESCE(idempotency_key,'') idempotency_key, user_id, order_type, order_no, amount, channel, status, trade_no, create_time FROM ` + paymentTable + ` WHERE payment_no = ?`
 	err := m.conn.QueryRowCtx(ctx, &p, query, paymentNo)
 	if err != nil {
 		return nil, err
 	}
 	return &p, nil
+}
+
+func (m *defaultPaymentModel) FindByIdempotencyKey(ctx context.Context, key string) (*Payment, error) {
+	var p Payment
+	const query = `SELECT id,payment_no,COALESCE(idempotency_key,'') idempotency_key,user_id,order_type,order_no,amount,channel,status,trade_no,create_time FROM payment WHERE idempotency_key=?`
+	if err := m.conn.QueryRowCtx(ctx, &p, query, key); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+func (m *defaultPaymentModel) FindByOrder(ctx context.Context, orderType, orderNo string) (*Payment, error) {
+	var p Payment
+	const query = `SELECT id,payment_no,COALESCE(idempotency_key,'') idempotency_key,user_id,order_type,order_no,amount,channel,status,trade_no,create_time FROM payment WHERE order_type=? AND order_no=? ORDER BY id DESC LIMIT 1`
+	if err := m.conn.QueryRowCtx(ctx, &p, query, orderType, orderNo); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+func nullIfEmpty(value string) interface{} {
+	if value == "" {
+		return nil
+	}
+	return value
 }
 
 // UpdateStatus 更新支付状态与第三方交易号（调用方需先校验 CanPaymentTransit）

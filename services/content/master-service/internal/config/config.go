@@ -23,6 +23,7 @@ type Config struct {
 	AuthSecret string // JWT 签名密钥
 	Redis      redis.RedisConf
 	DiyRpc     zrpc.RpcClientConf // diy-service zrpc 客户端配置（查询 blessing_task）
+	MasterRpc  zrpc.RpcServerConf
 }
 
 // MySQLConf MySQL 数据源配置

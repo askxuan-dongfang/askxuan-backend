@@ -3,6 +3,8 @@ package logic
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/temple-service/internal/model"
@@ -252,6 +254,10 @@ func (l *AdminServiceCreateLogic) AdminServiceCreate(req *types.TempleServiceCre
 		l.Errorf("保存服务诉求标签失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	if err := l.svcCtx.TempleServiceModel.ReplaceSlots(l.ctx, id, requestSlots(req.Slots, req.TimeSlots)); err != nil {
+		l.Errorf("保存服务时段失败: %v", err)
+		return nil, common.ErrParamInvalid
+	}
 	return &types.TempleServiceCreateResp{Id: id}, nil
 }
 
@@ -304,6 +310,12 @@ func (l *AdminServiceUpdateLogic) AdminServiceUpdate(req *types.TempleServiceUpd
 			l.Errorf("更新服务诉求标签失败: %v", err)
 			return nil, common.ErrSystem
 		}
+	}
+	if req.Slots != nil || req.TimeSlots != nil {
+		if err := l.svcCtx.TempleServiceModel.ReplaceSlots(l.ctx, req.Id, requestSlots(req.Slots, req.TimeSlots)); err != nil {
+			return nil, common.ErrParamInvalid
+		}
+		record, _ = l.svcCtx.TempleServiceModel.FindOne(l.ctx, req.Id)
 	}
 	resp := toTypeTempleService(record)
 	if tags, tagErr := l.svcCtx.TempleServiceModel.FindIntentTags(l.ctx, req.Id); tagErr == nil {
@@ -570,17 +582,45 @@ func withTempleServiceSummary(t types.Temple, services []*model.TempleServiceRec
 
 // toTypeTempleService model.TempleServiceRecord -> types.TempleService
 func toTypeTempleService(s *model.TempleServiceRecord) types.TempleService {
+	slots := make([]types.TempleServiceSlot, 0, len(s.Slots))
+	timeSlots := make([]string, 0, len(s.Slots))
+	for _, slot := range s.Slots {
+		slots = append(slots, types.TempleServiceSlot{Code: slot.Code, Label: slot.Label, StartTime: slot.StartTime, EndTime: slot.EndTime, Capacity: slot.Capacity, Status: slot.Status, Sort: slot.Sort})
+		if slot.Status == "enabled" {
+			timeSlots = append(timeSlots, slot.StartTime+"-"+slot.EndTime)
+		}
+	}
+	if len(timeSlots) == 0 {
+		timeSlots = s.TimeSlots
+	}
 	return types.TempleService{
 		Id:          s.Id,
 		TempleCode:  s.TempleCode,
 		ServiceCode: s.ServiceCode,
 		ServiceName: s.ServiceName,
 		Price:       s.Price,
-		TimeSlots:   s.TimeSlots,
+		TimeSlots:   timeSlots,
+		Slots:       slots,
 		IntentTags:  []string{},
 		Status:      s.Status,
 		CreateTime:  s.CreateTime,
 	}
+}
+
+func requestSlots(slots []types.TempleServiceSlot, legacy []string) []model.TempleServiceSlot {
+	out := make([]model.TempleServiceSlot, 0, len(slots)+len(legacy))
+	for _, slot := range slots {
+		out = append(out, model.TempleServiceSlot{Code: slot.Code, Label: slot.Label, StartTime: slot.StartTime, EndTime: slot.EndTime, Capacity: slot.Capacity, Status: slot.Status, Sort: slot.Sort})
+	}
+	if len(out) == 0 {
+		for i, value := range legacy {
+			parts := strings.SplitN(value, "-", 2)
+			if len(parts) == 2 {
+				out = append(out, model.TempleServiceSlot{Code: fmt.Sprintf("slot_%02d", i+1), Label: fmt.Sprintf("时段%d", i+1), StartTime: parts[0], EndTime: parts[1], Capacity: 10, Status: "enabled", Sort: i + 1})
+			}
+		}
+	}
+	return out
 }
 
 // toTypeBlessingTask model.BlessingTask -> types.BlessingTask

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/askxuan/payment-service/internal/config"
@@ -14,6 +15,7 @@ import (
 	"github.com/askxuan/payment-service/internal/mq"
 	"github.com/askxuan/payment-service/internal/svc"
 	"github.com/askxuan/payment-service/internal/types"
+	"github.com/askxuan/payment-service/rpc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -27,12 +29,18 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	c.Provider = strings.ToLower(strings.TrimSpace(c.Provider))
+	if err := validatePaymentConfig(c); err != nil {
+		panic(err)
+	}
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
 
 	svcCtx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, svcCtx)
+	rpcServer := rpc.MustStartPaymentRpcServer(c, svcCtx)
+	defer rpcServer.Stop()
 
 	// 启动 RabbitMQ 消费者：监听 order.events 的 refund.request 消息
 	ctx, cancel := context.WithCancel(context.Background())
@@ -49,6 +57,15 @@ func main() {
 
 	fmt.Printf("启动 payment-service，监听 %s:%d\n", c.Host, c.Port)
 	server.Start()
+}
+
+func validatePaymentConfig(c config.Config) error {
+	env := strings.ToLower(strings.TrimSpace(c.AppEnv))
+	provider := strings.ToLower(strings.TrimSpace(c.Provider))
+	if (env == "prod" || env == "production") && provider == "mock" {
+		return fmt.Errorf("%s environment must not use mock payment provider", env)
+	}
+	return nil
 }
 
 // startRefundRequestConsumer 启动 refund.request 消费者。
