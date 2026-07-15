@@ -3,11 +3,21 @@ package model
 import (
 	"context"
 	"errors"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
+
+func TestDiyOrderRowsNormalizeLegacyNullableFields(t *testing.T) {
+	for _, column := range []string{"source", "creator_id", "design_snapshot", "pricing_snapshot"} {
+		if !strings.Contains(diyOrderRows, "COALESCE("+column+",'')") {
+			t.Fatalf("legacy nullable column %s is not normalized", column)
+		}
+	}
+}
 
 func TestCreatePricedOrderIgnoresSnapshotPrice(t *testing.T) {
 	db, mock, err := sqlmock.New()
@@ -92,7 +102,7 @@ func TestCreatorEarningCreatedOnlyAfterPaymentSuccess(t *testing.T) {
 	conn := sqlx.NewSqlConnFromDB(db)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT " + diyOrderRows + " FROM diy_order").WithArgs("DIY001").WillReturnRows(
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT " + diyOrderRows + " FROM diy_order")).WithArgs("DIY001").WillReturnRows(
 		sqlmock.NewRows([]string{"id", "order_no", "user_id", "design_id", "material_fee", "bless_fee", "total_fee", "status", "payment_status", "address_id", "source", "creator_id", "creator_share_rate", "original_material_fee", "price_changed", "design_snapshot", "pricing_snapshot", "create_time", "update_time"}).
 			AddRow(12, "DIY001", "buyer", 9, 100.0, 0.0, 100.0, DiyStatusPendingReview, "pending", 1, "design_square", "creator", 0.1, 100.0, 0, "{}", "{}", "2026-07-13", "2026-07-13"),
 	)
@@ -117,7 +127,7 @@ func TestCancelAndRestockUsesSingleTransaction(t *testing.T) {
 	conn := sqlx.NewSqlConnFromDB(db)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT " + diyOrderRows + " FROM askxuan_diy.diy_order").WithArgs(int64(12)).WillReturnRows(
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT " + diyOrderRows + " FROM askxuan_diy.diy_order")).WithArgs(int64(12)).WillReturnRows(
 		sqlmock.NewRows([]string{"id", "order_no", "user_id", "design_id", "material_fee", "bless_fee", "total_fee", "status", "payment_status", "address_id", "source", "creator_id", "creator_share_rate", "original_material_fee", "price_changed", "design_snapshot", "pricing_snapshot", "create_time", "update_time"}).
 			AddRow(12, "DIY001", "buyer", 9, 60.0, 0.0, 60.0, DiyStatusPendingReview, "pending", 1, "design_square", "creator", 0.0, 2.0, 1, "{}", "{}", "2026-07-13", "2026-07-13"),
 	)
@@ -151,7 +161,7 @@ func TestCancelAndRestockRollsBackOnInventoryFailure(t *testing.T) {
 	conn := sqlx.NewSqlConnFromDB(db)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT " + diyOrderRows + " FROM askxuan_diy.diy_order").WillReturnRows(
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT " + diyOrderRows + " FROM askxuan_diy.diy_order")).WillReturnRows(
 		sqlmock.NewRows([]string{"id", "order_no", "user_id", "design_id", "material_fee", "bless_fee", "total_fee", "status", "payment_status", "address_id", "source", "creator_id", "creator_share_rate", "original_material_fee", "price_changed", "design_snapshot", "pricing_snapshot", "create_time", "update_time"}).
 			AddRow(12, "DIY001", "buyer", 9, 60.0, 0.0, 60.0, DiyStatusPendingReview, "pending", 1, "design_square", "creator", 0.0, 2.0, 1, "{}", "{}", "2026-07-13", "2026-07-13"),
 	)

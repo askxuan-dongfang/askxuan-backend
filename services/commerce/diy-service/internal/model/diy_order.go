@@ -100,7 +100,9 @@ type DiyOrder struct {
 	UpdateTime          string  `db:"update_time" json:"updateTime"`
 }
 
-const diyOrderRows = "id,order_no,user_id,design_id,material_fee,bless_fee,total_fee,status,payment_status,address_id,source,creator_id,creator_share_rate,original_material_fee,price_changed,design_snapshot,pricing_snapshot,create_time,update_time"
+// Legacy orders predate immutable snapshots, so normalize their nullable fields
+// at the query boundary instead of making every caller handle sql.NullString.
+const diyOrderRows = "id,order_no,user_id,design_id,material_fee,bless_fee,total_fee,status,payment_status,address_id,COALESCE(source,''),COALESCE(creator_id,''),creator_share_rate,original_material_fee,price_changed,COALESCE(design_snapshot,''),COALESCE(pricing_snapshot,''),create_time,update_time"
 
 // DiyOrderModel DIY订单模型接口
 type DiyOrderModel interface {

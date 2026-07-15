@@ -82,6 +82,7 @@ GRANT SELECT ON askxuan_temple.temple TO 'master_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_booking.* TO 'booking_user'@'%';
 GRANT SELECT ON askxuan_temple.temple TO 'booking_user'@'%';
 GRANT SELECT ON askxuan_temple.service_type TO 'booking_user'@'%';
+GRANT SELECT ON askxuan_temple.temple_service TO 'booking_user'@'%';
 GRANT SELECT ON askxuan_master.master TO 'booking_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_review.* TO 'review_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_product.* TO 'product_user'@'%';

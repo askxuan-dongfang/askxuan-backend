@@ -2,14 +2,16 @@ package logic
 
 import (
 	"context"
+	"errors"
 
-	"github.com/askxuan/booking-service/internal/mq"
 	"github.com/askxuan/booking-service/internal/model"
+	"github.com/askxuan/booking-service/internal/mq"
 	"github.com/askxuan/booking-service/internal/svc"
 	"github.com/askxuan/booking-service/internal/types"
 	"github.com/askxuan/common"
 
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 // CreateLogic 创建预约逻辑
@@ -30,7 +32,7 @@ func NewCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CreateLogi
 // Create 创建预约
 // 1. 参数校验 2. 校验寺院/法师存在性 3. 落库（MySQL） 4. 记录初始状态日志 5. 发送 booking.notify 事件（不阻塞主流程）
 func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
-	if req.UserId == "" || req.TempleId == "" || req.MasterId == "" || req.BookingDate == "" {
+	if req.UserId == "" || req.TempleId == "" || req.MasterId == "" || req.ServiceId == "" || req.BookingDate == "" || req.TimeSlot == "" || req.MeritMoney < 0 {
 		return nil, common.ErrParam
 	}
 
@@ -53,6 +55,21 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 	if master.ShelfStatus != "on_shelf" {
 		return nil, common.NewBizError(40308, "法师当前不可预约")
 	}
+	if master.TempleCode != req.TempleId {
+		return nil, common.NewBizError(40309, "法师不属于所选寺院")
+	}
+
+	service, err := l.svcCtx.TempleReadonlyModel.FindService(l.ctx, req.TempleId, req.ServiceId)
+	if err != nil {
+		l.Errorf("查询寺院服务失败 templeId=%s serviceId=%s: %v", req.TempleId, req.ServiceId, err)
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrTempleServiceNotFound
+		}
+		return nil, common.ErrSystem
+	}
+	if service.Status != "on_shelf" {
+		return nil, common.NewBizError(40310, "寺院服务当前不可预约")
+	}
 
 	created, err := l.svcCtx.BookingModel.Insert(l.ctx, &model.Booking{
 		UserId:         req.UserId,
@@ -61,7 +78,7 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 		MasterId:       req.MasterId,
 		MasterName:     master.DharmaName,
 		ServiceId:      req.ServiceId,
-		ServiceName:    req.ServiceName,
+		ServiceName:    service.ServiceName,
 		BookingDate:    req.BookingDate,
 		TimeSlot:       req.TimeSlot,
 		MeritMoney:     req.MeritMoney,

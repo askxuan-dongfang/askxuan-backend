@@ -22,6 +22,7 @@ render_service() {
     s/localhost:6379/redis:6379/g;
     s/localhost:2379/etcd:2379/g;
     s/http:\/\/localhost:2379/http:\/\/etcd:2379/g;
+    s/(^  Batcher: jaeger$)/$1\n  Disabled: true/gm;
     s/Host: localhost/Host: rabbitmq/g;
     s/^  Endpoint: localhost:9000/  Endpoint: minio:9000/gm;
     s/http:\/\/127\.0\.0\.1:10002/http:\/\/host.docker.internal:10002/g;

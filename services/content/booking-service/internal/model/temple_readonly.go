@@ -9,6 +9,7 @@ import (
 // TempleReadonlyModel 预约服务只读访问寺院表（跨库查询 askxuan.temple）
 type TempleReadonlyModel interface {
 	FindByCode(ctx context.Context, code string) (*TempleBrief, error)
+	FindService(ctx context.Context, templeCode, serviceCode string) (*TempleServiceBrief, error)
 }
 
 // TempleBrief 寺寺简要信息
@@ -17,6 +18,12 @@ type TempleBrief struct {
 	Code   string `db:"code"`
 	Name   string `db:"name"`
 	Status string `db:"status"`
+}
+
+type TempleServiceBrief struct {
+	ServiceCode string `db:"service_code"`
+	ServiceName string `db:"service_name"`
+	Status      string `db:"status"`
 }
 
 type templeReadonlyModel struct {
@@ -37,4 +44,13 @@ func (m *templeReadonlyModel) FindByCode(ctx context.Context, code string) (*Tem
 		return nil, err
 	}
 	return &t, nil
+}
+
+func (m *templeReadonlyModel) FindService(ctx context.Context, templeCode, serviceCode string) (*TempleServiceBrief, error) {
+	var service TempleServiceBrief
+	const query = `SELECT service_code, service_name, status FROM askxuan_temple.temple_service WHERE temple_code = ? AND service_code = ?`
+	if err := m.conn.QueryRowCtx(ctx, &service, query, templeCode, serviceCode); err != nil {
+		return nil, err
+	}
+	return &service, nil
 }

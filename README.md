@@ -115,13 +115,14 @@ for migration in \
   scripts/db/20260713_ai_persistence.sql \
   scripts/db/20260713_diy_design_order_pricing.sql \
   scripts/db/20260713_media_live.sql \
-  scripts/db/20260713_community.sql; do
+  scripts/db/20260713_community.sql \
+  scripts/db/20260715_seed_data_consistency.sql; do
   docker exec -i askxuan-mysql mysql -uroot -proot123 < "$migration"
 done
 docker exec -i askxuan-mysql mysql -uroot -proot123 < scripts/db/microservice-migration.sql
 ```
 
-`20260713_belief_codes.sql` 会把默认库中的寺院和法师存量数据同步到服务分库，再补充一级流派字段；脚本可重复执行。
+`20260713_belief_codes.sql` 会把默认库中的寺院和法师存量数据同步到服务分库，再补充一级流派字段。`20260715_seed_data_consistency.sql` 会统一演示用户 ID、修复旧 DIY 金额、补齐寺院服务目录及缺失唯一索引；以上脚本均可重复执行。
 
 ## 闭环测试
 

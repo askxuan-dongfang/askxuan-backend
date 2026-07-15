@@ -252,9 +252,9 @@ CREATE TABLE `booking` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预约订单表';
 
 INSERT INTO `booking` (`booking_no`,`user_id`,`temple_code`,`master_code`,`service_code`,`booking_date`,`time_slot`,`merit_money`,`merit_money_tier`,`status`,`note`,`create_time`) VALUES
-('B20260630001',1001,'T001','M001','S001','2026-07-05','09:00-10:00',200.00,'大额','pending','为家人祈求平安健康。','2026-06-30 08:30:00'),
-('B20260628002',1002,'T003','M003','S005','2026-07-02','14:00-15:30',500.00,'不限额','confirmed','为先人超度往生，请法师主持法事。','2026-06-28 16:20:00'),
-('B20260615003',1001,'T002','M002','S007','2026-06-20','10:00-11:00',100.00,'中额','completed','本命年化太岁，祈求流年顺利。','2026-06-15 19:45:00');
+('B20260630001',1,'T001','M001','S001','2026-07-05','09:00-10:00',200.00,'大额','pending','为家人祈求平安健康。','2026-06-30 08:30:00'),
+('B20260628002',2,'T003','M003','S005','2026-07-02','14:00-15:30',500.00,'不限额','confirmed','为先人超度往生，请法师主持法事。','2026-06-28 16:20:00'),
+('B20260615003',1,'T002','M002','S007','2026-06-20','10:00-11:00',100.00,'中额','completed','本命年化太岁，祈求流年顺利。','2026-06-15 19:45:00');
 
 -- ----------------------------
 -- 8. 站内消息表 message
@@ -274,9 +274,9 @@ CREATE TABLE `message` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站内消息表';
 
 INSERT INTO `message` (`user_id`,`title`,`content`,`biz_type`,`biz_id`,`is_read`,`create_time`) VALUES
-('1001','预约已创建','您的预约（灵隐寺·祈福）已提交，请等待寺院确认。','booking','B20260630001',0,'2026-06-30 08:30:05'),
-('1002','预约已确认','您的预约（少林寺·超度）已被寺院确认，请按时到达。','booking','B20260628002',0,'2026-06-28 17:00:00'),
-('1001','预约已完成','您的预约（白云观·化太岁）已完成，感谢您的功德。','booking','B20260615003',1,'2026-06-20 11:30:00');
+('1','预约已创建','您的预约（灵隐寺·祈福）已提交，请等待寺院确认。','booking','B20260630001',0,'2026-06-30 08:30:05'),
+('2','预约已确认','您的预约（少林寺·超度）已被寺院确认，请按时到达。','booking','B20260628002',0,'2026-06-28 17:00:00'),
+('1','预约已完成','您的预约（白云观·化太岁）已完成，感谢您的功德。','booking','B20260615003',1,'2026-06-20 11:30:00');
 
 -- ----------------------------
 -- 9. 功德金档位表 merit_money_tier（数据字典第6节）
@@ -329,10 +329,11 @@ CREATE TABLE IF NOT EXISTS `admin_account` (
   KEY `idx_role` (`role_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理台账号';
 
-INSERT INTO `admin_account` (`account`,`password`,`name`,`role_id`,`temple_id`,`master_id`,`status`,`create_time`) VALUES
-('admin','123456','平台超管',1,'','','enabled','2026-07-01 00:00:00'),
-('lingyin_admin','123456','灵隐寺管理员',2,'T001','','enabled','2026-07-01 00:00:00'),
-('zhihai','123456','智海法师',3,'T001','M001','enabled','2026-07-01 00:00:00');
+INSERT INTO `admin_account` (`id`,`account`,`password`,`name`,`role_id`,`temple_id`,`master_id`,`status`,`create_time`) VALUES
+(1,'admin','123456','平台超管',1,'','','enabled','2026-07-01 00:00:00'),
+(2,'lingyin_admin','123456','灵隐寺管理员',2,'T001','','enabled','2026-07-01 00:00:00'),
+(3,'zhihai','123456','智海法师',3,'T001','M001','enabled','2026-07-01 00:00:00'),
+(4,'baiyun_admin','123456','白云观管理员',2,'T002','','enabled','2026-07-01 00:00:00');
 
 CREATE TABLE IF NOT EXISTS `role` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -413,7 +414,7 @@ CREATE TABLE IF NOT EXISTS `user_address` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收货地址';
 
 INSERT INTO `user_address` (`user_id`,`name`,`phone`,`province`,`city`,`district`,`detail`,`is_default`,`create_time`) VALUES
-(1001,'善信居士','13800138000','浙江省','杭州市','西湖区','灵隐路法云弄1号',1,'2026-06-30 10:00:00');
+(1,'善信居士','13800138000','浙江省','杭州市','西湖区','灵隐路法云弄1号',1,'2026-06-30 10:00:00');
 
 CREATE TABLE IF NOT EXISTS `user_profile` (
   `user_id` BIGINT NOT NULL COMMENT '用户ID',
@@ -426,7 +427,7 @@ CREATE TABLE IF NOT EXISTS `user_profile` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户画像';
 
 INSERT INTO `user_profile` (`user_id`,`preference_tags`,`total_orders`,`total_spent`,`last_active_time`) VALUES
-(1001,'祈福,开光',3,600.00,'2026-06-30 18:00:00');
+(1,'祈福,开光',3,600.00,'2026-06-30 18:00:00');
 
 -- ============================================================
 -- 三、寺院域 askxuan_temple（temple_image/temple_admin/temple_audit/temple_service/service_schedule）
@@ -472,8 +473,8 @@ CREATE TABLE IF NOT EXISTS `temple_admin` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院管理员关联';
 
 INSERT INTO `temple_admin` (`temple_code`,`account_id`,`role`,`create_time`) VALUES
-('T001',1001,'admin','2026-07-01 00:00:00'),
-('T002',1002,'admin','2026-07-01 00:00:00');
+('T001',2,'admin','2026-07-01 00:00:00'),
+('T002',4,'admin','2026-07-01 00:00:00');
 
 CREATE TABLE IF NOT EXISTS `temple_audit` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -665,7 +666,7 @@ CREATE TABLE IF NOT EXISTS `booking_status_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预约状态变更日志';
 
 INSERT INTO `booking_status_log` (`booking_id`,`from_status`,`to_status`,`operator_id`,`operator_type`,`remark`,`create_time`) VALUES
-('B20260630001','','pending','1001','user','用户创建预约','2026-06-30 08:30:00');
+('B20260630001','','pending','1','user','用户创建预约','2026-06-30 08:30:00');
 
 CREATE TABLE IF NOT EXISTS `booking_review` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -682,7 +683,7 @@ CREATE TABLE IF NOT EXISTS `booking_review` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预约评价';
 
 INSERT INTO `booking_review` (`booking_id`,`user_id`,`rating`,`content`,`images`,`master_reply`,`create_time`) VALUES
-('B20260615003','1001',5,'白云观化太岁法事非常灵验，清风道长态度慈悲。','["/assets/review-baimasi-1.jpg"]','感恩居士加持，福生无量天尊。','2026-06-21 10:00:00');
+('B20260615003','1',5,'白云观化太岁法事非常灵验，清风道长态度慈悲。','["/assets/review-baimasi-1.jpg"]','感恩居士加持，福生无量天尊。','2026-06-21 10:00:00');
 
 -- ============================================================
 -- 六、消息域 askxuan_message（message/message_template/push_log）
@@ -930,7 +931,7 @@ CREATE TABLE IF NOT EXISTS `diy_design` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='DIY设计';
 
 INSERT INTO `diy_design` (`design_no`,`user_id`,`name`,`design_data`,`total_price`,`status`,`bless_service_code`,`create_time`) VALUES
-('DD20260628001','1001','紫檀开光手串','{"name":"紫檀开光手串","materials":["小叶紫檀圆珠","蜜蜡佛头"]}',336.00,'pending_review','E001','2026-06-28 14:00:00');
+('DD20260628001','1','紫檀开光手串','{"name":"紫檀开光手串","materials":["小叶紫檀圆珠","蜜蜡佛头"]}',336.00,'pending_review','E001','2026-06-28 14:00:00');
 
 CREATE TABLE IF NOT EXISTS `diy_order` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -959,7 +960,7 @@ CREATE TABLE IF NOT EXISTS `diy_order` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='DIY订单';
 
 INSERT INTO `diy_order` (`order_no`,`user_id`,`design_id`,`material_fee`,`bless_fee`,`total_fee`,`status`,`address_id`,`create_time`) VALUES
-('DIY20260630001','1001',1,336.00,168.00,504.00,'awaiting_blessing',1,'2026-06-30 10:00:00');
+('DIY20260630001','1',1,348.00,168.00,516.00,'awaiting_blessing',1,'2026-06-30 10:00:00');
 
 CREATE TABLE IF NOT EXISTS `diy_order_item` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -1057,7 +1058,7 @@ CREATE TABLE IF NOT EXISTS `shop_order` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商城订单';
 
 INSERT INTO `shop_order` (`order_no`,`user_id`,`total_amount`,`pay_amount`,`status`,`address_id`,`create_time`) VALUES
-('SO20260620001','1001',388.00,388.00,'shipped',1,'2026-06-20 09:00:00');
+('SO20260620001','1',388.00,388.00,'shipped',1,'2026-06-20 09:00:00');
 
 CREATE TABLE IF NOT EXISTS `shop_order_item` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -1129,7 +1130,7 @@ CREATE TABLE IF NOT EXISTS `payment` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付单';
 
 INSERT INTO `payment` (`payment_no`,`user_id`,`order_type`,`order_no`,`amount`,`channel`,`status`,`trade_no`,`create_time`) VALUES
-('PAY20260620001','1001','shop_order','SO20260620001',388.00,'wechat','success','420000000020260620001','2026-06-20 09:05:00');
+('PAY20260620001','1','shop_order','SO20260620001',388.00,'wechat','success','420000000020260620001','2026-06-20 09:05:00');
 
 CREATE TABLE IF NOT EXISTS `payment_log` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -1281,9 +1282,9 @@ CREATE TABLE IF NOT EXISTS `review` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评价';
 
 INSERT INTO `review` (`review_no`,`user_id`,`target_type`,`target_id`,`rating`,`content`,`images`,`status`,`create_time`) VALUES
-('RV20260620001','1001','booking','B20260615003',5,'清风道长非常专业，化太岁仪式庄重，感觉很安心。','["https://oss.askxuan.com/rv/1.jpg"]','normal','2026-06-20 18:00:00'),
-('RV20260625002','1002','booking','B20260628002',4,'释延心法师超度法事很用心，整体体验不错。','[]','normal','2026-06-25 20:30:00'),
-('RV20260628003','1001','shop_order','SO20260620001',5,'小叶紫檀手串品质很好，包装精美，非常满意！','["https://oss.askxuan.com/rv/2.jpg","https://oss.askxuan.com/rv/3.jpg"]','normal','2026-06-28 10:00:00');
+('RV20260620001','1','booking','B20260615003',5,'清风道长非常专业，化太岁仪式庄重，感觉很安心。','["https://oss.askxuan.com/rv/1.jpg"]','normal','2026-06-20 18:00:00'),
+('RV20260625002','2','booking','B20260628002',4,'释延心法师超度法事很用心，整体体验不错。','[]','normal','2026-06-25 20:30:00'),
+('RV20260628003','1','shop_order','SO20260620001',5,'小叶紫檀手串品质很好，包装精美，非常满意！','["https://oss.askxuan.com/rv/2.jpg","https://oss.askxuan.com/rv/3.jpg"]','normal','2026-06-28 10:00:00');
 
 CREATE TABLE IF NOT EXISTS `review_reply` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -1340,10 +1341,10 @@ CREATE TABLE IF NOT EXISTS `audit_queue` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审核队列';
 
 INSERT INTO `audit_queue` (`biz_type`,`biz_id`,`submitter_id`,`content_snapshot`,`status`,`create_time`) VALUES
-('design','DD20260628001','1001','{"name":"紫檀开光手串","materials":["小叶紫檀","蜜蜡佛头"]}','pending','2026-06-28 14:00:00'),
+('design','DD20260628001','1','{"name":"紫檀开光手串","materials":["小叶紫檀","蜜蜡佛头"]}','pending','2026-06-28 14:00:00'),
 ('temple','T005','T005','{"name":"普陀山","type":"汉传佛教","status":"待审核"}','pending','2026-06-29 10:00:00'),
 ('master','M005','T005','{"name":"慧明法师","credential":"戒牒编号XXX"}','pending','2026-06-29 11:00:00'),
-('design','DD20260620002','1002','{"name":"星月菩提手串","materials":["星月菩提","白水晶隔片"]}','approved','2026-06-20 15:00:00');
+('design','DD20260620002','2','{"name":"星月菩提手串","materials":["星月菩提","白水晶隔片"]}','approved','2026-06-20 15:00:00');
 
 CREATE TABLE IF NOT EXISTS `audit_log` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -1377,8 +1378,8 @@ CREATE TABLE IF NOT EXISTS `report` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='举报';
 
 INSERT INTO `report` (`reporter_id`,`target_type`,`target_id`,`reason`,`evidence_urls`,`status`,`handler_id`,`handle_result`,`create_time`) VALUES
-('1002','design','DD20260615001','设计涉及侵权','["https://oss.askxuan.com/report/1.jpg"]','pending','','','2026-06-26 09:00:00'),
-('1001','comment','RV20260610005','评论内容含不当言论','[]','handled','ADMIN001','已删除违规评论','2026-06-22 14:00:00');
+('2','design','DD20260615001','设计涉及侵权','["https://oss.askxuan.com/report/1.jpg"]','pending','','','2026-06-26 09:00:00'),
+('1','comment','RV20260610005','评论内容含不当言论','[]','handled','ADMIN001','已删除违规评论','2026-06-22 14:00:00');
 
 CREATE TABLE IF NOT EXISTS `sensitive_word` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -1564,7 +1565,7 @@ CREATE TABLE IF NOT EXISTS `coupon_record` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='领券记录';
 
 INSERT INTO `coupon_record` (`coupon_id`,`coupon_no`,`user_id`,`status`,`create_time`) VALUES
-(1,'C20260700001','1001','unused','2026-06-29 09:00:00');
+(1,'C20260700001','1','unused','2026-06-29 09:00:00');
 
 -- ============================================================
 -- 十六、AI域 askxuan_ai（ai_session/ai_message/ai_skill）
@@ -1613,7 +1614,7 @@ CREATE TABLE IF NOT EXISTS `ai_session` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI会话';
 
 INSERT INTO `ai_session` (`session_no`,`user_id`,`skill_code`,`title`,`status`,`create_time`,`update_time`) VALUES
-('AI20260630001','1001','bazi','今年的事业运势','active','2026-06-30 09:00:00','2026-06-30 09:00:00');
+('AI20260630001','1','bazi','今年的事业运势','active','2026-06-30 09:00:00','2026-06-30 09:00:00');
 
 CREATE TABLE IF NOT EXISTS `ai_message` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
