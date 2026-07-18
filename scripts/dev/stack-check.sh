@@ -12,7 +12,7 @@ fail=0
 check_http() {
   local name="$1"
   local url="$2"
-  if curl -fsS "${url}" >/dev/null 2>&1; then
+  if curl --connect-timeout 3 --max-time 10 -fsS "${url}" >/dev/null 2>&1; then
     echo "OK: ${name} ${url}"
   else
     echo "ERROR: ${name} ${url}"
@@ -22,13 +22,13 @@ check_http() {
 
 check_http "askXuan gateway" "http://127.0.0.1:8080/api/v1/health"
 
-if curl -fsS -X POST http://127.0.0.1:10002/auth/get_admin_token \
+if curl --connect-timeout 3 --max-time 10 -fsS -X POST http://127.0.0.1:10002/auth/get_admin_token \
   -H 'Content-Type: application/json' \
   -H "operationID: askxuan-stack-check" \
   -d '{"secret":"openIM123","userID":"imAdmin"}' >/dev/null 2>&1; then
   echo "OK: OpenIM REST admin token"
 else
-  echo "ERROR: OpenIM REST admin token"
+  echo "ERROR: OpenIM REST admin token（运行 make openim-up 可恢复宿主服务）"
   fail=1
 fi
 

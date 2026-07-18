@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 
+	"github.com/askxuan/common"
 	"github.com/askxuan/review-service/internal/model"
 	"github.com/askxuan/review-service/internal/svc"
 	"github.com/askxuan/review-service/internal/types"
@@ -27,7 +28,11 @@ func NewAdminReviewListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *A
 
 // AdminReviewList 管理台评价列表，支持按 status 筛选（含hidden）
 func (l *AdminReviewListLogic) AdminReviewList(req *types.AdminReviewListReq) (*types.AdminReviewListResp, error) {
-	list, total := model.ListReviews(req.TargetType, req.TargetId, "", req.Rating, req.Status, "", req.Page, req.Size)
+	list, total, err := model.ListReviews(l.ctx, req.TargetType, req.TargetId, "", req.Rating, req.Status, "", req.Page, req.Size)
+	if err != nil {
+		l.Errorf("查询评价列表失败: %v", err)
+		return nil, common.ErrSystem
+	}
 
 	result := make([]types.Review, 0, len(list))
 	for _, r := range list {

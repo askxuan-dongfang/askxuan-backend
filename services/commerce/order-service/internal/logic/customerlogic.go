@@ -2,16 +2,22 @@ package logic
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/middleware"
+	"github.com/askxuan/common/rpc/catalog"
 	"github.com/askxuan/order-service/internal/model"
 	"github.com/askxuan/order-service/internal/mq"
 	"github.com/askxuan/order-service/internal/svc"
 	"github.com/askxuan/order-service/internal/types"
 
+	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // OrderCreateLogic 创建订单
@@ -29,21 +35,48 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 	if len(req.Items) == 0 {
 		return nil, common.ErrParam
 	}
-
-	// 计算总金额
-	var total float64
-	for _, it := range req.Items {
-		total += it.Price * float64(it.Quantity)
+	userID := middleware.UserIDFromCtx(l.ctx)
+	if userID <= 0 {
+		return nil, common.ErrUnauthorized
 	}
+	requestID := req.RequestId
+	if requestID == "" {
+		requestID = uuid.NewString()
+	}
+	if existing, err := l.svcCtx.ShopOrderModel.FindByRequestId(l.ctx, requestID); err == nil {
+		if existing.UserId != strconv.FormatInt(userID, 10) {
+			return nil, common.ErrForbidden
+		}
+		return &types.OrderCreateResp{Id: existing.Id, OrderNo: existing.OrderNo, TotalAmount: existing.TotalAmount, PayAmount: existing.PayAmount}, nil
+	}
+
+	lines := make([]*catalog.CartLine, 0, len(req.Items))
+	for _, item := range req.Items {
+		if item.ProductId <= 0 || item.Quantity <= 0 {
+			return nil, common.ErrParam
+		}
+		lines = append(lines, &catalog.CartLine{ProductId: item.ProductId, SkuId: item.SkuId, Quantity: int32(item.Quantity)})
+	}
+	quote, err := l.svcCtx.CatalogClient.ReserveCart(l.ctx, requestID, lines)
+	if err != nil {
+		return nil, mapCatalogError(err)
+	}
+	releaseReservation := true
+	defer func() {
+		if releaseReservation {
+			_ = l.svcCtx.CatalogClient.ReleaseCart(context.Background(), requestID)
+		}
+	}()
 
 	// 事务写 order + items
 	var orderNo string
 	var orderId int64
-	err := l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, session sqlx.Session) error {
-		o, err := l.svcCtx.ShopOrderModel.Insert(l.ctx, &model.ShopOrder{
-			UserId:      req.UserId,
-			TotalAmount: total,
-			PayAmount:   total,
+	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, session sqlx.Session) error {
+		o, err := l.svcCtx.ShopOrderModel.InsertWithSession(ctx, session, &model.ShopOrder{
+			RequestId:   requestID,
+			UserId:      strconv.FormatInt(userID, 10),
+			TotalAmount: quote.TotalAmount,
+			PayAmount:   quote.TotalAmount,
 			Status:      model.OrderStatusPendingPayment,
 			AddressId:   req.AddressId,
 			Note:        req.Note,
@@ -53,15 +86,15 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 		}
 		orderNo = o.OrderNo
 		orderId = o.Id
-		for _, it := range req.Items {
-			_, err := l.svcCtx.ShopOrderItemModel.Insert(l.ctx, &model.ShopOrderItem{
+		for _, it := range quote.Items {
+			_, err := l.svcCtx.ShopOrderItemModel.InsertWithSession(ctx, session, &model.ShopOrderItem{
 				OrderId:     o.Id,
 				ProductId:   it.ProductId,
 				SkuId:       it.SkuId,
 				ProductName: it.ProductName,
 				SkuSpec:     it.SkuSpec,
-				Price:       it.Price,
-				Quantity:    it.Quantity,
+				Price:       it.UnitPrice,
+				Quantity:    int(it.Quantity),
 				Image:       it.Image,
 			})
 			if err != nil {
@@ -74,11 +107,12 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 		l.Errorf("创建订单失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	releaseReservation = false
 
 	// 发 MQ 通知订单创建（失败不阻塞主流程）
-	_ = l.svcCtx.MqProducer.Publish(l.ctx, mqOrderNotify(orderNo, req.UserId, "created"))
+	_ = l.svcCtx.MqProducer.Publish(l.ctx, mqOrderNotify(orderNo, strconv.FormatInt(userID, 10), "created"))
 
-	return &types.OrderCreateResp{Id: orderId, OrderNo: orderNo}, nil
+	return &types.OrderCreateResp{Id: orderId, OrderNo: orderNo, TotalAmount: quote.TotalAmount, PayAmount: quote.TotalAmount}, nil
 }
 
 // OrderListLogic 我的订单列表
@@ -93,6 +127,11 @@ func NewOrderListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *OrderLi
 }
 
 func (l *OrderListLogic) List(req *types.OrderListReq) (*types.OrderListResp, error) {
+	userID := middleware.UserIDFromCtx(l.ctx)
+	if userID <= 0 {
+		return nil, common.ErrUnauthorized
+	}
+	req.UserId = strconv.FormatInt(userID, 10)
 	if req.Page <= 0 {
 		req.Page = 1
 	}
@@ -131,6 +170,9 @@ func (l *OrderDetailLogic) Detail(req *types.OrderDetailReq) (*types.ShopOrder, 
 		l.Errorf("查询订单详情失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	if o.UserId != strconv.FormatInt(middleware.UserIDFromCtx(l.ctx), 10) {
+		return nil, common.ErrForbidden
+	}
 	// 缓存订单状态（30 秒），供仅需要状态的场景读取
 	_ = l.svcCtx.Redis.Setex("order:status:"+o.OrderNo, o.Status, 30)
 	return toTypesOrderDetail(l.ctx, l.svcCtx, o), nil
@@ -154,6 +196,9 @@ func (l *OrderConfirmLogic) Confirm(req *types.OrderConfirmReq) (*types.ShopOrde
 			return nil, common.ErrOrderNotFound
 		}
 		return nil, common.ErrSystem
+	}
+	if o.UserId != strconv.FormatInt(middleware.UserIDFromCtx(l.ctx), 10) {
+		return nil, common.ErrForbidden
 	}
 	if !model.CanOrderTransit(o.Status, model.OrderStatusCompleted) {
 		return nil, common.ErrStatusInvalid
@@ -187,6 +232,9 @@ func (l *OrderReturnLogic) Return(req *types.OrderReturnReq) (*types.OrderReturn
 		}
 		return nil, common.ErrSystem
 	}
+	if o.UserId != strconv.FormatInt(middleware.UserIDFromCtx(l.ctx), 10) {
+		return nil, common.ErrForbidden
+	}
 	r, err := l.svcCtx.ReturnOrderModel.Insert(l.ctx, &model.ReturnOrder{
 		OrderId:      o.Id,
 		Type:         req.Type,
@@ -199,6 +247,21 @@ func (l *OrderReturnLogic) Return(req *types.OrderReturnReq) (*types.OrderReturn
 	}
 	_ = l.svcCtx.MqProducer.Publish(l.ctx, mqOrderNotify(o.OrderNo, o.UserId, "return"))
 	return &types.OrderReturnResp{Id: r.Id, ReturnNo: r.ReturnNo}, nil
+}
+
+func mapCatalogError(err error) error {
+	switch status.Code(err) {
+	case codes.NotFound:
+		return common.ErrProductNotFound
+	case codes.ResourceExhausted:
+		return common.ErrStockInsufficient
+	case codes.InvalidArgument:
+		return common.ErrParam
+	case codes.FailedPrecondition:
+		return common.NewBizError(common.ErrOrderStatusConflict.Code, status.Convert(err).Message())
+	default:
+		return common.ErrDependencyUnavailable
+	}
 }
 
 // ===== helpers =====

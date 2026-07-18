@@ -10,14 +10,61 @@ import (
 
 // 网关透传给下游服务的请求头
 const (
-	HeaderUserID   = "X-User-Id"
+	HeaderUserID     = "X-User-Id"
 	HeaderUserMobile = "X-User-Mobile"
-	HeaderUserType = "X-User-Type"
-	HeaderRoles    = "X-User-Roles"
-	HeaderClientID = "X-Client-Id"
-	HeaderTempleID = "X-Temple-Id"
-	HeaderMasterID = "X-Master-Id"
+	HeaderUserType   = "X-User-Type"
+	HeaderRoles      = "X-User-Roles"
+	HeaderClientID   = "X-Client-Id"
+	HeaderTempleID   = "X-Temple-Id"
+	HeaderMasterID   = "X-Master-Id"
 )
+
+type adminRoleRule struct {
+	prefix string
+	roles  []string
+}
+
+// Order matters: more specific routes must precede their parent prefixes.
+var adminRoleRules = []adminRoleRule{
+	{prefix: "/api/v1/admin/finance/withdrawals/apply", roles: []string{"master"}},
+	{prefix: "/api/v1/admin/platform/", roles: []string{"platform_super"}},
+	{prefix: "/api/v1/admin/masters/", roles: []string{"master"}},
+	{prefix: "/api/v1/admin/temples/", roles: []string{"temple_admin"}},
+	{prefix: "/api/v1/admin/reviews", roles: []string{"temple_admin", "master"}},
+	{prefix: "/api/v1/admin/bookings", roles: []string{"temple_admin"}},
+	{prefix: "/api/v1/admin/products", roles: []string{"shop_admin"}},
+	{prefix: "/api/v1/admin/diy", roles: []string{"shop_admin"}},
+	{prefix: "/api/v1/admin/orders", roles: []string{"shop_admin"}},
+	{prefix: "/api/v1/admin/logistics", roles: []string{"shop_admin"}},
+	{prefix: "/api/v1/admin/files", roles: []string{"platform_super"}},
+	{prefix: "/api/v1/admin/auth", roles: []string{"platform_super"}},
+	{prefix: "/api/v1/admin/users", roles: []string{"platform_super"}},
+	{prefix: "/api/v1/admin/finance", roles: []string{"platform_super"}},
+	{prefix: "/api/v1/admin/audit", roles: []string{"platform_super"}},
+	{prefix: "/api/v1/admin/marketing", roles: []string{"platform_super"}},
+	{prefix: "/api/v1/admin/announcements", roles: []string{"platform_super"}},
+}
+
+func roleAllowedForAdminPath(path string, claims *common.CustomClaims) bool {
+	// Internal service tokens retain access to administrative integration APIs.
+	if claims.UserType == "service" && claims.HasRole("platform_service") {
+		return true
+	}
+	for _, rule := range adminRoleRules {
+		if path == strings.TrimSuffix(rule.prefix, "/") || strings.HasPrefix(path, rule.prefix) {
+			if claims.HasRole("platform_super") {
+				return true
+			}
+			for _, role := range rule.roles {
+				if claims.HasRole(role) {
+					return true
+				}
+			}
+			return false
+		}
+	}
+	return claims.IsAdmin() || claims.HasRole("master")
+}
 
 // Auth 全局 JWT 鉴权中间件
 // - 白名单路径直接放行（前缀匹配：GET 请求匹配 path == prefix 或 path 以 prefix+"/" 开头）
@@ -64,7 +111,7 @@ func Auth(secret string, noAuthPaths []string) func(http.Handler) http.Handler {
 
 			// 管理台/工作台路径角色校验：/api/v1/admin/* 需要管理台角色，法师工作台也使用该前缀
 			if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") {
-				if !claims.IsAdmin() && !claims.HasRole("master") {
+				if !roleAllowedForAdminPath(r.URL.Path, claims) {
 					common.JsonError(w, common.ErrRoleForbidden)
 					return
 				}

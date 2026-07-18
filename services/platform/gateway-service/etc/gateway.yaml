@@ -104,6 +104,9 @@ Upstreams:
     ServiceName: message.service
 
   # ============ 管理台路由（/api/v1/admin/*） ============
+  - Prefix: /api/v1/admin/files
+    Target: localhost:8097
+    ServiceName: file.service
   - Prefix: /api/v1/admin/platform/beliefs
     Target: localhost:8083
     ServiceName: temple.service

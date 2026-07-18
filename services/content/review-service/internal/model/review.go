@@ -1,173 +1,111 @@
 package model
 
 import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
-	"sync"
 	"time"
 )
 
-// 评价状态常量
 const (
-	ReviewStatusNormal = "normal" // 正常显示
-	ReviewStatusHidden = "hidden" // 已隐藏
+	ReviewStatusNormal = "normal"
+	ReviewStatusHidden = "hidden"
 )
 
-// 评价目标类型
 const (
 	TargetTypeBooking   = "booking"
 	TargetTypeDiyOrder  = "diy_order"
 	TargetTypeShopOrder = "shop_order"
 )
 
-// Review 评价结构体
 type Review struct {
-	Id         int64  `json:"id"`
-	ReviewNo   string `json:"reviewNo"`
-	UserId     string `json:"userId"`
-	TargetType string `json:"targetType"`
-	TargetId   string `json:"targetId"`
-	MasterCode string `json:"masterCode"` // 法师编码（target_type=booking 时从预约关联写入）
-	Rating     int    `json:"rating"`
-	Content    string `json:"content"`
-	Images     string `json:"images"`
-	Status     string `json:"status"`
-	CreateTime string `json:"createTime"`
+	Id         int64  `db:"id" json:"id"`
+	ReviewNo   string `db:"review_no" json:"reviewNo"`
+	UserId     string `db:"user_id" json:"userId"`
+	TargetType string `db:"target_type" json:"targetType"`
+	TargetId   string `db:"target_id" json:"targetId"`
+	MasterCode string `db:"master_code" json:"masterCode"`
+	Rating     int    `db:"rating" json:"rating"`
+	Content    string `db:"content" json:"content"`
+	Images     string `db:"images" json:"images"`
+	Status     string `db:"status" json:"status"`
+	CreateTime string `db:"create_time" json:"createTime"`
 }
 
-// ---- 内存存储（MVP 阶段不连 DB）----
-
-type reviewStore struct {
-	mu   sync.RWMutex
-	list []Review
-	seq  int64
+func ListReviews(ctx context.Context, targetType, targetId, userId string, rating int, status, masterCode string, page, size int) ([]Review, int64, error) {
+	where := " WHERE 1=1"
+	args := make([]any, 0, 6)
+	for _, filter := range []struct{ value, clause string }{
+		{targetType, " AND target_type=?"}, {targetId, " AND target_id=?"}, {userId, " AND user_id=?"},
+		{status, " AND status=?"}, {masterCode, " AND master_code=?"},
+	} {
+		if filter.value != "" {
+			where += filter.clause
+			args = append(args, filter.value)
+		}
+	}
+	if rating > 0 {
+		where += " AND rating=?"
+		args = append(args, rating)
+	}
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 20
+	}
+	var total int64
+	if err := db.QueryRowCtx(ctx, &total, "SELECT COUNT(*) FROM review"+where, args...); err != nil {
+		return nil, 0, err
+	}
+	queryArgs := append(append([]any{}, args...), size, (page-1)*size)
+	var list []Review
+	err := db.QueryRowsCtx(ctx, &list, `SELECT id,review_no,user_id,target_type,target_id,master_code,rating,content,COALESCE(images,'[]') images,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time FROM review`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, queryArgs...)
+	return list, total, err
 }
 
-var globalReviewStore = &reviewStore{
-	list: []Review{
-		{
-			Id:         1,
-			ReviewNo:   "RV20260620001",
-			UserId:     "U001",
-			TargetType: TargetTypeBooking,
-			TargetId:   "B20260615003",
-			MasterCode: "M002", // 预约 B20260615003 关联清风道长 M002
-			Rating:     5,
-			Content:    "清风道长非常专业，化太岁仪式庄重，感觉很安心。",
-			Images:     `["https://oss.askxuan.com/rv/1.jpg"]`,
-			Status:     ReviewStatusNormal,
-			CreateTime: "2026-06-20 18:00:00",
-		},
-		{
-			Id:         2,
-			ReviewNo:   "RV20260625002",
-			UserId:     "U002",
-			TargetType: TargetTypeBooking,
-			TargetId:   "B20260628002",
-			MasterCode: "M003", // 预约 B20260628002 关联释延心法师 M003
-			Rating:     4,
-			Content:    "释延心法师超度法事很用心，整体体验不错。",
-			Images:     `[]`,
-			Status:     ReviewStatusNormal,
-			CreateTime: "2026-06-25 20:30:00",
-		},
-		{
-			Id:         3,
-			ReviewNo:   "RV20260628003",
-			UserId:     "U001",
-			TargetType: TargetTypeShopOrder,
-			TargetId:   "SO20260620001",
-			MasterCode: "", // 商城订单无法师关联
-			Rating:     5,
-			Content:    "小叶紫檀手串品质很好，包装精美，非常满意！",
-			Images:     `["https://oss.askxuan.com/rv/2.jpg","https://oss.askxuan.com/rv/3.jpg"]`,
-			Status:     ReviewStatusNormal,
-			CreateTime: "2026-06-28 10:00:00",
-		},
-	},
-	seq: 3,
+func FindReviewByID(ctx context.Context, id int64) (Review, error) {
+	var review Review
+	err := db.QueryRowCtx(ctx, &review, `SELECT id,review_no,user_id,target_type,target_id,master_code,rating,content,COALESCE(images,'[]') images,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time FROM review WHERE id=?`, id)
+	return review, err
 }
 
-// ListReviews 查询评价列表，支持按 targetType/targetId/userId/rating/masterCode 筛选 + 分页
-func ListReviews(targetType, targetId, userId string, rating int, status, masterCode string, page, size int) ([]Review, int64) {
-	globalReviewStore.mu.RLock()
-	defer globalReviewStore.mu.RUnlock()
-
-	filtered := make([]Review, 0, len(globalReviewStore.list))
-	for _, r := range globalReviewStore.list {
-		if targetType != "" && r.TargetType != targetType {
-			continue
-		}
-		if targetId != "" && r.TargetId != targetId {
-			continue
-		}
-		if userId != "" && r.UserId != userId {
-			continue
-		}
-		if rating > 0 && r.Rating != rating {
-			continue
-		}
-		if status != "" && r.Status != status {
-			continue
-		}
-		if masterCode != "" && r.MasterCode != masterCode {
-			continue
-		}
-		filtered = append(filtered, r)
+func CreateReview(ctx context.Context, review Review) (Review, error) {
+	if review.Status == "" {
+		review.Status = ReviewStatusNormal
 	}
-
-	total := int64(len(filtered))
-	start := (page - 1) * size
-	if start < 0 {
-		start = 0
+	random := make([]byte, 5)
+	if _, err := rand.Read(random); err != nil {
+		return Review{}, err
 	}
-	if start > len(filtered) {
-		start = len(filtered)
+	reviewNo := fmt.Sprintf("R%s%s", time.Now().Format("20060102150405"), hex.EncodeToString(random))
+	result, err := db.ExecCtx(ctx, `INSERT INTO review(review_no,user_id,target_type,target_id,master_code,rating,content,images,status) VALUES(?,?,?,?,?,?,?,?,?)`, reviewNo, review.UserId, review.TargetType, review.TargetId, review.MasterCode, review.Rating, review.Content, review.Images, review.Status)
+	if err != nil {
+		return Review{}, err
 	}
-	end := start + size
-	if end > len(filtered) {
-		end = len(filtered)
+	id, err := result.LastInsertId()
+	if err != nil {
+		return Review{}, err
 	}
-	return filtered[start:end], total
+	return FindReviewByID(ctx, id)
 }
 
-// FindReviewByID 按ID查询评价
-func FindReviewByID(id int64) (Review, bool) {
-	globalReviewStore.mu.RLock()
-	defer globalReviewStore.mu.RUnlock()
-	for _, r := range globalReviewStore.list {
-		if r.Id == id {
-			return r, true
-		}
-	}
-	return Review{}, false
+func UpsertBookingReview(ctx context.Context, bookingId, userId, masterCode string, rating int, content, images string) error {
+	digest := sha256.Sum256([]byte(bookingId))
+	reviewNo := "BR" + hex.EncodeToString(digest[:10])
+	_, err := db.ExecCtx(ctx, `INSERT INTO review(review_no,user_id,target_type,target_id,master_code,rating,content,images,status)
+		VALUES(?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE master_code=VALUES(master_code),rating=VALUES(rating),content=VALUES(content),images=VALUES(images),status=VALUES(status)`,
+		reviewNo, userId, TargetTypeBooking, bookingId, masterCode, rating, content, images, ReviewStatusNormal)
+	return err
 }
 
-// CreateReview 新建评价，seq 自增，生成 reviewNo（格式 R{YYYYMMDD}{seq:06d}），默认 status=normal，设置 createTime
-func CreateReview(r Review) Review {
-	globalReviewStore.mu.Lock()
-	defer globalReviewStore.mu.Unlock()
-
-	globalReviewStore.seq++
-	r.Id = globalReviewStore.seq
-	if r.Status == "" {
-		r.Status = ReviewStatusNormal
+func UpdateReviewStatus(ctx context.Context, id int64, status string) (bool, error) {
+	result, err := db.ExecCtx(ctx, "UPDATE review SET status=? WHERE id=?", status, id)
+	if err != nil {
+		return false, err
 	}
-	r.ReviewNo = fmt.Sprintf("R%s%06d", time.Now().Format("20060102"), r.Id)
-	r.CreateTime = time.Now().Format("2006-01-02 15:04:05")
-	globalReviewStore.list = append(globalReviewStore.list, r)
-	return r
-}
-
-// UpdateReviewStatus 更新评价状态，找到并更新返回 true，未找到返回 false
-func UpdateReviewStatus(id int64, status string) bool {
-	globalReviewStore.mu.Lock()
-	defer globalReviewStore.mu.Unlock()
-
-	for i := range globalReviewStore.list {
-		if globalReviewStore.list[i].Id == id {
-			globalReviewStore.list[i].Status = status
-			return true
-		}
-	}
-	return false
+	rows, err := result.RowsAffected()
+	return rows == 1, err
 }

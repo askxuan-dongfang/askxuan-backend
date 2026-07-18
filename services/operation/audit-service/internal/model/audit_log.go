@@ -1,50 +1,28 @@
 package model
 
-import (
-	"sync"
-	"time"
-)
+import "context"
 
-// AuditLog 审核日志结构体
 type AuditLog struct {
-	Id         int64  `json:"id"`
-	AuditId    int64  `json:"auditId"`
-	Action     string `json:"action"`
-	OperatorId string `json:"operatorId"`
-	Remark     string `json:"remark"`
-	CreateTime string `json:"createTime"`
+	Id         int64  `db:"id" json:"id"`
+	AuditId    int64  `db:"audit_id" json:"auditId"`
+	Action     string `db:"action" json:"action"`
+	OperatorId string `db:"operator_id" json:"operatorId"`
+	Remark     string `db:"remark" json:"remark"`
+	CreateTime string `db:"create_time" json:"createTime"`
 }
 
-// ---- 内存存储（MVP 阶段不连 DB）----
-
-type auditLogStore struct {
-	mu   sync.RWMutex
-	list []AuditLog
-	seq  int64
-}
-
-var globalAuditLogStore = &auditLogStore{}
-
-// InsertAuditLog 新增审核日志，seq 自增，设置 createTime 后追加到 store
 func InsertAuditLog(log AuditLog) AuditLog {
-	globalAuditLogStore.mu.Lock()
-	defer globalAuditLogStore.mu.Unlock()
-	globalAuditLogStore.seq++
-	log.Id = globalAuditLogStore.seq
-	log.CreateTime = time.Now().Format("2006-01-02 15:04:05")
-	globalAuditLogStore.list = append(globalAuditLogStore.list, log)
+	res, err := db.ExecCtx(context.Background(), `INSERT INTO audit_log(audit_id,action,operator_id,remark) VALUES(?,?,?,?)`, log.AuditId, log.Action, log.OperatorId, log.Remark)
+	if err != nil {
+		return AuditLog{}
+	}
+	log.Id, _ = res.LastInsertId()
 	return log
 }
-
-// ListAuditLogByAuditID 按 auditId 查询审核日志列表
-func ListAuditLogByAuditID(auditId int64) []AuditLog {
-	globalAuditLogStore.mu.RLock()
-	defer globalAuditLogStore.mu.RUnlock()
-	result := make([]AuditLog, 0)
-	for _, l := range globalAuditLogStore.list {
-		if l.AuditId == auditId {
-			result = append(result, l)
-		}
+func ListAuditLogByAuditID(id int64) []AuditLog {
+	var list []AuditLog
+	if db.QueryRowsCtx(context.Background(), &list, `SELECT id,audit_id,action,operator_id,remark,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time FROM audit_log WHERE audit_id=? ORDER BY id`, id) != nil {
+		return []AuditLog{}
 	}
-	return result
+	return list
 }

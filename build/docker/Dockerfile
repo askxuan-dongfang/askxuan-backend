@@ -45,6 +45,10 @@ FROM runtime-base
 ARG SERVICE
 ARG BINARY
 
+RUN if [ "$SERVICE" = "services/infrastructure/file-service" ]; then \
+      apk add --no-cache mariadb-client; \
+    fi
+
 ENV BINARY=${BINARY}
 
 WORKDIR /app

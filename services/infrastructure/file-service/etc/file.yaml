@@ -22,3 +22,35 @@ MinIO:
   Bucket: askxuan
   UseSSL: false
   PresignExpire: 900  # 预签名 URL 有效期（秒），默认 15 分钟
+
+Backup:
+  Enabled: true
+  RestoreEnabled: false
+  Bucket: askxuan-backups
+  MySQLHost: 127.0.0.1
+  MySQLPort: 3306
+  MySQLUser: root
+  MySQLPassword: root123
+  Schemas:
+    - askxuan
+    - askxuan_auth
+    - askxuan_user
+    - askxuan_temple
+    - askxuan_master
+    - askxuan_booking
+    - askxuan_product
+    - askxuan_order
+    - askxuan_payment
+    - askxuan_diy
+    - askxuan_finance
+    - askxuan_review
+    - askxuan_audit
+    - askxuan_message
+    - askxuan_logistics
+    - askxuan_marketing
+    - askxuan_ai
+    - askxuan_media
+    - askxuan_community
+  DumpCommand: mysqldump
+  RestoreCommand: mysql
+  TimeoutSeconds: 600

@@ -2,7 +2,10 @@ package model
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -20,8 +23,10 @@ const (
 
 // 材料状态常量
 const (
-	MaterialStatusOnShelf  = "on_shelf"
-	MaterialStatusOffShelf = "off_shelf"
+	MaterialStatusOnShelf         = "on_shelf"
+	MaterialStatusOffShelf        = "off_shelf"
+	BlessingServiceStatusOnShelf  = "on_shelf"
+	BlessingServiceStatusOffShelf = "off_shelf"
 )
 
 const (
@@ -62,6 +67,8 @@ type ExtraService struct {
 	MasterCode  string  `db:"master_code" json:"masterCode"`
 	Price       float64 `db:"price" json:"price"`
 	Description string  `db:"description" json:"description"`
+	Status      string  `db:"status" json:"status"`
+	CreateTime  string  `db:"create_time" json:"createTime"`
 }
 
 // MaterialModel 材料模型接口
@@ -81,7 +88,13 @@ type MaterialSkuModel interface {
 
 // ExtraServiceModel 加持服务接口
 type ExtraServiceModel interface {
-	FindList(ctx context.Context, page, size int) ([]*ExtraService, error)
+	FindList(ctx context.Context, page, size int) ([]*ExtraService, int64, error)
+	FindListByStatus(ctx context.Context, status string, page, size int) ([]*ExtraService, int64, error)
+	FindOne(ctx context.Context, id int64) (*ExtraService, error)
+	FindByCode(ctx context.Context, code string) (*ExtraService, error)
+	Insert(ctx context.Context, data *ExtraService) (*ExtraService, error)
+	Update(ctx context.Context, data *ExtraService) error
+	Delete(ctx context.Context, id int64) (bool, error)
 }
 
 // ===== MaterialModel 实现 =====
@@ -208,13 +221,92 @@ func NewExtraServiceModel(conn sqlx.SqlConn) ExtraServiceModel {
 	return &defaultExtraServiceModel{conn: conn}
 }
 
-func (m *defaultExtraServiceModel) FindList(ctx context.Context, page, size int) ([]*ExtraService, error) {
+func (m *defaultExtraServiceModel) FindList(ctx context.Context, page, size int) ([]*ExtraService, int64, error) {
+	return m.FindListByStatus(ctx, "", page, size)
+}
+
+func (m *defaultExtraServiceModel) FindListByStatus(ctx context.Context, status string, page, size int) ([]*ExtraService, int64, error) {
+	where := "1=1"
+	var args []interface{}
+	if status != "" {
+		where += " AND status=?"
+		args = append(args, status)
+	}
+	var total int64
+	if err := m.conn.QueryRowCtx(ctx, &total, fmt.Sprintf("SELECT COUNT(1) FROM %s WHERE %s", extraServiceTable, where), args...); err != nil {
+		return nil, 0, err
+	}
 	offset := (page - 1) * size
-	query := fmt.Sprintf(`SELECT id, code, name, temple_code, master_code, price, description FROM %s ORDER BY id ASC LIMIT ?, ?`, extraServiceTable)
+	query := fmt.Sprintf(`SELECT id, code, name, temple_code, master_code, price, description, status, DATE_FORMAT(create_time,'%%Y-%%m-%%d %%H:%%i:%%s') create_time FROM %s WHERE %s ORDER BY id ASC LIMIT ?, ?`, extraServiceTable, where)
+	args = append(args, offset, size)
 	var list []*ExtraService
-	err := m.conn.QueryRowsCtx(ctx, &list, query, offset, size)
+	err := m.conn.QueryRowsCtx(ctx, &list, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
+}
+
+func (m *defaultExtraServiceModel) FindByCode(ctx context.Context, code string) (*ExtraService, error) {
+	var service ExtraService
+	query := fmt.Sprintf(`SELECT id, code, name, temple_code, master_code, price, description, status, DATE_FORMAT(create_time,'%%Y-%%m-%%d %%H:%%i:%%s') create_time FROM %s WHERE code=?`, extraServiceTable)
+	if err := m.conn.QueryRowCtx(ctx, &service, query, code); err != nil {
+		return nil, err
+	}
+	return &service, nil
+}
+
+func (m *defaultExtraServiceModel) FindOne(ctx context.Context, id int64) (*ExtraService, error) {
+	var service ExtraService
+	query := fmt.Sprintf(`SELECT id, code, name, temple_code, master_code, price, description, status, DATE_FORMAT(create_time,'%%Y-%%m-%%d %%H:%%i:%%s') create_time FROM %s WHERE id=?`, extraServiceTable)
+	if err := m.conn.QueryRowCtx(ctx, &service, query, id); err != nil {
+		return nil, err
+	}
+	return &service, nil
+}
+
+func (m *defaultExtraServiceModel) Insert(ctx context.Context, data *ExtraService) (*ExtraService, error) {
+	random := make([]byte, 2)
+	if _, err := rand.Read(random); err != nil {
+		return nil, err
+	}
+	data.Code = "E" + time.Now().Format("0601021504") + hex.EncodeToString(random)
+	if data.Status == "" {
+		data.Status = BlessingServiceStatusOnShelf
+	}
+	query := fmt.Sprintf(`INSERT INTO %s(code,name,temple_code,master_code,price,description,status) VALUES(?,?,?,?,?,?,?)`, extraServiceTable)
+	result, err := m.conn.ExecCtx(ctx, query, data.Code, data.Name, data.TempleCode, data.MasterCode, data.Price, data.Description, data.Status)
 	if err != nil {
 		return nil, err
 	}
-	return list, nil
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	return m.FindOne(ctx, id)
+}
+
+func (m *defaultExtraServiceModel) Update(ctx context.Context, data *ExtraService) error {
+	query := fmt.Sprintf(`UPDATE %s SET name=?,temple_code=?,master_code=?,price=?,description=?,status=? WHERE id=?`, extraServiceTable)
+	result, err := m.conn.ExecCtx(ctx, query, data.Name, data.TempleCode, data.MasterCode, data.Price, data.Description, data.Status, data.Id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows != 1 {
+		return sqlx.ErrNotFound
+	}
+	return nil
+}
+
+func (m *defaultExtraServiceModel) Delete(ctx context.Context, id int64) (bool, error) {
+	result, err := m.conn.ExecCtx(ctx, fmt.Sprintf("DELETE FROM %s WHERE id=?", extraServiceTable), id)
+	if err != nil {
+		return false, err
+	}
+	rows, err := result.RowsAffected()
+	return rows == 1, err
 }

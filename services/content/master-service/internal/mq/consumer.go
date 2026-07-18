@@ -16,6 +16,8 @@ import (
 // 消费队列约定
 const (
 	QueueMasterBlessingAssign = "master.blessing.assign"
+	QueueMasterBookingEarning = "master.booking.earning"
+	ExchangeBookingEvents     = "booking.events"
 )
 
 // BlessingAssign 法师分配事件（与 temple-service 的 mq.BlessingAssign 对齐）
@@ -26,6 +28,16 @@ type BlessingAssign struct {
 	MasterCode  string `json:"masterCode"`
 	ServiceCode string `json:"serviceCode,omitempty"`
 	Time        string `json:"time"`
+}
+
+type BookingCompleted struct {
+	BookingId   string  `json:"bookingId"`
+	UserId      string  `json:"userId"`
+	MasterId    string  `json:"masterId"`
+	ServiceName string  `json:"serviceName"`
+	BookingDate string  `json:"bookingDate"`
+	TotalFee    float64 `json:"totalFee"`
+	Action      string  `json:"action"`
 }
 
 // Binding 队列绑定配置
@@ -194,6 +206,14 @@ func ParseBlessingAssign(body []byte) (BlessingAssign, bool) {
 	var evt BlessingAssign
 	if err := json.Unmarshal(body, &evt); err != nil {
 		return BlessingAssign{}, false
+	}
+	return evt, true
+}
+
+func ParseBookingCompleted(body []byte) (BookingCompleted, bool) {
+	var evt BookingCompleted
+	if err := json.Unmarshal(body, &evt); err != nil || evt.Action != "completed" || evt.BookingId == "" || evt.MasterId == "" {
+		return BookingCompleted{}, false
 	}
 	return evt, true
 }

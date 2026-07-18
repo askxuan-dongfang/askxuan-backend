@@ -38,7 +38,11 @@ func (l *MasterReviewListLogic) MasterReviewList(req *types.MasterReviewListReq)
 	// masterId (int64) 转为 masterCode (如 M001)
 	masterCode := fmt.Sprintf("M%03d", masterID)
 
-	list, total := model.ListReviews("", "", "", req.Rating, model.ReviewStatusNormal, masterCode, req.Page, req.Size)
+	list, total, err := model.ListReviews(l.ctx, "", "", "", req.Rating, model.ReviewStatusNormal, masterCode, req.Page, req.Size)
+	if err != nil {
+		l.Errorf("查询法师评价失败: %v", err)
+		return nil, common.ErrSystem
+	}
 
 	result := make([]types.Review, 0, len(list))
 	for _, r := range list {

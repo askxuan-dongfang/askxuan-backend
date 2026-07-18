@@ -132,8 +132,11 @@ func (l *AddressUpdateLogic) AddressUpdate(req *types.AddressUpdateReq, userId i
 		detail = a.Detail
 	}
 	isDefault := a.IsDefault
-	if req.IsDefault {
-		isDefault = 1
+	if req.IsDefault != nil {
+		isDefault = 0
+		if *req.IsDefault {
+			isDefault = 1
+		}
 	}
 
 	if err := l.svcCtx.AddressModel.Update(l.ctx, &model.UserAddress{

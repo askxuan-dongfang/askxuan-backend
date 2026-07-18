@@ -49,7 +49,9 @@ func (l *WithdrawalAuditLogic) WithdrawalAudit(req *types.WithdrawalAuditReq) (*
 		return nil, common.ErrStatusInvalid
 	}
 	now := time.Now().Format("2006-01-02 15:04:05")
-	model.UpdateWithdrawalStatus(req.Id, targetStatus, now, "")
+	if !model.UpdateWithdrawalStatus(req.Id, targetStatus, now, "") {
+		return nil, common.ErrStatusInvalid
+	}
 	// 发 MQ 通知
 	_ = l.svcCtx.MqProducer.PublishWithdrawalNotify(l.ctx, mq.WithdrawalNotify{
 		WithdrawalId: fmt.Sprintf("%d", req.Id),

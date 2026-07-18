@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 
+	"github.com/askxuan/common"
 	"github.com/askxuan/review-service/internal/model"
 	"github.com/askxuan/review-service/internal/svc"
 	"github.com/askxuan/review-service/internal/types"
@@ -27,7 +28,11 @@ func NewReviewListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Review
 
 // ReviewList C端评价列表，按 target 查询，仅返回 normal 状态
 func (l *ReviewListLogic) ReviewList(req *types.ReviewListReq) (*types.ReviewListResp, error) {
-	list, total := model.ListReviews(req.TargetType, req.TargetId, req.UserId, req.Rating, model.ReviewStatusNormal, "", req.Page, req.Size)
+	list, total, err := model.ListReviews(l.ctx, req.TargetType, req.TargetId, req.UserId, req.Rating, model.ReviewStatusNormal, "", req.Page, req.Size)
+	if err != nil {
+		l.Errorf("查询评价列表失败: %v", err)
+		return nil, common.ErrSystem
+	}
 
 	result := make([]types.Review, 0, len(list))
 	for _, r := range list {

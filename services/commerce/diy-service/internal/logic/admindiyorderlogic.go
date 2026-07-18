@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/diy-service/internal/model"
@@ -143,59 +144,51 @@ func (l *AdminDiyOrderMakeCompleteLogic) MakeComplete(req *types.AdminDiyOrderMa
 		return nil, common.ErrSystem
 	}
 
-	// 查 design 判断是否有加持
+	// 下单时的不可变设计快照决定是否加持，避免作品后续编辑影响历史订单。
 	var blessServiceCode string
-	if design, derr := l.svcCtx.DiyDesignModel.FindOne(l.ctx, o.DesignId); derr == nil {
-		blessServiceCode = design.BlessServiceCode
+	if o.DesignSnapshot != "" {
+		var snapshot model.DiyDesign
+		if err := json.Unmarshal([]byte(o.DesignSnapshot), &snapshot); err == nil {
+			blessServiceCode = snapshot.BlessServiceCode
+		}
 	}
-	hasBless := blessServiceCode != ""
-
-	var targetStatus string
-	if hasBless {
+	// Legacy orders did not persist a design snapshot.
+	if blessServiceCode == "" && o.DesignSnapshot == "" {
+		if design, designErr := l.svcCtx.DiyDesignModel.FindOne(l.ctx, o.DesignId); designErr == nil {
+			blessServiceCode = design.BlessServiceCode
+		}
+	}
+	targetStatus := model.DiyStatusAwaitingShipment
+	if blessServiceCode != "" {
 		targetStatus = model.DiyStatusAwaitingBlessing
-	} else {
-		targetStatus = model.DiyStatusAwaitingShipment
 	}
 	if !model.CanDiyTransit(o.Status, targetStatus) {
 		return nil, common.ErrStatusInvalid
 	}
 
-	updated, err := l.svcCtx.DiyOrderModel.UpdateStatus(l.ctx, req.Id, targetStatus)
+	updated, task, err := l.svcCtx.DiyOrderModel.CompleteMaking(l.ctx, req.Id, blessServiceCode)
 	if err != nil {
+		if err == model.ErrDiyOrderStateConflict {
+			return nil, common.ErrStatusInvalid
+		}
+		if err == model.ErrOrderBlessingUnavailable {
+			return nil, common.NewBizError(40908, "加持服务已下架，请先调整订单")
+		}
+		l.Errorf("完成制作事务失败(orderNo=%s): %v", o.OrderNo, err)
 		return nil, common.ErrSystem
 	}
 
-	// 如有加持，创建 blessing_task 并发 MQ 派单
 	var blessTask model.BlessingTask
-	if hasBless {
-		var templeCode, masterCode string
-		services, _ := l.svcCtx.ExtraServiceModel.FindList(l.ctx, 1, 100)
-		for _, s := range services {
-			if s.Code == blessServiceCode {
-				templeCode = s.TempleCode
-				masterCode = s.MasterCode
-				break
-			}
-		}
-		task, terr := l.svcCtx.BlessingTaskModel.Insert(l.ctx, &model.BlessingTask{
-			DiyOrderNo: o.OrderNo,
-			TempleCode: templeCode,
-			MasterCode: masterCode,
-			Status:     model.BlessingTaskStatusDispatched,
+	if task != nil {
+		blessTask = *task
+		l.Infof("创建 blessing_task 成功(id=%d, taskNo=%s, orderNo=%s)", task.Id, task.TaskNo, o.OrderNo)
+		_ = l.svcCtx.MqProducer.PublishBlessingDispatch(l.ctx, mq.BlessingDispatch{
+			TaskNo:      task.TaskNo,
+			DiyOrderId:  o.OrderNo,
+			TempleCode:  task.TempleCode,
+			MasterCode:  task.MasterCode,
+			ServiceCode: blessServiceCode,
 		})
-		if terr != nil {
-			l.Errorf("创建 blessing_task 失败(orderNo=%s): %v", o.OrderNo, terr)
-		} else {
-			blessTask = *task
-			l.Infof("创建 blessing_task 成功(id=%d, taskNo=%s, orderNo=%s)", task.Id, task.TaskNo, o.OrderNo)
-			_ = l.svcCtx.MqProducer.PublishBlessingDispatch(l.ctx, mq.BlessingDispatch{
-				TaskNo:      task.TaskNo,
-				DiyOrderId:  o.OrderNo,
-				TempleCode:  templeCode,
-				MasterCode:  masterCode,
-				ServiceCode: blessServiceCode,
-			})
-		}
 	}
 
 	return toTypesDiyOrderDetailWithTask(l.ctx, l.svcCtx, updated, blessTask), nil

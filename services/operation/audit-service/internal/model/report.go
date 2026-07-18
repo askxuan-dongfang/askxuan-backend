@@ -1,148 +1,75 @@
 package model
 
-import (
-	"sync"
-)
+import "context"
 
-// 举报状态常量
 const (
-	ReportStatusPending  = "pending"  // 待处理
-	ReportStatusHandled  = "handled"  // 已处理
-	ReportStatusRejected = "rejected" // 已驳回
+	ReportStatusPending  = "pending"
+	ReportStatusHandled  = "handled"
+	ReportStatusRejected = "rejected"
+	ReportTargetDesign   = "design"
+	ReportTargetComment  = "comment"
+	ReportTargetMaster   = "master"
+	ReportTargetTemple   = "temple"
 )
 
-// 举报目标类型
-const (
-	ReportTargetDesign  = "design"
-	ReportTargetComment = "comment"
-	ReportTargetMaster  = "master"
-	ReportTargetTemple  = "temple"
-)
+var reportTransitions = map[string]map[string]bool{ReportStatusPending: {ReportStatusHandled: true, ReportStatusRejected: true}}
 
-// reportTransitions 举报状态机合法流转
-var reportTransitions = map[string]map[string]bool{
-	ReportStatusPending: {
-		ReportStatusHandled:  true,
-		ReportStatusRejected: true,
-	},
-}
-
-// CanTransitReport 校验举报状态流转是否合法
 func CanTransitReport(from, to string) bool {
 	if from == to {
 		return false
 	}
 	allowed, ok := reportTransitions[from]
-	if !ok {
+	return ok && allowed[to]
+}
+
+type Report struct {
+	Id           int64  `db:"id" json:"id"`
+	ReporterId   string `db:"reporter_id" json:"reporterId"`
+	TargetType   string `db:"target_type" json:"targetType"`
+	TargetId     string `db:"target_id" json:"targetId"`
+	Reason       string `db:"reason" json:"reason"`
+	EvidenceUrls string `db:"evidence_urls" json:"evidenceUrls"`
+	Status       string `db:"status" json:"status"`
+	HandlerId    string `db:"handler_id" json:"handlerId"`
+	HandleResult string `db:"handle_result" json:"handleResult"`
+	CreateTime   string `db:"create_time" json:"createTime"`
+}
+
+const reportColumns = `id,reporter_id,target_type,target_id,reason,IFNULL(evidence_urls,'') evidence_urls,status,handler_id,handle_result,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
+
+func ListReports(targetType, status string, page, size int) ([]Report, int64) {
+	where, args := "1=1", []interface{}{}
+	if targetType != "" {
+		where += " AND target_type=?"
+		args = append(args, targetType)
+	}
+	if status != "" {
+		where += " AND status=?"
+		args = append(args, status)
+	}
+	var total int64
+	if db.QueryRowCtx(context.Background(), &total, "SELECT COUNT(1) FROM report WHERE "+where, args...) != nil {
+		return []Report{}, 0
+	}
+	offset, limit := paging(page, size)
+	var list []Report
+	if db.QueryRowsCtx(context.Background(), &list, `SELECT `+reportColumns+` FROM report WHERE `+where+` ORDER BY id DESC LIMIT ?,?`, append(args, offset, limit)...) != nil {
+		return []Report{}, 0
+	}
+	return list, total
+}
+func FindReportByID(id int64) (Report, bool) {
+	var r Report
+	if db.QueryRowCtx(context.Background(), &r, `SELECT `+reportColumns+` FROM report WHERE id=?`, id) != nil {
+		return Report{}, false
+	}
+	return r, true
+}
+func UpdateReport(id int64, status, handlerId, handleResult string) bool {
+	res, err := db.ExecCtx(context.Background(), `UPDATE report SET status=?,handler_id=?,handle_result=? WHERE id=? AND status='pending'`, status, handlerId, handleResult, id)
+	if err != nil {
 		return false
 	}
-	return allowed[to]
-}
-
-// Report 举报结构体
-type Report struct {
-	Id           int64  `json:"id"`
-	ReporterId   string `json:"reporterId"`
-	TargetType   string `json:"targetType"`
-	TargetId     string `json:"targetId"`
-	Reason       string `json:"reason"`
-	EvidenceUrls string `json:"evidenceUrls"`
-	Status       string `json:"status"`
-	HandlerId    string `json:"handlerId"`
-	HandleResult string `json:"handleResult"`
-	CreateTime   string `json:"createTime"`
-}
-
-// ---- 内存存储（MVP 阶段不连 DB）----
-
-type reportStore struct {
-	mu   sync.RWMutex
-	list []Report
-	seq  int64
-}
-
-var globalReportStore = &reportStore{
-	list: []Report{
-		{
-			Id:           1,
-			ReporterId:   "U003",
-			TargetType:   ReportTargetDesign,
-			TargetId:     "DD20260615001",
-			Reason:       "设计涉及侵权",
-			EvidenceUrls: `["https://oss.askxuan.com/report/1.jpg"]`,
-			Status:       ReportStatusPending,
-			CreateTime:   "2026-06-26 09:00:00",
-		},
-		{
-			Id:           2,
-			ReporterId:   "U001",
-			TargetType:   ReportTargetComment,
-			TargetId:     "RV20260610005",
-			Reason:       "评论内容含不当言论",
-			EvidenceUrls: `[]`,
-			Status:       ReportStatusHandled,
-			HandlerId:    "ADMIN001",
-			HandleResult: "已删除违规评论",
-			CreateTime:   "2026-06-22 14:00:00",
-		},
-	},
-	seq: 2,
-}
-
-// ListReports 查询举报列表，支持按 targetType/status 筛选 + 分页
-func ListReports(targetType, status string, page, size int) ([]Report, int64) {
-	globalReportStore.mu.RLock()
-	defer globalReportStore.mu.RUnlock()
-
-	filtered := make([]Report, 0, len(globalReportStore.list))
-	for _, rp := range globalReportStore.list {
-		if targetType != "" && rp.TargetType != targetType {
-			continue
-		}
-		if status != "" && rp.Status != status {
-			continue
-		}
-		filtered = append(filtered, rp)
-	}
-
-	total := int64(len(filtered))
-	start := (page - 1) * size
-	if start < 0 {
-		start = 0
-	}
-	if start > len(filtered) {
-		start = len(filtered)
-	}
-	end := start + size
-	if end > len(filtered) {
-		end = len(filtered)
-	}
-	return filtered[start:end], total
-}
-
-// FindReportByID 按ID查询举报记录
-func FindReportByID(id int64) (Report, bool) {
-	globalReportStore.mu.RLock()
-	defer globalReportStore.mu.RUnlock()
-	for _, rp := range globalReportStore.list {
-		if rp.Id == id {
-			return rp, true
-		}
-	}
-	return Report{}, false
-}
-
-// UpdateReport 更新举报记录，找到 id 则更新 status/handlerId/handleResult 并返回 true
-func UpdateReport(id int64, status, handlerId, handleResult string) bool {
-	globalReportStore.mu.Lock()
-	defer globalReportStore.mu.Unlock()
-	for i := range globalReportStore.list {
-		if globalReportStore.list[i].Id == id {
-			globalReportStore.list[i].Status = status
-			globalReportStore.list[i].HandlerId = handlerId
-			globalReportStore.list[i].HandleResult = handleResult
-			return true
-		}
-	}
-	return false
+	n, _ := res.RowsAffected()
+	return n == 1
 }

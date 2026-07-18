@@ -50,7 +50,7 @@ PID_DIR := $(LOG_DIR)/pids
 .PHONY: help tidy build run-all start-all start-core stop-core stop-all db-init db-reset clean \
         test test-verbose vet lint fmt docker-build docker-build-all swagger \
         docker-config docker-up docker-down docker-restart docker-ps docker-logs \
-        stack-preflight stack-up stack-down stack-restart stack-check stack-ps stack-logs \
+        openim-up openim-down stack-preflight stack-up stack-down stack-restart stack-check stack-ps stack-logs \
         start-gateway start-auth start-user start-temple start-master start-booking \
         start-message start-file start-product start-diy start-order start-payment \
         start-finance start-review start-audit start-logistics start-marketing start-ai start-community start-media \
@@ -379,6 +379,12 @@ docker-logs: ## 查看 Docker Compose 后端日志（可传 SVC=gateway-service�
 	else \
 		docker compose -f docker-compose.yml -f docker-compose.full.yml logs -f --tail=200; \
 	fi
+
+openim-up: ## 启动或恢复 OpenIM 依赖与宿主服务
+	@bash scripts/dev/openim-up.sh
+
+openim-down: ## 停止 OpenIM 宿主服务与依赖容器
+	@bash scripts/dev/openim-down.sh
 
 stack-preflight: ## 全栈启动前预检端口/Docker/Compose（askXuan + OpenIM）
 	@bash scripts/dev/stack-preflight.sh

@@ -106,9 +106,13 @@ func NewBlessingTaskModel(conn sqlx.SqlConn) BlessingTaskModel {
 	return &defaultBlessingTaskModel{conn: conn}
 }
 
+func newBlessingTaskNo() string {
+	return "BT" + time.Now().Format("20060102") + fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+}
+
 func (m *defaultBlessingTaskModel) Insert(ctx context.Context, data *BlessingTask) (*BlessingTask, error) {
 	if data.TaskNo == "" {
-		data.TaskNo = "BT" + time.Now().Format("20060102") + fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+		data.TaskNo = newBlessingTaskNo()
 	}
 	if data.Status == "" {
 		data.Status = BlessingTaskStatusDispatched

@@ -62,8 +62,11 @@ func main() {
 func validatePaymentConfig(c config.Config) error {
 	env := strings.ToLower(strings.TrimSpace(c.AppEnv))
 	provider := strings.ToLower(strings.TrimSpace(c.Provider))
-	if (env == "prod" || env == "production") && provider == "mock" {
-		return fmt.Errorf("%s environment must not use mock payment provider", env)
+	if env == "prod" || env == "production" {
+		return fmt.Errorf("production payment provider is not implemented; mock is forbidden")
+	}
+	if provider != "mock" {
+		return fmt.Errorf("unsupported payment provider %q; only mock is implemented for local/test", provider)
 	}
 	return nil
 }

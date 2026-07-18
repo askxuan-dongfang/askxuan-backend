@@ -22,6 +22,7 @@ const (
 const (
 	PaymentChannelWechat = "wechat"
 	PaymentChannelAlipay = "alipay"
+	PaymentChannelMock   = "mock"
 )
 
 // 订单类型常量

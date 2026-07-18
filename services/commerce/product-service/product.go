@@ -7,6 +7,7 @@ import (
 	"github.com/askxuan/product-service/internal/config"
 	"github.com/askxuan/product-service/internal/handler"
 	"github.com/askxuan/product-service/internal/svc"
+	productrpc "github.com/askxuan/product-service/rpc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
@@ -25,6 +26,8 @@ func main() {
 
 	svcCtx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, svcCtx)
+	rpcServer := productrpc.MustStartProductRpcServer(c, svcCtx)
+	defer rpcServer.Stop()
 
 	fmt.Printf("启动 product-service，监听 %s:%d\n", c.Host, c.Port)
 	server.Start()

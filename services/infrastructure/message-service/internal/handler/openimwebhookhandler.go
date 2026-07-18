@@ -17,6 +17,7 @@ type OpenIMWebhookReq struct {
 	SessionType int    `json:"sessionType"`
 	ContentType int    `json:"contentType"`
 	SenderName  string `json:"senderName"`
+	SenderNick  string `json:"senderNickname"`
 }
 
 // OpenIMWebhookHandler 接收 OpenIM afterSendSingleMsg 事件回调
@@ -32,8 +33,12 @@ func OpenIMWebhookHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		// 仅处理单聊文本消息（sessionType=1, contentType=101）
 		if req.SessionType == 1 && req.ContentType == 101 && req.RecvID != "" {
 			title := "新的咨询消息"
-			if req.SenderName != "" {
-				title = "来自 " + req.SenderName + " 的消息"
+			senderName := req.SenderNick
+			if senderName == "" {
+				senderName = req.SenderName
+			}
+			if senderName != "" {
+				title = "来自 " + senderName + " 的消息"
 			}
 			_, _ = svcCtx.MessageModel.Insert(r.Context(), &model.Message{
 				UserId:  req.RecvID,

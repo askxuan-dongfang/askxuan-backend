@@ -67,6 +67,32 @@ R=$(curl -s --max-time 5 -X POST "$OPENIM/user/get_users_info" -H "Content-Type:
 ERR_CODE=$(echo "$R" | python3 -c "import sys,json;print(json.load(sys.stdin).get('errCode',''))" 2>/dev/null)
 check "OpenIM 用户 u_1/m_1 已注册" "0" "$ERR_CODE" ""
 
+# 8. 真实 OpenIM 单聊发送后触发 afterSendSingleMsg 回调并落库
+echo "--- 8. OpenIM 真实消息闭环 ---"
+MARKER="openim_e2e_$(date +%s)"
+R=$(curl -s --max-time 10 -X POST "$OPENIM/msg/send_msg" \
+  -H "Content-Type: application/json" \
+  -H "operationID: test-send-$MARKER" \
+  -H "token: $ADMIN_TOKEN" \
+  -d "{\"sendID\":\"u_1\",\"recvID\":\"m_1\",\"senderNickname\":\"OpenIM测试用户\",\"senderPlatformID\":1,\"content\":{\"content\":\"$MARKER\"},\"contentType\":101,\"sessionType\":1}")
+ERR_CODE=$(echo "$R" | python3 -c "import sys,json;print(json.load(sys.stdin).get('errCode',''))" 2>/dev/null)
+check "OpenIM send_msg 成功" "0" "$ERR_CODE" ""
+
+REAL_CNT=0
+for _ in $(seq 1 10); do
+  REAL_CNT=$(docker exec askxuan-mysql mysql -uroot -proot123 -N -e \
+    "SELECT COUNT(*) FROM askxuan_message.message WHERE biz_type='consult' AND biz_id='u_1' AND user_id='m_1' AND content LIKE '%$MARKER%';" 2>/dev/null)
+  if [ "$REAL_CNT" -ge 1 ] 2>/dev/null; then
+    break
+  fi
+  sleep 1
+done
+if [ "$REAL_CNT" -ge 1 ] 2>/dev/null; then
+  PASS=$((PASS+1)); printf "  ✓ OpenIM afterSendSingleMsg 已落库\n"
+else
+  FAIL=$((FAIL+1)); printf "  ✗ OpenIM afterSendSingleMsg 未落库\n"
+fi
+
 echo ""
 echo "===== 测试汇总: $PASS 通过 / $FAIL 失败 ====="
 exit $FAIL

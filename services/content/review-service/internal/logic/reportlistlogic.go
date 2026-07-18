@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 
+	"github.com/askxuan/common"
 	"github.com/askxuan/review-service/internal/model"
 	"github.com/askxuan/review-service/internal/svc"
 	"github.com/askxuan/review-service/internal/types"
@@ -27,7 +28,11 @@ func NewReportListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Report
 
 // ReportList 平台查看举报列表，支持按 status 筛选 + 分页
 func (l *ReportListLogic) ReportList(req *types.ReportListReq) (*types.ReportListResp, error) {
-	list, total := model.ListReports(req.Status, req.Page, req.Size)
+	list, total, err := model.ListReports(l.ctx, req.Status, req.Page, req.Size)
+	if err != nil {
+		l.Errorf("查询评价举报失败: %v", err)
+		return nil, common.ErrSystem
+	}
 
 	result := make([]types.ReviewReport, 0, len(list))
 	for _, r := range list {

@@ -30,6 +30,40 @@ type (
         Size       int64  `json:"size"`       // 文件大小（字节）
         ContentType string `json:"contentType"`
     }
+
+    BackupItem {
+        Id         string  `json:"id"`
+        Filename   string  `json:"filename"`
+        Size       float64 `json:"size"`
+        SizeBytes  int64   `json:"sizeBytes"`
+        Type       string  `json:"type"`
+        Status     string  `json:"status"`
+        Time       string  `json:"time"`
+        ObjectName string  `json:"objectName"`
+    }
+
+    BackupListResp {
+        List []BackupItem `json:"list"`
+    }
+
+    BackupDownloadReq {
+        Filename string `path:"filename"`
+    }
+
+    BackupDownloadResp {
+        Url       string `json:"url"`
+        ExpiresIn int64  `json:"expiresIn"`
+    }
+
+    BackupRestoreReq {
+        Filename string `path:"filename"`
+        Confirm  string `json:"confirm"`
+    }
+
+    BackupActionResp {
+        Success bool   `json:"success"`
+        Message string `json:"message"`
+    }
 )
 
 @server (
@@ -42,4 +76,22 @@ service file-service {
 
     @handler upload
     post /upload returns (UploadResp)
+}
+
+@server (
+    group: backup
+    prefix: /api/v1/admin/files
+)
+service file-service {
+    @handler backupList
+    get /backups returns (BackupListResp)
+
+    @handler backupCreate
+    post /backups returns (BackupItem)
+
+    @handler backupDownload
+    get /backups/:filename/download (BackupDownloadReq) returns (BackupDownloadResp)
+
+    @handler backupRestore
+    post /backups/:filename/restore (BackupRestoreReq) returns (BackupActionResp)
 }

@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/askxuan/booking-service/internal/model"
@@ -97,11 +98,12 @@ func (l *CreateReviewLogic) CreateReview(req *types.ReviewCreateReq) (*types.Rev
 
 	// 5. 发送 MQ 通知（失败不阻断主流程）
 	if l.svcCtx.MqProducer != nil {
+		images, _ := json.Marshal(req.Images)
 		if err := l.svcCtx.MqProducer.Publish(l.ctx, mq.BookingNotify{
-			BookingId: b.Id,
-			UserId:    b.UserId,
-			TempleId:  b.TempleId,
-			Action:    "reviewed",
+			BookingId: b.Id, UserId: b.UserId, TempleId: b.TempleId,
+			MasterId: b.MasterId, ServiceName: b.ServiceName, BookingDate: b.BookingDate,
+			TotalFee: b.TotalFee, Rating: req.Rating, ReviewContent: req.Content,
+			ReviewImages: string(images), Action: "reviewed",
 		}); err != nil {
 			l.Errorf("发送评价通知失败: %v", err)
 		}

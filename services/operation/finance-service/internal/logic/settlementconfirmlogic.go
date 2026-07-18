@@ -35,6 +35,8 @@ func (l *SettlementConfirmLogic) SettlementConfirm(req *types.SettlementConfirmR
 	if !model.CanTransitSettlement(s.Status, model.SettlementConfirmed) {
 		return nil, common.ErrStatusInvalid
 	}
-	model.UpdateSettlementStatus(req.Id, model.SettlementConfirmed)
+	if !model.UpdateSettlementStatus(req.Id, model.SettlementConfirmed) {
+		return nil, common.ErrStatusInvalid
+	}
 	return &types.SettlementConfirmResp{Id: req.Id, Status: model.SettlementConfirmed}, nil
 }

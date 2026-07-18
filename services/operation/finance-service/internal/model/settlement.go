@@ -1,199 +1,112 @@
 package model
 
-import (
-	"sync"
-)
+import "context"
 
-// 结算单状态常量
 const (
-	SettlementPending   = "pending"   // 待确认
-	SettlementConfirmed = "confirmed" // 已确认
-	SettlementPaid      = "paid"      // 已打款
+	SettlementPending   = "pending"
+	SettlementConfirmed = "confirmed"
+	SettlementPaid      = "paid"
+	SettleTypeTemple    = "temple"
+	SettleTypeMaster    = "master"
+	SettleTypeShop      = "shop"
 )
 
-// 结算类型（结算单与提现申请共用）
-const (
-	SettleTypeTemple = "temple"
-	SettleTypeMaster = "master"
-	SettleTypeShop   = "shop"
-)
+var settlementTransitions = map[string]map[string]bool{SettlementPending: {SettlementConfirmed: true}, SettlementConfirmed: {SettlementPaid: true}}
 
-// settlementTransitions 结算单状态机合法流转
-var settlementTransitions = map[string]map[string]bool{
-	SettlementPending: {
-		SettlementConfirmed: true,
-	},
-	SettlementConfirmed: {
-		SettlementPaid: true,
-	},
-}
-
-// CanTransitSettlement 校验结算单状态流转是否合法
 func CanTransitSettlement(from, to string) bool {
 	if from == to {
 		return false
 	}
 	allowed, ok := settlementTransitions[from]
-	if !ok {
+	return ok && allowed[to]
+}
+
+type Settlement struct {
+	Id               int64   `db:"id" json:"id"`
+	SettlementNo     string  `db:"settlement_no" json:"settlementNo"`
+	SettleType       string  `db:"settle_type" json:"settleType"`
+	TargetId         string  `db:"target_id" json:"targetId"`
+	TargetName       string  `db:"target_name" json:"targetName"`
+	PeriodStart      string  `db:"period_start" json:"periodStart"`
+	PeriodEnd        string  `db:"period_end" json:"periodEnd"`
+	OrderCount       int     `db:"order_count" json:"orderCount"`
+	TotalAmount      float64 `db:"total_amount" json:"totalAmount"`
+	CommissionRate   float64 `db:"commission_rate" json:"commissionRate"`
+	CommissionAmount float64 `db:"commission_amount" json:"commissionAmount"`
+	SettleAmount     float64 `db:"settle_amount" json:"settleAmount"`
+	Status           string  `db:"status" json:"status"`
+	CreateTime       string  `db:"create_time" json:"createTime"`
+}
+
+const settlementColumns = `id,settlement_no,settle_type,target_id,target_name,IFNULL(DATE_FORMAT(period_start,'%Y-%m-%d %H:%i:%s'),'') period_start,IFNULL(DATE_FORMAT(period_end,'%Y-%m-%d %H:%i:%s'),'') period_end,order_count,total_amount,commission_rate,commission_amount,settle_amount,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
+
+func ListSettlements(settleType, status string, page, size int) ([]Settlement, int64) {
+	where, args := "1=1", []interface{}{}
+	if settleType != "" {
+		where += " AND settle_type=?"
+		args = append(args, settleType)
+	}
+	if status != "" {
+		where += " AND status=?"
+		args = append(args, status)
+	}
+	var total int64
+	if db.QueryRowCtx(context.Background(), &total, "SELECT COUNT(1) FROM settlement WHERE "+where, args...) != nil {
+		return []Settlement{}, 0
+	}
+	offset, limit := pageLimit(page, size)
+	var list []Settlement
+	if db.QueryRowsCtx(context.Background(), &list, `SELECT `+settlementColumns+` FROM settlement WHERE `+where+` ORDER BY id DESC LIMIT ?,?`, append(args, offset, limit)...) != nil {
+		return []Settlement{}, 0
+	}
+	return list, total
+}
+func FindSettlementByID(id int64) (Settlement, bool) {
+	var s Settlement
+	if db.QueryRowCtx(context.Background(), &s, `SELECT `+settlementColumns+` FROM settlement WHERE id=?`, id) != nil {
+		return Settlement{}, false
+	}
+	return s, true
+}
+func UpdateSettlementStatus(id int64, status string) bool {
+	s, ok := FindSettlementByID(id)
+	if !ok || !CanTransitSettlement(s.Status, status) {
 		return false
 	}
-	return allowed[to]
-}
-
-// Settlement 结算单结构体
-type Settlement struct {
-	Id               int64   `json:"id"`
-	SettlementNo     string  `json:"settlementNo"`
-	SettleType       string  `json:"settleType"`
-	TargetId         string  `json:"targetId"`
-	TargetName       string  `json:"targetName"`
-	PeriodStart      string  `json:"periodStart"`
-	PeriodEnd        string  `json:"periodEnd"`
-	OrderCount       int     `json:"orderCount"`
-	TotalAmount      float64 `json:"totalAmount"`
-	CommissionRate   float64 `json:"commissionRate"`
-	CommissionAmount float64 `json:"commissionAmount"`
-	SettleAmount     float64 `json:"settleAmount"`
-	Status           string  `json:"status"`
-	CreateTime       string  `json:"createTime"`
-}
-
-// ---- 内存存储（MVP 阶段不连 DB）----
-
-type settlementStore struct {
-	mu  sync.RWMutex
-	list []Settlement
-	seq  int64
-}
-
-var globalSettlementStore = &settlementStore{
-	list: []Settlement{
-		{
-			Id:               1,
-			SettlementNo:     "SET2026060001",
-			SettleType:       SettleTypeTemple,
-			TargetId:         "T001",
-			TargetName:       "灵隐寺",
-			PeriodStart:      "2026-06-01 00:00:00",
-			PeriodEnd:        "2026-06-30 23:59:59",
-			OrderCount:       15,
-			TotalAmount:      3500,
-			CommissionRate:   0.15,
-			CommissionAmount: 525,
-			SettleAmount:     2975,
-			Status:           SettlementConfirmed,
-			CreateTime:       "2026-07-01 02:00:00",
-		},
-		{
-			Id:               2,
-			SettlementNo:     "SET2026060002",
-			SettleType:       SettleTypeMaster,
-			TargetId:         "M001",
-			TargetName:       "智海法师",
-			PeriodStart:      "2026-06-01 00:00:00",
-			PeriodEnd:        "2026-06-30 23:59:59",
-			OrderCount:       12,
-			TotalAmount:      2800,
-			CommissionRate:   0.15,
-			CommissionAmount: 420,
-			SettleAmount:     2380,
-			Status:           SettlementPending,
-			CreateTime:       "2026-07-01 02:00:00",
-		},
-		{
-			Id:               3,
-			SettlementNo:     "SET2026060003",
-			SettleType:       SettleTypeShop,
-			TargetId:         "SHOP001",
-			TargetName:       "东方商城",
-			PeriodStart:      "2026-06-01 00:00:00",
-			PeriodEnd:        "2026-06-30 23:59:59",
-			OrderCount:       86,
-			TotalAmount:      25600,
-			CommissionRate:   0.10,
-			CommissionAmount: 2560,
-			SettleAmount:     23040,
-			Status:           SettlementPaid,
-			CreateTime:       "2026-07-01 02:00:00",
-		},
-	},
-	seq: 3,
-}
-
-// ListSettlements 查询结算列表
-func ListSettlements(settleType, status string, page, size int) ([]Settlement, int64) {
-	globalSettlementStore.mu.RLock()
-	defer globalSettlementStore.mu.RUnlock()
-
-	filtered := make([]Settlement, 0, len(globalSettlementStore.list))
-	for _, s := range globalSettlementStore.list {
-		if settleType != "" && s.SettleType != settleType {
-			continue
-		}
-		if status != "" && s.Status != status {
-			continue
-		}
-		filtered = append(filtered, s)
+	res, err := db.ExecCtx(context.Background(), `UPDATE settlement SET status=? WHERE id=? AND status=?`, status, id, s.Status)
+	if err != nil {
+		return false
 	}
-
-	total := int64(len(filtered))
-	start := (page - 1) * size
-	if start < 0 {
-		start = 0
-	}
-	if start > len(filtered) {
-		start = len(filtered)
-	}
-	end := start + size
-	if end > len(filtered) {
-		end = len(filtered)
-	}
-	return filtered[start:end], total
+	n, _ := res.RowsAffected()
+	return n == 1
 }
-
-// FindSettlementByID 按ID查询结算单
-func FindSettlementByID(id int64) (Settlement, bool) {
-	globalSettlementStore.mu.RLock()
-	defer globalSettlementStore.mu.RUnlock()
-	for _, s := range globalSettlementStore.list {
-		if s.Id == id {
-			return s, true
-		}
-	}
-	return Settlement{}, false
-}
-
-// UpdateSettlementStatus 更新结算单状态
-func UpdateSettlementStatus(id int64, status string) bool {
-	globalSettlementStore.mu.Lock()
-	defer globalSettlementStore.mu.Unlock()
-	for i := range globalSettlementStore.list {
-		if globalSettlementStore.list[i].Id == id {
-			globalSettlementStore.list[i].Status = status
-			return true
-		}
-	}
-	return false
-}
-
-// SumSettlementBySettleType 按结算类型聚合结算金额
 func SumSettlementBySettleType(start, end string) map[string]float64 {
-	globalSettlementStore.mu.RLock()
-	defer globalSettlementStore.mu.RUnlock()
-	result := map[string]float64{}
-	for _, s := range globalSettlementStore.list {
-		result[s.SettleType] += s.TotalAmount
+	where, args := "1=1", []interface{}{}
+	if start != "" {
+		where += " AND create_time>=?"
+		args = append(args, start)
 	}
-	return result
+	if end != "" {
+		where += " AND create_time<=?"
+		args = append(args, end)
+	}
+	var rows []struct {
+		SettleType string  `db:"settle_type"`
+		Amount     float64 `db:"amount"`
+	}
+	if db.QueryRowsCtx(context.Background(), &rows, `SELECT settle_type,COALESCE(SUM(total_amount),0) amount FROM settlement WHERE `+where+` GROUP BY settle_type`, args...) != nil {
+		return map[string]float64{}
+	}
+	out := map[string]float64{}
+	for _, r := range rows {
+		out[r.SettleType] = r.Amount
+	}
+	return out
 }
-
-// SumCommissionAmount 聚合所有结算单的平台抽成金额
 func SumCommissionAmount() float64 {
-	globalSettlementStore.mu.RLock()
-	defer globalSettlementStore.mu.RUnlock()
 	var total float64
-	for _, s := range globalSettlementStore.list {
-		total += s.CommissionAmount
+	if db.QueryRowCtx(context.Background(), &total, `SELECT COALESCE(SUM(commission_amount),0) FROM settlement`) != nil {
+		return 0
 	}
 	return total
 }

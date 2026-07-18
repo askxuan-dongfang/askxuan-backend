@@ -162,6 +162,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/openim/webhook",
 				Handler: OpenIMWebhookHandler(serverCtx),
 			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/openim/webhook/:command",
+				Handler: OpenIMWebhookHandler(serverCtx),
+			},
 		},
 	)
 }

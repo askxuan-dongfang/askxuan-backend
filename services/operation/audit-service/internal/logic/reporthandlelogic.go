@@ -48,6 +48,8 @@ func (l *ReportHandleLogic) ReportHandle(req *types.ReportHandleReq) (*types.Rep
 		return nil, common.ErrStatusInvalid
 	}
 	// 更新举报记录
-	model.UpdateReport(req.Id, targetStatus, req.HandlerId, req.HandleResult)
+	if !model.UpdateReport(req.Id, targetStatus, req.HandlerId, req.HandleResult) {
+		return nil, common.ErrStatusInvalid
+	}
 	return &types.ReportHandleResp{Id: req.Id, Status: targetStatus}, nil
 }

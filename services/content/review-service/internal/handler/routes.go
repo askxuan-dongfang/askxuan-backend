@@ -91,6 +91,9 @@ func createReviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
+		if userId := r.Header.Get("X-User-Id"); userId != "" {
+			req.UserId = userId
+		}
 		l := logic.NewCreateReviewLogic(r.Context(), svcCtx)
 		resp, err := l.CreateReview(&req)
 		if err != nil {

@@ -12,8 +12,23 @@ type MinIOConf struct {
 	PresignExpire int64 // 预签名 URL 有效期（秒）
 }
 
+type BackupConf struct {
+	Enabled        bool
+	RestoreEnabled bool
+	Bucket         string
+	MySQLHost      string
+	MySQLPort      int
+	MySQLUser      string
+	MySQLPassword  string
+	Schemas        []string
+	DumpCommand    string
+	RestoreCommand string
+	TimeoutSeconds int64
+}
+
 // Config file 服务配置
 type Config struct {
 	rest.RestConf
-	MinIO MinIOConf
+	MinIO  MinIOConf
+	Backup BackupConf
 }

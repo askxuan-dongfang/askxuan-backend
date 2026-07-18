@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 
+	"github.com/askxuan/common"
 	"github.com/askxuan/review-service/internal/model"
 	"github.com/askxuan/review-service/internal/svc"
 	"github.com/askxuan/review-service/internal/types"
@@ -27,11 +28,15 @@ func NewReviewReportLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Revi
 
 // ReviewReport 寺院/法师对不当评价发起举报
 func (l *ReviewReportLogic) ReviewReport(req *types.ReviewReportReq) (*types.ReviewReportResp, error) {
-	report := model.CreateReport(model.ReviewReport{
+	report, err := model.CreateReport(l.ctx, model.ReviewReport{
 		ReviewId:   req.Id,
 		ReporterId: req.ReporterId,
 		Reason:     req.Reason,
 		Status:     model.ReportStatusPending,
 	})
+	if err != nil {
+		l.Errorf("创建评价举报失败: %v", err)
+		return nil, common.ErrSystem
+	}
 	return &types.ReviewReportResp{Id: report.Id}, nil
 }

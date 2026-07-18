@@ -25,6 +25,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/diy/designs/:id", Handler: designDetailHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/diy/designs/:id/order", Handler: diyDesignOrderCreateHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/materials", Handler: materialListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/diy/blessing-services", Handler: blessingServiceListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/diy/orders", Handler: diyOrderCreateHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/orders", Handler: diyOrderListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/orders/:id", Handler: diyOrderDetailHandler(svcCtx)},
@@ -123,6 +124,22 @@ func materialListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewMaterialListLogic(r.Context(), svcCtx).List(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func blessingServiceListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.BlessingServiceListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewBlessingServiceListLogic(r.Context(), svcCtx).List(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

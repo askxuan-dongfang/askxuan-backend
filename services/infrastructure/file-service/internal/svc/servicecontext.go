@@ -12,9 +12,10 @@ import (
 
 // ServiceContext file 服务依赖容器
 type ServiceContext struct {
-	Config       config.Config
-	MinIOClient  *minio.Client
-	Bucket       string
+	Config        config.Config
+	MinIOClient   *minio.Client
+	Bucket        string
+	BackupBucket  string
 	PresignExpire int64
 }
 
@@ -30,6 +31,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	} else {
 		// 自动创建 bucket（幂等，已存在则忽略）
 		ensureBucket(client, c.MinIO.Bucket)
+		ensurePrivateBucket(client, c.Backup.Bucket)
 	}
 
 	expire := c.MinIO.PresignExpire
@@ -41,7 +43,22 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Config:        c,
 		MinIOClient:   client,
 		Bucket:        c.MinIO.Bucket,
+		BackupBucket:  c.Backup.Bucket,
 		PresignExpire: expire,
+	}
+}
+
+func ensurePrivateBucket(client *minio.Client, bucket string) {
+	if client == nil || bucket == "" {
+		return
+	}
+	ctx := context.Background()
+	exists, err := client.BucketExists(ctx, bucket)
+	if err == nil && !exists {
+		err = client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{})
+	}
+	if err != nil {
+		logx.Errorf("创建私有备份 bucket 失败 bucket=%s: %v", bucket, err)
 	}
 }
 

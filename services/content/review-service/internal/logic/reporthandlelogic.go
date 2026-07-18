@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"errors"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/review-service/internal/model"
@@ -9,6 +10,7 @@ import (
 	"github.com/askxuan/review-service/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 // ReportHandleLogic 处理举报逻辑
@@ -29,9 +31,13 @@ func NewReportHandleLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Repo
 // ReportHandle 平台处理举报（handled→隐藏评价 / rejected→驳回）
 func (l *ReportHandleLogic) ReportHandle(req *types.ReportHandleReq) (*types.ReportHandleResp, error) {
 	// 查询举报记录
-	report, ok := model.FindReportByID(req.Id)
-	if !ok {
-		return nil, common.NewBizError(40414, "举报不存在")
+	report, err := model.FindReportByID(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.NewBizError(40414, "举报不存在")
+		}
+		l.Errorf("查询评价举报失败: %v", err)
+		return nil, common.ErrSystem
 	}
 
 	// 确定目标状态
@@ -50,12 +56,14 @@ func (l *ReportHandleLogic) ReportHandle(req *types.ReportHandleReq) (*types.Rep
 		return nil, common.ErrStatusInvalid
 	}
 
-	// 更新举报状态和处理结果
-	model.UpdateReportStatus(req.Id, targetStatus, req.HandleResult)
-
-	// 若处理为 handled，则同步隐藏对应评价
-	if targetStatus == model.ReportStatusHandled {
-		model.UpdateReviewStatus(report.ReviewId, model.ReviewStatusHidden)
+	// 举报状态与评价可见性必须在同一事务内提交。
+	updated, err := model.HandleReport(l.ctx, report, targetStatus, req.HandleResult)
+	if err != nil {
+		l.Errorf("更新评价举报失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	if !updated {
+		return nil, common.ErrStatusInvalid
 	}
 
 	return &types.ReportHandleResp{

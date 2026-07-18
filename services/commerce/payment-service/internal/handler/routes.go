@@ -16,12 +16,13 @@ import (
 // RegisterHandlers 注册 payment 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
+	authCfg := &middleware.AuthConfig{Secret: svcCtx.Config.Auth.AccessSecret}
 
 	// ===== C端路由 =====
-	server.AddRoutes([]rest.Route{
+	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 		{Method: http.MethodPost, Path: "/api/v1/payments", Handler: paymentCreateHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/payments/:id", Handler: paymentQueryHandler(svcCtx)},
-	})
+	}...))
 
 	// ===== 回调路由（公开，无需鉴权） =====
 	server.AddRoutes([]rest.Route{

@@ -4,9 +4,11 @@ import (
 	"github.com/askxuan/order-service/internal/config"
 	"github.com/askxuan/order-service/internal/model"
 	"github.com/askxuan/order-service/internal/mq"
+	"github.com/askxuan/order-service/internal/rpcclient"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"github.com/zeromicro/go-zero/zrpc"
 )
 
 // ServiceContext order 服务依赖容器
@@ -20,6 +22,7 @@ type ServiceContext struct {
 	ShopOrderItemModel      model.ShopOrderItemModel
 	ShopOrderLogisticsModel model.ShopOrderLogisticsModel
 	ReturnOrderModel        model.ReturnOrderModel
+	CatalogClient           rpcclient.CatalogClient
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -44,5 +47,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		ShopOrderItemModel:      model.NewShopOrderItemModel(db),
 		ShopOrderLogisticsModel: model.NewShopOrderLogisticsModel(db),
 		ReturnOrderModel:        model.NewReturnOrderModel(db),
+		CatalogClient:           rpcclient.NewCatalogClient(zrpc.MustNewClient(c.ProductRpc)),
 	}
 }

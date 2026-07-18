@@ -37,6 +37,7 @@ type Config struct {
 	AppEnv     string `json:",default=development"`
 	Provider   string `json:",default=mock"`
 	PaymentRpc zrpc.RpcServerConf
+	OrderRpc   zrpc.RpcClientConf
 	DataSource string // MySQL 数据源
 	Redis      redis.RedisConf
 	RabbitMQ   RabbitMQConf

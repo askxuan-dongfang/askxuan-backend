@@ -16,15 +16,16 @@ import (
 // RegisterHandlers 注册 order 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
+	authCfg := &middleware.AuthConfig{Secret: svcCtx.Config.AuthSecret}
 
 	// ===== C端路由 =====
-	server.AddRoutes([]rest.Route{
+	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 		{Method: http.MethodPost, Path: "/api/v1/orders", Handler: orderCreateHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/orders", Handler: orderListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/orders/:id", Handler: orderDetailHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/orders/:id/confirm", Handler: orderConfirmHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/orders/:id/return", Handler: orderReturnHandler(svcCtx)},
-	})
+	}...))
 
 	// ===== 商城台路由 =====
 	server.AddRoutes([]rest.Route{

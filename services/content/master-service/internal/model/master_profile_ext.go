@@ -1,48 +1,40 @@
 package model
 
-import "sync"
+import (
+	"context"
+	"errors"
 
-// ============ 法师资料扩展 - 内存存储（bio / pricing） ============
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
+)
 
-// MasterProfileExt 法师资料扩展字段（DB schema 未含 bio/pricing，MVP 阶段内存存储）
 type MasterProfileExt struct {
-	Bio     string `json:"bio"`
-	Pricing string `json:"pricing"`
+	MasterCode string `db:"master_code" json:"masterCode"`
+	Bio        string `db:"bio" json:"bio"`
+	Pricing    string `db:"pricing" json:"pricing"`
 }
 
-// profileExtStore 内存存储
-type profileExtStore struct {
-	mu   sync.RWMutex
-	data map[string]MasterProfileExt // key = masterCode
+type MasterProfileExtModel interface {
+	Find(ctx context.Context, masterCode string) (MasterProfileExt, error)
+	Upsert(ctx context.Context, ext MasterProfileExt) error
 }
 
-// globalProfileExtStore 全局资料扩展存储
-var globalProfileExtStore = &profileExtStore{
-	data: map[string]MasterProfileExt{
-		"M001": {
-			Bio:     "普陀山出家，擅长祈福法事与超度仪轨，弘法二十余载。",
-			Pricing: "预约法事 200-800 元 / DIY加持 300-500 元",
-		},
-		"M002": {
-			Bio:     "武当山修道，精通道教科仪与养生功法。",
-			Pricing: "道教科仪 500-1200 元 / 养生咨询 200 元",
-		},
-	},
+type masterProfileExtModel struct{ conn sqlx.SqlConn }
+
+func NewMasterProfileExtModel(conn sqlx.SqlConn) MasterProfileExtModel {
+	return &masterProfileExtModel{conn: conn}
 }
 
-// GetProfileExt 获取法师资料扩展
-func GetProfileExt(masterCode string) MasterProfileExt {
-	globalProfileExtStore.mu.RLock()
-	defer globalProfileExtStore.mu.RUnlock()
-	if ext, ok := globalProfileExtStore.data[masterCode]; ok {
-		return ext
+func (m *masterProfileExtModel) Find(ctx context.Context, masterCode string) (MasterProfileExt, error) {
+	var ext MasterProfileExt
+	err := m.conn.QueryRowCtx(ctx, &ext, "SELECT master_code,bio,pricing FROM master_profile_ext WHERE master_code=?", masterCode)
+	if errors.Is(err, sqlx.ErrNotFound) {
+		return MasterProfileExt{MasterCode: masterCode}, nil
 	}
-	return MasterProfileExt{}
+	return ext, err
 }
 
-// UpsertProfileExt 更新或插入法师资料扩展
-func UpsertProfileExt(masterCode string, ext MasterProfileExt) {
-	globalProfileExtStore.mu.Lock()
-	defer globalProfileExtStore.mu.Unlock()
-	globalProfileExtStore.data[masterCode] = ext
+func (m *masterProfileExtModel) Upsert(ctx context.Context, ext MasterProfileExt) error {
+	_, err := m.conn.ExecCtx(ctx, `INSERT INTO master_profile_ext(master_code,bio,pricing) VALUES(?,?,?)
+		ON DUPLICATE KEY UPDATE bio=VALUES(bio),pricing=VALUES(pricing)`, ext.MasterCode, ext.Bio, ext.Pricing)
+	return err
 }

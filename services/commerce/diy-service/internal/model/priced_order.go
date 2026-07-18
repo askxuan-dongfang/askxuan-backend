@@ -211,7 +211,7 @@ func resolveBlessFee(ctx context.Context, session sqlx.Session, code string) (fl
 		return 0, nil
 	}
 	var price float64
-	if err := session.QueryRowCtx(ctx, &price, `SELECT price FROM extra_service WHERE code=?`, code); err != nil {
+	if err := session.QueryRowCtx(ctx, &price, `SELECT price FROM extra_service WHERE code=? AND status=?`, code, BlessingServiceStatusOnShelf); err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
 			return 0, ErrOrderBlessingUnavailable
 		}

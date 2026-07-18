@@ -42,14 +42,9 @@ func (l *AuditRejectLogic) AuditReject(req *types.AuditRejectReq) (*types.AuditR
 	}
 	// 更新审核状态
 	now := time.Now().Format("2006-01-02 15:04:05")
-	model.UpdateAuditQueueStatus(req.Id, model.AuditStatusRejected, req.AuditorId, now, req.Remark)
-	// 写入审核日志
-	model.InsertAuditLog(model.AuditLog{
-		AuditId:    req.Id,
-		Action:     "reject",
-		OperatorId: req.AuditorId,
-		Remark:     req.Remark,
-	})
+	if !model.TransitionAuditQueue(req.Id, model.AuditStatusRejected, req.AuditorId, now, req.Remark, "reject") {
+		return nil, common.ErrStatusInvalid
+	}
 	// 发 MQ 通知
 	_ = l.svcCtx.MqProducer.PublishAuditResult(l.ctx, mq.AuditResult{
 		AuditId: fmt.Sprintf("%d", req.Id),

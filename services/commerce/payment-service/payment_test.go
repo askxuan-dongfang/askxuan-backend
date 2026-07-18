@@ -15,7 +15,8 @@ func TestValidatePaymentConfig(t *testing.T) {
 	}{
 		{name: "development mock", env: "development", provider: "mock"},
 		{name: "test mock", env: "test", provider: "MOCK"},
-		{name: "production real", env: "production", provider: "wechat"},
+		{name: "development unsupported", env: "development", provider: "wechat", wantErr: true},
+		{name: "production reserved channel", env: "production", provider: "wechat", wantErr: true},
 		{name: "production mock", env: "production", provider: "mock", wantErr: true},
 		{name: "prod mock", env: "prod", provider: "MOCK", wantErr: true},
 	}

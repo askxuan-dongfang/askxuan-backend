@@ -1,137 +1,115 @@
 package model
 
 import (
-	"sync"
-	"time"
+	"context"
+	"fmt"
+
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-// 举报状态常量
 const (
-	ReportStatusPending  = "pending"  // 待处理
-	ReportStatusHandled  = "handled"  // 已处理
-	ReportStatusRejected = "rejected" // 已驳回
+	ReportStatusPending  = "pending"
+	ReportStatusHandled  = "handled"
+	ReportStatusRejected = "rejected"
 )
 
-// reportTransitions 举报状态机合法流转
-var reportTransitions = map[string]map[string]bool{
-	ReportStatusPending: {
-		ReportStatusHandled:  true,
-		ReportStatusRejected: true,
-	},
-}
+var reportTransitions = map[string]map[string]bool{ReportStatusPending: {ReportStatusHandled: true, ReportStatusRejected: true}}
 
-// CanTransitReport 校验举报状态流转是否合法
-func CanTransitReport(from, to string) bool {
-	if from == to {
-		return false
-	}
-	allowed, ok := reportTransitions[from]
-	if !ok {
-		return false
-	}
-	return allowed[to]
-}
+func CanTransitReport(from, to string) bool { return from != to && reportTransitions[from][to] }
 
-// ReviewReport 评价举报结构体
 type ReviewReport struct {
-	Id           int64  `json:"id"`
-	ReviewId     int64  `json:"reviewId"`
-	ReporterId   string `json:"reporterId"`
-	Reason       string `json:"reason"`
-	Status       string `json:"status"`
-	HandleResult string `json:"handleResult"`
-	CreateTime   string `json:"createTime"`
+	Id           int64  `db:"id" json:"id"`
+	ReviewId     int64  `db:"review_id" json:"reviewId"`
+	ReporterId   string `db:"reporter_id" json:"reporterId"`
+	Reason       string `db:"reason" json:"reason"`
+	Status       string `db:"status" json:"status"`
+	HandleResult string `db:"handle_result" json:"handleResult"`
+	CreateTime   string `db:"create_time" json:"createTime"`
 }
 
-// ---- 内存存储（MVP 阶段不连 DB）----
-
-type reviewReportStore struct {
-	mu   sync.RWMutex
-	list []ReviewReport
-	seq  int64
+func ListReports(ctx context.Context, status string, page, size int) ([]ReviewReport, int64, error) {
+	where := ""
+	args := []any{}
+	if status != "" {
+		where = " WHERE status=?"
+		args = append(args, status)
+	}
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 20
+	}
+	var total int64
+	if err := db.QueryRowCtx(ctx, &total, "SELECT COUNT(*) FROM review_report"+where, args...); err != nil {
+		return nil, 0, err
+	}
+	queryArgs := append(append([]any{}, args...), size, (page-1)*size)
+	var list []ReviewReport
+	err := db.QueryRowsCtx(ctx, &list, `SELECT id,review_id,reporter_id,reason,status,handle_result,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time FROM review_report`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, queryArgs...)
+	return list, total, err
 }
 
-var globalReviewReportStore = &reviewReportStore{
-	list: []ReviewReport{
-		{
-			Id:         1,
-			ReviewId:   2,
-			ReporterId: "T003",
-			Reason:     "评价内容涉及不实信息",
-			Status:     ReportStatusPending,
-			CreateTime: "2026-06-26 09:00:00",
-		},
-	},
-	seq: 1,
+func CreateReport(ctx context.Context, report ReviewReport) (ReviewReport, error) {
+	if report.Status == "" {
+		report.Status = ReportStatusPending
+	}
+	result, err := db.ExecCtx(ctx, "INSERT INTO review_report(review_id,reporter_id,reason,status,handle_result) VALUES(?,?,?,?,?)", report.ReviewId, report.ReporterId, report.Reason, report.Status, report.HandleResult)
+	if err != nil {
+		return ReviewReport{}, err
+	}
+	report.Id, err = result.LastInsertId()
+	if err != nil {
+		return ReviewReport{}, err
+	}
+	return FindReportByID(ctx, report.Id)
 }
 
-// ListReports 查询举报列表，支持按 status 筛选 + 分页
-func ListReports(status string, page, size int) ([]ReviewReport, int64) {
-	globalReviewReportStore.mu.RLock()
-	defer globalReviewReportStore.mu.RUnlock()
+func FindReportByID(ctx context.Context, id int64) (ReviewReport, error) {
+	var report ReviewReport
+	err := db.QueryRowCtx(ctx, &report, `SELECT id,review_id,reporter_id,reason,status,handle_result,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time FROM review_report WHERE id=?`, id)
+	return report, err
+}
 
-	filtered := make([]ReviewReport, 0, len(globalReviewReportStore.list))
-	for _, rp := range globalReviewReportStore.list {
-		if status != "" && rp.Status != status {
-			continue
+func UpdateReportStatus(ctx context.Context, id int64, status, handleResult string) (bool, error) {
+	result, err := db.ExecCtx(ctx, "UPDATE review_report SET status=?,handle_result=? WHERE id=? AND status=?", status, handleResult, id, ReportStatusPending)
+	if err != nil {
+		return false, err
+	}
+	rows, err := result.RowsAffected()
+	return rows == 1, err
+}
+
+// HandleReport atomically resolves a pending report and applies its review visibility change.
+func HandleReport(ctx context.Context, report ReviewReport, status, handleResult string) (bool, error) {
+	updated := false
+	err := db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		result, err := session.ExecCtx(ctx, "UPDATE review_report SET status=?,handle_result=? WHERE id=? AND status=?", status, handleResult, report.Id, ReportStatusPending)
+		if err != nil {
+			return err
 		}
-		filtered = append(filtered, rp)
-	}
-
-	total := int64(len(filtered))
-	start := (page - 1) * size
-	if start < 0 {
-		start = 0
-	}
-	if start > len(filtered) {
-		start = len(filtered)
-	}
-	end := start + size
-	if end > len(filtered) {
-		end = len(filtered)
-	}
-	return filtered[start:end], total
-}
-
-// CreateReport 新建举报，seq 自增，默认 status=pending，设置 createTime
-func CreateReport(r ReviewReport) ReviewReport {
-	globalReviewReportStore.mu.Lock()
-	defer globalReviewReportStore.mu.Unlock()
-
-	globalReviewReportStore.seq++
-	r.Id = globalReviewReportStore.seq
-	if r.Status == "" {
-		r.Status = ReportStatusPending
-	}
-	r.CreateTime = time.Now().Format("2006-01-02 15:04:05")
-	globalReviewReportStore.list = append(globalReviewReportStore.list, r)
-	return r
-}
-
-// FindReportByID 按ID查询举报
-func FindReportByID(id int64) (ReviewReport, bool) {
-	globalReviewReportStore.mu.RLock()
-	defer globalReviewReportStore.mu.RUnlock()
-
-	for _, r := range globalReviewReportStore.list {
-		if r.Id == id {
-			return r, true
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return err
 		}
-	}
-	return ReviewReport{}, false
-}
-
-// UpdateReportStatus 更新举报状态和处理结果，找到并更新返回 true，未找到返回 false
-func UpdateReportStatus(id int64, status, handleResult string) bool {
-	globalReviewReportStore.mu.Lock()
-	defer globalReviewReportStore.mu.Unlock()
-
-	for i := range globalReviewReportStore.list {
-		if globalReviewReportStore.list[i].Id == id {
-			globalReviewReportStore.list[i].Status = status
-			globalReviewReportStore.list[i].HandleResult = handleResult
-			return true
+		if rows != 1 {
+			return nil
 		}
-	}
-	return false
+		if status == ReportStatusHandled {
+			result, err = session.ExecCtx(ctx, "UPDATE review SET status=? WHERE id=?", ReviewStatusHidden, report.ReviewId)
+			if err != nil {
+				return err
+			}
+			rows, err = result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if rows != 1 {
+				return fmt.Errorf("review %d not found while handling report %d", report.ReviewId, report.Id)
+			}
+		}
+		updated = true
+		return nil
+	})
+	return updated, err
 }

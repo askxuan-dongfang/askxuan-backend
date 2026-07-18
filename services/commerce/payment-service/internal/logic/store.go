@@ -16,8 +16,8 @@ import (
 // ==================== 共享 helper ====================
 
 // isValidChannel 校验支付渠道
-func isValidChannel(c string) bool {
-	return c == model.PaymentChannelWechat || c == model.PaymentChannelAlipay
+func isValidChannel(c, provider string) bool {
+	return provider == model.PaymentChannelMock && c == model.PaymentChannelMock
 }
 
 // isValidOrderType 校验订单类型

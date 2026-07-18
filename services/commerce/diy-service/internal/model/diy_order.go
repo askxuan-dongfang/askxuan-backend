@@ -114,6 +114,7 @@ type DiyOrderModel interface {
 	FindListAdmin(ctx context.Context, status string, page, size int) ([]*DiyOrder, int64, error)
 	UpdateStatus(ctx context.Context, id int64, status string) (*DiyOrder, error)
 	UpdateStatusIfCurrent(ctx context.Context, id int64, currentStatus, targetStatus string) (*DiyOrder, error)
+	CompleteMaking(ctx context.Context, id int64, blessServiceCode string) (*DiyOrder, *BlessingTask, error)
 	CancelAndRestock(ctx context.Context, id int64) (*DiyOrder, error)
 }
 
@@ -226,6 +227,71 @@ func (m *defaultDiyOrderModel) UpdateStatusIfCurrent(ctx context.Context, id int
 		return nil, ErrDiyOrderStateConflict
 	}
 	return m.FindOne(ctx, id)
+}
+
+func (m *defaultDiyOrderModel) CompleteMaking(ctx context.Context, id int64, blessServiceCode string) (updated *DiyOrder, task *BlessingTask, err error) {
+	err = m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		var order DiyOrder
+		query := fmt.Sprintf(`SELECT %s FROM %s WHERE id=? FOR UPDATE`, diyOrderRows, diyOrderTable)
+		if queryErr := session.QueryRowCtx(ctx, &order, query, id); queryErr != nil {
+			return queryErr
+		}
+		if order.Status != DiyStatusInMaking {
+			return ErrDiyOrderStateConflict
+		}
+
+		targetStatus := DiyStatusAwaitingShipment
+		if blessServiceCode != "" {
+			var service ExtraService
+			if queryErr := session.QueryRowCtx(ctx, &service,
+				`SELECT id,code,name,temple_code,master_code,price,description,status,create_time FROM extra_service WHERE code=? AND status=? FOR UPDATE`,
+				blessServiceCode, BlessingServiceStatusOnShelf); queryErr != nil {
+				if errors.Is(queryErr, sqlx.ErrNotFound) {
+					return ErrOrderBlessingUnavailable
+				}
+				return queryErr
+			}
+
+			now := time.Now().Format("2006-01-02 15:04:05")
+			task = &BlessingTask{
+				TaskNo:     newBlessingTaskNo(),
+				DiyOrderNo: order.OrderNo,
+				TempleCode: service.TempleCode,
+				MasterCode: service.MasterCode,
+				Status:     BlessingTaskStatusDispatched,
+				AssignTime: now,
+				CreateTime: now,
+				UpdateTime: now,
+			}
+			result, insertErr := session.ExecCtx(ctx,
+				fmt.Sprintf(`INSERT INTO %s(task_no,diy_order_no,temple_code,master_code,status,certificate_urls,assign_time,create_time,update_time) VALUES(?,?,?,?,?,'[]',?,?,?)`, blessingTaskTable),
+				task.TaskNo, task.DiyOrderNo, task.TempleCode, task.MasterCode, task.Status, now, now, now)
+			if insertErr != nil {
+				return insertErr
+			}
+			task.Id, insertErr = result.LastInsertId()
+			if insertErr != nil {
+				return insertErr
+			}
+			targetStatus = DiyStatusAwaitingBlessing
+		}
+
+		order.UpdateTime = time.Now().Format("2006-01-02 15:04:05")
+		result, updateErr := session.ExecCtx(ctx,
+			fmt.Sprintf(`UPDATE %s SET status=?,update_time=? WHERE id=? AND status=?`, diyOrderTable),
+			targetStatus, order.UpdateTime, order.Id, DiyStatusInMaking)
+		if updateErr != nil {
+			return updateErr
+		}
+		rows, rowsErr := result.RowsAffected()
+		if rowsErr != nil || rows != 1 {
+			return ErrDiyOrderStateConflict
+		}
+		order.Status = targetStatus
+		updated = &order
+		return nil
+	})
+	return updated, task, err
 }
 
 func (m *defaultDiyOrderModel) CancelAndRestock(ctx context.Context, id int64) (updated *DiyOrder, err error) {

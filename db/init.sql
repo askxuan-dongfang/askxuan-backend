@@ -143,6 +143,7 @@ CREATE TABLE `extra_service` (
   `master_code` VARCHAR(16) NOT NULL COMMENT '法师编码',
   `price` DECIMAL(10,2) NOT NULL COMMENT '价格（精确匹配）',
   `description` VARCHAR(512) NOT NULL DEFAULT '',
+  `status` VARCHAR(32) NOT NULL DEFAULT 'on_shelf' COMMENT 'on_shelf/off_shelf',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -694,6 +695,45 @@ CREATE TABLE IF NOT EXISTS `master_audit` (
 INSERT INTO `master_audit` (`master_code`,`temple_code`,`credential_urls`,`status`,`create_time`) VALUES
 ('M005','T005','["/assets/master-cert-m005-1.jpg"]','pending','2026-06-29 14:00:00');
 
+CREATE TABLE IF NOT EXISTS `master_earning` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `source_type` VARCHAR(32) NOT NULL COMMENT 'booking/diy_blessing/consult',
+  `source_id` VARCHAR(64) NOT NULL COMMENT '来源业务单号',
+  `master_code` VARCHAR(16) NOT NULL,
+  `earning_date` DATE NOT NULL,
+  `service_type` VARCHAR(32) NOT NULL,
+  `service_name` VARCHAR(128) NOT NULL DEFAULT '',
+  `user_name` VARCHAR(64) NOT NULL DEFAULT '',
+  `amount` DECIMAL(12,2) NOT NULL DEFAULT 0,
+  `settle_status` VARCHAR(32) NOT NULL DEFAULT 'pending' COMMENT 'pending/settled/withdrew',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_source` (`source_type`,`source_id`),
+  KEY `idx_master_date` (`master_code`,`earning_date`),
+  KEY `idx_master_settle` (`master_code`,`settle_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='法师收益明细';
+
+CREATE TABLE IF NOT EXISTS `master_profile_ext` (
+  `master_code` VARCHAR(16) NOT NULL,
+  `bio` VARCHAR(512) NOT NULL DEFAULT '',
+  `pricing` VARCHAR(512) NOT NULL DEFAULT '',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`master_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='法师工作台资料扩展';
+
+INSERT INTO `master_profile_ext` (`master_code`,`bio`,`pricing`) VALUES
+('M001','普陀山出家，擅长祈福法事与超度仪轨，弘法二十余载。','预约法事 200-800 元 / DIY加持 300-500 元'),
+('M002','武当山修道，精通道教科仪与养生功法。','道教科仪 500-1200 元 / 养生咨询 200 元')
+ON DUPLICATE KEY UPDATE master_code=VALUES(master_code);
+
+INSERT IGNORE INTO `master_earning`
+(`source_type`,`source_id`,`master_code`,`earning_date`,`service_type`,`service_name`,`user_name`,`amount`,`settle_status`) VALUES
+('booking','seed-booking-001','M001','2026-07-01','booking','祈福法会','U001',500.00,'settled'),
+('diy_blessing','seed-blessing-001','M001','2026-07-01','diy_blessing','开光加持','U002',300.00,'pending'),
+('consult','seed-consult-001','M001','2026-06-28','consult','线上咨询','U003',200.00,'withdrew');
+
 -- ============================================================
 -- 五、预约域 askxuan_booking（booking/booking_status_log/booking_review）
 -- ============================================================
@@ -889,6 +929,17 @@ CREATE TABLE IF NOT EXISTS `product_sku` (
   KEY `idx_product` (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品SKU';
 
+CREATE TABLE IF NOT EXISTS `product_stock_reservation` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `request_id` VARCHAR(64) NOT NULL COMMENT '客户端幂等请求ID',
+  `status` VARCHAR(16) NOT NULL DEFAULT 'reserved' COMMENT 'reserved/released',
+  `snapshot` JSON NOT NULL COMMENT '权威商品、价格与数量快照',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_request_id` (`request_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商城库存占位';
+
 INSERT INTO `product_sku` (`product_id`,`spec_name`,`spec_value`,`price`,`stock`,`sku_no`) VALUES
 (1,'尺寸','8mm',388.00,50,'SKU-P001-8'),
 (1,'尺寸','10mm',428.00,50,'SKU-P001-10'),
@@ -960,9 +1011,9 @@ SELECT `id`,`name`,`spec`,`unit_price`,`unit`,`category`,`five_elements`,`image`
 ON DUPLICATE KEY UPDATE `name`=VALUES(`name`),`spec`=VALUES(`spec`),`unit_price`=VALUES(`unit_price`),`unit`=VALUES(`unit`),`category`=VALUES(`category`),`five_elements`=VALUES(`five_elements`),`image`=VALUES(`image`),`stock`=VALUES(`stock`),`status`=VALUES(`status`);
 
 CREATE TABLE IF NOT EXISTS `extra_service` LIKE `askxuan`.`extra_service`;
-INSERT INTO `extra_service` (`id`,`code`,`name`,`temple_code`,`master_code`,`price`,`description`,`create_time`,`update_time`)
-SELECT `id`,`code`,`name`,`temple_code`,`master_code`,`price`,`description`,`create_time`,`update_time` FROM `askxuan`.`extra_service`
-ON DUPLICATE KEY UPDATE `name`=VALUES(`name`),`temple_code`=VALUES(`temple_code`),`master_code`=VALUES(`master_code`),`price`=VALUES(`price`),`description`=VALUES(`description`);
+INSERT INTO `extra_service` (`id`,`code`,`name`,`temple_code`,`master_code`,`price`,`description`,`status`,`create_time`,`update_time`)
+SELECT `id`,`code`,`name`,`temple_code`,`master_code`,`price`,`description`,`status`,`create_time`,`update_time` FROM `askxuan`.`extra_service`
+ON DUPLICATE KEY UPDATE `name`=VALUES(`name`),`temple_code`=VALUES(`temple_code`),`master_code`=VALUES(`master_code`),`price`=VALUES(`price`),`description`=VALUES(`description`),`status`=VALUES(`status`);
 
 CREATE TABLE IF NOT EXISTS `material_sku` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -1092,6 +1143,7 @@ CREATE TABLE IF NOT EXISTS `blessing_task` (
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_task_no` (`task_no`),
+  UNIQUE KEY `uk_diy_order_no` (`diy_order_no`),
   KEY `idx_temple` (`temple_code`),
   KEY `idx_master` (`master_code`),
   KEY `idx_status` (`status`)
@@ -1109,6 +1161,7 @@ USE `askxuan_shop`;
 CREATE TABLE IF NOT EXISTS `shop_order` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `order_no` VARCHAR(32) NOT NULL COMMENT '订单号',
+  `request_id` VARCHAR(64) NULL COMMENT '客户端幂等请求ID',
   `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
   `total_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '订单总额',
   `pay_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '实付金额',
@@ -1119,6 +1172,7 @@ CREATE TABLE IF NOT EXISTS `shop_order` (
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order_no` (`order_no`),
+  UNIQUE KEY `uk_request_id` (`request_id`),
   KEY `idx_user` (`user_id`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商城订单';
@@ -1337,6 +1391,7 @@ CREATE TABLE IF NOT EXISTS `review` (
   `user_id` VARCHAR(64) NOT NULL COMMENT '评价人ID',
   `target_type` VARCHAR(32) NOT NULL COMMENT 'booking/diy_order/shop_order',
   `target_id` VARCHAR(64) NOT NULL COMMENT '目标ID',
+  `master_code` VARCHAR(16) NOT NULL DEFAULT '' COMMENT '关联法师编码（预约评价）',
   `rating` INT NOT NULL DEFAULT 5 COMMENT '评分 1-5',
   `content` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '评价内容',
   `images` TEXT COMMENT '评价图片URL，JSON数组',
@@ -1344,15 +1399,16 @@ CREATE TABLE IF NOT EXISTS `review` (
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_review_no` (`review_no`),
+  UNIQUE KEY `uk_user_target` (`user_id`,`target_type`,`target_id`),
   KEY `idx_target` (`target_type`,`target_id`),
   KEY `idx_user` (`user_id`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评价';
 
-INSERT INTO `review` (`review_no`,`user_id`,`target_type`,`target_id`,`rating`,`content`,`images`,`status`,`create_time`) VALUES
-('RV20260620001','1','booking','B20260615003',5,'清风道长非常专业，化太岁仪式庄重，感觉很安心。','["https://oss.askxuan.com/rv/1.jpg"]','normal','2026-06-20 18:00:00'),
-('RV20260625002','2','booking','B20260628002',4,'释延心法师超度法事很用心，整体体验不错。','[]','normal','2026-06-25 20:30:00'),
-('RV20260628003','1','shop_order','SO20260620001',5,'小叶紫檀手串品质很好，包装精美，非常满意！','["https://oss.askxuan.com/rv/2.jpg","https://oss.askxuan.com/rv/3.jpg"]','normal','2026-06-28 10:00:00');
+INSERT INTO `review` (`review_no`,`user_id`,`target_type`,`target_id`,`master_code`,`rating`,`content`,`images`,`status`,`create_time`) VALUES
+('RV20260620001','1','booking','B20260615003','M002',5,'清风道长非常专业，化太岁仪式庄重，感觉很安心。','["https://oss.askxuan.com/rv/1.jpg"]','normal','2026-06-20 18:00:00'),
+('RV20260625002','2','booking','B20260628002','M003',4,'释延心法师超度法事很用心，整体体验不错。','[]','normal','2026-06-25 20:30:00'),
+('RV20260628003','1','shop_order','SO20260620001','',5,'小叶紫檀手串品质很好，包装精美，非常满意！','["https://oss.askxuan.com/rv/2.jpg","https://oss.askxuan.com/rv/3.jpg"]','normal','2026-06-28 10:00:00');
 
 CREATE TABLE IF NOT EXISTS `review_reply` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -1404,6 +1460,7 @@ CREATE TABLE IF NOT EXISTS `audit_queue` (
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_biz_type_id` (`biz_type`,`biz_id`),
   KEY `idx_biz` (`biz_type`,`biz_id`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审核队列';
@@ -1629,7 +1686,8 @@ CREATE TABLE IF NOT EXISTS `coupon_record` (
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_user_status` (`user_id`,`status`),
-  KEY `idx_coupon` (`coupon_id`)
+  KEY `idx_coupon` (`coupon_id`),
+  UNIQUE KEY `uk_coupon_user` (`coupon_id`,`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='领券记录';
 
 INSERT INTO `coupon_record` (`coupon_id`,`coupon_no`,`user_id`,`status`,`create_time`) VALUES

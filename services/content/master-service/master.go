@@ -10,6 +10,7 @@ import (
 
 	"github.com/askxuan/master-service/internal/config"
 	"github.com/askxuan/master-service/internal/handler"
+	"github.com/askxuan/master-service/internal/model"
 	"github.com/askxuan/master-service/internal/mq"
 	"github.com/askxuan/master-service/internal/svc"
 	"github.com/askxuan/master-service/rpc"
@@ -53,7 +54,7 @@ func main() {
 }
 
 // startConsumer 启动 blessing.assign 消费者
-// temple-service 分配法师后，master-service 接收并执行加持
+// temple-service 分配法师后，master-service 校验任务可见性；实际状态由法师工作台推进。
 func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 	if svcCtx == nil || svcCtx.Consumer == nil {
 		return
@@ -70,44 +71,27 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 				logx.Infof("收到法师分配: taskNo=%s templeCode=%s masterCode=%s serviceCode=%s",
 					evt.TaskNo, evt.TempleCode, evt.MasterCode, evt.ServiceCode)
 
-				// 查找加持任务
+				// 任务数据由 diy-service 持有。消费事件只确认法师侧可查询，不能代替法师操作。
 				task, err := svcCtx.BlessingTaskModel.FindByTaskNo(ctx, evt.TaskNo)
 				if err != nil {
-					logx.Errorf("查找加持任务失败 taskNo=%s: %v", evt.TaskNo, err)
+					return fmt.Errorf("查找加持任务失败 taskNo=%s: %w", evt.TaskNo, err)
+				}
+				logx.Infof("加持任务已进入法师待处理列表: taskNo=%s id=%d status=%s", task.TaskNo, task.Id, task.Status)
+				return nil
+			},
+		},
+		{
+			Exchange: mq.ExchangeBookingEvents,
+			Queue:    mq.QueueMasterBookingEarning,
+			Handler: func(body []byte) error {
+				evt, ok := mq.ParseBookingCompleted(body)
+				if !ok {
 					return nil
 				}
-
-				// 驱动状态机：assigned → accepted → in_progress
-				if err := svcCtx.BlessingTaskModel.UpdateStatus(ctx, task.Id, "accepted"); err != nil {
-					logx.Errorf("更新状态 accepted 失败: %v", err)
-					return nil
+				if err := model.RecordBookingEarning(ctx, evt.BookingId, evt.MasterId, evt.BookingDate, evt.ServiceName, evt.UserId, evt.TotalFee); err != nil {
+					return fmt.Errorf("记录预约收益 %s 失败: %w", evt.BookingId, err)
 				}
-				if err := svcCtx.BlessingTaskModel.UpdateStatus(ctx, task.Id, "in_progress"); err != nil {
-					logx.Errorf("更新状态 in_progress 失败: %v", err)
-					return nil
-				}
-
-				// Mock 加持完成，生成证书 URL
-				certURL := fmt.Sprintf("https://oss.askxuan.com/blessing/cert_%s.jpg", evt.TaskNo)
-				certJSON := fmt.Sprintf(`["%s"]`, certURL)
-				if err := svcCtx.BlessingTaskModel.UpdateComplete(ctx, task.Id, certJSON); err != nil {
-					logx.Errorf("更新完成状态失败: %v", err)
-					return nil
-				}
-
-				// 发布 blessing.complete 事件
-				err = svcCtx.MqProducer.PublishBlessingComplete(ctx, mq.BlessingComplete{
-					TaskNo:     evt.TaskNo,
-					DiyOrderId: task.DiyOrderNo,
-					TempleCode: evt.TempleCode,
-					MasterCode: evt.MasterCode,
-					Status:     "completed",
-				})
-				if err != nil {
-					logx.Errorf("发布 blessing.complete 失败: %v", err)
-				} else {
-					logx.Infof("加持完成 taskNo=%s certUrl=%s", evt.TaskNo, certURL)
-				}
+				logx.Infof("预约收益已入账 bookingId=%s masterCode=%s amount=%.2f", evt.BookingId, evt.MasterId, evt.TotalFee)
 				return nil
 			},
 		},

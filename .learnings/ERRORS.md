@@ -28,6 +28,113 @@ Verify deployed columns with `SHOW COLUMNS` before writing cross-version data mi
 
 ---
 
+## [ERR-20260718-001] backend service path assumptions
+
+**Logged**: 2026-07-18T16:30:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Audit reads initially assumed services lived at the repository root and used an unmatched zsh glob.
+
+### Error
+```text
+sed: review-service/review.go: No such file or directory
+zsh: no matches found: services/content/review-service/*.api
+```
+
+### Context
+- Backend services are grouped under `services/<domain>/<service>`.
+- zsh aborts commands when a glob has no match.
+
+### Suggested Fix
+Discover paths with `rg --files` first and use `rg -g` filters instead of shell globs in audit commands.
+
+### Metadata
+- Reproducible: yes
+- Related Files: go.work
+
+---
+
+## [ERR-20260718-002] booking review event image contract
+
+**Logged**: 2026-07-18T16:40:00+08:00
+**Priority**: medium
+**Status**: resolved
+**Area**: backend
+
+### Summary
+The new booking-reviewed event passed `[]string` images into the review service's JSON string field.
+
+### Error
+```text
+cannot use req.Images (variable of type []string) as string value in struct literal
+```
+
+### Context
+- Booking API uses an array for review images.
+- The review database stores the array as JSON text.
+
+### Suggested Fix
+Serialize the array at the booking event boundary and test the shared event payload shape.
+
+### Metadata
+- Reproducible: yes
+- Related Files: services/content/booking-service/internal/logic/reviewlogic.go
+
+---
+
+## [ERR-20260718-003] zsh workspace module iteration
+
+**Logged**: 2026-07-18T17:00:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The first full-module loop used zsh's read-only `modules` parameter, then assumed command substitution would split on newlines.
+
+### Error
+```text
+zsh: read-only variable: modules
+cd: no such file or directory: ./common\n./services/...
+```
+
+### Suggested Fix
+Pipe module paths into `while IFS= read -r module_path`; do not rely on implicit word splitting in zsh.
+
+### Metadata
+- Reproducible: yes
+- Related Files: go.work
+
+---
+
+## [ERR-20260718-004] sandboxed Xcode simulator access
+
+**Logged**: 2026-07-18T17:05:00+08:00
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Sandboxed `xcodebuild` could not access CoreSimulator logs and services, so workspace discovery failed before project evaluation.
+
+### Error
+```text
+CoreSimulatorService connection became invalid
+Error opening log file ... Operation not permitted
+```
+
+### Suggested Fix
+Run approved Xcode validation outside the filesystem sandbox and use `generic/platform=iOS` with signing disabled for compile-only checks.
+
+### Metadata
+- Reproducible: yes
+- Related Files: apps/ios-customer, apps/ios-master
+
+---
+
 ## [ERR-20260715-011] mysql-multitable-delete-needs-default-database
 
 **Logged**: 2026-07-15T23:59:00+08:00

@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -25,6 +26,7 @@ type ShopOrderItem struct {
 // ShopOrderItemModel 订单明细接口
 type ShopOrderItemModel interface {
 	Insert(ctx context.Context, data *ShopOrderItem) (*ShopOrderItem, error)
+	InsertWithSession(ctx context.Context, session sqlx.Session, data *ShopOrderItem) (*ShopOrderItem, error)
 	ListByOrderId(ctx context.Context, orderId int64) ([]*ShopOrderItem, error)
 }
 
@@ -37,8 +39,20 @@ func NewShopOrderItemModel(conn sqlx.SqlConn) ShopOrderItemModel {
 }
 
 func (m *defaultShopOrderItemModel) Insert(ctx context.Context, data *ShopOrderItem) (*ShopOrderItem, error) {
+	return m.insert(ctx, m.conn, data)
+}
+
+func (m *defaultShopOrderItemModel) InsertWithSession(ctx context.Context, session sqlx.Session, data *ShopOrderItem) (*ShopOrderItem, error) {
+	return m.insert(ctx, session, data)
+}
+
+type itemExecutor interface {
+	ExecCtx(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+}
+
+func (m *defaultShopOrderItemModel) insert(ctx context.Context, executor itemExecutor, data *ShopOrderItem) (*ShopOrderItem, error) {
 	query := fmt.Sprintf(`INSERT INTO %s (order_id, product_id, sku_id, product_name, sku_spec, price, quantity, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, shopOrderItemTable)
-	result, err := m.conn.ExecCtx(ctx, query, data.OrderId, data.ProductId, data.SkuId, data.ProductName, data.SkuSpec, data.Price, data.Quantity, data.Image)
+	result, err := executor.ExecCtx(ctx, query, data.OrderId, data.ProductId, data.SkuId, data.ProductName, data.SkuSpec, data.Price, data.Quantity, data.Image)
 	if err != nil {
 		return nil, err
 	}

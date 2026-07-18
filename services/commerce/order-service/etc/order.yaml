@@ -2,6 +2,21 @@ Name: order-service
 Host: 0.0.0.0
 Port: 8089
 
+ProductRpc:
+  Etcd:
+    Hosts:
+      - localhost:2379
+    Key: product.rpc
+  Timeout: 5000
+
+OrderRpc:
+  Name: order.rpc
+  ListenOn: 127.0.0.1:9089
+  Etcd:
+    Hosts:
+      - localhost:2379
+    Key: order.rpc
+
 # etcd 服务注册（供 gateway-service 动态发现）
 Etcd:
   Hosts:

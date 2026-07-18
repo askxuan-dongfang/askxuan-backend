@@ -102,6 +102,9 @@ func customerCouponReceiveHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
+		if userId := r.Header.Get("X-User-Id"); userId != "" {
+			req.UserId = userId
+		}
 		resp, err := logic.NewCustomerCouponReceiveLogic(r.Context(), svcCtx).Receive(&req)
 		respond(w, resp, err)
 	}
@@ -113,6 +116,9 @@ func customerMyCouponHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		if err := httpx.Parse(r, &req); err != nil {
 			common.JsonError(w, common.ErrParam)
 			return
+		}
+		if userId := r.Header.Get("X-User-Id"); userId != "" {
+			req.UserId = userId
 		}
 		resp, err := logic.NewCustomerMyCouponLogic(r.Context(), svcCtx).MyCoupon(&req)
 		respond(w, resp, err)

@@ -40,12 +40,39 @@ fi
 info "开始 MVP-3 审核闭环测试（共 $TOTAL 步）"
 echo "================================================"
 
-# ===== 0. 重启服务（重置内存数据，确保幂等）=====
-info "步骤 0: 重启 audit-service 重置内存数据"
-lsof -ti:8093 | xargs kill -9 2>/dev/null
-sleep 1
-(cd services/operation/audit-service && go run audit.go -f etc/audit.yaml > /dev/null 2>&1) &
-sleep 5
+# ===== 0. 恢复固定数据库数据并重启容器，确保幂等 =====
+info "步骤 0: 恢复审核测试数据并重启 audit-service"
+docker exec askxuan-mysql mysql -uroot -proot123 askxuan_audit -e "
+INSERT INTO audit_queue (id,biz_type,biz_id,submitter_id,content_snapshot,status,auditor_id,audit_time,audit_remark)
+VALUES
+  (900001,'design','TEST-DESIGN-001','1','{\"name\":\"审核测试设计\"}','pending','',NULL,''),
+  (900002,'comment','TEST-COMMENT-001','2','{\"content\":\"审核测试评论\"}','pending','',NULL,''),
+  (900003,'master','TEST-MASTER-001','T001','{\"name\":\"审核测试法师\"}','approved','A001',NOW(),'历史测试通过'),
+  (900004,'temple','TEST-TEMPLE-001','T001','{\"name\":\"审核测试寺院\"}','approved','A001',NOW(),'历史测试通过')
+ON DUPLICATE KEY UPDATE status=VALUES(status),auditor_id=VALUES(auditor_id),audit_time=VALUES(audit_time),audit_remark=VALUES(audit_remark);
+INSERT INTO report (id,reporter_id,target_type,target_id,reason,evidence_urls,status,handler_id,handle_result)
+VALUES
+  (900001,'1','design','TEST-REPORT-001','测试举报','[]','pending','',''),
+  (900002,'2','comment','TEST-REPORT-002','历史举报','[]','handled','A001','已处理')
+ON DUPLICATE KEY UPDATE status=VALUES(status),handler_id=VALUES(handler_id),handle_result=VALUES(handle_result);
+INSERT INTO sensitive_word (word,category,status) VALUES
+  ('邪教','religious','enabled'),('反动','political','enabled'),('色情','vulgar','enabled'),('加微信','advertising','enabled'),('代购','advertising','disabled')
+ON DUPLICATE KEY UPDATE category=VALUES(category),status=VALUES(status);
+DELETE FROM sensitive_word WHERE word='测试敏感词';
+" >/dev/null
+docker restart askxuan-audit-service >/dev/null
+READY=0
+for _ in $(seq 1 30); do
+    if curl -fsS "$BASE/api/v1/admin/audit/statistics" >/dev/null 2>&1; then
+        READY=1
+        break
+    fi
+    sleep 1
+done
+if [ "$READY" != "1" ]; then
+    echo "错误：audit-service 重启后未就绪"
+    exit 1
+fi
 
 AUDIT_ID=""
 REJECT_ID=""

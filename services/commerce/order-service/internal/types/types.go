@@ -52,6 +52,7 @@ type ReturnOrder struct {
 // ===== C端请求/响应 =====
 
 type OrderCreateReq struct {
+	RequestId string          `json:"requestId"`
 	UserId    string          `json:"userId"`
 	AddressId int64           `json:"addressId"`
 	Note      string          `json:"note"`
@@ -59,8 +60,10 @@ type OrderCreateReq struct {
 }
 
 type OrderCreateResp struct {
-	Id      int64  `json:"id"`
-	OrderNo string `json:"orderNo"`
+	Id          int64   `json:"id"`
+	OrderNo     string  `json:"orderNo"`
+	TotalAmount float64 `json:"totalAmount"`
+	PayAmount   float64 `json:"payAmount"`
 }
 
 type OrderListReq struct {

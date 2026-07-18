@@ -42,7 +42,11 @@ func (l *WorkspaceProfileGetLogic) WorkspaceProfileGet(req *types.MasterProfileR
 		return nil, common.ErrSystem
 	}
 
-	ext := model.GetProfileExt(masterCode)
+	ext, err := l.svcCtx.MasterProfileExtModel.Find(l.ctx, masterCode)
+	if err != nil {
+		l.Errorf("查询法师资料扩展失败: %v", err)
+		return nil, common.ErrSystem
+	}
 	return toProfileResp(master, ext), nil
 }
 
@@ -85,15 +89,22 @@ func (l *WorkspaceProfileUpdateLogic) WorkspaceProfileUpdate(req *types.MasterPr
 		return nil, common.ErrSystem
 	}
 
-	// 更新内存扩展字段：bio / pricing
-	ext := model.GetProfileExt(masterCode)
+	ext, err := l.svcCtx.MasterProfileExtModel.Find(l.ctx, masterCode)
+	if err != nil {
+		l.Errorf("查询法师资料扩展失败: %v", err)
+		return nil, common.ErrSystem
+	}
 	if req.Bio != "" {
 		ext.Bio = req.Bio
 	}
 	if req.Pricing != "" {
 		ext.Pricing = req.Pricing
 	}
-	model.UpsertProfileExt(masterCode, ext)
+	ext.MasterCode = masterCode
+	if err := l.svcCtx.MasterProfileExtModel.Upsert(l.ctx, ext); err != nil {
+		l.Errorf("保存法师资料扩展失败: %v", err)
+		return nil, common.ErrSystem
+	}
 
 	return toProfileResp(master, ext), nil
 }

@@ -31,7 +31,11 @@ func (l *WorkspaceEarningsSummaryLogic) WorkspaceEarningsSummary(req *types.Earn
 		return nil, err
 	}
 
-	summary := model.GetEarningsSummary(masterCode)
+	summary, err := model.GetEarningsSummary(l.ctx, masterCode)
+	if err != nil {
+		l.Errorf("查询收益汇总失败: %v", err)
+		return nil, common.ErrSystem
+	}
 
 	trend := make([]types.EarningsTrendItem, 0, len(summary.Trend))
 	for _, t := range summary.Trend {
@@ -80,7 +84,11 @@ func (l *WorkspaceEarningsDetailsLogic) WorkspaceEarningsDetails(req *types.Earn
 		return nil, common.ErrUnauthorized
 	}
 
-	list, total := model.ListEarnings(masterCode, req.ServiceType, page, size)
+	list, total, err := model.ListEarnings(l.ctx, masterCode, req.ServiceType, page, size)
+	if err != nil {
+		l.Errorf("查询收益明细失败: %v", err)
+		return nil, common.ErrSystem
+	}
 
 	out := make([]types.EarningsDetailItem, 0, len(list))
 	for _, e := range list {

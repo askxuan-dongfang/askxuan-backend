@@ -14,6 +14,7 @@ import (
 	"github.com/askxuan/order-service/internal/model"
 	"github.com/askxuan/order-service/internal/mq"
 	"github.com/askxuan/order-service/internal/svc"
+	orderrpc "github.com/askxuan/order-service/rpc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -33,6 +34,8 @@ func main() {
 
 	svcCtx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, svcCtx)
+	rpcServer := orderrpc.MustStartOrderRpcServer(c, svcCtx)
+	defer rpcServer.Stop()
 
 	// 启动 RabbitMQ 消费者：监听 payment.notify 和 logistics.sync 事件
 	ctx, cancel := context.WithCancel(context.Background())

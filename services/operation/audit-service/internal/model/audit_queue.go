@@ -1,183 +1,123 @@
 package model
 
 import (
-	"sync"
+	"context"
+
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-// 审核状态常量（参照 state-machines.md 第7节）
 const (
-	AuditStatusPending   = "pending"    // 待审核
-	AuditStatusApproved  = "approved"   // 审核通过（设计）
-	AuditStatusRejected  = "rejected"   // 审核驳回
-	AuditStatusFirstPass = "first_pass" // 初审通过（寺院）
-	AuditStatusFinalPass = "final_pass" // 终审通过（寺院）
-	AuditStatusVerified  = "verified"   // 已认证（法师）
+	AuditStatusPending   = "pending"
+	AuditStatusApproved  = "approved"
+	AuditStatusRejected  = "rejected"
+	AuditStatusFirstPass = "first_pass"
+	AuditStatusFinalPass = "final_pass"
+	AuditStatusVerified  = "verified"
+	BizTypeDesign        = "design"
+	BizTypeTemple        = "temple"
+	BizTypeMaster        = "master"
+	BizTypeComment       = "comment"
 )
 
-// 业务类型
-const (
-	BizTypeDesign  = "design"
-	BizTypeTemple  = "temple"
-	BizTypeMaster  = "master"
-	BizTypeComment = "comment"
-)
+var auditTransitions = map[string]map[string]bool{AuditStatusPending: {AuditStatusApproved: true, AuditStatusRejected: true, AuditStatusFirstPass: true, AuditStatusVerified: true}, AuditStatusFirstPass: {AuditStatusFinalPass: true, AuditStatusRejected: true}, AuditStatusRejected: {AuditStatusPending: true}}
 
-// auditTransitions 审核状态机合法流转（综合设计/寺院/法师三种）
-// 参照 state-machines.md 7.1/7.2/7.3
-var auditTransitions = map[string]map[string]bool{
-	AuditStatusPending: {
-		AuditStatusApproved:  true, // 设计通过
-		AuditStatusRejected:  true, // 驳回
-		AuditStatusFirstPass: true, // 寺院初审通过
-		AuditStatusVerified:  true, // 法师认证通过
-	},
-	AuditStatusFirstPass: {
-		AuditStatusFinalPass: true, // 寺院终审通过
-		AuditStatusRejected:  true, // 终审驳回
-	},
-	AuditStatusRejected: {
-		AuditStatusPending: true, // 修改后重新提交
-	},
-}
-
-// CanTransitAudit 校验审核状态流转是否合法
 func CanTransitAudit(from, to string) bool {
 	if from == to {
 		return false
 	}
 	allowed, ok := auditTransitions[from]
-	if !ok {
-		return false
-	}
-	return allowed[to]
+	return ok && allowed[to]
 }
-
-// IsAuditTerminalStatus 是否终态
 func IsAuditTerminalStatus(s string) bool {
 	return s == AuditStatusApproved || s == AuditStatusFinalPass || s == AuditStatusVerified
 }
 
-// AuditQueue 审核队列结构体
 type AuditQueue struct {
-	Id              int64  `json:"id"`
-	BizType         string `json:"bizType"`
-	BizId           string `json:"bizId"`
-	SubmitterId     string `json:"submitterId"`
-	ContentSnapshot string `json:"contentSnapshot"`
-	Status          string `json:"status"`
-	AuditorId       string `json:"auditorId"`
-	AuditTime       string `json:"auditTime"`
-	AuditRemark     string `json:"auditRemark"`
-	CreateTime      string `json:"createTime"`
+	Id              int64  `db:"id" json:"id"`
+	BizType         string `db:"biz_type" json:"bizType"`
+	BizId           string `db:"biz_id" json:"bizId"`
+	SubmitterId     string `db:"submitter_id" json:"submitterId"`
+	ContentSnapshot string `db:"content_snapshot" json:"contentSnapshot"`
+	Status          string `db:"status" json:"status"`
+	AuditorId       string `db:"auditor_id" json:"auditorId"`
+	AuditTime       string `db:"audit_time" json:"auditTime"`
+	AuditRemark     string `db:"audit_remark" json:"auditRemark"`
+	CreateTime      string `db:"create_time" json:"createTime"`
 }
 
-// ---- 内存存储（MVP 阶段不连 DB）----
+const auditColumns = `id,biz_type,biz_id,submitter_id,IFNULL(content_snapshot,'') content_snapshot,status,auditor_id,IFNULL(DATE_FORMAT(audit_time,'%Y-%m-%d %H:%i:%s'),'') audit_time,audit_remark,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
 
-type auditQueueStore struct {
-	mu   sync.RWMutex
-	list []AuditQueue
-	seq  int64
-}
-
-var globalAuditQueueStore = &auditQueueStore{
-	list: []AuditQueue{
-		{
-			Id:              1,
-			BizType:         BizTypeDesign,
-			BizId:           "DD20260628001",
-			SubmitterId:     "U001",
-			ContentSnapshot: `{"name":"紫檀开光手串","materials":["小叶紫檀","蜜蜡佛头"]}`,
-			Status:          AuditStatusPending,
-			CreateTime:      "2026-06-28 14:00:00",
-		},
-		{
-			Id:              2,
-			BizType:         BizTypeTemple,
-			BizId:           "T005",
-			SubmitterId:     "T005",
-			ContentSnapshot: `{"name":"普陀山","type":"汉传佛教","status":"待审核"}`,
-			Status:          AuditStatusPending,
-			CreateTime:      "2026-06-29 10:00:00",
-		},
-		{
-			Id:              3,
-			BizType:         BizTypeMaster,
-			BizId:           "M005",
-			SubmitterId:     "T005",
-			ContentSnapshot: `{"name":"慧明法师","credential":"戒牒编号XXX"}`,
-			Status:          AuditStatusPending,
-			CreateTime:      "2026-06-29 11:00:00",
-		},
-		{
-			Id:              4,
-			BizType:         BizTypeDesign,
-			BizId:           "DD20260620002",
-			SubmitterId:     "U002",
-			ContentSnapshot: `{"name":"星月菩提手串","materials":["星月菩提","白水晶隔片"]}`,
-			Status:          AuditStatusApproved,
-			AuditorId:       "ADMIN001",
-			AuditTime:       "2026-06-20 16:00:00",
-			CreateTime:      "2026-06-20 15:00:00",
-		},
-	},
-	seq: 4,
-}
-
-// ListAuditQueue 查询审核队列，支持按 bizType/status 筛选 + 分页
 func ListAuditQueue(bizType, status string, page, size int) ([]AuditQueue, int64) {
-	globalAuditQueueStore.mu.RLock()
-	defer globalAuditQueueStore.mu.RUnlock()
-
-	filtered := make([]AuditQueue, 0, len(globalAuditQueueStore.list))
-	for _, a := range globalAuditQueueStore.list {
-		if bizType != "" && a.BizType != bizType {
-			continue
-		}
-		if status != "" && a.Status != status {
-			continue
-		}
-		filtered = append(filtered, a)
+	where, args := "1=1", []interface{}{}
+	if bizType != "" {
+		where += " AND biz_type=?"
+		args = append(args, bizType)
 	}
-
-	total := int64(len(filtered))
-	start := (page - 1) * size
-	if start < 0 {
-		start = 0
+	if status != "" {
+		where += " AND status=?"
+		args = append(args, status)
 	}
-	if start > len(filtered) {
-		start = len(filtered)
+	var total int64
+	if db.QueryRowCtx(context.Background(), &total, "SELECT COUNT(1) FROM audit_queue WHERE "+where, args...) != nil {
+		return []AuditQueue{}, 0
 	}
-	end := start + size
-	if end > len(filtered) {
-		end = len(filtered)
+	offset, limit := paging(page, size)
+	var list []AuditQueue
+	if db.QueryRowsCtx(context.Background(), &list, `SELECT `+auditColumns+` FROM audit_queue WHERE `+where+` ORDER BY id DESC LIMIT ?,?`, append(args, offset, limit)...) != nil {
+		return []AuditQueue{}, 0
 	}
-	return filtered[start:end], total
+	return list, total
 }
-
-// FindAuditQueueByID 按ID查询审核记录
 func FindAuditQueueByID(id int64) (AuditQueue, bool) {
-	globalAuditQueueStore.mu.RLock()
-	defer globalAuditQueueStore.mu.RUnlock()
-	for _, a := range globalAuditQueueStore.list {
-		if a.Id == id {
-			return a, true
-		}
+	var a AuditQueue
+	if db.QueryRowCtx(context.Background(), &a, `SELECT `+auditColumns+` FROM audit_queue WHERE id=?`, id) != nil {
+		return AuditQueue{}, false
 	}
-	return AuditQueue{}, false
+	return a, true
+}
+func UpdateAuditQueueStatus(id int64, status, auditorId, auditTime, remark string) bool {
+	res, err := db.ExecCtx(context.Background(), `UPDATE audit_queue SET status=?,auditor_id=?,audit_time=NULLIF(?,''),audit_remark=? WHERE id=?`, status, auditorId, auditTime, remark, id)
+	if err != nil {
+		return false
+	}
+	n, _ := res.RowsAffected()
+	return n == 1
 }
 
-// UpdateAuditQueueStatus 更新审核记录状态，找到 id 则更新 status/auditorId/auditTime/auditRemark 并返回 true
-func UpdateAuditQueueStatus(id int64, status, auditorId, auditTime, remark string) bool {
-	globalAuditQueueStore.mu.Lock()
-	defer globalAuditQueueStore.mu.Unlock()
-	for i := range globalAuditQueueStore.list {
-		if globalAuditQueueStore.list[i].Id == id {
-			globalAuditQueueStore.list[i].Status = status
-			globalAuditQueueStore.list[i].AuditorId = auditorId
-			globalAuditQueueStore.list[i].AuditTime = auditTime
-			globalAuditQueueStore.list[i].AuditRemark = remark
-			return true
+func TransitionAuditQueue(id int64, to, auditorId, auditTime, remark, action string) bool {
+	ctx := context.Background()
+	err := db.TransactCtx(ctx, func(ctx context.Context, s sqlx.Session) error {
+		var current string
+		if err := s.QueryRowCtx(ctx, &current, `SELECT status FROM audit_queue WHERE id=? FOR UPDATE`, id); err != nil {
+			return err
 		}
+		if !CanTransitAudit(current, to) {
+			return sqlx.ErrNotFound
+		}
+		if _, err := s.ExecCtx(ctx, `UPDATE audit_queue SET status=?,auditor_id=?,audit_time=NULLIF(?,''),audit_remark=? WHERE id=?`, to, auditorId, auditTime, remark, id); err != nil {
+			return err
+		}
+		_, err := s.ExecCtx(ctx, `INSERT INTO audit_log(audit_id,action,operator_id,remark) VALUES(?,?,?,?)`, id, action, auditorId, remark)
+		return err
+	})
+	return err == nil
+}
+
+func CountAuditStatuses(bizType string) (total, pending, approved, rejected int64) {
+	where, args := "1=1", []interface{}{}
+	if bizType != "" {
+		where = "biz_type=?"
+		args = append(args, bizType)
 	}
-	return false
+	query := `SELECT COUNT(1) total,SUM(status='pending') pending,SUM(status IN ('approved','first_pass','final_pass','verified')) approved,SUM(status='rejected') rejected FROM audit_queue WHERE ` + where
+	var row struct {
+		Total    int64 `db:"total"`
+		Pending  int64 `db:"pending"`
+		Approved int64 `db:"approved"`
+		Rejected int64 `db:"rejected"`
+	}
+	if db.QueryRowCtx(context.Background(), &row, query, args...) != nil {
+		return
+	}
+	return row.Total, row.Pending, row.Approved, row.Rejected
 }

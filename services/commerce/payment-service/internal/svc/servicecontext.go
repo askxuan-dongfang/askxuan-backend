@@ -4,9 +4,11 @@ import (
 	"github.com/askxuan/payment-service/internal/config"
 	"github.com/askxuan/payment-service/internal/model"
 	"github.com/askxuan/payment-service/internal/mq"
+	"github.com/askxuan/payment-service/internal/rpcclient"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"github.com/zeromicro/go-zero/zrpc"
 )
 
 // ServiceContext payment 服务依赖容器
@@ -19,6 +21,7 @@ type ServiceContext struct {
 	PaymentLogModel model.PaymentLogModel
 	RefundModel     model.RefundModel
 	DiyOrderModel   model.DiyPaymentOrderModel
+	ShopOrderClient rpcclient.ShopOrderClient
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -36,5 +39,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		PaymentLogModel: model.NewPaymentLogModel(db),
 		RefundModel:     model.NewRefundModel(db),
 		DiyOrderModel:   model.NewDiyPaymentOrderModel(db),
+		ShopOrderClient: rpcclient.NewShopOrderClient(zrpc.MustNewClient(c.OrderRpc)),
 	}
 }

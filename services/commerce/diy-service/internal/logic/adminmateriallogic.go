@@ -155,10 +155,14 @@ func (l *AdminBlessingServiceListLogic) List(req *types.AdminBlessingServiceList
 	if req.Size <= 0 {
 		req.Size = 20
 	}
-	list, total := l.svcCtx.BlessingServiceListModel.FindList(l.ctx, req.Page, req.Size)
+	list, total, err := l.svcCtx.ExtraServiceModel.FindList(l.ctx, req.Page, req.Size)
+	if err != nil {
+		l.Errorf("查询加持服务失败: %v", err)
+		return nil, common.ErrSystem
+	}
 	resp := &types.AdminBlessingServiceListResp{Page: req.Page, Size: req.Size, Total: total}
 	for _, s := range list {
-		resp.List = append(resp.List, toTypesBlessingServiceFromRecord(s))
+		resp.List = append(resp.List, toTypesBlessingService(s))
 	}
 	return resp, nil
 }
@@ -181,7 +185,7 @@ func (l *AdminBlessingServiceCreateLogic) Create(req *types.AdminBlessingService
 	if req.Status != "" && req.Status != model.BlessingServiceStatusOnShelf && req.Status != model.BlessingServiceStatusOffShelf {
 		return nil, common.ErrParamInvalid
 	}
-	s, err := l.svcCtx.BlessingServiceListModel.Insert(&model.BlessingServiceRecord{
+	s, err := l.svcCtx.ExtraServiceModel.Insert(l.ctx, &model.ExtraService{
 		Name:        req.ServiceName,
 		TempleCode:  req.TempleCode,
 		MasterCode:  req.MasterCode,
@@ -214,9 +218,13 @@ func (l *AdminBlessingServiceUpdateLogic) Update(req *types.AdminBlessingService
 	if req.Status != model.BlessingServiceStatusOnShelf && req.Status != model.BlessingServiceStatusOffShelf {
 		return nil, common.ErrParamInvalid
 	}
-	existing, ok := l.svcCtx.BlessingServiceListModel.FindOne(req.Id)
-	if !ok {
+	existing, err := l.svcCtx.ExtraServiceModel.FindOne(l.ctx, req.Id)
+	if err == sqlx.ErrNotFound {
 		return nil, common.NewBizError(40415, "加持服务不存在")
+	}
+	if err != nil {
+		l.Errorf("查询加持服务失败: %v", err)
+		return nil, common.ErrSystem
 	}
 	existing.Name = req.ServiceName
 	existing.TempleCode = req.TempleCode
@@ -224,11 +232,11 @@ func (l *AdminBlessingServiceUpdateLogic) Update(req *types.AdminBlessingService
 	existing.Price = req.Price
 	existing.Description = req.Description
 	existing.Status = req.Status
-	if err := l.svcCtx.BlessingServiceListModel.Update(existing); err != nil {
+	if err := l.svcCtx.ExtraServiceModel.Update(l.ctx, existing); err != nil {
 		l.Errorf("更新加持服务失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	t := toTypesBlessingServiceFromRecord(existing)
+	t := toTypesBlessingService(existing)
 	return &t, nil
 }
 
@@ -244,21 +252,24 @@ func NewAdminBlessingServiceDeleteLogic(ctx context.Context, svcCtx *svc.Service
 }
 
 func (l *AdminBlessingServiceDeleteLogic) Delete(req *types.AdminBlessingServiceDeleteReq) error {
-	if !l.svcCtx.BlessingServiceListModel.Delete(req.Id) {
+	deleted, err := l.svcCtx.ExtraServiceModel.Delete(l.ctx, req.Id)
+	if err != nil {
+		l.Errorf("删除加持服务失败: %v", err)
+		return common.ErrSystem
+	}
+	if !deleted {
 		return common.NewBizError(40415, "加持服务不存在")
 	}
 	return nil
 }
 
-func toTypesBlessingServiceFromRecord(s *model.BlessingServiceRecord) types.BlessingService {
+func toTypesBlessingService(s *model.ExtraService) types.BlessingService {
 	return types.BlessingService{
 		Id:          s.Id,
 		ServiceCode: s.Code,
 		ServiceName: s.Name,
 		TempleCode:  s.TempleCode,
-		TempleName:  s.TempleName,
 		MasterCode:  s.MasterCode,
-		MasterName:  s.MasterName,
 		Price:       s.Price,
 		Description: s.Description,
 		Status:      s.Status,

@@ -30,6 +30,8 @@ render_service() {
     s/ListenOn: 127\.0\.0\.1:9088/ListenOn: 0.0.0.0:9088/g;
     s/ListenOn: 127\.0\.0\.1:9083/ListenOn: 0.0.0.0:9083/g;
     s/ListenOn: 127\.0\.0\.1:9084/ListenOn: 0.0.0.0:9084/g;
+    s/ListenOn: 127\.0\.0\.1:9086/ListenOn: 0.0.0.0:9086/g;
+    s/ListenOn: 127\.0\.0\.1:9089/ListenOn: 0.0.0.0:9089/g;
     s/ListenOn: 127\.0\.0\.1:9090/ListenOn: 0.0.0.0:9090/g;
   ' "${dst}"/*.yaml
 }

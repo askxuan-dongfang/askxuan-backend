@@ -13,6 +13,36 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
+// BlessingServiceListLogic returns only services that can still be priced at checkout.
+type BlessingServiceListLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewBlessingServiceListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *BlessingServiceListLogic {
+	return &BlessingServiceListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *BlessingServiceListLogic) List(req *types.BlessingServiceListReq) (*types.BlessingServiceListResp, error) {
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.Size <= 0 {
+		req.Size = 20
+	}
+	list, total, err := l.svcCtx.ExtraServiceModel.FindListByStatus(l.ctx, model.BlessingServiceStatusOnShelf, req.Page, req.Size)
+	if err != nil {
+		l.Errorf("query available blessing services failed: %v", err)
+		return nil, common.ErrSystem
+	}
+	resp := &types.BlessingServiceListResp{Total: total, Page: req.Page, Size: req.Size}
+	for _, service := range list {
+		resp.List = append(resp.List, toTypesBlessingService(service))
+	}
+	return resp, nil
+}
+
 // ErrDesignNotFound 设计不存在
 var ErrDesignNotFound = common.NewBizError(40414, "设计不存在")
 

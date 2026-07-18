@@ -89,7 +89,11 @@ type AddressUpdateReq struct {
 	City      string `json:"city,optional"`
 	District  string `json:"district,optional"`
 	Detail    string `json:"detail,optional"`
-	IsDefault bool   `json:"isDefault,optional"`
+	IsDefault *bool  `json:"isDefault,optional"`
+}
+
+type AddressDeleteResp struct {
+	Deleted bool `json:"deleted"`
 }
 
 // AddressDeleteReq 删除地址请求

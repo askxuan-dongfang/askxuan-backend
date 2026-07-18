@@ -128,6 +128,18 @@ type (
         Size  int        `json:"size"`
     }
 
+    BlessingServiceListReq {
+        Page int `form:"page,default=1"`
+        Size int `form:"size,default=20"`
+    }
+
+    BlessingServiceListResp {
+        Total int64             `json:"total"`
+        List  []BlessingService `json:"list"`
+        Page  int               `json:"page"`
+        Size  int               `json:"size"`
+    }
+
     DiyOrderCreateReq {
         UserId          string         `json:"userId"`
         DesignId        int64          `json:"designId"`
@@ -340,6 +352,9 @@ service diy-service {
 
     @handler materialList
     get /materials (MaterialListReq) returns (MaterialListResp)
+
+    @handler blessingServiceList
+    get /blessing-services (BlessingServiceListReq) returns (BlessingServiceListResp)
 
     @handler diyOrderCreate
     post /orders (DiyOrderCreateReq) returns (DiyOrderCreateResp)

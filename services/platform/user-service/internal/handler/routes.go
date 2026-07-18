@@ -193,7 +193,7 @@ func addressDeleteHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		if err := l.AddressDelete(&req, readUserId(r)); err != nil {
 			common.JsonError(w, err)
 		} else {
-			common.Ok(w, nil)
+			common.Ok(w, &types.AddressDeleteResp{Deleted: true})
 		}
 	}
 }

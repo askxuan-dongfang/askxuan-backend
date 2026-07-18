@@ -2,6 +2,14 @@ Name: product-service
 Host: 0.0.0.0
 Port: 8086
 
+ProductRpc:
+  Name: product.rpc
+  ListenOn: 127.0.0.1:9086
+  Etcd:
+    Hosts:
+      - localhost:2379
+    Key: product.rpc
+
 # etcd 服务注册（供 gateway-service 动态发现）
 Etcd:
   Hosts:

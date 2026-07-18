@@ -17,11 +17,18 @@ const (
 
 // BookingNotify 预约通知事件，由 booking-service 发送、message-service 消费
 type BookingNotify struct {
-	BookingId string `json:"bookingId"`
-	UserId    string `json:"userId"`
-	TempleId  string `json:"templeId"`
-	Action    string `json:"action"` // created / confirmed / completed / reviewed / cancelled
-	Time      string `json:"time"`
+	BookingId     string  `json:"bookingId"`
+	UserId        string  `json:"userId"`
+	TempleId      string  `json:"templeId"`
+	MasterId      string  `json:"masterId,omitempty"`
+	ServiceName   string  `json:"serviceName,omitempty"`
+	BookingDate   string  `json:"bookingDate,omitempty"`
+	TotalFee      float64 `json:"totalFee,omitempty"`
+	Rating        int     `json:"rating,omitempty"`
+	ReviewContent string  `json:"reviewContent,omitempty"`
+	ReviewImages  string  `json:"reviewImages,omitempty"`
+	Action        string  `json:"action"` // created / confirmed / completed / reviewed / cancelled
+	Time          string  `json:"time"`
 }
 
 // Producer RabbitMQ 生产者

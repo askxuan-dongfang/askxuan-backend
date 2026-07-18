@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package shoporder;
+
+option go_package = "github.com/askxuan/common/rpc/shoporder;shoporder";
+
+message ValidatePaymentReq {
+  string order_no = 1;
+  string user_id = 2;
+  double amount = 3;
+}
+
+message ValidatedShopOrder {
+  int64 id = 1;
+  string order_no = 2;
+  string user_id = 3;
+  double pay_amount = 4;
+  string status = 5;
+}
+
+service ShopOrderService {
+  rpc ValidatePayment(ValidatePaymentReq) returns (ValidatedShopOrder);
+}

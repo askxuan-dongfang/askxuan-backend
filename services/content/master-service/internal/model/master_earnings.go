@@ -1,191 +1,116 @@
 package model
 
 import (
-	"sync"
+	"context"
 	"time"
+
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-// ============ 法师收益 - 内存存储（MVP-3 阶段） ============
-
-// 收益结算状态常量
 const (
-	EarningsSettlePending  = "pending"  // 待结算
-	EarningsSettleSettled  = "settled"  // 已结算
-	EarningsSettleWithdrew = "withdrew" // 已提现
+	EarningsSettlePending  = "pending"
+	EarningsSettleSettled  = "settled"
+	EarningsSettleWithdrew = "withdrew"
 )
 
-// 服务类型常量
 const (
-	EarningsServiceBooking  = "booking"        // 预约法事
-	EarningsServiceBlessing = "diy_blessing"   // DIY加持
-	EarningsServiceConsult  = "consult"        // 咨询
+	EarningsServiceBooking  = "booking"
+	EarningsServiceBlessing = "diy_blessing"
+	EarningsServiceConsult  = "consult"
 )
 
-// EarningsDetail 收益明细
 type EarningsDetail struct {
-	Id           int64   `json:"id"`
-	MasterCode   string  `json:"masterCode"`
-	Date         string  `json:"date"`
-	ServiceType  string  `json:"serviceType"`
-	UserName     string  `json:"userName"`
-	Amount       float64 `json:"amount"`
-	SettleStatus string  `json:"settleStatus"`
-	CreateTime   string  `json:"createTime"`
+	Id           int64   `db:"id" json:"id"`
+	MasterCode   string  `db:"master_code" json:"masterCode"`
+	Date         string  `db:"earning_date" json:"date"`
+	ServiceType  string  `db:"service_type" json:"serviceType"`
+	UserName     string  `db:"user_name" json:"userName"`
+	Amount       float64 `db:"amount" json:"amount"`
+	SettleStatus string  `db:"settle_status" json:"settleStatus"`
+	CreateTime   string  `db:"create_time" json:"createTime"`
 }
 
-// earningsStore 内存存储
-type earningsStore struct {
-	mu   sync.RWMutex
-	list []EarningsDetail
-	seq  int64
-}
-
-// globalEarningsStore 全局收益存储，预置 mock 数据
-var globalEarningsStore = &earningsStore{
-	list: []EarningsDetail{
-		{
-			Id:           1,
-			MasterCode:   "M001",
-			Date:         "2026-07-01",
-			ServiceType:  EarningsServiceBooking,
-			UserName:     "张三",
-			Amount:       500,
-			SettleStatus: EarningsSettleSettled,
-			CreateTime:   "2026-07-01 10:00:00",
-		},
-		{
-			Id:           2,
-			MasterCode:   "M001",
-			Date:         "2026-07-01",
-			ServiceType:  EarningsServiceBlessing,
-			UserName:     "李四",
-			Amount:       300,
-			SettleStatus: EarningsSettlePending,
-			CreateTime:   "2026-07-01 14:00:00",
-		},
-		{
-			Id:           3,
-			MasterCode:   "M001",
-			Date:         "2026-06-28",
-			ServiceType:  EarningsServiceConsult,
-			UserName:     "王五",
-			Amount:       200,
-			SettleStatus: EarningsSettleWithdrew,
-			CreateTime:   "2026-06-28 09:30:00",
-		},
-		{
-			Id:           4,
-			MasterCode:   "M001",
-			Date:         "2026-06-25",
-			ServiceType:  EarningsServiceBooking,
-			UserName:     "赵六",
-			Amount:       800,
-			SettleStatus: EarningsSettleSettled,
-			CreateTime:   "2026-06-25 11:00:00",
-		},
-		{
-			Id:           5,
-			MasterCode:   "M001",
-			Date:         "2026-06-20",
-			ServiceType:  EarningsServiceBlessing,
-			UserName:     "孙七",
-			Amount:       450,
-			SettleStatus: EarningsSettleSettled,
-			CreateTime:   "2026-06-20 16:00:00",
-		},
-	},
-	seq: 5,
-}
-
-// ListEarnings 查询法师收益明细列表，支持按 serviceType 筛选 + 分页
-func ListEarnings(masterCode, serviceType string, page, size int) ([]EarningsDetail, int64) {
-	globalEarningsStore.mu.RLock()
-	defer globalEarningsStore.mu.RUnlock()
-
-	filtered := make([]EarningsDetail, 0, len(globalEarningsStore.list))
-	for _, e := range globalEarningsStore.list {
-		if e.MasterCode != masterCode {
-			continue
-		}
-		if serviceType != "" && e.ServiceType != serviceType {
-			continue
-		}
-		filtered = append(filtered, e)
-	}
-
-	total := int64(len(filtered))
-	start := (page - 1) * size
-	if start < 0 {
-		start = 0
-	}
-	if start > len(filtered) {
-		start = len(filtered)
-	}
-	end := start + size
-	if end > len(filtered) {
-		end = len(filtered)
-	}
-	return filtered[start:end], total
-}
-
-// EarningsSummary 收益汇总
 type EarningsSummary struct {
-	MonthIncome  float64            `json:"monthIncome"`
-	TotalIncome  float64            `json:"totalIncome"`
-	Withdrawable float64            `json:"withdrawable"`
-	Trend        []EarningsTrendRow `json:"trend"`
+	MonthIncome  float64
+	TotalIncome  float64
+	Withdrawable float64
+	Trend        []EarningsTrendRow
 }
 
-// EarningsTrendRow 收益趋势行
 type EarningsTrendRow struct {
-	Month  string  `json:"month"`
-	Amount float64 `json:"amount"`
+	Month  string  `db:"month" json:"month"`
+	Amount float64 `db:"amount" json:"amount"`
 }
 
-// GetEarningsSummary 汇总法师收益：本月收入、总收入、可提现、近6月趋势
-func GetEarningsSummary(masterCode string) EarningsSummary {
-	globalEarningsStore.mu.RLock()
-	defer globalEarningsStore.mu.RUnlock()
+var earningsDB sqlx.SqlConn
 
-	now := time.Now()
-	currentMonth := now.Format("2006-01")
+func ConfigureEarnings(conn sqlx.SqlConn) {
+	earningsDB = conn
+}
 
-	var monthIncome, totalIncome, withdrawable float64
-	monthTrend := map[string]float64{}
+func RecordBookingEarning(ctx context.Context, sourceID, masterCode, earningDate, serviceName, userName string, amount float64) error {
+	_, err := earningsDB.ExecCtx(ctx, `INSERT INTO master_earning
+		(source_type,source_id,master_code,earning_date,service_type,service_name,user_name,amount,settle_status)
+		VALUES (?,?,?,?,?,?,?,?,?)
+		ON DUPLICATE KEY UPDATE source_id=VALUES(source_id)`,
+		EarningsServiceBooking, sourceID, masterCode, earningDate, EarningsServiceBooking,
+		serviceName, userName, amount, EarningsSettlePending)
+	return err
+}
 
-	for _, e := range globalEarningsStore.list {
-		if e.MasterCode != masterCode {
-			continue
-		}
-		totalIncome += e.Amount
-		// 月份收入：取 date 的 yyyy-MM 部分
-		if len(e.Date) >= 7 && e.Date[:7] == currentMonth {
-			monthIncome += e.Amount
-		}
-		// 可提现：已结算且未提现
-		if e.SettleStatus == EarningsSettleSettled {
-			withdrawable += e.Amount
-		}
-		// 趋势：按 yyyy-MM 聚合
-		if len(e.Date) >= 7 {
-			monthTrend[e.Date[:7]] += e.Amount
-		}
+func ListEarnings(ctx context.Context, masterCode, serviceType string, page, size int) ([]EarningsDetail, int64, error) {
+	where := "master_code=?"
+	args := []any{masterCode}
+	if serviceType != "" {
+		where += " AND service_type=?"
+		args = append(args, serviceType)
+	}
+	var total int64
+	if err := earningsDB.QueryRowCtx(ctx, &total, "SELECT COUNT(*) FROM master_earning WHERE "+where, args...); err != nil {
+		return nil, 0, err
+	}
+	queryArgs := append(append([]any{}, args...), size, (page-1)*size)
+	var list []EarningsDetail
+	err := earningsDB.QueryRowsCtx(ctx, &list, `SELECT id,master_code,DATE_FORMAT(earning_date,'%Y-%m-%d') earning_date,
+		service_type,user_name,amount,settle_status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time
+		FROM master_earning WHERE `+where+` ORDER BY earning_date DESC,id DESC LIMIT ? OFFSET ?`, queryArgs...)
+	return list, total, err
+}
+
+func GetEarningsSummary(ctx context.Context, masterCode string) (EarningsSummary, error) {
+	var totals struct {
+		MonthIncome  float64 `db:"month_income"`
+		TotalIncome  float64 `db:"total_income"`
+		Withdrawable float64 `db:"withdrawable"`
+	}
+	err := earningsDB.QueryRowCtx(ctx, &totals, `SELECT
+		COALESCE(SUM(CASE WHEN DATE_FORMAT(earning_date,'%Y-%m')=DATE_FORMAT(CURDATE(),'%Y-%m') THEN amount ELSE 0 END),0) month_income,
+		COALESCE(SUM(amount),0) total_income,
+		COALESCE(SUM(CASE WHEN settle_status=? THEN amount ELSE 0 END),0) withdrawable
+		FROM master_earning WHERE master_code=?`, EarningsSettleSettled, masterCode)
+	if err != nil {
+		return EarningsSummary{}, err
 	}
 
-	// 生成近 6 个月趋势（含当月）
+	var rows []EarningsTrendRow
+	err = earningsDB.QueryRowsCtx(ctx, &rows, `SELECT DATE_FORMAT(earning_date,'%Y-%m') month,COALESCE(SUM(amount),0) amount
+		FROM master_earning WHERE master_code=? AND earning_date>=DATE_FORMAT(DATE_SUB(CURDATE(),INTERVAL 5 MONTH),'%Y-%m-01')
+		GROUP BY DATE_FORMAT(earning_date,'%Y-%m')`, masterCode)
+	if err != nil {
+		return EarningsSummary{}, err
+	}
+	amountByMonth := make(map[string]float64, len(rows))
+	for _, row := range rows {
+		amountByMonth[row.Month] = row.Amount
+	}
 	trend := make([]EarningsTrendRow, 0, 6)
+	now := time.Now()
 	for i := 5; i >= 0; i-- {
-		m := now.AddDate(0, -i, 0).Format("2006-01")
-		trend = append(trend, EarningsTrendRow{
-			Month:  m,
-			Amount: monthTrend[m],
-		})
+		month := now.AddDate(0, -i, 0).Format("2006-01")
+		trend = append(trend, EarningsTrendRow{Month: month, Amount: amountByMonth[month]})
 	}
-
 	return EarningsSummary{
-		MonthIncome:  monthIncome,
-		TotalIncome:  totalIncome,
-		Withdrawable: withdrawable,
-		Trend:        trend,
-	}
+		MonthIncome: totals.MonthIncome, TotalIncome: totals.TotalIncome,
+		Withdrawable: totals.Withdrawable, Trend: trend,
+	}, nil
 }

@@ -13,19 +13,21 @@ import (
 
 // ServiceContext master 服务依赖容器
 type ServiceContext struct {
-	Config              config.Config
-	Redis               *redis.Redis
-	MasterModel         model.MasterModel
-	MasterAuditModel    model.MasterAuditModel
-	MasterCredModel     model.MasterCredentialModel
-	MasterScheduleModel model.MasterScheduleModel
-	BlessingTaskModel   model.BlessingTaskModel
-	MqProducer          *mq.Producer
-	Consumer            *mq.Consumer
+	Config                config.Config
+	Redis                 *redis.Redis
+	MasterModel           model.MasterModel
+	MasterAuditModel      model.MasterAuditModel
+	MasterCredModel       model.MasterCredentialModel
+	MasterScheduleModel   model.MasterScheduleModel
+	MasterProfileExtModel model.MasterProfileExtModel
+	BlessingTaskModel     model.BlessingTaskModel
+	MqProducer            *mq.Producer
+	Consumer              *mq.Consumer
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	conn := sqlx.NewMysql(c.MySQL.DataSource)
+	model.ConfigureEarnings(conn)
 	rds := redis.MustNewRedis(c.Redis)
 
 	producer := mq.NewProducer(
@@ -42,14 +44,15 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	diyClient := diy.NewDiyService(zrpc.MustNewClient(c.DiyRpc))
 
 	return &ServiceContext{
-		Config:              c,
-		Redis:               rds,
-		MasterModel:         model.NewMasterModel(conn),
-		MasterAuditModel:    model.NewMasterAuditModel(conn),
-		MasterCredModel:     model.NewMasterCredentialModel(conn),
-		MasterScheduleModel: model.NewMasterScheduleModel(conn),
-		BlessingTaskModel:   model.NewBlessingTaskModel(diyClient),
-		MqProducer:          producer,
-		Consumer:            consumer,
+		Config:                c,
+		Redis:                 rds,
+		MasterModel:           model.NewMasterModel(conn),
+		MasterAuditModel:      model.NewMasterAuditModel(conn),
+		MasterCredModel:       model.NewMasterCredentialModel(conn),
+		MasterScheduleModel:   model.NewMasterScheduleModel(conn),
+		MasterProfileExtModel: model.NewMasterProfileExtModel(conn),
+		BlessingTaskModel:     model.NewBlessingTaskModel(diyClient),
+		MqProducer:            producer,
+		Consumer:              consumer,
 	}
 }

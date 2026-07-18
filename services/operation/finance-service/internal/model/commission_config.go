@@ -1,12 +1,10 @@
 package model
 
 import (
+	"context"
 	"fmt"
-	"sync"
-	"time"
 )
 
-// 业务类型（抽成配置使用）
 const (
 	BizTypeBooking     = "booking"
 	BizTypeDiyBlessing = "diy_blessing"
@@ -14,71 +12,43 @@ const (
 	BizTypeShopOrder   = "shop_order"
 )
 
-// CommissionConfig 抽成配置结构体
 type CommissionConfig struct {
-	Id          int64   `json:"id"`
-	BizType     string  `json:"bizType"`
-	Rate        float64 `json:"rate"`
-	Description string  `json:"description"`
-	UpdateTime  string  `json:"updateTime"`
+	Id          int64   `db:"id" json:"id"`
+	BizType     string  `db:"biz_type" json:"bizType"`
+	Rate        float64 `db:"rate" json:"rate"`
+	Description string  `db:"description" json:"description"`
+	UpdateTime  string  `db:"update_time" json:"updateTime"`
 }
 
-// ---- 内存存储（MVP 阶段不连 DB）----
-
-type commissionConfigStore struct {
-	mu   sync.RWMutex
-	list []CommissionConfig
-}
-
-var globalCommissionConfigStore = &commissionConfigStore{
-	list: []CommissionConfig{
-		{Id: 1, BizType: BizTypeBooking, Rate: 0.15, Description: "预约服务平台抽成15%", UpdateTime: "2026-07-01 00:00:00"},
-		{Id: 2, BizType: BizTypeDiyBlessing, Rate: 0.15, Description: "DIY加持费平台抽成15%", UpdateTime: "2026-07-01 00:00:00"},
-		{Id: 3, BizType: BizTypeDiyMaterial, Rate: 0.10, Description: "DIY材料费平台抽成10%", UpdateTime: "2026-07-01 00:00:00"},
-		{Id: 4, BizType: BizTypeShopOrder, Rate: 0.10, Description: "商城订单平台抽成10%", UpdateTime: "2026-07-01 00:00:00"},
-	},
-}
-
-// ListCommissionConfigs 查询抽成配置列表
 func ListCommissionConfigs(bizType string) []CommissionConfig {
-	globalCommissionConfigStore.mu.RLock()
-	defer globalCommissionConfigStore.mu.RUnlock()
-
-	result := make([]CommissionConfig, 0, len(globalCommissionConfigStore.list))
-	for _, c := range globalCommissionConfigStore.list {
-		if bizType != "" && c.BizType != bizType {
-			continue
-		}
-		result = append(result, c)
+	query := `SELECT id,biz_type,rate,description,DATE_FORMAT(update_time,'%Y-%m-%d %H:%i:%s') update_time FROM commission_config`
+	args := []interface{}{}
+	if bizType != "" {
+		query += " WHERE biz_type=?"
+		args = append(args, bizType)
 	}
-	return result
+	query += " ORDER BY id"
+	var list []CommissionConfig
+	if db.QueryRowsCtx(context.Background(), &list, query, args...) != nil {
+		return []CommissionConfig{}
+	}
+	return list
 }
-
-// FindCommissionConfigByID 按ID查询抽成配置
 func FindCommissionConfigByID(id int64) (CommissionConfig, bool) {
-	globalCommissionConfigStore.mu.RLock()
-	defer globalCommissionConfigStore.mu.RUnlock()
-	for _, c := range globalCommissionConfigStore.list {
-		if c.Id == id {
-			return c, true
-		}
+	var c CommissionConfig
+	if db.QueryRowCtx(context.Background(), &c, `SELECT id,biz_type,rate,description,DATE_FORMAT(update_time,'%Y-%m-%d %H:%i:%s') update_time FROM commission_config WHERE id=?`, id) != nil {
+		return CommissionConfig{}, false
 	}
-	return CommissionConfig{}, false
+	return c, true
 }
-
-// UpdateCommissionConfig 更新抽成配置
 func UpdateCommissionConfig(id int64, rate float64, description string) error {
-	globalCommissionConfigStore.mu.Lock()
-	defer globalCommissionConfigStore.mu.Unlock()
-	for i := range globalCommissionConfigStore.list {
-		if globalCommissionConfigStore.list[i].Id == id {
-			globalCommissionConfigStore.list[i].Rate = rate
-			if description != "" {
-				globalCommissionConfigStore.list[i].Description = description
-			}
-			globalCommissionConfigStore.list[i].UpdateTime = time.Now().Format("2006-01-02 15:04:05")
-			return nil
-		}
+	res, err := db.ExecCtx(context.Background(), `UPDATE commission_config SET rate=?,description=COALESCE(NULLIF(?,''),description) WHERE id=?`, rate, description, id)
+	if err != nil {
+		return err
 	}
-	return fmt.Errorf("配置不存在")
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("配置不存在")
+	}
+	return nil
 }

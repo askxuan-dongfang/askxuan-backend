@@ -11,20 +11,19 @@ import (
 
 // ServiceContext diy 服务依赖容器
 type ServiceContext struct {
-	Config                   config.Config
-	DB                       sqlx.SqlConn
-	Redis                    *redis.Redis
-	MqProducer               *mq.Producer
-	Consumer                 *mq.Consumer
-	DiyDesignModel           model.DiyDesignModel
-	DiyOrderModel            model.DiyOrderModel
-	DiyOrderItemModel        model.DiyOrderItemModel
-	CreatorEarningModel      model.CreatorEarningModel
-	MaterialModel            model.MaterialModel
-	MaterialSkuModel         model.MaterialSkuModel
-	BlessingTaskModel        model.BlessingTaskModel
-	ExtraServiceModel        model.ExtraServiceModel
-	BlessingServiceListModel model.BlessingServiceListModel
+	Config              config.Config
+	DB                  sqlx.SqlConn
+	Redis               *redis.Redis
+	MqProducer          *mq.Producer
+	Consumer            *mq.Consumer
+	DiyDesignModel      model.DiyDesignModel
+	DiyOrderModel       model.DiyOrderModel
+	DiyOrderItemModel   model.DiyOrderItemModel
+	CreatorEarningModel model.CreatorEarningModel
+	MaterialModel       model.MaterialModel
+	MaterialSkuModel    model.MaterialSkuModel
+	BlessingTaskModel   model.BlessingTaskModel
+	ExtraServiceModel   model.ExtraServiceModel
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -40,19 +39,18 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		rds,
 	)
 	return &ServiceContext{
-		Config:                   c,
-		DB:                       db,
-		Redis:                    rds,
-		MqProducer:               producer,
-		Consumer:                 consumer,
-		DiyDesignModel:           model.NewDiyDesignModel(db),
-		DiyOrderModel:            model.NewDiyOrderModel(db),
-		DiyOrderItemModel:        model.NewDiyOrderItemModel(db),
-		CreatorEarningModel:      model.NewCreatorEarningModel(db),
-		MaterialModel:            model.NewMaterialModel(db),
-		MaterialSkuModel:         model.NewMaterialSkuModel(db),
-		BlessingTaskModel:        model.NewBlessingTaskModel(db),
-		ExtraServiceModel:        model.NewExtraServiceModel(db),
-		BlessingServiceListModel: model.NewBlessingServiceListModel(),
+		Config:              c,
+		DB:                  db,
+		Redis:               rds,
+		MqProducer:          producer,
+		Consumer:            consumer,
+		DiyDesignModel:      model.NewDiyDesignModel(db),
+		DiyOrderModel:       model.NewDiyOrderModel(db),
+		DiyOrderItemModel:   model.NewDiyOrderItemModel(db),
+		CreatorEarningModel: model.NewCreatorEarningModel(db),
+		MaterialModel:       model.NewMaterialModel(db),
+		MaterialSkuModel:    model.NewMaterialSkuModel(db),
+		BlessingTaskModel:   model.NewBlessingTaskModel(db),
+		ExtraServiceModel:   model.NewExtraServiceModel(db),
 	}
 }

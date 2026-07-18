@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/middleware"
@@ -28,7 +30,97 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/files/upload",
 			Handler: uploadHandler(svcCtx),
 		},
+		{Method: http.MethodGet, Path: "/api/v1/admin/files/backups", Handler: backupListHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/admin/files/backups", Handler: backupCreateHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/admin/files/backups/:filename/download", Handler: backupDownloadHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/admin/files/backups/:filename/restore", Handler: backupRestoreHandler(svcCtx)},
 	})
+}
+
+func requirePlatformSuper(w http.ResponseWriter, r *http.Request) bool {
+	roles := strings.Split(r.Header.Get("X-User-Roles"), ",")
+	for _, role := range roles {
+		if role == "platform_super" {
+			return true
+		}
+	}
+	common.JsonError(w, common.ErrRoleForbidden)
+	return false
+}
+
+func backupListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !requirePlatformSuper(w, r) {
+			return
+		}
+		resp, err := logic.ListBackups(r.Context(), svcCtx)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func backupCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !requirePlatformSuper(w, r) {
+			return
+		}
+		resp, err := logic.CreateBackup(r.Context(), svcCtx)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func backupDownloadHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !requirePlatformSuper(w, r) {
+			return
+		}
+		var path struct {
+			Filename string `path:"filename"`
+		}
+		if err := httpx.ParsePath(r, &path); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.BackupDownload(r.Context(), svcCtx, path.Filename)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func backupRestoreHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !requirePlatformSuper(w, r) {
+			return
+		}
+		var path struct {
+			Filename string `path:"filename"`
+		}
+		if err := httpx.ParsePath(r, &path); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		var req types.BackupRestoreReq
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.RestoreBackup(r.Context(), svcCtx, path.Filename, req.Confirm)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
 }
 
 func presignedHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

@@ -38,8 +38,12 @@ func (l *WithdrawalProcessLogic) WithdrawalProcess(req *types.WithdrawalProcessR
 	}
 	now := time.Now().Format("2006-01-02 15:04:05")
 	// approved → processing
-	model.UpdateWithdrawalStatus(req.Id, model.WithdrawalProcessing, "", now)
+	if !model.UpdateWithdrawalStatus(req.Id, model.WithdrawalProcessing, "", now) {
+		return nil, common.ErrStatusInvalid
+	}
 	// mock 打款成功 → processing → success
-	model.UpdateWithdrawalStatus(req.Id, model.WithdrawalSuccess, "", now)
+	if !model.UpdateWithdrawalStatus(req.Id, model.WithdrawalSuccess, "", now) {
+		return nil, common.ErrStatusInvalid
+	}
 	return &types.WithdrawalProcessResp{Id: req.Id, Status: model.WithdrawalSuccess}, nil
 }

@@ -105,6 +105,18 @@ type DesignListResp struct {
 	Size  int         `json:"size"`
 }
 
+type BlessingServiceListReq struct {
+	Page int `form:"page,default=1"`
+	Size int `form:"size,default=20"`
+}
+
+type BlessingServiceListResp struct {
+	Total int64             `json:"total"`
+	List  []BlessingService `json:"list"`
+	Page  int               `json:"page"`
+	Size  int               `json:"size"`
+}
+
 type DesignSaveReq struct {
 	UserId           string  `json:"userId"`
 	Name             string  `json:"name"`

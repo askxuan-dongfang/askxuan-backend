@@ -2,9 +2,11 @@ package svc
 
 import (
 	"github.com/askxuan/finance-service/internal/config"
+	"github.com/askxuan/finance-service/internal/model"
 	"github.com/askxuan/finance-service/internal/mq"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 // ServiceContext finance 服务依赖容器
@@ -16,6 +18,7 @@ type ServiceContext struct {
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
+	model.Configure(sqlx.NewMysql(c.MySQL.DataSource))
 	rds := redis.MustNewRedis(c.Redis)
 	producer := mq.NewProducer(
 		c.RabbitMQ.Host, c.RabbitMQ.Port,
