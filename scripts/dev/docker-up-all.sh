@@ -25,11 +25,19 @@ if [ "${table_count}" = "0" ]; then
   echo "==> First startup detected, initializing database..."
   docker exec -i askxuan-mysql mysql -uroot -proot123 askxuan < db/init.sql
 else
-  echo "==> Existing database detected, skip initialization. Use 'make db-reset' to reset data."
+  echo "==> Existing database detected, preserving business data."
 fi
 
+echo "==> Applying idempotent forward migrations..."
+for migration in scripts/db/20*.sql; do
+  echo "    $(basename "${migration}")"
+  docker exec -i askxuan-mysql mysql -uroot -proot123 < "${migration}"
+done
+
 echo "==> Starting all backend services..."
-docker compose -f docker-compose.yml -f docker-compose.full.yml up -d --build
+# Recreate every service after middleware/config changes so zrpc leases are
+# registered against the current etcd instance instead of a stale endpoint.
+docker compose -f docker-compose.yml -f docker-compose.full.yml up -d --build --force-recreate
 
 echo "==> Waiting for gateway..."
 for _ in $(seq 1 60); do

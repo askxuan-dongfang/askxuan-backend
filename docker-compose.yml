@@ -115,7 +115,9 @@ services:
       - etcd
       - --name=etcd-single
       - --data-dir=/etcd-data
-      - --advertise-client-urls=http://127.0.0.1:2379
+      # Publish both Docker DNS and host-loopback endpoints. Containerized
+      # go-zero clients need `etcd`; host-mode development still needs 127.0.0.1.
+      - --advertise-client-urls=http://etcd:2379,http://127.0.0.1:2379
       - --listen-client-urls=http://0.0.0.0:2379
       - --initial-advertise-peer-urls=http://127.0.0.1:2380
       - --listen-peer-urls=http://0.0.0.0:2380

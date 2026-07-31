@@ -1,4 +1,6 @@
 -- Requirement 6: intention tags and cross-domain aggregation. Safe to run repeatedly as root.
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS askxuan_product DEFAULT CHARACTER SET utf8mb4;
 CREATE TABLE IF NOT EXISTS askxuan_product.intent_tag (
   code VARCHAR(32) NOT NULL PRIMARY KEY, name VARCHAR(64) NOT NULL,

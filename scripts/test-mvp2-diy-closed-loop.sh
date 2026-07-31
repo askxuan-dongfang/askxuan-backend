@@ -3,16 +3,13 @@
 # MVP-2 P4 DIY 全链路闭环测试
 # 前置：docker compose up -d && make db-init && make start-all
 # 测试链路：创建材料 → 用户登录 → 创建设计(有加持) → 篡改单价创建DIY订单
-#          → 服务端重定价/支付前禁止审核 → 支付 → mock回调 → 审核通过 → 制作完成(有加持)
-#          → mock加持完成 → 发货 → 物流签收 → DIY订单完成
+#          → 服务端重定价/支付前禁止审核 → mock支付 → 审核通过 → 制作完成(有加持)
+#          → 法师接受/开始/上传凭证并完成 → 发货 → 物流签收 → DIY订单完成
 # ============================================================
 
 set -o pipefail
 
 BASE=http://localhost:8080
-RABBIT_API=http://127.0.0.1:15672
-RABBIT_USER=admin
-RABBIT_PASS=admin
 PASS_COUNT=0
 FAIL_COUNT=0
 TOTAL=17
@@ -169,9 +166,10 @@ PAY_RESP=$(curl -s -X POST "$BASE/api/v1/payments" \
         \"orderType\":\"diy_order\",
         \"orderNo\":\"$ORDER_NO\",
         \"amount\":${FINAL_TOTAL:-0},
-        \"channel\":\"wechat\",
-        \"userId\":\"$USER_ID\"
+        \"channel\":\"mock\",
+        \"userId\":\"999999\"
     }")
+PAYMENT_ID=$(echo "$PAY_RESP" | jq -r '.data.id // empty')
 PAYMENT_NO=$(echo "$PAY_RESP" | jq -r '.data.paymentNo // empty')
 if [ -n "$PAYMENT_NO" ]; then
     pass "创建支付（paymentNo=$PAYMENT_NO）"
@@ -179,25 +177,19 @@ else
     fail "创建支付失败: $PAY_RESP"
 fi
 
-# ===== 8. Mock 微信支付回调 =====
-info "步骤 8/17: Mock 微信支付回调"
-if [ -n "$PAYMENT_NO" ]; then
-    # 用 jq 构建完整的 rawBody JSON，避免 shell 转义问题
-    CALLBACK_TRADE_NO="MOCK_DIY_${PAYMENT_NO}_$(date +%s)"
-    CALLBACK_PAYLOAD=$(jq -n --arg pn "$PAYMENT_NO" --arg tn "$CALLBACK_TRADE_NO" \
-        '{paymentNo:$pn,tradeNo:$tn,result:"success"}')
-    CB_BODY=$(jq -n --arg rb "$CALLBACK_PAYLOAD" '{rawBody:$rb}')
-    CB_RESP=$(curl -s -X POST "$BASE/api/v1/payments/callback/wechat" \
-        -H 'Content-Type: application/json' \
-        -d "$CB_BODY")
-    CB_CODE=$(echo "$CB_RESP" | jq -r '.data.code // empty')
-    if [ "$CB_CODE" = "SUCCESS" ]; then
-        pass "Mock 微信支付回调（code=$CB_CODE）"
+# ===== 8. 验证本地 mock 支付成功 =====
+info "步骤 8/17: 验证本地 mock 支付成功"
+if [ -n "$PAYMENT_ID" ]; then
+    PAYMENT_RESP=$(curl -s "$BASE/api/v1/payments/$PAYMENT_ID" -H "$AUTH")
+    PAYMENT_RESULT=$(echo "$PAYMENT_RESP" | jq -r '.data.status // empty')
+    PAYMENT_CHANNEL=$(echo "$PAYMENT_RESP" | jq -r '.data.channel // empty')
+    if [ "$PAYMENT_RESULT" = "success" ] && [ "$PAYMENT_CHANNEL" = "mock" ]; then
+        pass "本地 mock 支付成功（paymentNo=$PAYMENT_NO）"
     else
-        fail "Mock 微信支付回调失败: $CB_RESP"
+        fail "本地 mock 支付失败: $PAYMENT_RESP"
     fi
 else
-    fail "Mock 微信支付回调（无 paymentNo，跳过）"
+    fail "本地 mock 支付（无 paymentId，跳过）"
 fi
 
 # ===== 9. 支付成功只更新支付状态，不越过商城审核 =====
@@ -250,27 +242,34 @@ else
     fail "管理台制作完成（无 orderId，跳过）"
 fi
 
-# ===== 12. Mock 加持完成（通过 RabbitMQ HTTP API 发布 blessing.complete） =====
-info "步骤 12/17: Mock 加持完成（RabbitMQ HTTP API 发布 blessing.complete）"
-if [ -n "$TASK_NO" ] && [ -n "$ORDER_NO" ]; then
-    BLESSING_PAYLOAD=$(jq -n \
-        --arg tn "$TASK_NO" \
-        --arg dn "$ORDER_NO" \
-        --arg t "$(date '+%Y-%m-%d %H:%M:%S')" \
-        '{eventType:"blessing.complete",taskNo:$tn,diyOrderId:$dn,templeCode:"T001",masterCode:"M001",status:"completed",time:$t}')
-    # 通过 RabbitMQ Management HTTP API 发布消息到 blessing.events exchange
-    PUBLISH_RESP=$(curl -s -u "$RABBIT_USER:$RABBIT_PASS" \
-        -X POST "$RABBIT_API/api/exchanges/%2f/blessing.events/publish" \
-        -H 'Content-Type: application/json' \
-        -d "$(jq -n --arg p "$BLESSING_PAYLOAD" '{properties:{content_type:"application/json",delivery_mode:2},routing_key:"",payload:$p,payload_encoding:"string"}')")
-    PUBLISH_OK=$(echo "$PUBLISH_RESP" | jq -r '.routed // false')
-    if [ "$PUBLISH_OK" = "true" ]; then
-        pass "Mock 加持完成（blessing.complete 已发布，taskNo=$TASK_NO）"
+# ===== 12. 法师接受、开始、上传真实凭证并完成加持 =====
+info "步骤 12/17: 法师工作台完成加持并上传凭证"
+TASK_ID=$(echo "$MAKE_RESP" | jq -r '.data.blessingTask.id // empty')
+MASTER_RESP=$(curl -s -X POST "$BASE/api/v1/auth/admin/login" \
+    -H 'Content-Type: application/json' \
+    -d '{"account":"zhihai","password":"123456"}')
+MASTER_TOKEN=$(echo "$MASTER_RESP" | jq -r '.data.accessToken // empty')
+if [ -n "$TASK_ID" ] && [ -n "$MASTER_TOKEN" ]; then
+    MASTER_AUTH="Authorization: Bearer $MASTER_TOKEN"
+    ACCEPT_RESP=$(curl -s -X PUT "$BASE/api/v1/admin/masters/blessing-tasks/$TASK_ID/accept" \
+        -H "$MASTER_AUTH" -H 'Content-Type: application/json' -d '{}')
+    START_RESP=$(curl -s -X PUT "$BASE/api/v1/admin/masters/blessing-tasks/$TASK_ID/start" \
+        -H "$MASTER_AUTH" -H 'Content-Type: application/json' -d '{}')
+    COMPLETE_RESP=$(curl -s -X PUT "$BASE/api/v1/admin/masters/blessing-tasks/$TASK_ID/complete" \
+        -H "$MASTER_AUTH" -H 'Content-Type: application/json' \
+        -d '{"certificateUrls":["http://127.0.0.1:9000/askxuan/blessing/test-certificate.jpg"]}')
+    COMPLETE_STATUS=$(echo "$COMPLETE_RESP" | jq -r '.data.status // empty')
+    CERTIFICATE_COUNT=$(echo "$COMPLETE_RESP" | jq -r '.data.certificateUrls | length // 0')
+    if [ "$(echo "$ACCEPT_RESP" | jq -r '.code')" = "0" ] \
+        && [ "$(echo "$START_RESP" | jq -r '.code')" = "0" ] \
+        && [ "$COMPLETE_STATUS" = "completed" ] \
+        && [ "$CERTIFICATE_COUNT" -gt 0 ]; then
+        pass "法师完成加持并保存凭证（taskNo=$TASK_NO）"
     else
-        fail "Mock 加持完成失败: $PUBLISH_RESP"
+        fail "法师加持流程失败: accept=$ACCEPT_RESP start=$START_RESP complete=$COMPLETE_RESP"
     fi
 else
-    fail "Mock 加持完成（无 taskNo/orderNo，跳过）"
+    fail "法师加持流程（无 taskId 或 masterToken，跳过）"
 fi
 
 # ===== 13. 验证 DIY 订单进入待发货 =====

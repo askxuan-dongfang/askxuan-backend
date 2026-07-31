@@ -149,6 +149,39 @@ func (l *MasterBookingConfirmLogic) MasterBookingConfirm(req *types.AdminBooking
 	return transitBookingStatus(l.Logger, l.ctx, l.svcCtx, req.Id, model.StatusConfirmed, req.Remark, operatorId, model.OperatorTypeMaster, "confirmed")
 }
 
+// MasterBookingStartLogic 法师开始服务（confirmed → in_progress）
+type MasterBookingStartLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewMasterBookingStartLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MasterBookingStartLogic {
+	return &MasterBookingStartLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *MasterBookingStartLogic) MasterBookingStart(req *types.AdminBookingActionReq) (*types.StatusResp, error) {
+	masterID := middleware.MasterIDFromCtx(l.ctx)
+	if masterID == 0 {
+		return nil, common.ErrUnauthorized
+	}
+	b, err := l.svcCtx.BookingModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrBookingNotFound
+		}
+		return nil, common.ErrSystem
+	}
+	master, err := l.svcCtx.MasterClient.GetByID(l.ctx, masterID)
+	if err != nil {
+		return nil, common.ErrDependencyUnavailable
+	}
+	if b.MasterId != master.Code {
+		return nil, common.ErrForbidden
+	}
+	return transitBookingStatus(l.Logger, l.ctx, l.svcCtx, req.Id, model.StatusInProgress, req.Remark, master.Code, model.OperatorTypeMaster, "in_progress")
+}
+
 // MasterBookingCompleteLogic 法师完成预约（in_progress → completed）
 type MasterBookingCompleteLogic struct {
 	logx.Logger

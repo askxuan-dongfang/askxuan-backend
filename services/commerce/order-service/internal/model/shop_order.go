@@ -131,7 +131,7 @@ func (m *defaultShopOrderModel) insert(ctx context.Context, executor sqlExecutor
 
 func (m *defaultShopOrderModel) FindByRequestId(ctx context.Context, requestId string) (*ShopOrder, error) {
 	var o ShopOrder
-	query := fmt.Sprintf(`SELECT id, order_no, request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE request_id = ?`, shopOrderTable)
+	query := fmt.Sprintf(`SELECT id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE request_id = ?`, shopOrderTable)
 	if err := m.conn.QueryRowCtx(ctx, &o, query, requestId); err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (m *defaultShopOrderModel) FindByRequestId(ctx context.Context, requestId s
 
 func (m *defaultShopOrderModel) FindOne(ctx context.Context, id int64) (*ShopOrder, error) {
 	var o ShopOrder
-	query := fmt.Sprintf(`SELECT id, order_no, request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE id = ?`, shopOrderTable)
+	query := fmt.Sprintf(`SELECT id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE id = ?`, shopOrderTable)
 	err := m.conn.QueryRowCtx(ctx, &o, query, id)
 	if err != nil {
 		return nil, err
@@ -150,7 +150,7 @@ func (m *defaultShopOrderModel) FindOne(ctx context.Context, id int64) (*ShopOrd
 
 func (m *defaultShopOrderModel) FindByOrderNo(ctx context.Context, orderNo string) (*ShopOrder, error) {
 	var o ShopOrder
-	query := fmt.Sprintf(`SELECT id, order_no, request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE order_no = ?`, shopOrderTable)
+	query := fmt.Sprintf(`SELECT id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE order_no = ?`, shopOrderTable)
 	err := m.conn.QueryRowCtx(ctx, &o, query, orderNo)
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func (m *defaultShopOrderModel) FindListByUser(ctx context.Context, userId, stat
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, order_no, request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE %s ORDER BY create_time DESC LIMIT ?, ?`, shopOrderTable, where)
+	listQuery := fmt.Sprintf(`SELECT id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE %s ORDER BY create_time DESC LIMIT ?, ?`, shopOrderTable, where)
 	listArgs := append(args, offset, size)
 	var list []*ShopOrder
 	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, listArgs...); err != nil {
@@ -193,7 +193,7 @@ func (m *defaultShopOrderModel) FindListAdmin(ctx context.Context, status string
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, order_no, request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE %s ORDER BY create_time DESC LIMIT ?, ?`, shopOrderTable, where)
+	listQuery := fmt.Sprintf(`SELECT id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE %s ORDER BY create_time DESC LIMIT ?, ?`, shopOrderTable, where)
 	listArgs := append(args, offset, size)
 	var list []*ShopOrder
 	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, listArgs...); err != nil {

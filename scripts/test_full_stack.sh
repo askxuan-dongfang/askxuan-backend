@@ -215,7 +215,7 @@ else
 fi
 
 # etcd: 检查全部业务 zrpc 服务注册；端口监听作为本机开发兜底。
-for rpc in temple.rpc:9083 master.rpc:9084 diy.rpc:9088 payment.rpc:9090; do
+for rpc in temple.rpc:9083 master.rpc:9084 product.rpc:9086 diy.rpc:9088 order.rpc:9089 payment.rpc:9090; do
   key="${rpc%:*}"
   port="${rpc#*:}"
   ETCD_KEYS=$(docker exec askxuan-etcd etcdctl --endpoints=http://127.0.0.1:2379 get "$key" --prefix --keys-only 2>/dev/null | grep -c "$key")
@@ -249,3 +249,7 @@ if [ "$FAIL" -gt 0 ]; then
   done
 fi
 echo "=========================================="
+
+if [ "$FAIL" -gt 0 ]; then
+  exit 1
+fi

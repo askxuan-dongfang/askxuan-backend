@@ -130,6 +130,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		},
 		{
 			Method:  http.MethodPut,
+			Path:    "/api/v1/admin/masters/bookings/:id/start",
+			Handler: masterBookingStartHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPut,
 			Path:    "/api/v1/admin/masters/bookings/:id/complete",
 			Handler: masterBookingCompleteHandler(svcCtx),
 		},
@@ -455,6 +460,23 @@ func masterBookingConfirmHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewMasterBookingConfirmLogic(r.Context(), svcCtx)
 		resp, err := l.MasterBookingConfirm(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func masterBookingStartHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminBookingActionReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewMasterBookingStartLogic(r.Context(), svcCtx)
+		resp, err := l.MasterBookingStart(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

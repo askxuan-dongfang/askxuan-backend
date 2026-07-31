@@ -2,7 +2,7 @@
 # ============================================================
 # MVP-2 P3 商城交易全链路闭环测试
 # 前置：docker compose up -d && make db-init && make start-all
-# 测试链路：创建商品 → 上下架 → 创建订单 → 创建支付 → mock回调
+# 测试链路：创建商品 → 上下架 → 幂等创建订单 → mock支付
 #          → 验证已支付 → 发货 → 验证物流记录 → 确认收货
 # ============================================================
 
@@ -11,7 +11,9 @@ set -o pipefail
 BASE=http://localhost:8080
 PASS_COUNT=0
 FAIL_COUNT=0
-TOTAL=10
+TOTAL=11
+STAMP=$(date +%s)
+REQUEST_ID="mvp2-trade-$STAMP"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -130,7 +132,8 @@ ORDER_RESP=$(curl -s -X POST "$BASE/api/v1/orders" \
     -H "$AUTH" \
     -H 'Content-Type: application/json' \
     -d "{
-        \"userId\":\"$USER_ID\",
+        \"requestId\":\"$REQUEST_ID\",
+        \"userId\":\"999999\",
         \"addressId\":1,
         \"note\":\"P3 闭环测试订单\",
         \"items\":[{
@@ -144,6 +147,7 @@ ORDER_RESP=$(curl -s -X POST "$BASE/api/v1/orders" \
     }")
 ORDER_ID=$(echo "$ORDER_RESP" | jq -r '.data.id // empty')
 ORDER_NO=$(echo "$ORDER_RESP" | jq -r '.data.orderNo // empty')
+PAY_AMOUNT=$(echo "$ORDER_RESP" | jq -r '.data.payAmount // empty')
 if [ -n "$ORDER_NO" ]; then
     pass "创建订单（id=$ORDER_ID, orderNo=$ORDER_NO）"
 else
@@ -158,10 +162,11 @@ PAY_RESP=$(curl -s -X POST "$BASE/api/v1/payments" \
     -d "{
         \"orderType\":\"shop_order\",
         \"orderNo\":\"$ORDER_NO\",
-        \"amount\":99.00,
-        \"channel\":\"wechat\",
-        \"userId\":\"$USER_ID\"
+        \"amount\":${PAY_AMOUNT:-99.00},
+        \"channel\":\"mock\",
+        \"userId\":\"999999\"
     }")
+PAYMENT_ID=$(echo "$PAY_RESP" | jq -r '.data.id // empty')
 PAYMENT_NO=$(echo "$PAY_RESP" | jq -r '.data.paymentNo // empty')
 if [ -n "$PAYMENT_NO" ]; then
     pass "创建支付（paymentNo=$PAYMENT_NO）"
@@ -169,23 +174,19 @@ else
     fail "创建支付失败: $PAY_RESP"
 fi
 
-# ===== 7. Mock 微信支付回调 =====
-info "步骤 7/10: Mock 微信支付回调"
-if [ -n "$PAYMENT_NO" ]; then
-    MOCK_TX="MOCK_TX_$(date +%s)"
-    CALLBACK_PAYLOAD=$(jq -n --arg pn "$PAYMENT_NO" --arg tn "$MOCK_TX" '{paymentNo:$pn,tradeNo:$tn,result:"success"}')
-    CB_BODY=$(jq -n --arg rb "$CALLBACK_PAYLOAD" '{rawBody:$rb}')
-    CB_RESP=$(curl -s -X POST "$BASE/api/v1/payments/callback/wechat" \
-        -H 'Content-Type: application/json' \
-        -d "$CB_BODY")
-    CB_CODE=$(echo "$CB_RESP" | jq -r '.data.code // empty')
-    if [ "$CB_CODE" = "SUCCESS" ]; then
-        pass "Mock 微信支付回调（code=$CB_CODE）"
+# ===== 7. 验证本地 mock 支付成功 =====
+info "步骤 7/10: 验证本地 mock 支付成功"
+if [ -n "$PAYMENT_ID" ]; then
+    PAYMENT_RESP=$(curl -s "$BASE/api/v1/payments/$PAYMENT_ID" -H "$AUTH")
+    PAYMENT_STATUS=$(echo "$PAYMENT_RESP" | jq -r '.data.status // empty')
+    PAYMENT_CHANNEL=$(echo "$PAYMENT_RESP" | jq -r '.data.channel // empty')
+    if [ "$PAYMENT_STATUS" = "success" ] && [ "$PAYMENT_CHANNEL" = "mock" ]; then
+        pass "本地 mock 支付成功（paymentNo=$PAYMENT_NO）"
     else
-        fail "Mock 微信支付回调失败: $CB_RESP"
+        fail "本地 mock 支付失败: $PAYMENT_RESP"
     fi
 else
-    fail "Mock 微信支付回调（无 paymentNo，跳过）"
+    fail "本地 mock 支付（无 paymentId，跳过）"
 fi
 
 # ===== 8. 验证订单已支付 =====

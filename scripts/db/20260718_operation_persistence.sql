@@ -1,3 +1,5 @@
+USE askxuan_diy;
+
 SET @extra_service_status_exists = (
   SELECT COUNT(1) FROM information_schema.columns
   WHERE table_schema='askxuan_diy' AND table_name='extra_service' AND column_name='status'

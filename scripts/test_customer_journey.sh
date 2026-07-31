@@ -91,9 +91,12 @@ check "4.2 更新用户信息" "0" "$(echo "$R" | json_code)" "$(echo "$R" | hea
 echo ""
 echo "--- 5. 预约闭环 ---"
 BOOKING_DATE=$(date -v+1d +%Y-%m-%d 2>/dev/null || date -d "+1 day" +%Y-%m-%d)
+R=$(curl -s --max-time 10 \
+  "$GATEWAY/api/v1/bookings/availability?templeId=T001&serviceId=S001&date=$BOOKING_DATE")
+SLOT_CODE=$(echo "$R" | python3 -c "import sys,json; slots=json.load(sys.stdin).get('data',{}).get('slots',[]); print(next((s.get('slotCode','') for s in slots if s.get('available')), ''))" 2>/dev/null)
 R=$(curl -s --max-time 10 -X POST -H "$AUTH" -H "Content-Type: application/json" \
   "$GATEWAY/api/v1/bookings" \
-  -d "{\"userId\":\"$USER_ID\",\"templeId\":\"T001\",\"templeName\":\"灵隐寺\",\"masterId\":\"M001\",\"masterName\":\"智海法师\",\"serviceId\":\"S001\",\"serviceName\":\"禅修\",\"bookingDate\":\"$BOOKING_DATE\",\"timeSlot\":\"09:00-10:00\",\"meritMoney\":99,\"meritMoneyTier\":\"基础\",\"note\":\"自动化测试预约\"}")
+  -d "{\"requestId\":\"journey-booking-$(date +%s)-$RANDOM\",\"userId\":\"$USER_ID\",\"templeId\":\"T001\",\"masterId\":\"M001\",\"serviceId\":\"S001\",\"bookingDate\":\"$BOOKING_DATE\",\"slotCode\":\"$SLOT_CODE\",\"meritMoney\":99,\"meritMoneyTier\":\"基础\",\"note\":\"自动化测试预约\"}")
 check "5.1 创建预约" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 300)"
 BK_NO=$(echo "$R" | python3 -c "import sys,json;d=json.load(sys.stdin).get('data',{});print(d.get('id','') or d.get('bookingNo',''))" 2>/dev/null)
 echo "  → bookingNo=$BK_NO"
@@ -153,7 +156,7 @@ check "7.2 地址列表" "0" "$(echo "$R" | json_code)" ""
 if [ -n "$PRODUCT_ID" ] && [ -n "$ADDR_ID" ]; then
   R=$(curl -s --max-time 10 -X POST -H "$AUTH" -H "Content-Type: application/json" \
     "$GATEWAY/api/v1/orders" \
-    -d "{\"userId\":\"$USER_ID\",\"addressId\":$ADDR_ID,\"note\":\"自动化测试订单\",\"items\":[{\"productId\":$PRODUCT_ID,\"productName\":\"测试商品\",\"price\":99,\"quantity\":1}]}")
+    -d "{\"requestId\":\"journey-order-$(date +%s)-$RANDOM\",\"userId\":\"$USER_ID\",\"addressId\":$ADDR_ID,\"note\":\"自动化测试订单\",\"items\":[{\"productId\":$PRODUCT_ID,\"skuId\":0,\"productName\":\"测试商品\",\"price\":99,\"quantity\":1}]}")
   check "7.3 创建商城订单" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 300)"
   ORDER_NO=$(echo "$R" | python3 -c "import sys,json;d=json.load(sys.stdin).get('data',{});print(d.get('orderNo','') or d.get('id',''))" 2>/dev/null)
   echo "  → orderNo=$ORDER_NO"

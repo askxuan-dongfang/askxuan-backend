@@ -37,7 +37,7 @@ SERVICE_PATHS := $(GATEWAY_PATH) $(AUTH_PATH) $(USER_PATH) $(TEMPLE_PATH) \
 
 SERVICE_BINS := gateway auth user temple master booking review product order payment diy marketing logistics finance audit message file ai community media
 SERVICE_PORTS := gateway:8080 auth:8081 user:8082 temple:8083 master:8084 booking:8085 product:8086 diy:8088 order:8089 payment:8090 finance:8091 review:8092 audit:8093 message:8094 logistics:8095 marketing:8096 file:8097 ai:8098 community:8099 media:8100
-RPC_PORTS := temple.rpc:9083 master.rpc:9084 diy.rpc:9088 payment.rpc:9090
+RPC_PORTS := temple.rpc:9083 master.rpc:9084 product.rpc:9086 diy.rpc:9088 order.rpc:9089 payment.rpc:9090
 CORE_SERVICE_PATHS := $(GATEWAY_PATH) $(AUTH_PATH) $(MESSAGE_PATH)
 CORE_SERVICE_BINS := gateway auth message
 CORE_SERVICE_PORTS := gateway:8080 auth:8081 message:8094

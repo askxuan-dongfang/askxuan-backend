@@ -11,10 +11,12 @@ OPENIM_KAFKA_IMAGE="${OPENIM_KAFKA_IMAGE:-bitnamilegacy/kafka:3.5.1}"
 OPENIM_LAUNCH_LABEL="${OPENIM_LAUNCH_LABEL:-com.askxuan.openim.start}"
 
 openim_ready() {
-  curl -fsS --max-time 5 -X POST http://127.0.0.1:10002/auth/get_admin_token \
+  local response
+  response="$(curl -fsS --max-time 5 -X POST http://127.0.0.1:10002/auth/get_admin_token \
     -H 'Content-Type: application/json' \
     -H "operationID: askxuan-openim-ready" \
-    -d '{"secret":"openIM123","userID":"imAdmin"}' >/dev/null 2>&1
+    -d '{"secret":"openIM123","userID":"imAdmin"}' 2>/dev/null)" || return 1
+  printf '%s' "$response" | grep -Eq '"errCode"[[:space:]]*:[[:space:]]*0'
 }
 
 mkdir -p "$OPENIM_DIR"

@@ -279,4 +279,16 @@ type (
 service booking-service {
     @handler masterBookingList
     get / (MasterBookingListReq) returns (MasterBookingListResp)
+
+    @handler masterBookingDetail
+    get /:id (DetailReq) returns (Booking)
+
+    @handler masterBookingConfirm
+    put /:id/confirm (AdminBookingActionReq) returns (StatusResp)
+
+    @handler masterBookingStart
+    put /:id/start (AdminBookingActionReq) returns (StatusResp)
+
+    @handler masterBookingComplete
+    put /:id/complete (AdminBookingActionReq) returns (StatusResp)
 }

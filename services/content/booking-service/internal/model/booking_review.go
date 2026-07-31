@@ -67,11 +67,16 @@ func (m *defaultBookingReviewModel) Insert(ctx context.Context, data *BookingRev
 	query := fmt.Sprintf(
 		"INSERT INTO %s (booking_id, user_id, rating, content, images, master_reply, create_time) VALUES (?, ?, ?, ?, ?, '', ?)",
 		reviewTable)
-	_, err := m.conn.ExecCtx(ctx, query, data.BookingId, data.UserId, data.Rating,
+	result, err := m.conn.ExecCtx(ctx, query, data.BookingId, data.UserId, data.Rating,
 		data.Content, imagesJSON, data.CreateTime)
 	if err != nil {
 		return nil, err
 	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	data.Id = id
 	return data, nil
 }
 

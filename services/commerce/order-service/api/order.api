@@ -60,6 +60,7 @@ type (
 
 type (
     OrderCreateReq {
+        RequestId string           `json:"requestId"`
         UserId    string           `json:"userId"`
         AddressId int64            `json:"addressId"`
         Note      string           `json:"note,optional"`
@@ -67,8 +68,11 @@ type (
     }
 
     OrderCreateResp {
-        Id      int64  `json:"id"`
-        OrderNo string `json:"orderNo"`
+        Id          int64   `json:"id"`
+        OrderNo     string  `json:"orderNo"`
+        TotalAmount float64 `json:"totalAmount"`
+        PayAmount   float64 `json:"payAmount"`
+        Status      string  `json:"status"`
     }
 
     OrderListReq {
