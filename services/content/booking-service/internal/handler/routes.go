@@ -26,9 +26,18 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		Path:    "/api/v1/bookings/availability",
 		Handler: availabilityHandler(svcCtx),
 	})
+	server.AddRoutes([]rest.Route{
+		{Method: http.MethodPost, Path: "/openim/booking-chat-webhook", Handler: bookingChatWebhookHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/openim/booking-chat-webhook/:command", Handler: bookingChatWebhookHandler(svcCtx)},
+	})
 
 	// ============ C端分组（需JWT） ============
 	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/bookings/chats",
+			Handler: chatListHandler(svcCtx),
+		},
 		{
 			Method:  http.MethodPost,
 			Path:    "/api/v1/bookings",
@@ -43,6 +52,16 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Method:  http.MethodGet,
 			Path:    "/api/v1/bookings/:id",
 			Handler: detailHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/bookings/:id/chat/messages",
+			Handler: chatMessageListHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/bookings/:id/chat/messages",
+			Handler: chatMessageSendHandler(svcCtx),
 		},
 		{
 			Method:  http.MethodPost,
@@ -167,6 +186,54 @@ func payHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewPayLogic(r.Context(), svcCtx).Pay(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func chatListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ChatListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewChatListLogic(r.Context(), svcCtx).List(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func chatMessageListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ChatMessageListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewChatMessageListLogic(r.Context(), svcCtx).List(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func chatMessageSendHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ChatMessageSendReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewChatMessageSendLogic(r.Context(), svcCtx).Send(&req)
 		if err != nil {
 			common.JsonError(w, err)
 			return

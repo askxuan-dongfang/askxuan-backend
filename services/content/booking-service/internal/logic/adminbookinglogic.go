@@ -261,8 +261,10 @@ func transitBookingStatus(
 	if svcCtx.MqProducer != nil {
 		if err := svcCtx.MqProducer.Publish(ctx, mq.BookingNotify{
 			BookingId: updated.Id, UserId: updated.UserId, TempleId: updated.TempleId,
-			MasterId: updated.MasterId, ServiceName: updated.ServiceName,
-			BookingDate: updated.BookingDate, TotalFee: updated.TotalFee, Action: action,
+			TempleName: updated.TempleName, MasterId: updated.MasterId, MasterName: updated.MasterName,
+			ServiceName: updated.ServiceName, BookingDate: updated.BookingDate,
+			ServiceFee: updated.ServiceFee, MeritMoney: updated.MeritMoney,
+			TotalFee: updated.TotalFee, Action: action,
 		}); err != nil {
 			l.Errorf("发送预约状态通知失败: %v", err)
 		}

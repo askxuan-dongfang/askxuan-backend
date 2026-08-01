@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/askxuan/message-service/internal/model"
 	"github.com/askxuan/message-service/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
@@ -20,34 +19,15 @@ type OpenIMWebhookReq struct {
 	SenderNick  string `json:"senderNickname"`
 }
 
-// OpenIMWebhookHandler 接收 OpenIM afterSendSingleMsg 事件回调
-// 落库到 message 表（biz_type="consult"），供未集成 SDK 的端（mobile-customer）轮询兜底
-func OpenIMWebhookHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+// OpenIMWebhookHandler is retained for old OpenIM configurations only.
+// Paid booking chat is handled by booking-service; this public compatibility
+// endpoint deliberately performs no writes so it cannot forge consult notices.
+func OpenIMWebhookHandler(_ *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req OpenIMWebhookReq
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
-		}
-
-		// 仅处理单聊文本消息（sessionType=1, contentType=101）
-		if req.SessionType == 1 && req.ContentType == 101 && req.RecvID != "" {
-			title := "新的咨询消息"
-			senderName := req.SenderNick
-			if senderName == "" {
-				senderName = req.SenderName
-			}
-			if senderName != "" {
-				title = "来自 " + senderName + " 的消息"
-			}
-			_, _ = svcCtx.MessageModel.Insert(r.Context(), &model.Message{
-				UserId:  req.RecvID,
-				Title:   title,
-				Content: req.Content,
-				BizType: "consult",
-				BizId:   req.SendID,
-				IsRead:  0,
-			})
 		}
 
 		httpx.OkJsonCtx(r.Context(), w, map[string]any{"code": 0})

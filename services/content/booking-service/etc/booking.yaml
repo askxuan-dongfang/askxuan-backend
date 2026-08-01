@@ -29,6 +29,11 @@ MySQL:
 # JWT 签名密钥
 AuthSecret: "askxuan-access-secret-change-in-prod"
 
+IM:
+  APIURL: "http://127.0.0.1:10002"
+  AdminUserID: "imAdmin"
+  Secret: "openIM123"
+
 TempleRpc:
   Etcd:
     Hosts:

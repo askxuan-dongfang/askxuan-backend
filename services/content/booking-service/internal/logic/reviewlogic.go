@@ -101,8 +101,10 @@ func (l *CreateReviewLogic) CreateReview(req *types.ReviewCreateReq) (*types.Rev
 		images, _ := json.Marshal(req.Images)
 		if err := l.svcCtx.MqProducer.Publish(l.ctx, mq.BookingNotify{
 			BookingId: b.Id, UserId: b.UserId, TempleId: b.TempleId,
-			MasterId: b.MasterId, ServiceName: b.ServiceName, BookingDate: b.BookingDate,
-			TotalFee: b.TotalFee, Rating: req.Rating, ReviewContent: req.Content,
+			TempleName: b.TempleName, MasterId: b.MasterId, MasterName: b.MasterName,
+			ServiceName: b.ServiceName, BookingDate: b.BookingDate,
+			ServiceFee: b.ServiceFee, MeritMoney: b.MeritMoney, TotalFee: b.TotalFee,
+			Rating: req.Rating, ReviewContent: req.Content,
 			ReviewImages: string(images), Action: "reviewed",
 		}); err != nil {
 			l.Errorf("发送评价通知失败: %v", err)

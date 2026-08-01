@@ -22,7 +22,12 @@ type Config struct {
 	TempleRpc  zrpc.RpcClientConf
 	MasterRpc  zrpc.RpcClientConf
 	PaymentRpc zrpc.RpcClientConf
-	MySQL      struct {
+	IM         struct {
+		APIURL      string
+		AdminUserID string
+		Secret      string
+	}
+	MySQL struct {
 		DataSource string
 	}
 }

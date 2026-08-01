@@ -86,6 +86,62 @@ type (
 
     PayReq { Id string `path:"id"` }
 
+    ChatListReq {
+        Page int `form:"page,default=1"`
+        Size int `form:"size,default=20"`
+    }
+
+    ChatConversation {
+        BookingId string `json:"bookingId"`
+        PeerId string `json:"peerId"`
+        PeerName string `json:"peerName"`
+        PeerAvatar string `json:"peerAvatar"`
+        TempleName string `json:"templeName"`
+        ServiceName string `json:"serviceName"`
+        BookingDate string `json:"bookingDate"`
+        LastMessage string `json:"lastMessage"`
+        LastMessageAt string `json:"lastMessageAt"`
+        CanChat bool `json:"canChat"`
+    }
+
+    ChatListResp {
+        Total int64 `json:"total"`
+        List []ChatConversation `json:"list"`
+        Page int `json:"page"`
+        Size int `json:"size"`
+    }
+
+    ChatMessageListReq {
+        Id string `path:"id"`
+        Page int `form:"page,default=1"`
+        Size int `form:"size,default=50"`
+    }
+
+    ChatMessage {
+        Id int64 `json:"id"`
+        BookingId string `json:"bookingId"`
+        ClientMessageId string `json:"clientMessageId"`
+        SenderType string `json:"senderType"`
+        SenderId string `json:"senderId"`
+        ReceiverId string `json:"receiverId"`
+        Content string `json:"content"`
+        Status string `json:"status"`
+        CreateTime string `json:"createTime"`
+    }
+
+    ChatMessageListResp {
+        Total int64 `json:"total"`
+        List []ChatMessage `json:"list"`
+        Page int `json:"page"`
+        Size int `json:"size"`
+    }
+
+    ChatMessageSendReq {
+        Id string `path:"id"`
+        ClientMessageId string `json:"clientMessageId"`
+        Content string `json:"content"`
+    }
+
     ListReq {
         UserId string `form:"userId,optional"`
         Status string `form:"status,optional"`
@@ -209,6 +265,15 @@ service booking-service {
 
     @handler list
     get / (ListReq) returns (ListResp)
+
+    @handler chatList
+    get /chats (ChatListReq) returns (ChatListResp)
+
+    @handler chatMessageList
+    get /:id/chat/messages (ChatMessageListReq) returns (ChatMessageListResp)
+
+    @handler chatMessageSend
+    post /:id/chat/messages (ChatMessageSendReq) returns (ChatMessage)
 
     @handler detail
     get /:id (DetailReq) returns (Booking)

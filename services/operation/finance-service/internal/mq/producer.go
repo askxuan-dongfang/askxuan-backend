@@ -24,6 +24,21 @@ type WithdrawalNotify struct {
 	Time         string  `json:"time"`
 }
 
+// SettlementAccrued is emitted only after finance-service has posted a balanced
+// platform-ledger transaction and created the target settlement record.
+type SettlementAccrued struct {
+	EventType   string  `json:"eventType"`
+	SourceType  string  `json:"sourceType"`
+	SourceNo    string  `json:"sourceNo"`
+	TargetType  string  `json:"targetType"`
+	TargetId    string  `json:"targetId"`
+	UserId      string  `json:"userId,omitempty"`
+	ServiceName string  `json:"serviceName,omitempty"`
+	EarningDate string  `json:"earningDate,omitempty"`
+	Amount      float64 `json:"amount"`
+	Time        string  `json:"time"`
+}
+
 // Producer RabbitMQ 生产者（懒连接，断开自动重连）
 type Producer struct {
 	host     string
@@ -82,6 +97,26 @@ func (p *Producer) PublishWithdrawalNotify(ctx context.Context, evt WithdrawalNo
 	body, _ := json.Marshal(evt)
 	if err := p.ensureChannel(); err != nil {
 		return nil
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.ch.PublishWithContext(ctx, ExchangeFinanceEvents, "", false, false,
+		amqp.Publishing{ContentType: "application/json", Body: body, DeliveryMode: amqp.Persistent, Timestamp: time.Now()})
+}
+
+func (p *Producer) PublishSettlementAccrued(ctx context.Context, evt SettlementAccrued) error {
+	if evt.EventType == "" {
+		evt.EventType = "settlement.accrued"
+	}
+	if evt.Time == "" {
+		evt.Time = time.Now().Format("2006-01-02 15:04:05")
+	}
+	body, err := json.Marshal(evt)
+	if err != nil {
+		return err
+	}
+	if err := p.ensureChannel(); err != nil {
+		return err
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()

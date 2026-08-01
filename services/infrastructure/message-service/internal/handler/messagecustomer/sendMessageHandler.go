@@ -5,6 +5,7 @@ package messagecustomer
 import (
 	"net/http"
 
+	"github.com/askxuan/common"
 	"github.com/askxuan/message-service/internal/logic/messagecustomer"
 	"github.com/askxuan/message-service/internal/svc"
 	"github.com/askxuan/message-service/internal/types"
@@ -22,7 +23,7 @@ func SendMessageHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		l := messagecustomer.NewSendMessageLogic(r.Context(), svcCtx)
 		resp, err := l.SendMessage(&req)
 		if err != nil {
-			httpx.ErrorCtx(r.Context(), w, err)
+			common.JsonError(w, err)
 		} else {
 			httpx.OkJsonCtx(r.Context(), w, resp)
 		}

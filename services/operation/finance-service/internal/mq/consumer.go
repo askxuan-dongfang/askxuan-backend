@@ -29,11 +29,19 @@ const (
 
 // BookingNotify 预约状态通知（与 booking-service 的 mq.BookingNotify 对齐）
 type BookingNotify struct {
-	BookingId string `json:"bookingId"`
-	UserId    string `json:"userId"`
-	TempleId  string `json:"templeId"`
-	Action    string `json:"action"` // created / confirmed / completed / cancelled
-	Time      string `json:"time"`
+	BookingId   string  `json:"bookingId"`
+	UserId      string  `json:"userId"`
+	TempleId    string  `json:"templeId"`
+	TempleName  string  `json:"templeName"`
+	MasterId    string  `json:"masterId"`
+	MasterName  string  `json:"masterName"`
+	ServiceName string  `json:"serviceName"`
+	BookingDate string  `json:"bookingDate"`
+	ServiceFee  float64 `json:"serviceFee"`
+	MeritMoney  float64 `json:"meritMoney"`
+	TotalFee    float64 `json:"totalFee"`
+	Action      string  `json:"action"` // created / confirmed / completed / reviewed / cancelled
+	Time        string  `json:"time"`
 }
 
 // OrderNotify 订单状态通知（与 order-service 的 mq.OrderNotify 对齐）

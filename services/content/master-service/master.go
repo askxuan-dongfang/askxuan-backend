@@ -81,21 +81,21 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 			},
 		},
 		{
-			Exchange: mq.ExchangeBookingEvents,
+			Exchange: mq.ExchangeFinanceEvents,
 			Queue:    mq.QueueMasterBookingEarning,
 			Handler: func(body []byte) error {
-				evt, ok := mq.ParseBookingCompleted(body)
+				evt, ok := mq.ParseSettlementAccrued(body)
 				if !ok {
 					return nil
 				}
-				if err := model.RecordBookingEarning(ctx, evt.BookingId, evt.MasterId, evt.BookingDate, evt.ServiceName, evt.UserId, evt.TotalFee); err != nil {
-					return fmt.Errorf("记录预约收益 %s 失败: %w", evt.BookingId, err)
+				if err := model.RecordBookingEarning(ctx, evt.SourceNo, evt.TargetId, evt.EarningDate, evt.ServiceName, evt.UserId, evt.Amount); err != nil {
+					return fmt.Errorf("记录预约分成 %s 失败: %w", evt.SourceNo, err)
 				}
-				logx.Infof("预约收益已入账 bookingId=%s masterCode=%s amount=%.2f", evt.BookingId, evt.MasterId, evt.TotalFee)
+				logx.Infof("平台预约分成已进入大师待结算收益 bookingId=%s masterCode=%s amount=%.2f", evt.SourceNo, evt.TargetId, evt.Amount)
 				return nil
 			},
 		},
 	}
 	svcCtx.Consumer.Start(ctx, bindings)
-	logx.Info("master-service 已启动 blessing.assign 消费者")
+	logx.Info("master-service 已启动 blessing.assign + finance settlement 消费者")
 }

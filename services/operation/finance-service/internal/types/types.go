@@ -15,6 +15,8 @@ type Settlement struct {
 	CommissionAmount float64 `json:"commissionAmount"`
 	SettleAmount     float64 `json:"settleAmount"`
 	Status           string  `json:"status"`
+	SourceType       string  `json:"sourceType"`
+	SourceNo         string  `json:"sourceNo"`
 	CreateTime       string  `json:"createTime"`
 }
 

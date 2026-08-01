@@ -23,6 +23,8 @@ type (
         CommissionAmount float64 `json:"commissionAmount"`
         SettleAmount     float64 `json:"settleAmount"`
         Status           string  `json:"status"`           // pending/confirmed/paid
+        SourceType       string  `json:"sourceType"`
+        SourceNo         string  `json:"sourceNo"`
         CreateTime       string  `json:"createTime"`
     }
 

@@ -101,7 +101,7 @@ func (c *Client) GetUserToken(ctx context.Context, userID string) (string, error
 	return resp.Data.Token, nil
 }
 
-// SendMessage 服务端主动发消息（POST /msg/create_msg，本次预留，暂不调用）
+// SendMessage 服务端主动发消息（POST /msg/send_msg）
 func (c *Client) SendMessage(ctx context.Context, req *SendMsgReq) error {
 	if c.adminToken == "" {
 		if _, err := c.GetAdminToken(ctx); err != nil {
@@ -112,7 +112,13 @@ func (c *Client) SendMessage(ctx context.Context, req *SendMsgReq) error {
 		ErrCode int    `json:"errCode"`
 		ErrMsg  string `json:"errMsg"`
 	}
-	return c.postWithToken(ctx, "/msg/create_msg", req, &resp)
+	if err := c.postWithToken(ctx, "/msg/send_msg", req, &resp); err != nil {
+		return err
+	}
+	if resp.ErrCode != 0 {
+		return fmt.Errorf("openIM err: %s", resp.ErrMsg)
+	}
+	return nil
 }
 
 // post 发送 POST 请求（无需 admin token）

@@ -788,6 +788,22 @@ CREATE TABLE IF NOT EXISTS `booking_review` (
   KEY `idx_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预约评价';
 
+CREATE TABLE IF NOT EXISTS `booking_chat_message` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `booking_id` VARCHAR(32) NOT NULL COMMENT '已支付预约单号',
+  `client_message_id` VARCHAR(128) NOT NULL COMMENT '客户端幂等消息ID',
+  `openim_server_msg_id` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'OpenIM服务端消息ID',
+  `sender_type` VARCHAR(16) NOT NULL COMMENT 'customer/master',
+  `sender_id` VARCHAR(64) NOT NULL COMMENT 'OpenIM发送方ID',
+  `receiver_id` VARCHAR(64) NOT NULL COMMENT 'OpenIM接收方ID',
+  `content` VARCHAR(2000) NOT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'pending' COMMENT 'pending/sent/failed',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_booking_chat_client_msg` (`booking_id`,`client_message_id`),
+  KEY `idx_booking_chat_history` (`booking_id`,`status`,`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='付费预约聊天消息';
+
 INSERT INTO `booking_review` (`booking_id`,`user_id`,`rating`,`content`,`images`,`master_reply`,`create_time`) VALUES
 ('B20260615003','1',5,'白云观化太岁法事非常灵验，清风道长态度慈悲。','["/assets/review-baimasi-1.jpg"]','感恩居士加持，福生无量天尊。','2026-06-21 10:00:00');
 
@@ -1335,10 +1351,13 @@ CREATE TABLE IF NOT EXISTS `settlement` (
   `commission_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '抽成金额',
   `settle_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '应结金额',
   `status` VARCHAR(32) NOT NULL DEFAULT 'pending' COMMENT 'pending/confirmed/paid',
+  `source_type` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '来源业务类型',
+  `source_no` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '来源业务单号',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_settlement_no` (`settlement_no`),
+  UNIQUE KEY `uk_settlement_source` (`source_type`,`source_no`,`settle_type`,`target_id`),
   KEY `idx_type_status` (`settle_type`,`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='结算单';
 
@@ -1378,6 +1397,34 @@ CREATE TABLE IF NOT EXISTS `finance_log` (
   PRIMARY KEY (`id`),
   KEY `idx_settlement` (`settlement_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='财务日志';
+
+CREATE TABLE IF NOT EXISTS `finance_transaction` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `transaction_no` VARCHAR(64) NOT NULL COMMENT '平台总账事务号',
+  `source_type` VARCHAR(32) NOT NULL COMMENT 'booking/shop_order/diy_order',
+  `source_no` VARCHAR(64) NOT NULL COMMENT '业务单号',
+  `payment_no` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '支付单号',
+  `event_type` VARCHAR(32) NOT NULL COMMENT 'payment_receipt/booking_settlement/refund',
+  `total_amount` DECIMAL(12,2) NOT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'posted',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_transaction_no` (`transaction_no`),
+  UNIQUE KEY `uk_source_event` (`source_type`,`source_no`,`event_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台总账事务';
+
+CREATE TABLE IF NOT EXISTS `finance_ledger_entry` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `transaction_id` BIGINT NOT NULL,
+  `account_code` VARCHAR(48) NOT NULL COMMENT 'platform_cash/customer_funds_held/platform_commission/master_payable/temple_payable',
+  `target_id` VARCHAR(32) NOT NULL DEFAULT '',
+  `direction` VARCHAR(8) NOT NULL COMMENT 'debit/credit',
+  `amount` DECIMAL(12,2) NOT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_transaction_account` (`transaction_id`,`account_code`,`target_id`,`direction`),
+  KEY `idx_account_target` (`account_code`,`target_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台总账借贷分录';
 
 -- ============================================================
 -- 十二、评价域 askxuan_review（review/review_reply/review_report）

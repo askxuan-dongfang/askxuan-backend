@@ -20,9 +20,13 @@ type BookingNotify struct {
 	BookingId     string  `json:"bookingId"`
 	UserId        string  `json:"userId"`
 	TempleId      string  `json:"templeId"`
+	TempleName    string  `json:"templeName,omitempty"`
 	MasterId      string  `json:"masterId,omitempty"`
+	MasterName    string  `json:"masterName,omitempty"`
 	ServiceName   string  `json:"serviceName,omitempty"`
 	BookingDate   string  `json:"bookingDate,omitempty"`
+	ServiceFee    float64 `json:"serviceFee,omitempty"`
+	MeritMoney    float64 `json:"meritMoney,omitempty"`
 	TotalFee      float64 `json:"totalFee,omitempty"`
 	Rating        int     `json:"rating,omitempty"`
 	ReviewContent string  `json:"reviewContent,omitempty"`

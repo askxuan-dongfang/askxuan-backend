@@ -41,6 +41,12 @@ if [ -z "$OPENIM_SRC" ] || [ ! -d "$OPENIM_SRC" ]; then
 fi
 
 CONFIG_CHANGED=0
+if [ -f "$ROOT_DIR/configs/openim/webhooks.yml" ] && ! cmp -s "$ROOT_DIR/configs/openim/webhooks.yml" "$OPENIM_SRC/config/webhooks.yml"; then
+  echo "==> 应用问玄付费预约聊天 webhook 配置"
+  cp "$ROOT_DIR/configs/openim/webhooks.yml" "$OPENIM_SRC/config/webhooks.yml"
+  CONFIG_CHANGED=1
+fi
+
 if [ -f "$OPENIM_SRC/start-config.yml" ]; then
   CONFIG_BEFORE="$(cksum "$OPENIM_SRC/start-config.yml")"
   if [ "${OPENIM_MINIMAL:-0}" = "1" ]; then
@@ -56,7 +62,7 @@ if [ -f "$OPENIM_SRC/start-config.yml" ]; then
       s/openim-crontask:\s*\d+/openim-crontask: 0/;
       s/openim-push:\s*\d+/openim-push: 0/;
       s/openim-rpc-group:\s*\d+/openim-rpc-group: 0/;
-      s/openim-rpc-friend:\s*\d+/openim-rpc-friend: 0/;
+      s/openim-rpc-friend:\s*\d+/openim-rpc-friend: 1/;
       s/openim-rpc-third:\s*\d+/openim-rpc-third: 0/;
     ' "$OPENIM_SRC/start-config.yml"
   else

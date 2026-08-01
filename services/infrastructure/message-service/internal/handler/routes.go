@@ -50,7 +50,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	)
 
 	server.AddRoutes(
-		[]rest.Route{
+		rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 			{
 				Method:  http.MethodPost,
 				Path:    "/push",
@@ -76,12 +76,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/templates/:id",
 				Handler: messageadmin.AdminTemplateUpdateHandler(serverCtx),
 			},
-		},
+		}...),
 		rest.WithPrefix("/api/v1/admin/messages"),
 	)
 
 	server.AddRoutes(
-		[]rest.Route{
+		rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 			{
 				Method:  http.MethodPut,
 				Path:    "/:id/status",
@@ -97,12 +97,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/list",
 				Handler: messageadminannouncement.AdminAnnouncementListHandler(serverCtx),
 			},
-		},
+		}...),
 		rest.WithPrefix("/api/v1/admin/announcements"),
 	)
 
 	server.AddRoutes(
-		[]rest.Route{
+		rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 			{
 				Method:  http.MethodPost,
 				Path:    "/device-token",
@@ -133,7 +133,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/unread-count",
 				Handler: messagecustomer.UnreadCountHandler(serverCtx),
 			},
-		},
+		}...),
 		rest.WithPrefix("/api/v1/messages"),
 	)
 

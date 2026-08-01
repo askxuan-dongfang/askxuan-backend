@@ -213,6 +213,7 @@ service messageService {
 	put /read-all (ReadAllReq) returns (ReadAllResp)
 
 	@handler sendMessage
+	// 已废弃：固定返回 40909，付费预约对话使用 /api/v1/bookings/:id/chat/messages
 	post /send (SendMessageReq) returns (SendMessageResp)
 
 	@handler registerDeviceToken

@@ -165,32 +165,43 @@ fi
 R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/orders?userId=$USER_ID&page=1&size=20")
 check "7.4 我的订单列表" "0" "$(echo "$R" | json_code)" "total=$(echo "$R" | json_data total)"
 
-# ===== 8. 聊天/消息闭环 =====
+# ===== 8. 付费预约对话/站内消息 =====
 echo ""
-echo "--- 8. 聊天/消息闭环 ---"
-# 8.1 发送咨询消息（conversationId 需为 master:<id>/M<code>/纯数字格式）
+echo "--- 8. 付费预约对话/站内消息 ---"
+# 8.1 只有已付费预约可发起对话
+if [ -n "$BK_NO" ]; then
+  CHAT_MARKER="journey-chat-$(date +%s)-$RANDOM"
+  R=$(curl -s --max-time 15 -X POST -H "$AUTH" -H "Content-Type: application/json" \
+    "$GATEWAY/api/v1/bookings/$BK_NO/chat/messages" \
+    -d "{\"clientMessageId\":\"$CHAT_MARKER\",\"content\":\"你好，我想咨询预约准备事项\"}")
+  check "8.1 已付费预约发送文字消息" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 300)"
+  R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/bookings/$BK_NO/chat/messages?page=1&size=100")
+  check "8.2 对话历史按预约恢复" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 300)"
+fi
+
+# 8.3 旧咨询入口固定关闭，不允许绕过付费校验
 R=$(curl -s --max-time 10 -X POST -H "$AUTH" -H "Content-Type: application/json" \
   "$GATEWAY/api/v1/messages/send" \
-  -d "{\"conversationId\":\"master:1\",\"userId\":\"$USER_ID\",\"content\":\"你好，我想咨询一下禅修预约\"}")
-check "8.1 发送咨询消息" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 300)"
+  -d "{\"conversationId\":\"master:1\",\"userId\":\"$USER_ID\",\"content\":\"不应送达\"}")
+check "8.3 旧咨询入口拒绝" "40909" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 300)"
 
-# 8.2 未读消息数
+# 8.4 未读消息数
 R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/messages/unread-count?userId=$USER_ID")
-check "8.2 未读消息数" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 200)"
+check "8.4 未读消息数" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 200)"
 
-# 8.3 站内消息列表
+# 8.5 站内消息列表
 R=$(curl -s --max-time 10 -H "$AUTH" "$GATEWAY/api/v1/messages/list?userId=$USER_ID&page=1&size=20")
-check "8.3 站内消息列表" "0" "$(echo "$R" | json_code)" "total=$(echo "$R" | python3 -c "import sys,json;d=json.load(sys.stdin).get('data',{});print(d.get('total',0))" 2>/dev/null)"
+check "8.5 站内消息列表" "0" "$(echo "$R" | json_code)" "total=$(echo "$R" | python3 -c "import sys,json;d=json.load(sys.stdin).get('data',{});print(d.get('total',0))" 2>/dev/null)"
 
-# 8.4 标记全部已读
+# 8.6 标记全部已读
 R=$(curl -s --max-time 10 -X PUT -H "$AUTH" -H "Content-Type: application/json" \
   "$GATEWAY/api/v1/messages/read-all" \
   -d "{\"userId\":\"$USER_ID\"}")
-check "8.4 标记全部已读" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 200)"
+check "8.6 标记全部已读" "0" "$(echo "$R" | json_code)" "$(echo "$R" | head -c 200)"
 
-# 8.5 公告列表
+# 8.7 公告列表
 R=$(curl -s --max-time 10 "$GATEWAY/api/v1/announcements/list?page=1&size=10")
-check "8.5 公告列表" "0" "$(echo "$R" | json_code)" ""
+check "8.7 公告列表" "0" "$(echo "$R" | json_code)" ""
 
 # ===== 汇总 =====
 echo ""

@@ -16,8 +16,8 @@ import (
 // 消费队列约定
 const (
 	QueueMasterBlessingAssign = "master.blessing.assign"
-	QueueMasterBookingEarning = "master.booking.earning"
-	ExchangeBookingEvents     = "booking.events"
+	QueueMasterBookingEarning = "master.finance.booking.earning"
+	ExchangeFinanceEvents     = "finance.events"
 )
 
 // BlessingAssign 法师分配事件（与 temple-service 的 mq.BlessingAssign 对齐）
@@ -30,14 +30,16 @@ type BlessingAssign struct {
 	Time        string `json:"time"`
 }
 
-type BookingCompleted struct {
-	BookingId   string  `json:"bookingId"`
+type SettlementAccrued struct {
+	EventType   string  `json:"eventType"`
+	SourceType  string  `json:"sourceType"`
+	SourceNo    string  `json:"sourceNo"`
+	TargetType  string  `json:"targetType"`
+	TargetId    string  `json:"targetId"`
 	UserId      string  `json:"userId"`
-	MasterId    string  `json:"masterId"`
 	ServiceName string  `json:"serviceName"`
-	BookingDate string  `json:"bookingDate"`
-	TotalFee    float64 `json:"totalFee"`
-	Action      string  `json:"action"`
+	EarningDate string  `json:"earningDate"`
+	Amount      float64 `json:"amount"`
 }
 
 // Binding 队列绑定配置
@@ -210,10 +212,11 @@ func ParseBlessingAssign(body []byte) (BlessingAssign, bool) {
 	return evt, true
 }
 
-func ParseBookingCompleted(body []byte) (BookingCompleted, bool) {
-	var evt BookingCompleted
-	if err := json.Unmarshal(body, &evt); err != nil || evt.Action != "completed" || evt.BookingId == "" || evt.MasterId == "" {
-		return BookingCompleted{}, false
+func ParseSettlementAccrued(body []byte) (SettlementAccrued, bool) {
+	var evt SettlementAccrued
+	if err := json.Unmarshal(body, &evt); err != nil || evt.EventType != "settlement.accrued" ||
+		evt.SourceType != "booking" || evt.TargetType != "master" || evt.SourceNo == "" || evt.TargetId == "" || evt.Amount <= 0 {
+		return SettlementAccrued{}, false
 	}
 	return evt, true
 }

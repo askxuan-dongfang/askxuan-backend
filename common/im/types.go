@@ -39,11 +39,13 @@ type UserTokenResp struct {
 
 // SendMsgReq 发送消息请求
 type SendMsgReq struct {
-	SendID      string `json:"sendID"`
-	RecvID      string `json:"recvID"`
-	GroupID     string `json:"groupID,omitempty"`
-	SenderName  string `json:"senderName"`
-	SessionType int    `json:"sessionType"` // 1=单聊
-	ContentType int    `json:"contentType"` // 101=文本
-	Content     string `json:"content"`
+	SendID           string `json:"sendID"`
+	RecvID           string `json:"recvID"`
+	GroupID          string `json:"groupID,omitempty"`
+	SenderName       string `json:"senderNickname"`
+	SenderPlatformID int    `json:"senderPlatformID"`
+	SessionType      int    `json:"sessionType"` // 1=单聊
+	ContentType      int    `json:"contentType"` // 101=文本
+	Content          any    `json:"content"`
+	Ex               string `json:"ex,omitempty"`
 }

@@ -1,14 +1,21 @@
 package svc
 
 import (
+	"context"
+
 	"github.com/askxuan/booking-service/internal/config"
 	"github.com/askxuan/booking-service/internal/model"
 	"github.com/askxuan/booking-service/internal/mq"
 	"github.com/askxuan/booking-service/internal/rpcclient"
+	commonim "github.com/askxuan/common/im"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/zrpc"
 )
+
+type IMClient interface {
+	SendMessage(ctx context.Context, req *commonim.SendMsgReq) error
+}
 
 // ServiceContext booking 服务依赖容器
 type ServiceContext struct {
@@ -22,6 +29,8 @@ type ServiceContext struct {
 	TempleClient   rpcclient.TempleClient
 	MasterClient   rpcclient.MasterClient
 	PaymentClient  rpcclient.PaymentClient
+	IMClient       IMClient
+	ChatModel      model.BookingChatModel
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -42,5 +51,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		TempleClient:   rpcclient.NewTempleClient(zrpc.MustNewClient(c.TempleRpc)),
 		MasterClient:   rpcclient.NewMasterClient(zrpc.MustNewClient(c.MasterRpc)),
 		PaymentClient:  rpcclient.NewPaymentClient(zrpc.MustNewClient(c.PaymentRpc)),
+		IMClient:       commonim.NewClient(c.IM.APIURL, c.IM.AdminUserID, c.IM.Secret),
+		ChatModel:      model.NewBookingChatModel(db),
 	}
 }

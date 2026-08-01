@@ -37,7 +37,7 @@ func main() {
 	// 启动 RabbitMQ 消费者：监听 booking.status / order.status / payment.notify
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	startConsumer(ctx, svcCtx.Consumer)
+	startConsumer(ctx, svcCtx)
 
 	// 优雅退出
 	go func() {
@@ -52,8 +52,8 @@ func main() {
 }
 
 // startConsumer 启动财务相关事件消费者
-func startConsumer(ctx context.Context, consumer *mq.Consumer) {
-	if consumer == nil {
+func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
+	if svcCtx == nil || svcCtx.Consumer == nil {
 		return
 	}
 	bindings := []mq.Binding{
@@ -68,13 +68,30 @@ func startConsumer(ctx context.Context, consumer *mq.Consumer) {
 				}
 				logx.Infof("收到预约状态变更: bookingId=%s action=%s userId=%s",
 					evt.BookingId, evt.Action, evt.UserId)
-				// booking 终态为 reviewed（已评价结案）/ cancelled；reviewed 时记录收入
+				// 预约已评价结案后，平台总账才从托管资金中确认抽成和两方应付。
 				if evt.Action == "reviewed" {
-					model.InsertFinanceLog(model.FinanceLog{
-						Type:        "income",
-						Amount:      0,
-						Description: fmt.Sprintf("预约收入:%s", evt.BookingId),
+					split, err := model.AccrueBookingSettlement(ctx, model.BookingSettlement{
+						BookingID: evt.BookingId, UserID: evt.UserId,
+						TempleID: evt.TempleId, TempleName: evt.TempleName,
+						MasterID: evt.MasterId, MasterName: evt.MasterName,
+						ServiceName: evt.ServiceName, BookingDate: evt.BookingDate,
+						ServiceFee: evt.ServiceFee, MeritMoney: evt.MeritMoney, TotalFee: evt.TotalFee,
 					})
+					if err != nil {
+						return fmt.Errorf("预约平台分账失败: %w", err)
+					}
+					if split.MasterNet > 0 && svcCtx.MqProducer != nil {
+						if err := svcCtx.MqProducer.PublishSettlementAccrued(ctx, mq.SettlementAccrued{
+							SourceType: model.BizTypeBooking, SourceNo: evt.BookingId,
+							TargetType: model.SettleTypeMaster, TargetId: evt.MasterId,
+							UserId: evt.UserId, ServiceName: evt.ServiceName,
+							EarningDate: evt.BookingDate, Amount: split.MasterNet,
+						}); err != nil {
+							return fmt.Errorf("发布大师分成事件失败: %w", err)
+						}
+					}
+					logx.Infof("预约平台分账完成: bookingId=%s gross=%.2f commission=%.2f master=%.2f temple=%.2f created=%t",
+						evt.BookingId, split.Total, split.Commission, split.MasterNet, split.TempleNet, split.Created)
 				}
 				return nil
 			},
@@ -111,15 +128,18 @@ func startConsumer(ctx context.Context, consumer *mq.Consumer) {
 				}
 				logx.Infof("收到支付通知: paymentNo=%s orderType=%s orderNo=%s action=%s amount=%.2f",
 					evt.PaymentNo, evt.OrderType, evt.OrderNo, evt.Action, evt.Amount)
-				model.InsertFinanceLog(model.FinanceLog{
-					Type:        "income",
-					Amount:      evt.Amount,
-					Description: fmt.Sprintf("支付%s:%s", evt.Action, evt.OrderNo),
-				})
+				if evt.Action == "success" {
+					if err := model.RecordPlatformReceipt(ctx, model.PaymentReceipt{
+						PaymentNo: evt.PaymentNo, SourceType: evt.OrderType,
+						SourceNo: evt.OrderNo, Amount: evt.Amount,
+					}); err != nil {
+						return fmt.Errorf("支付进入平台总账失败: %w", err)
+					}
+				}
 				return nil
 			},
 		},
 	}
-	consumer.Start(ctx, bindings)
+	svcCtx.Consumer.Start(ctx, bindings)
 	logx.Info("finance-service 已启动 booking.status + order.status + payment.notify 消费者")
 }

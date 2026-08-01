@@ -1,0 +1,43 @@
+url: http://127.0.0.1:8085/openim/booking-chat-webhook
+beforeSendSingleMsg:
+  enable: true
+  timeout: 5
+  failedContinue: false
+  allowedTypes: [101]
+  deniedTypes: []
+beforeUpdateUserInfoEx:
+  enable: false
+  timeout: 5
+  failedContinue: true
+afterUpdateUserInfoEx:
+  enable: false
+  timeout: 5
+afterSendSingleMsg:
+  enable: true
+  timeout: 5
+  attentionIds: []
+  allowedTypes: [101]
+  deniedTypes: []
+beforeSendGroupMsg:
+  enable: false
+  timeout: 5
+  failedContinue: true
+  allowedTypes: []
+  deniedTypes: []
+beforeMsgModify:
+  enable: false
+  timeout: 5
+  failedContinue: true
+  allowedTypes: []
+  deniedTypes: []
+afterMsgModify:
+  enable: false
+  timeout: 5
+  allowedTypes: []
+  deniedTypes: []
+afterSendGroupMsg:
+  enable: false
+  timeout: 5
+  attentionIds: []
+  allowedTypes: []
+  deniedTypes: []

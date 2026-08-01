@@ -86,6 +86,64 @@ type PayReq struct {
 	Id string `path:"id"`
 }
 
+// ============ 付费预约聊天 ============
+
+type ChatListReq struct {
+	Page int `form:"page,default=1"`
+	Size int `form:"size,default=20"`
+}
+
+type ChatConversation struct {
+	BookingId     string `json:"bookingId"`
+	PeerId        string `json:"peerId"`
+	PeerName      string `json:"peerName"`
+	PeerAvatar    string `json:"peerAvatar"`
+	TempleName    string `json:"templeName"`
+	ServiceName   string `json:"serviceName"`
+	BookingDate   string `json:"bookingDate"`
+	LastMessage   string `json:"lastMessage"`
+	LastMessageAt string `json:"lastMessageAt"`
+	CanChat       bool   `json:"canChat"`
+}
+
+type ChatListResp struct {
+	Total int64              `json:"total"`
+	List  []ChatConversation `json:"list"`
+	Page  int                `json:"page"`
+	Size  int                `json:"size"`
+}
+
+type ChatMessageListReq struct {
+	Id   string `path:"id"`
+	Page int    `form:"page,default=1"`
+	Size int    `form:"size,default=50"`
+}
+
+type ChatMessage struct {
+	Id              int64  `json:"id"`
+	BookingId       string `json:"bookingId"`
+	ClientMessageId string `json:"clientMessageId"`
+	SenderType      string `json:"senderType"`
+	SenderId        string `json:"senderId"`
+	ReceiverId      string `json:"receiverId"`
+	Content         string `json:"content"`
+	Status          string `json:"status"`
+	CreateTime      string `json:"createTime"`
+}
+
+type ChatMessageListResp struct {
+	Total int64         `json:"total"`
+	List  []ChatMessage `json:"list"`
+	Page  int           `json:"page"`
+	Size  int           `json:"size"`
+}
+
+type ChatMessageSendReq struct {
+	Id              string `path:"id"`
+	ClientMessageId string `json:"clientMessageId"`
+	Content         string `json:"content"`
+}
+
 // ListReq 列表请求
 type ListReq struct {
 	UserId   string `form:"userId,optional"`

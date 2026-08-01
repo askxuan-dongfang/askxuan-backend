@@ -50,27 +50,28 @@ if [ "$(echo "$DT_RESP" | jq -r '.code')" = "0" ] && [ "$(echo "$DT_RESP" | jq -
 UNBIND_RESP="$(curl -sS -X DELETE "$BASE/api/v1/messages/device-token" -H "$AUTH" -H 'Content-Type: application/json' -d "{\"userId\":\"$USER_ID\",\"deviceToken\":\"$DEVICE_TOKEN\"}")"
 if [ "$(echo "$UNBIND_RESP" | jq -r '.code')" = "0" ] && [ "$(echo "$UNBIND_RESP" | jq -r '.data.status')" = "inactive" ]; then pass "device token 解绑"; else fail "$UNBIND_RESP"; fi
 
-info "4. C端发送 consult，法师端读取"
-SEND_RESP="$(curl -sS -X POST "$BASE/api/v1/messages/send" -H "$AUTH" -H 'Content-Type: application/json' -d "{\"conversationId\":\"M001\",\"userId\":\"$USER_ID\",\"content\":\"通信闭环测试\"}")"
-MSG_ID="$(echo "$SEND_RESP" | jq -r '.data.id // empty')"
-if [ -n "$MSG_ID" ]; then pass "发送 consult 消息 id=$MSG_ID"; else fail "$SEND_RESP"; fi
-
-MASTER_LOGIN="$(curl -sS -X POST "$BASE/api/v1/auth/admin/login" -H 'Content-Type: application/json' -d '{"account":"zhihai","password":"123456"}')"
-MASTER_TOKEN="$(echo "$MASTER_LOGIN" | jq -r '.data.accessToken // empty')"
-if [ -n "$MASTER_TOKEN" ]; then pass "法师登录"; else fail "$MASTER_LOGIN"; fi
-MASTER_MSG="$(curl -sS "$BASE/api/v1/admin/messages/master?page=1&size=10&isRead=-1" -H "Authorization: Bearer $MASTER_TOKEN")"
-if echo "$MASTER_MSG" | jq -e --arg id "$MSG_ID" '.data.list[] | select((.id|tostring)==$id and .bizType=="consult")' >/dev/null; then
-  pass "法师端读取 consult 消息"
+info "4. 旧咨询通道不可绕过付费预约"
+LEGACY_SEND="$(curl -sS -X POST "$BASE/api/v1/messages/send" -H "$AUTH" -H 'Content-Type: application/json' -d "{\"conversationId\":\"M001\",\"userId\":\"$USER_ID\",\"content\":\"不应送达\"}")"
+if [ "$(echo "$LEGACY_SEND" | jq -r '.code // 0')" = "40909" ]; then
+  pass "旧 /messages/send 固定拒绝未绑定付费预约的咨询"
 else
-  fail "$MASTER_MSG"
+  fail "$LEGACY_SEND"
 fi
 
-info "5. 管理台 push logs"
+info "5. 付费预约 + C端/法师端 + OpenIM 双向闭环"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if GATEWAY="$BASE" "$SCRIPT_DIR/test-openim-chat.sh"; then
+  pass "付费预约实时通信闭环"
+else
+  fail "付费预约实时通信闭环"
+fi
+
+info "6. 管理台 push logs 查询"
 ADMIN_LOGIN="$(curl -sS -X POST "$BASE/api/v1/auth/admin/login" -H 'Content-Type: application/json' -d '{"account":"admin","password":"123456"}')"
 ADMIN_TOKEN="$(echo "$ADMIN_LOGIN" | jq -r '.data.accessToken // empty')"
-PUSH_LOGS="$(curl -sS "$BASE/api/v1/admin/messages/push-logs?page=1&size=10&bizType=consult" -H "Authorization: Bearer $ADMIN_TOKEN")"
-if echo "$PUSH_LOGS" | jq -e --arg biz "M001" '.data.list[] | select(.bizId==$biz)' >/dev/null; then
-  pass "push logs consult"
+PUSH_LOGS="$(curl -sS "$BASE/api/v1/admin/messages/push-logs?page=1&size=10" -H "Authorization: Bearer $ADMIN_TOKEN")"
+if [ "$(echo "$PUSH_LOGS" | jq -r '.code // -1')" = "0" ]; then
+  pass "push logs 仅作业务通知查询"
 else
   fail "$PUSH_LOGS"
 fi

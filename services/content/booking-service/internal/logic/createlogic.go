@@ -111,7 +111,14 @@ func (l *CreateLogic) autoPay(booking *model.Booking) *model.Booking {
 	if changed {
 		_ = l.svcCtx.StatusLogModel.Insert(l.ctx, &model.BookingStatusLog{BookingId: booking.Id, FromStatus: model.StatusPendingPayment, ToStatus: model.StatusPending, OperatorId: "payment-service", OperatorType: model.OperatorTypeSystem, Remark: "模拟支付成功"})
 		if l.svcCtx.MqProducer != nil {
-			_ = l.svcCtx.MqProducer.Publish(l.ctx, mq.BookingNotify{BookingId: updated.Id, UserId: updated.UserId, TempleId: updated.TempleId, Action: "created"})
+			_ = l.svcCtx.MqProducer.Publish(l.ctx, mq.BookingNotify{
+				BookingId: updated.Id, UserId: updated.UserId,
+				TempleId: updated.TempleId, TempleName: updated.TempleName,
+				MasterId: updated.MasterId, MasterName: updated.MasterName,
+				ServiceName: updated.ServiceName, BookingDate: updated.BookingDate,
+				ServiceFee: updated.ServiceFee, MeritMoney: updated.MeritMoney,
+				TotalFee: updated.TotalFee, Action: "created",
+			})
 		}
 	}
 	return updated

@@ -35,10 +35,12 @@ type Settlement struct {
 	CommissionAmount float64 `db:"commission_amount" json:"commissionAmount"`
 	SettleAmount     float64 `db:"settle_amount" json:"settleAmount"`
 	Status           string  `db:"status" json:"status"`
+	SourceType       string  `db:"source_type" json:"sourceType"`
+	SourceNo         string  `db:"source_no" json:"sourceNo"`
 	CreateTime       string  `db:"create_time" json:"createTime"`
 }
 
-const settlementColumns = `id,settlement_no,settle_type,target_id,target_name,IFNULL(DATE_FORMAT(period_start,'%Y-%m-%d %H:%i:%s'),'') period_start,IFNULL(DATE_FORMAT(period_end,'%Y-%m-%d %H:%i:%s'),'') period_end,order_count,total_amount,commission_rate,commission_amount,settle_amount,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
+const settlementColumns = `id,settlement_no,settle_type,target_id,target_name,IFNULL(DATE_FORMAT(period_start,'%Y-%m-%d %H:%i:%s'),'') period_start,IFNULL(DATE_FORMAT(period_end,'%Y-%m-%d %H:%i:%s'),'') period_end,order_count,total_amount,commission_rate,commission_amount,settle_amount,status,source_type,source_no,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
 
 func ListSettlements(settleType, status string, page, size int) ([]Settlement, int64) {
 	where, args := "1=1", []interface{}{}

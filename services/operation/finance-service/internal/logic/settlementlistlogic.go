@@ -36,7 +36,8 @@ func (l *SettlementListLogic) SettlementList(req *types.SettlementListReq) (*typ
 			PeriodStart: s.PeriodStart, PeriodEnd: s.PeriodEnd,
 			OrderCount: s.OrderCount, TotalAmount: s.TotalAmount,
 			CommissionRate: s.CommissionRate, CommissionAmount: s.CommissionAmount,
-			SettleAmount: s.SettleAmount, Status: s.Status, CreateTime: s.CreateTime,
+			SettleAmount: s.SettleAmount, Status: s.Status,
+			SourceType: s.SourceType, SourceNo: s.SourceNo, CreateTime: s.CreateTime,
 		})
 	}
 	return resp, nil
