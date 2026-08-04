@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package diy;
+
+option go_package = "./diy;diy";
+
+// BlessingTask 加持任务（对应 askxuan_diy.blessing_task 表）
+message BlessingTask {
+  int64 id = 1;
+  string task_no = 2;
+  string diy_order_no = 3;
+  string temple_code = 4;
+  string master_code = 5;
+  string status = 6;                 // dispatched/assigned/accepted/in_progress/completed/rejected
+  string certificate_urls = 7;       // JSON array string
+  string assign_time = 8;
+  string complete_time = 9;
+  string create_time = 10;
+  string update_time = 11;
+}
+
+message GetBlessingTaskReq {
+  int64 id = 1;
+}
+
+message GetBlessingTaskByOrderNoReq {
+  string diy_order_no = 1;
+}
+
+message GetBlessingTaskByTaskNoReq {
+  string task_no = 1;
+}
+
+message ListBlessingTasksReq {
+  string master_code = 1;
+  string temple_code = 2;
+  string status = 3;
+  int64 page = 4;
+  int64 page_size = 5;
+}
+
+message ListBlessingTasksResp {
+  repeated BlessingTask tasks = 1;
+  int64 total = 2;
+}
+
+message UpdateBlessingTaskStatusReq {
+  int64 id = 1;
+  string status = 2;
+}
+
+message CompleteBlessingTaskReq {
+  int64 id = 1;
+  string certificate_urls = 2;  // JSON array string
+}
+
+message AssignBlessingTaskReq {
+  int64 id = 1;
+  string master_code = 2;
+}
+
+message Empty {}
+
+service DiyService {
+  rpc GetBlessingTask(GetBlessingTaskReq) returns (BlessingTask);
+  rpc GetBlessingTaskByOrderNo(GetBlessingTaskByOrderNoReq) returns (BlessingTask);
+  rpc GetBlessingTaskByTaskNo(GetBlessingTaskByTaskNoReq) returns (BlessingTask);
+  rpc ListBlessingTasks(ListBlessingTasksReq) returns (ListBlessingTasksResp);
+  rpc UpdateBlessingTaskStatus(UpdateBlessingTaskStatusReq) returns (BlessingTask);
+  rpc CompleteBlessingTask(CompleteBlessingTaskReq) returns (BlessingTask);
+  rpc AssignBlessingTask(AssignBlessingTaskReq) returns (BlessingTask);
+}

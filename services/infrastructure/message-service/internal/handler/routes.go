@@ -34,7 +34,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	)
 
 	server.AddRoutes(
-		[]rest.Route{
+		rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 			{
 				Method:  http.MethodPut,
 				Path:    "/:id/read",
@@ -45,7 +45,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/list",
 				Handler: message.ListHandler(serverCtx),
 			},
-		},
+		}...),
 		rest.WithPrefix("/api/v1/messages"),
 	)
 

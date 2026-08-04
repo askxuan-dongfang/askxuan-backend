@@ -174,24 +174,24 @@ _site/
 
 # ---------- Go ----------
 # 编译产物（各 service 目录下的同名二进制文件）
-/services/**/auth
-/services/**/booking
-/services/**/review
-/services/**/temple
-/services/**/master
-/services/**/diy
-/services/**/order
-/services/**/payment
-/services/**/product
-/services/**/marketing
-/services/**/logistics
-/services/**/finance
-/services/**/audit
-/services/**/message
-/services/**/file
-/services/**/ai
-/services/**/user
-/services/**/gateway
+/services/*/*/auth
+/services/*/*/booking
+/services/*/*/review
+/services/*/*/temple
+/services/*/*/master
+/services/*/*/diy
+/services/*/*/order
+/services/*/*/payment
+/services/*/*/product
+/services/*/*/marketing
+/services/*/*/logistics
+/services/*/*/finance
+/services/*/*/audit
+/services/*/*/message
+/services/*/*/file
+/services/*/*/ai
+/services/*/*/user
+/services/*/*/gateway
 *.exe
 *.test
 *.out
