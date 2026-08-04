@@ -46,6 +46,7 @@ ARG SERVICE
 ARG BINARY
 
 RUN if [ "$SERVICE" = "services/infrastructure/file-service" ]; then \
+      sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/alpine|g' /etc/apk/repositories; \
       apk add --no-cache mariadb-client; \
     fi
 
