@@ -6,6 +6,8 @@ set -euo pipefail
 GATEWAY="${GATEWAY:-http://127.0.0.1:8080}"
 OPENIM="${OPENIM:-http://127.0.0.1:10002}"
 BOOKING_DIRECT="${BOOKING_DIRECT:-http://127.0.0.1:8085}"
+OPENIM_SECRET="${OPENIM_SECRET:-openIM123}"
+MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-root123}"
 PASS=0
 FAIL=0
 REQUEST_ID="chat-accept-$(date +%s)-$RANDOM"
@@ -24,7 +26,7 @@ future_date() {
 }
 
 cleanup() {
-  docker exec -i askxuan-mysql mysql -uroot -proot123 2>/dev/null <<SQL || true
+  docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" -i askxuan-mysql mysql -uroot 2>/dev/null <<SQL || true
 CREATE TEMPORARY TABLE cleanup_chat_booking AS
 SELECT booking_no,temple_code,service_code,booking_date,slot_code
 FROM askxuan_booking.booking WHERE request_id='${REQUEST_ID}';
@@ -68,7 +70,7 @@ printf '===== Paid booking chat acceptance =====\n'
 
 ADMIN_RESP=$(curl -fsS --max-time 10 -X POST "$OPENIM/auth/get_admin_token" \
   -H 'Content-Type: application/json' -H 'operationID: chat-admin-token' \
-  -d '{"secret":"openIM123","userID":"imAdmin"}')
+  -d "{\"secret\":\"$OPENIM_SECRET\",\"userID\":\"imAdmin\"}")
 ADMIN_TOKEN=$(printf '%s' "$ADMIN_RESP" | jq -r '.data.token // .token // empty')
 if [ -n "$ADMIN_TOKEN" ]; then pass 'OpenIM admin API is reachable'; else fail 'OpenIM admin token is empty'; fi
 
@@ -109,7 +111,7 @@ fi
 
 RECEIPT_POSTED=0
 for _ in $(seq 1 15); do
-  RECEIPT_POSTED=$(docker exec askxuan-mysql mysql -uroot -proot123 -Nse "
+  RECEIPT_POSTED=$(docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -uroot -Nse "
     SELECT IF(COUNT(DISTINCT ft.id)=1
       AND ROUND(SUM(IF(le.direction='debit',le.amount,0)),2)=MAX(b.total_fee)
       AND ROUND(SUM(IF(le.direction='credit',le.amount,0)),2)=MAX(b.total_fee),1,0)
@@ -126,7 +128,7 @@ else
   fail 'payment did not enter the platform general ledger'
 fi
 
-PRE_SETTLEMENT_EARNINGS=$(docker exec askxuan-mysql mysql -uroot -proot123 -Nse \
+PRE_SETTLEMENT_EARNINGS=$(docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -uroot -Nse \
   "SELECT COUNT(*) FROM askxuan_master.master_earning WHERE source_type='booking' AND source_id='$BOOKING_ID';" 2>/dev/null || printf 1)
 if [ "$PRE_SETTLEMENT_EARNINGS" = '0' ]; then
   pass 'payment does not directly credit the master account'
@@ -206,7 +208,7 @@ DB_COUNT=0
 CALLBACK_COUNT=0
 for _ in $(seq 1 10); do
   read -r DB_COUNT CALLBACK_COUNT <<EOF
-$(docker exec askxuan-mysql mysql -uroot -proot123 -Nse \
+$(docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -uroot -Nse \
   "SELECT COUNT(*),SUM(openim_server_msg_id<>'') FROM askxuan_booking.booking_chat_message WHERE booking_id='$BOOKING_ID' AND status='sent';" 2>/dev/null)
 EOF
   [ "$DB_COUNT" = '2' ] && [ "$CALLBACK_COUNT" = '2' ] && break
@@ -242,7 +244,7 @@ SETTLEMENT_BALANCED=0
 MASTER_NET_MATCH=0
 for _ in $(seq 1 20); do
   read -r LEDGER_BALANCED SETTLEMENT_BALANCED MASTER_NET_MATCH <<EOF
-$(docker exec askxuan-mysql mysql -uroot -proot123 -Nse "
+$(docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -uroot -Nse "
 SELECT
   (SELECT IF(COUNT(DISTINCT ft.id)=1
     AND ROUND(SUM(IF(le.direction='debit',le.amount,0)),2)=MAX(b.total_fee)
