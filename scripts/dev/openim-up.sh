@@ -97,8 +97,23 @@ fi
 # processes run on this host, so loopback listeners preserve service discovery.
 CONFIG_BEFORE="$(find "$OPENIM_SRC/config" -maxdepth 1 -type f -name 'openim-*.yml' -exec cksum {} + | cksum)"
 find "$OPENIM_SRC/config" -maxdepth 1 -type f -name 'openim-*.yml' -exec \
-  perl -0pi -e 's/listenIP:\s*0\.0\.0\.0/listenIP: 127.0.0.1/g' {} +
+  perl -0pi -e '
+    s/listenIP:\s*0\.0\.0\.0/listenIP: 127.0.0.1/g;
+    s/(registerIP:)[ \t]*(\r?\n)/$1 127.0.0.1$2/g;
+  ' {} +
 if [ "$CONFIG_BEFORE" != "$(find "$OPENIM_SRC/config" -maxdepth 1 -type f -name 'openim-*.yml' -exec cksum {} + | cksum)" ]; then
+  CONFIG_CHANGED=1
+fi
+
+# v3.8.3 ignores listenIP when constructing the WebSocket HTTP server.
+# Patch that single listener so port 10001 can sit safely behind a TLS proxy.
+WS_SERVER="$OPENIM_SRC/internal/msggateway/ws_server.go"
+if [ -f "$WS_SERVER" ] && grep -q 'Addr: ":" + stringutil.IntToString(ws.port)' "$WS_SERVER"; then
+  perl -0pi -e '
+    s/"net\/http"/"net\/http"\n\t"net"/;
+    s/Addr: ":" \+ stringutil\.IntToString\(ws\.port\)/Addr: net.JoinHostPort(ws.msgGatewayConfig.MsgGateway.ListenIP, stringutil.IntToString(ws.port))/;
+  ' "$WS_SERVER"
+  gofmt -w "$WS_SERVER"
   CONFIG_CHANGED=1
 fi
 
@@ -181,6 +196,14 @@ if [ "$NEEDS_BUILD" = "1" ]; then
   )
 else
   echo "==> 复用现有 OpenIM 二进制"
+fi
+
+if [ "$CONFIG_CHANGED" = "1" ]; then
+  echo "==> 配置已变化，停止旧 OpenIM 进程"
+  (
+    cd "$OPENIM_SRC"
+    GOWORK=off go run "github.com/magefile/mage@$MAGE_VERSION" stop
+  ) || true
 fi
 
 if [ "$(uname -s)" = "Darwin" ]; then
