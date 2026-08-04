@@ -7,15 +7,22 @@ OPENIM_DIR="$ROOT_DIR/.local/openim"
 OPENIM_ARCHIVE="$OPENIM_DIR/openim-server-$OPENIM_VERSION.tar.gz"
 OPENIM_URL="https://github.com/openimsdk/open-im-server/archive/refs/tags/$OPENIM_VERSION.tar.gz"
 MAGE_VERSION="${MAGE_VERSION:-v1.15.0}"
-OPENIM_KAFKA_IMAGE="${OPENIM_KAFKA_IMAGE:-bitnamilegacy/kafka:3.5.1}"
+OPENIM_KAFKA_IMAGE="${OPENIM_KAFKA_IMAGE:-docker.1ms.run/bitnamilegacy/kafka:3.5.1}"
 OPENIM_LAUNCH_LABEL="${OPENIM_LAUNCH_LABEL:-com.askxuan.openim.start}"
+OPENIM_SECRET="${OPENIM_SECRET:-openIM123}"
+OPENIM_MONGO_IMAGE="${OPENIM_MONGO_IMAGE:-docker.1ms.run/library/mongo:7.0}"
+OPENIM_REDIS_IMAGE="${OPENIM_REDIS_IMAGE:-redis:7.0}"
+OPENIM_ETCD_IMAGE="${OPENIM_ETCD_IMAGE:-quay.io/coreos/etcd:v3.5.15}"
+OPENIM_MINIO_IMAGE="${OPENIM_MINIO_IMAGE:-minio/minio:latest}"
+OPENIM_WEB_FRONT_IMAGE="${OPENIM_WEB_FRONT_IMAGE:-registry.cn-hangzhou.aliyuncs.com/openimsdk/openim-web-front:release-v3.8.3}"
+OPENIM_ADMIN_FRONT_IMAGE="${OPENIM_ADMIN_FRONT_IMAGE:-registry.cn-hangzhou.aliyuncs.com/openimsdk/openim-admin-front:release-v1.8.4}"
 
 openim_ready() {
   local response
   response="$(curl -fsS --max-time 5 -X POST http://127.0.0.1:10002/auth/get_admin_token \
     -H 'Content-Type: application/json' \
     -H "operationID: askxuan-openim-ready" \
-    -d '{"secret":"openIM123","userID":"imAdmin"}' 2>/dev/null)" || return 1
+    -d "{\"secret\":\"$OPENIM_SECRET\",\"userID\":\"imAdmin\"}" 2>/dev/null)" || return 1
   printf '%s' "$response" | grep -Eq '"errCode"[[:space:]]*:[[:space:]]*0'
 }
 
@@ -78,6 +85,22 @@ fi
 if [ -f "$OPENIM_SRC/config/mongodb.yml" ]; then
   perl -0pi -e 's/address:\s*\[\s*localhost:37017\s*\]/address: [ 127.0.0.1:37017 ]/' "$OPENIM_SRC/config/mongodb.yml"
 fi
+if [ -f "$OPENIM_SRC/config/share.yml" ]; then
+  CONFIG_BEFORE="$(cksum "$OPENIM_SRC/config/share.yml")"
+  OPENIM_SECRET="$OPENIM_SECRET" perl -0pi -e 's/^secret:\s*.*$/secret: $ENV{OPENIM_SECRET}/m' "$OPENIM_SRC/config/share.yml"
+  if [ "$CONFIG_BEFORE" != "$(cksum "$OPENIM_SRC/config/share.yml")" ]; then
+    CONFIG_CHANGED=1
+  fi
+fi
+
+# OpenIM stays private until a TLS reverse proxy is configured. All OpenIM
+# processes run on this host, so loopback listeners preserve service discovery.
+CONFIG_BEFORE="$(find "$OPENIM_SRC/config" -maxdepth 1 -type f -name 'openim-*.yml' -exec cksum {} + | cksum)"
+find "$OPENIM_SRC/config" -maxdepth 1 -type f -name 'openim-*.yml' -exec \
+  perl -0pi -e 's/listenIP:\s*0\.0\.0\.0/listenIP: 127.0.0.1/g' {} +
+if [ "$CONFIG_BEFORE" != "$(find "$OPENIM_SRC/config" -maxdepth 1 -type f -name 'openim-*.yml' -exec cksum {} + | cksum)" ]; then
+  CONFIG_CHANGED=1
+fi
 
 COMPOSE_FILE="$(find "$OPENIM_SRC" -type f \( -name 'docker-compose*.yml' -o -name 'docker-compose*.yaml' -o -name 'compose*.yml' -o -name 'compose*.yaml' \) | head -1)"
 if [ -z "$COMPOSE_FILE" ]; then
@@ -85,8 +108,17 @@ if [ -z "$COMPOSE_FILE" ]; then
   exit 1
 fi
 
+perl -0pi -e 's/"(37017|16379|12379|12380|19094|10005|19090|11001|11002):/"127.0.0.1:$1:/g' "$COMPOSE_FILE"
+
 echo "==> 启动 OpenIM compose: $COMPOSE_FILE"
-KAFKA_IMAGE="$OPENIM_KAFKA_IMAGE" docker compose -f "$COMPOSE_FILE" up -d
+MONGO_IMAGE="$OPENIM_MONGO_IMAGE" \
+REDIS_IMAGE="$OPENIM_REDIS_IMAGE" \
+ETCD_IMAGE="$OPENIM_ETCD_IMAGE" \
+KAFKA_IMAGE="$OPENIM_KAFKA_IMAGE" \
+MINIO_IMAGE="$OPENIM_MINIO_IMAGE" \
+OPENIM_WEB_FRONT_IMAGE="$OPENIM_WEB_FRONT_IMAGE" \
+OPENIM_ADMIN_FRONT_IMAGE="$OPENIM_ADMIN_FRONT_IMAGE" \
+  docker compose -f "$COMPOSE_FILE" up -d
 
 if ! docker exec mongo sh -lc 'pgrep mongod >/dev/null 2>&1' >/dev/null 2>&1; then
   echo "==> OpenIM Mongo 容器存在但 mongod 未运行，备份本地 Mongo 数据后重建"
@@ -96,8 +128,14 @@ if ! docker exec mongo sh -lc 'pgrep mongod >/dev/null 2>&1' >/dev/null 2>&1; th
     if [ -d components/mongodb ]; then
       mv components/mongodb "components/mongodb.bak-$ts"
     fi
-    KAFKA_IMAGE="$OPENIM_KAFKA_IMAGE" docker compose -f "$COMPOSE_FILE" down
-    KAFKA_IMAGE="$OPENIM_KAFKA_IMAGE" docker compose -f "$COMPOSE_FILE" up -d
+    MONGO_IMAGE="$OPENIM_MONGO_IMAGE" REDIS_IMAGE="$OPENIM_REDIS_IMAGE" \
+      ETCD_IMAGE="$OPENIM_ETCD_IMAGE" KAFKA_IMAGE="$OPENIM_KAFKA_IMAGE" \
+      MINIO_IMAGE="$OPENIM_MINIO_IMAGE" OPENIM_WEB_FRONT_IMAGE="$OPENIM_WEB_FRONT_IMAGE" \
+      OPENIM_ADMIN_FRONT_IMAGE="$OPENIM_ADMIN_FRONT_IMAGE" docker compose -f "$COMPOSE_FILE" down
+    MONGO_IMAGE="$OPENIM_MONGO_IMAGE" REDIS_IMAGE="$OPENIM_REDIS_IMAGE" \
+      ETCD_IMAGE="$OPENIM_ETCD_IMAGE" KAFKA_IMAGE="$OPENIM_KAFKA_IMAGE" \
+      MINIO_IMAGE="$OPENIM_MINIO_IMAGE" OPENIM_WEB_FRONT_IMAGE="$OPENIM_WEB_FRONT_IMAGE" \
+      OPENIM_ADMIN_FRONT_IMAGE="$OPENIM_ADMIN_FRONT_IMAGE" docker compose -f "$COMPOSE_FILE" up -d
   )
 fi
 

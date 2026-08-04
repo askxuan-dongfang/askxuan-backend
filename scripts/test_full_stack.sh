@@ -2,6 +2,7 @@
 # 问玄东方 全端闭环测试脚本
 # 覆盖 5 个端侧 + 20 个后端服务 + 跨服务链路
 GATEWAY="http://127.0.0.1:8080"
+MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-root123}"
 PASS=0; FAIL=0
 RESULTS=()
 
@@ -193,7 +194,8 @@ check "预约独立库快照列表（无运行时跨库）" "0" "$(echo "$R" | j
 R=$(curl -s --max-time 10 -X POST "$GATEWAY/api/v1/auth/login" -H "Content-Type: application/json" -d '{"phone":"13800138001","password":"123456"}')
 check "跨库: auth→user(登录)" "0" "$(echo "$R" | json_code)" ""
 
-OUTBOX_CNT=$(docker exec askxuan-mysql mysql -uroot -proot123 -N -e "SELECT COUNT(*) FROM askxuan_order.outbox;" 2>/dev/null)
+OUTBOX_CNT=$(docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql \
+  mysql -uroot -N -e "SELECT COUNT(*) FROM askxuan_order.outbox;" 2>/dev/null)
 check "Outbox表: order.outbox" "0" "$?" "count=$OUTBOX_CNT"
 
 MQ_EXCH=$(docker exec askxuan-rabbitmq rabbitmqctl list_exchanges -p / 2>/dev/null | grep -cE "events|refund.*dlx")
