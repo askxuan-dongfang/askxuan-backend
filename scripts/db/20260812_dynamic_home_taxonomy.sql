@@ -1,4 +1,6 @@
 -- 首页信仰与心愿运营分类动态化（可重复执行）
+SET NAMES utf8mb4;
+
 SET @belief_icon_exists := (
   SELECT COUNT(*) FROM information_schema.COLUMNS
   WHERE TABLE_SCHEMA='askxuan_temple' AND TABLE_NAME='belief_profile' AND COLUMN_NAME='icon'
