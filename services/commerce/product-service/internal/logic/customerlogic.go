@@ -112,8 +112,13 @@ func NewCustomerIntentionLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 func (l *CustomerIntentionLogic) List(req *types.CustomerIntentionReq) (*types.CustomerIntentionResp, error) {
-	if req.Code != "" && !model.IsValidIntentCode(req.Code) {
-		return nil, common.ErrParamInvalid
+	if req.Code != "" {
+		if !model.IsValidIntentCode(req.Code) {
+			return nil, common.ErrParamInvalid
+		}
+		if _, err := l.svcCtx.IntentionModel.FindTag(l.ctx, req.Code, true); err != nil {
+			return nil, common.ErrParamInvalid
+		}
 	}
 	if req.Page < 1 {
 		req.Page = 1
@@ -133,13 +138,35 @@ func (l *CustomerIntentionLogic) List(req *types.CustomerIntentionReq) (*types.C
 	}
 	outTags := make([]types.IntentionTag, 0, len(tags))
 	for _, tag := range tags {
-		outTags = append(outTags, types.IntentionTag{Code: tag.Code, Name: tag.Name, Description: tag.Description, Icon: tag.Icon, Sort: tag.Sort})
+		outTags = append(outTags, toIntentionTag(tag))
 	}
 	out := make([]types.IntentionResource, 0, len(resources))
 	for _, item := range resources {
 		out = append(out, types.IntentionResource{ResourceType: item.ResourceType, SourceId: item.SourceId, Title: item.Title, Subtitle: item.Subtitle, Price: item.Price, Image: item.Image, OrderTarget: item.OrderTarget, TempleCode: item.TempleCode, ServiceCode: item.ServiceCode})
 	}
 	return &types.CustomerIntentionResp{Tags: outTags, Total: total, List: out, Page: req.Page, Size: req.Size}, nil
+}
+
+func ListIntentionTags(ctx context.Context, svcCtx *svc.ServiceContext, includeDisabled bool) (*types.IntentionTagListResp, error) {
+	var tags []*model.IntentTag
+	var err error
+	if includeDisabled {
+		tags, err = svcCtx.IntentionModel.FindAllTags(ctx)
+	} else {
+		tags, err = svcCtx.IntentionModel.FindTags(ctx)
+	}
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	list := make([]types.IntentionTag, 0, len(tags))
+	for _, tag := range tags {
+		list = append(list, toIntentionTag(tag))
+	}
+	return &types.IntentionTagListResp{List: list}, nil
+}
+
+func toIntentionTag(tag *model.IntentTag) types.IntentionTag {
+	return types.IntentionTag{Code: tag.Code, Name: tag.Name, Description: tag.Description, Icon: tag.Icon, LandingType: tag.LandingType, LandingValue: tag.LandingValue, ActionTitle: tag.ActionTitle, Sort: tag.Sort, Status: tag.Status}
 }
 
 // ===== C端分类树 =====

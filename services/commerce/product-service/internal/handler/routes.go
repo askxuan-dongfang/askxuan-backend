@@ -23,6 +23,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/products/:id", Handler: customerProductDetailHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/products/categories", Handler: customerCategoryTreeHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/intentions", Handler: customerIntentionHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/intentions/tags", Handler: customerIntentionTagListHandler(svcCtx)},
 	})
 
 	// ===== 商城台路由 =====
@@ -39,7 +40,80 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPost, Path: "/api/v1/admin/products/categories", Handler: adminCategoryCreateHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/products/categories/:id", Handler: adminCategoryUpdateHandler(svcCtx)},
 		{Method: http.MethodDelete, Path: "/api/v1/admin/products/categories/:id", Handler: adminCategoryDeleteHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/admin/platform/intentions", Handler: adminIntentionTagListHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/admin/platform/intentions", Handler: adminIntentionTagCreateHandler(svcCtx)},
+		{Method: http.MethodPut, Path: "/api/v1/admin/platform/intentions/:code", Handler: adminIntentionTagUpdateHandler(svcCtx)},
+		{Method: http.MethodPut, Path: "/api/v1/admin/platform/intentions/:code/status", Handler: adminIntentionTagStatusHandler(svcCtx)},
 	})
+}
+
+func customerIntentionTagListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := logic.ListIntentionTags(r.Context(), svcCtx, false)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func adminIntentionTagListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := logic.ListIntentionTags(r.Context(), svcCtx, true)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func adminIntentionTagCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminIntentionTagCreateReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.CreateIntentionTag(r.Context(), svcCtx, &req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func adminIntentionTagUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminIntentionTagUpdateReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.UpdateIntentionTag(r.Context(), svcCtx, &req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func adminIntentionTagStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminIntentionTagStatusReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		if err := logic.UpdateIntentionTagStatus(r.Context(), svcCtx, &req); err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, req)
+	}
 }
 
 func customerIntentionHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

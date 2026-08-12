@@ -6,11 +6,11 @@ import (
 )
 
 func TestValidateIntentCodes(t *testing.T) {
-	if err := ValidateIntentCodes([]string{"peace", "diy", "peace"}); err != nil {
+	if err := ValidateIntentCodes([]string{"peace", "diy", "custom_wish", "peace"}); err != nil {
 		t.Fatalf("valid tags rejected: %v", err)
 	}
-	if err := ValidateIntentCodes([]string{"unknown"}); err == nil {
-		t.Fatal("invalid tag accepted")
+	if err := ValidateIntentCodes([]string{"bad-code"}); err == nil {
+		t.Fatal("invalid code format accepted")
 	}
 }
 

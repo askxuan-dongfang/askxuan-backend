@@ -79,11 +79,46 @@ type CustomerCategoryTreeResp struct {
 }
 
 type IntentionTag struct {
-	Code        string `json:"code"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Icon        string `json:"icon"`
-	Sort        int    `json:"sort"`
+	Code         string `json:"code"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	Icon         string `json:"icon"`
+	LandingType  string `json:"landingType"`
+	LandingValue string `json:"landingValue"`
+	ActionTitle  string `json:"actionTitle"`
+	Sort         int    `json:"sort"`
+	Status       string `json:"status"`
+}
+
+type IntentionTagListResp struct {
+	List []IntentionTag `json:"list"`
+}
+
+type AdminIntentionTagCreateReq struct {
+	Code         string `json:"code"`
+	Name         string `json:"name"`
+	Description  string `json:"description,optional"`
+	Icon         string `json:"icon,optional"`
+	LandingType  string `json:"landingType,optional"`
+	LandingValue string `json:"landingValue,optional"`
+	ActionTitle  string `json:"actionTitle,optional"`
+	Sort         int    `json:"sort,optional"`
+}
+
+type AdminIntentionTagUpdateReq struct {
+	Code         string `path:"code"`
+	Name         string `json:"name"`
+	Description  string `json:"description,optional"`
+	Icon         string `json:"icon,optional"`
+	LandingType  string `json:"landingType,optional"`
+	LandingValue string `json:"landingValue,optional"`
+	ActionTitle  string `json:"actionTitle,optional"`
+	Sort         int    `json:"sort,optional"`
+}
+
+type AdminIntentionTagStatusReq struct {
+	Code   string `path:"code"`
+	Status string `json:"status"`
 }
 
 type IntentionResource struct {

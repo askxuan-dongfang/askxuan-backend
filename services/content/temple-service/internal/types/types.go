@@ -6,7 +6,13 @@ type BeliefProfile struct {
 	Summary     string `json:"summary"`
 	Description string `json:"description"`
 	CoverImage  string `json:"coverImage"`
+	Icon        string `json:"icon"`
 	Sort        int    `json:"sort"`
+	Status      string `json:"status"`
+}
+
+type BeliefListResp struct {
+	List []BeliefProfile `json:"list"`
 }
 
 type BeliefReq struct {
@@ -18,7 +24,23 @@ type BeliefUpdateReq struct {
 	Summary     string `json:"summary,optional"`
 	Description string `json:"description"`
 	CoverImage  string `json:"coverImage,optional"`
+	Icon        string `json:"icon,optional"`
 	Sort        int    `json:"sort,optional"`
+}
+
+type BeliefCreateReq struct {
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Summary     string `json:"summary,optional"`
+	Description string `json:"description"`
+	CoverImage  string `json:"coverImage,optional"`
+	Icon        string `json:"icon,optional"`
+	Sort        int    `json:"sort,optional"`
+}
+
+type BeliefStatusReq struct {
+	Code   string `path:"code"`
+	Status string `json:"status"`
 }
 
 // ============ 寺院基础 ============

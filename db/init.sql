@@ -48,6 +48,7 @@ CREATE TABLE `belief_profile` (
   `summary` VARCHAR(255) NOT NULL DEFAULT '',
   `description` TEXT NOT NULL,
   `cover_image` VARCHAR(500) NOT NULL DEFAULT '',
+  `icon` VARCHAR(64) NOT NULL DEFAULT 'sparkles',
   `sort` INT NOT NULL DEFAULT 0,
   `status` VARCHAR(16) NOT NULL DEFAULT 'enabled',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -55,11 +56,11 @@ CREATE TABLE `belief_profile` (
   PRIMARY KEY (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='一级信仰流派运营资料';
 
-INSERT INTO `belief_profile` (`code`,`name`,`summary`,`description`,`sort`) VALUES
-('han_buddhism','汉传佛教','慈悲与智慧并行','汉传佛教在中国长期发展，形成禅、净土、天台、华严等具体宗派。平台以一级流派聚合寺院和法师，同时保留具体宗派信息。',10),
-('tibetan_buddhism','藏传佛教','传承、修持与慈悲','藏传佛教具有清晰的传承体系，包含格鲁、宁玛、噶举、萨迦等具体宗派。',20),
-('daoism','道教','道法自然，清静修持','道教是中国本土宗教传统，平台一级归类为道教，并保留全真、正一等具体宗派。',30),
-('folk','民间信仰','乡土传统与民俗传承','民间信仰承载地域性祭祀、祈愿和文化传统，相关内容须遵循平台审核与合规要求。',40);
+INSERT INTO `belief_profile` (`code`,`name`,`summary`,`description`,`icon`,`sort`) VALUES
+('han_buddhism','汉传佛教','慈悲与智慧并行','汉传佛教在中国长期发展，形成禅、净土、天台、华严等具体宗派。平台以一级流派聚合寺院和法师，同时保留具体宗派信息。','leaf.fill',10),
+('tibetan_buddhism','藏传佛教','传承、修持与慈悲','藏传佛教具有清晰的传承体系，包含格鲁、宁玛、噶举、萨迦等具体宗派。','flame.fill',20),
+('daoism','道教','道法自然，清静修持','道教是中国本土宗教传统，平台一级归类为道教，并保留全真、正一等具体宗派。','sparkles',30),
+('folk','民间信仰','乡土传统与民俗传承','民间信仰承载地域性祭祀、祈愿和文化传统，相关内容须遵循平台审核与合规要求。','seal.fill',40);
 
 -- ----------------------------
 -- 2. 法师表 master（数据字典第2节，6 法师）
@@ -976,6 +977,9 @@ CREATE TABLE IF NOT EXISTS `intent_tag` (
   `name` VARCHAR(64) NOT NULL,
   `description` VARCHAR(255) NOT NULL DEFAULT '',
   `icon` VARCHAR(64) NOT NULL DEFAULT '',
+  `landing_type` VARCHAR(16) NOT NULL DEFAULT 'aggregate' COMMENT 'aggregate/service/diy',
+  `landing_value` VARCHAR(64) NOT NULL DEFAULT '',
+  `action_title` VARCHAR(64) NOT NULL DEFAULT '',
   `sort` INT NOT NULL DEFAULT 0,
   `status` VARCHAR(16) NOT NULL DEFAULT 'enabled',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -994,15 +998,15 @@ CREATE TABLE IF NOT EXISTS `product_intent_tag` (
   CONSTRAINT `fk_product_intent_tag` FOREIGN KEY (`tag_code`) REFERENCES `intent_tag` (`code`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品诉求标签映射';
 
-INSERT INTO `intent_tag` (`code`,`name`,`description`,`icon`,`sort`) VALUES
-('peace','求平安','祈福、护佑与健康相关商品和服务','shield.lefthalf.filled',10),
-('wealth','求财运','财运、供养与事业助力相关商品和服务','banknote.fill',20),
-('love','求姻缘','姻缘、人际与家庭相关商品和服务','heart.fill',30),
-('career','求事业','事业、风水与开光相关商品和服务','briefcase.fill',40),
-('study','求学业','学业、智慧与考试相关商品和服务','book.fill',50),
-('taisui','化太岁','本命年与化太岁相关服务','circle.hexagongrid.fill',60),
-('diy','定手串','手串材料与定制相关商品','circle.grid.cross.fill',70),
-('rite','做法事','超度等法事服务','hands.sparkles.fill',80);
+INSERT INTO `intent_tag` (`code`,`name`,`description`,`icon`,`landing_type`,`landing_value`,`action_title`,`sort`) VALUES
+('peace','求平安','祈福、护佑与健康相关商品和服务','shield.lefthalf.filled','service','S001','办理平安祈福',10),
+('wealth','求财运','财运、供养与事业助力相关商品和服务','banknote.fill','service','S009','办理财运祈福',20),
+('love','求姻缘','姻缘、人际与家庭相关商品和服务','heart.fill','service','S008','办理姻缘祈愿',30),
+('career','求事业','事业、风水与开光相关商品和服务','briefcase.fill','service','S010','办理事业祈愿',40),
+('study','求学业','学业、智慧与考试相关商品和服务','book.fill','service','S013','办理学业祈愿',50),
+('taisui','化太岁','本命年与化太岁相关服务','circle.hexagongrid.fill','service','S007','办理化太岁',60),
+('diy','定手串','手串材料与定制相关商品','circle.grid.cross.fill','diy','','开始定制',70),
+('rite','做法事','超度等法事服务','hands.sparkles.fill','service','S005','预约法事',80);
 
 INSERT IGNORE INTO `product_intent_tag` (`product_id`,`tag_code`)
 SELECT id, 'diy' FROM `product` WHERE product_no IN ('P20260600001','P20260600002');

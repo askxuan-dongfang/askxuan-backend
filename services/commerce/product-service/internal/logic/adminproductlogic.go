@@ -52,9 +52,6 @@ func NewAdminProductCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminProductCreateLogic) Create(req *types.AdminProductCreateReq) (*types.AdminProductCreateResp, error) {
-	if err := model.ValidateIntentCodes(req.IntentTags); err != nil {
-		return nil, common.ErrParamInvalid
-	}
 	p, err := l.svcCtx.ProductModel.Insert(l.ctx, &model.Product{
 		Name:              req.Name,
 		CategoryId:        req.CategoryId,
@@ -133,11 +130,6 @@ func NewAdminProductUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminProductUpdateLogic) Update(req *types.AdminProductUpdateReq) (*types.Product, error) {
-	if req.IntentTags != nil {
-		if err := model.ValidateIntentCodes(req.IntentTags); err != nil {
-			return nil, common.ErrParamInvalid
-		}
-	}
 	err := l.svcCtx.ProductModel.Update(l.ctx, &model.Product{
 		Id:                req.Id,
 		Name:              req.Name,

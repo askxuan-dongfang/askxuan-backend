@@ -3,13 +3,15 @@ package model
 import "testing"
 
 func TestIsValidBeliefCode(t *testing.T) {
-	for _, code := range []string{BeliefHanBuddhism, BeliefTibetanBuddhism, BeliefDaoism, BeliefFolk} {
+	for _, code := range []string{BeliefHanBuddhism, BeliefTibetanBuddhism, BeliefDaoism, BeliefFolk, "southern_buddhism"} {
 		if !IsValidBeliefCode(code) {
 			t.Fatalf("expected %s to be valid", code)
 		}
 	}
-	if IsValidBeliefCode("zen") {
-		t.Fatal("specific sect must not be accepted as a top-level belief")
+	for _, code := range []string{"", "UPPER", "has-dash", "x"} {
+		if IsValidBeliefCode(code) {
+			t.Fatalf("invalid dynamic code accepted: %q", code)
+		}
 	}
 }
 

@@ -110,6 +110,9 @@ Upstreams:
   - Prefix: /api/v1/admin/platform/beliefs
     Target: localhost:8083
     ServiceName: temple.service
+  - Prefix: /api/v1/admin/platform/intentions
+    Target: localhost:8086
+    ServiceName: product.service
   # auth 管理台
   - Prefix: /api/v1/admin/auth
     Target: localhost:8081

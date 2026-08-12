@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -73,9 +74,9 @@ type TempleServiceModel interface {
 }
 
 func ValidIntentTags(tags []string) bool {
-	valid := map[string]bool{"peace": true, "wealth": true, "love": true, "career": true, "study": true, "taisui": true, "diy": true, "rite": true}
+	pattern := regexp.MustCompile(`^[a-z][a-z0-9_]{1,31}$`)
 	for _, raw := range tags {
-		if !valid[strings.TrimSpace(raw)] {
+		if !pattern.MatchString(strings.TrimSpace(raw)) {
 			return false
 		}
 	}

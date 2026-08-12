@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -33,12 +34,7 @@ func NormalizeBeliefCode(code, masterType, sect string) string {
 }
 
 func IsValidBeliefCode(code string) bool {
-	switch code {
-	case "han_buddhism", "tibetan_buddhism", "daoism", "folk":
-		return true
-	default:
-		return false
-	}
+	return regexp.MustCompile(`^[a-z][a-z0-9_]{2,31}$`).MatchString(code)
 }
 
 // 法师平台状态常量

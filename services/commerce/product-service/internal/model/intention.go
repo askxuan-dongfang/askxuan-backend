@@ -3,22 +3,22 @@ package model
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-var validIntentCodes = map[string]struct{}{
-	"peace": {}, "wealth": {}, "love": {}, "career": {},
-	"study": {}, "taisui": {}, "diy": {}, "rite": {},
-}
-
 type IntentTag struct {
-	Code        string `db:"code"`
-	Name        string `db:"name"`
-	Description string `db:"description"`
-	Icon        string `db:"icon"`
-	Sort        int    `db:"sort"`
+	Code         string `db:"code"`
+	Name         string `db:"name"`
+	Description  string `db:"description"`
+	Icon         string `db:"icon"`
+	LandingType  string `db:"landing_type"`
+	LandingValue string `db:"landing_value"`
+	ActionTitle  string `db:"action_title"`
+	Sort         int    `db:"sort"`
+	Status       string `db:"status"`
 }
 
 type IntentionResource struct {
@@ -36,6 +36,11 @@ type IntentionResource struct {
 
 type IntentionModel interface {
 	FindTags(ctx context.Context) ([]*IntentTag, error)
+	FindAllTags(ctx context.Context) ([]*IntentTag, error)
+	FindTag(ctx context.Context, code string, enabledOnly bool) (*IntentTag, error)
+	InsertTag(ctx context.Context, tag *IntentTag) error
+	UpdateTag(ctx context.Context, tag *IntentTag) error
+	UpdateTagStatus(ctx context.Context, code, status string) error
 	FindResources(ctx context.Context, code string, page, size int) ([]*IntentionResource, int64, error)
 	FindProductTags(ctx context.Context, productId int64) ([]string, error)
 	ReplaceProductTags(ctx context.Context, productId int64, tags []string) error
@@ -46,8 +51,7 @@ type intentionModel struct{ conn sqlx.SqlConn }
 func NewIntentionModel(conn sqlx.SqlConn) IntentionModel { return &intentionModel{conn: conn} }
 
 func IsValidIntentCode(code string) bool {
-	_, ok := validIntentCodes[code]
-	return ok
+	return regexp.MustCompile(`^[a-z][a-z0-9_]{1,31}$`).MatchString(code)
 }
 
 func ValidateIntentCodes(codes []string) error {
@@ -61,8 +65,39 @@ func ValidateIntentCodes(codes []string) error {
 
 func (m *intentionModel) FindTags(ctx context.Context) ([]*IntentTag, error) {
 	var tags []*IntentTag
-	err := m.conn.QueryRowsCtx(ctx, &tags, "SELECT code,name,description,icon,sort FROM intent_tag WHERE status='enabled' ORDER BY sort,code")
+	err := m.conn.QueryRowsCtx(ctx, &tags, "SELECT code,name,description,icon,landing_type,landing_value,action_title,sort,status FROM intent_tag WHERE status='enabled' ORDER BY sort,code")
 	return tags, err
+}
+
+func (m *intentionModel) FindAllTags(ctx context.Context) ([]*IntentTag, error) {
+	var tags []*IntentTag
+	err := m.conn.QueryRowsCtx(ctx, &tags, "SELECT code,name,description,icon,landing_type,landing_value,action_title,sort,status FROM intent_tag ORDER BY sort,code")
+	return tags, err
+}
+
+func (m *intentionModel) FindTag(ctx context.Context, code string, enabledOnly bool) (*IntentTag, error) {
+	query := "SELECT code,name,description,icon,landing_type,landing_value,action_title,sort,status FROM intent_tag WHERE code=?"
+	if enabledOnly {
+		query += " AND status='enabled'"
+	}
+	var tag IntentTag
+	err := m.conn.QueryRowCtx(ctx, &tag, query, code)
+	return &tag, err
+}
+
+func (m *intentionModel) InsertTag(ctx context.Context, tag *IntentTag) error {
+	_, err := m.conn.ExecCtx(ctx, "INSERT INTO intent_tag(code,name,description,icon,landing_type,landing_value,action_title,sort,status) VALUES(?,?,?,?,?,?,?,?,?)", tag.Code, tag.Name, tag.Description, tag.Icon, tag.LandingType, tag.LandingValue, tag.ActionTitle, tag.Sort, tag.Status)
+	return err
+}
+
+func (m *intentionModel) UpdateTag(ctx context.Context, tag *IntentTag) error {
+	_, err := m.conn.ExecCtx(ctx, "UPDATE intent_tag SET name=?,description=?,icon=?,landing_type=?,landing_value=?,action_title=?,sort=? WHERE code=?", tag.Name, tag.Description, tag.Icon, tag.LandingType, tag.LandingValue, tag.ActionTitle, tag.Sort, tag.Code)
+	return err
+}
+
+func (m *intentionModel) UpdateTagStatus(ctx context.Context, code, status string) error {
+	_, err := m.conn.ExecCtx(ctx, "UPDATE intent_tag SET status=? WHERE code=?", status, code)
+	return err
 }
 
 func resourceUnion(code string) (string, []interface{}) {

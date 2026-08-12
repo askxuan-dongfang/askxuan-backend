@@ -7,6 +7,7 @@ import (
 	"github.com/askxuan/product-service/internal/model"
 	"github.com/askxuan/product-service/internal/svc"
 	"github.com/askxuan/product-service/internal/types"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 type fakeIntentionModel struct {
@@ -18,6 +19,18 @@ type fakeIntentionModel struct {
 func (f *fakeIntentionModel) FindTags(context.Context) ([]*model.IntentTag, error) {
 	return []*model.IntentTag{{Code: "peace", Name: "求平安", Sort: 10}}, nil
 }
+func (f *fakeIntentionModel) FindAllTags(context.Context) ([]*model.IntentTag, error) {
+	return f.FindTags(context.Background())
+}
+func (f *fakeIntentionModel) FindTag(_ context.Context, code string, _ bool) (*model.IntentTag, error) {
+	if code == "peace" {
+		return &model.IntentTag{Code: code, Name: "求平安"}, nil
+	}
+	return nil, sqlx.ErrNotFound
+}
+func (*fakeIntentionModel) InsertTag(context.Context, *model.IntentTag) error     { return nil }
+func (*fakeIntentionModel) UpdateTag(context.Context, *model.IntentTag) error     { return nil }
+func (*fakeIntentionModel) UpdateTagStatus(context.Context, string, string) error { return nil }
 func (f *fakeIntentionModel) FindResources(_ context.Context, code string, page, size int) ([]*model.IntentionResource, int64, error) {
 	f.code, f.page, f.size = code, page, size
 	return []*model.IntentionResource{{ResourceType: "service", SourceId: "1", Title: "灵隐寺 · 祈福", Price: 200, OrderTarget: "service:T001:S001", TempleCode: "T001", ServiceCode: "S001"}}, 1, nil

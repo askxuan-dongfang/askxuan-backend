@@ -19,6 +19,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 
 	// ============ C端分组（公开） ============
 	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/beliefs", Handler: beliefListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/beliefs/:code", Handler: beliefDetailHandler(svcCtx)},
 		{
 			Method:  http.MethodGet,
@@ -116,7 +117,10 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 
 	// ============ 平台管理台分组（需JWT + 平台超管） ============
 	platformRoutes := []rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/admin/platform/beliefs", Handler: platformBeliefListHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/admin/platform/beliefs", Handler: platformBeliefCreateHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/platform/beliefs/:code", Handler: platformBeliefUpdateHandler(svcCtx)},
+		{Method: http.MethodPut, Path: "/api/v1/admin/platform/beliefs/:code/status", Handler: platformBeliefStatusHandler(svcCtx)},
 		{
 			Method:  http.MethodGet,
 			Path:    "/api/v1/admin/platform/temples",
@@ -149,6 +153,59 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		},
 	}
 	server.AddRoutes(rest.WithMiddleware(adminContextMiddleware, platformRoutes...))
+}
+
+func beliefListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := logic.ListBeliefs(r.Context(), svcCtx, false)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func platformBeliefListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := logic.ListBeliefs(r.Context(), svcCtx, true)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func platformBeliefCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.BeliefCreateReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.CreateBelief(r.Context(), svcCtx, &req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func platformBeliefStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.BeliefStatusReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		if err := logic.UpdateBeliefStatus(r.Context(), svcCtx, &req); err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, req)
+	}
 }
 
 func beliefDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
