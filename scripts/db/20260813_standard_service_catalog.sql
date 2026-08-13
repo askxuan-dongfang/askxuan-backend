@@ -1,4 +1,6 @@
 -- 寺院服务必须引用平台固定 service_type，名称不再由寺院自定义。
+SET NAMES utf8mb4;
+
 INSERT INTO askxuan_temple.service_type
   (code,name,type,price_range,master_codes)
 VALUES
