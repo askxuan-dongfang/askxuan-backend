@@ -147,6 +147,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: platformAuditRejectHandler(svcCtx),
 		},
 		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/platform/temples/:id",
+			Handler: platformTempleDetailHandler(svcCtx),
+		},
+		{
 			Method:  http.MethodPut,
 			Path:    "/api/v1/admin/platform/temples/:id/status",
 			Handler: platformTempleStatusHandler(svcCtx),
@@ -538,6 +543,22 @@ func platformTempleListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewPlatformTempleListLogic(r.Context(), svcCtx)
 		resp, err := l.PlatformTempleList(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func platformTempleDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.DetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.PlatformTempleDetail(r.Context(), svcCtx, &req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

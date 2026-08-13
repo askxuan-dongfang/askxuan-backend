@@ -284,9 +284,10 @@ type TempleApplyResp struct {
 
 // TempleAuditListReq 审核列表请求
 type TempleAuditListReq struct {
-	Status string `form:"status,optional"`
-	Page   int    `form:"page,default=1"`
-	Size   int    `form:"size,default=20"`
+	TempleCode string `form:"templeCode,optional"`
+	Status     string `form:"status,optional"`
+	Page       int    `form:"page,default=1"`
+	Size       int    `form:"size,default=20"`
 }
 
 // TempleAuditListResp 审核列表响应

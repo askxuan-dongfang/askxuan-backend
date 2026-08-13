@@ -25,7 +25,7 @@ func NewServiceListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Servi
 }
 
 // ServiceList 查询指定寺院的上架服务列表
-// C端仅返回状态为「正常」的寺院的上架服务
+// C端仅返回正常或推荐状态寺院的上架服务。
 func (l *ServiceListLogic) ServiceList(req *types.TempleServiceListReq) (*types.TempleServiceListResp, error) {
 	// 校验寺院存在且状态正常
 	t, err := l.svcCtx.TempleModel.FindOne(l.ctx, req.Id)
@@ -36,7 +36,7 @@ func (l *ServiceListLogic) ServiceList(req *types.TempleServiceListReq) (*types.
 		l.Errorf("查询寺院失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	if t.Status != model.TempleStatusNormal {
+	if !model.IsTemplePublicStatus(t.Status) {
 		return nil, common.ErrTempleNotFound
 	}
 

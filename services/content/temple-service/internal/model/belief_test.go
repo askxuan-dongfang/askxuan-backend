@@ -24,3 +24,16 @@ func TestBuildTempleWhereBeliefAndSect(t *testing.T) {
 		t.Fatalf("unexpected args: %#v", args)
 	}
 }
+
+func TestBuildTempleWherePublicStatuses(t *testing.T) {
+	where, args := buildTempleWhere(TempleFilter{Statuses: TemplePublicStatuses()})
+	if where != "1=1 AND status IN (?,?)" {
+		t.Fatalf("unexpected where: %s", where)
+	}
+	if len(args) != 2 || args[0] != TempleStatusNormal || args[1] != TempleStatusRecommend {
+		t.Fatalf("unexpected args: %#v", args)
+	}
+	if !IsTemplePublicStatus(TempleStatusRecommend) || IsTemplePublicStatus(TempleStatusPending) {
+		t.Fatal("unexpected public status classification")
+	}
+}

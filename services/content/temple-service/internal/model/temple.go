@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -55,6 +56,15 @@ type TempleFilter struct {
 	Type       string
 	Region     string
 	Status     string // 为空时不筛选状态
+	Statuses   []string
+}
+
+func TemplePublicStatuses() []string {
+	return []string{TempleStatusNormal, TempleStatusRecommend}
+}
+
+func IsTemplePublicStatus(status string) bool {
+	return status == TempleStatusNormal || status == TempleStatusRecommend
 }
 
 // TempleModel 寺院模型接口
@@ -191,6 +201,13 @@ func buildTempleWhere(filter TempleFilter) (string, []interface{}) {
 	if filter.Status != "" {
 		where += " AND status = ?"
 		args = append(args, filter.Status)
+	} else if len(filter.Statuses) > 0 {
+		placeholders := make([]string, len(filter.Statuses))
+		for i, status := range filter.Statuses {
+			placeholders[i] = "?"
+			args = append(args, status)
+		}
+		where += " AND status IN (" + strings.Join(placeholders, ",") + ")"
 	}
 	return where, args
 }

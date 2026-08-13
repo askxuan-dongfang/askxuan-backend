@@ -29,7 +29,7 @@ func NewDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *DetailLogi
 }
 
 // Detail 按寺院编码(code)查询寺院信息
-// C端仅返回状态为「正常」的寺院，封禁/待审核寺院不对外展示
+// C端仅返回正常或推荐状态的寺院，封禁/待审核寺院不对外展示。
 func (l *DetailLogic) Detail(req *types.DetailReq) (*types.Temple, error) {
 	t, err := l.svcCtx.TempleModel.FindOne(l.ctx, req.Id)
 	if err != nil {
@@ -39,8 +39,7 @@ func (l *DetailLogic) Detail(req *types.DetailReq) (*types.Temple, error) {
 		l.Errorf("查询寺院详情失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	// 非正常状态的寺院对 C端 不可见
-	if t.Status != model.TempleStatusNormal {
+	if !model.IsTemplePublicStatus(t.Status) {
 		return nil, common.ErrTempleNotFound
 	}
 	resp := toTypeTemple(t)

@@ -84,9 +84,10 @@ type TempleAuditModel interface {
 	Insert(ctx context.Context, data *TempleAudit) (int64, error)
 	FindOne(ctx context.Context, id int64) (*TempleAudit, error)
 	FindByTempleId(ctx context.Context, templeCode string) ([]*TempleAudit, error)
-	FindList(ctx context.Context, status string, page, size int) ([]*TempleAudit, int64, error)
+	FindList(ctx context.Context, templeCode, status string, page, size int) ([]*TempleAudit, int64, error)
 	Update(ctx context.Context, data *TempleAudit) error
 	UpdateStatus(ctx context.Context, id int64, status string, auditorId int64, remark string) error
+	FinalPass(ctx context.Context, id int64, templeCode string, auditorId int64, remark string) error
 	Delete(ctx context.Context, id int64) error
 }
 
@@ -152,9 +153,13 @@ func (m *defaultTempleAuditModel) FindByTempleId(ctx context.Context, templeCode
 }
 
 // FindList 查询审核列表，支持按 status 筛选 + 分页
-func (m *defaultTempleAuditModel) FindList(ctx context.Context, status string, page, size int) ([]*TempleAudit, int64, error) {
+func (m *defaultTempleAuditModel) FindList(ctx context.Context, templeCode, status string, page, size int) ([]*TempleAudit, int64, error) {
 	where := "1=1"
 	var args []interface{}
+	if templeCode != "" {
+		where += " AND temple_code = ?"
+		args = append(args, templeCode)
+	}
 	if status != "" {
 		where += " AND status = ?"
 		args = append(args, status)
@@ -212,6 +217,30 @@ func (m *defaultTempleAuditModel) UpdateStatus(ctx context.Context, id int64, st
 	args = append(args, id)
 	_, err := m.conn.ExecCtx(ctx, query, args...)
 	return err
+}
+
+// FinalPass 原子完成终审并将关联寺院置为正常。
+func (m *defaultTempleAuditModel) FinalPass(ctx context.Context, id int64, templeCode string, auditorId int64, remark string) error {
+	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		result, err := session.ExecCtx(ctx,
+			`UPDATE temple_audit SET status = ?, auditor_id = ?, audit_remark = ? WHERE id = ? AND temple_code = ? AND status = ?`,
+			TempleAuditStatusFinalPass, auditorId, remark, id, templeCode, TempleAuditStatusFirstPass)
+		if err != nil {
+			return err
+		}
+		if affected, _ := result.RowsAffected(); affected != 1 {
+			return fmt.Errorf("temple audit final pass affected %d rows", affected)
+		}
+
+		result, err = session.ExecCtx(ctx, `UPDATE temple SET status = ? WHERE code = ?`, TempleStatusNormal, templeCode)
+		if err != nil {
+			return err
+		}
+		if affected, _ := result.RowsAffected(); affected != 1 {
+			return fmt.Errorf("temple status update affected %d rows", affected)
+		}
+		return nil
+	})
 }
 
 // Delete 删除审核记录
