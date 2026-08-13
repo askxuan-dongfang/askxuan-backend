@@ -54,6 +54,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		},
 		// 图片管理
 		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/temples/images",
+			Handler: adminImageListHandler(svcCtx),
+		},
+		{
 			Method:  http.MethodPost,
 			Path:    "/api/v1/admin/temples/images",
 			Handler: adminImageCreateHandler(svcCtx),
@@ -360,6 +365,17 @@ func adminImageCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewAdminImageCreateLogic(r.Context(), svcCtx)
 		resp, err := l.AdminImageCreate(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminImageListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := logic.NewAdminImageListLogic(r.Context(), svcCtx).AdminImageList()
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

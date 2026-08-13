@@ -78,9 +78,11 @@ func ensureBucket(client *minio.Client, bucket string) {
 			logx.Errorf("创建 bucket 失败 bucket=%s: %v", bucket, err)
 			return
 		}
-		// 设置 bucket 公读策略，便于前端通过对象 URL 直接访问（联调阶段）
-		policy := fmt.Sprintf(`{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["*"]},"Action":["s3:GetObject"],"Resource":["arn:aws:s3:::%s/*"]}]}`, bucket)
-		_ = client.SetBucketPolicy(ctx, bucket, policy)
 		logx.Infof("已创建 MinIO bucket: %s", bucket)
+	}
+	// 联调 bucket 保持公读。即使 bucket 已存在也重申策略，避免历史环境上传成功后返回 403。
+	policy := fmt.Sprintf(`{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["*"]},"Action":["s3:GetObject"],"Resource":["arn:aws:s3:::%s/*"]}]}`, bucket)
+	if err := client.SetBucketPolicy(ctx, bucket, policy); err != nil {
+		logx.Errorf("设置 bucket 公读策略失败 bucket=%s: %v", bucket, err)
 	}
 }

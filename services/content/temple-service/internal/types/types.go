@@ -119,6 +119,10 @@ type TempleImageCreateResp struct {
 	Id int64 `json:"id"`
 }
 
+type TempleImageListResp struct {
+	List []TempleImage `json:"list"`
+}
+
 // TempleImageDeleteReq 删除图片请求
 type TempleImageDeleteReq struct {
 	Id int64 `path:"id"`

@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/file-service/internal/config"
 	"github.com/askxuan/file-service/internal/svc"
 	"github.com/askxuan/file-service/internal/types"
 
@@ -55,12 +57,7 @@ func (l *UploadLogic) UploadFromReader(fileName, contentType string, size int64,
 		return nil, common.ErrSystem
 	}
 
-	// 可访问 URL（bucket 已设公读策略，可直接通过 endpoint 访问）
-	scheme := "http"
-	if l.svcCtx.Config.MinIO.UseSSL {
-		scheme = "https"
-	}
-	url := fmt.Sprintf("%s://%s/%s/%s", scheme, l.svcCtx.Config.MinIO.Endpoint, l.svcCtx.Bucket, objectName)
+	url := buildObjectURL(l.svcCtx.Config.MinIO, l.svcCtx.Bucket, objectName)
 
 	return &types.UploadResp{
 		ObjectName:  objectName,
@@ -68,4 +65,16 @@ func (l *UploadLogic) UploadFromReader(fileName, contentType string, size int64,
 		Size:        size,
 		ContentType: contentType,
 	}, nil
+}
+
+func buildObjectURL(config config.MinIOConf, bucket, objectName string) string {
+	baseURL := strings.TrimRight(config.PublicBaseURL, "/")
+	if baseURL == "" {
+		scheme := "http"
+		if config.UseSSL {
+			scheme = "https"
+		}
+		baseURL = fmt.Sprintf("%s://%s", scheme, config.Endpoint)
+	}
+	return fmt.Sprintf("%s/%s/%s", baseURL, bucket, objectName)
 }

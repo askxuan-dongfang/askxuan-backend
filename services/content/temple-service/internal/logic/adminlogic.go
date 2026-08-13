@@ -94,6 +94,40 @@ func (l *AdminTempleUpdateLogic) AdminTempleUpdate(req *types.TempleUpdateReq) (
 
 // ---------- 图片管理 ----------
 
+type AdminImageListLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewAdminImageListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminImageListLogic {
+	return &AdminImageListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *AdminImageListLogic) AdminImageList() (*types.TempleImageListResp, error) {
+	t, err := getCurrentTemple(l.ctx, l.svcCtx)
+	if err != nil {
+		return nil, err
+	}
+	images, err := l.svcCtx.TempleImageModel.FindByTempleCode(l.ctx, t.Code)
+	if err != nil {
+		l.Errorf("查询寺院图册失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	list := make([]types.TempleImage, 0, len(images))
+	for _, image := range images {
+		list = append(list, types.TempleImage{
+			Id:         image.Id,
+			TempleCode: image.TempleCode,
+			Url:        image.Url,
+			Type:       image.Type,
+			Sort:       image.Sort,
+			CreateTime: image.CreateTime,
+		})
+	}
+	return &types.TempleImageListResp{List: list}, nil
+}
+
 // AdminImageCreateLogic 上传图片
 type AdminImageCreateLogic struct {
 	logx.Logger

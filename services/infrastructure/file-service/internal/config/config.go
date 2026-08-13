@@ -5,6 +5,7 @@ import "github.com/zeromicro/go-zero/rest"
 // MinIOConf MinIO 配置
 type MinIOConf struct {
 	Endpoint      string
+	PublicBaseURL string
 	AccessKey     string
 	SecretKey     string
 	Bucket        string

@@ -17,6 +17,7 @@ Telemetry:
 # MinIO 对象存储
 MinIO:
   Endpoint: localhost:9000
+  PublicBaseURL: http://localhost:9000
   AccessKey: minioadmin
   SecretKey: minioadmin
   Bucket: askxuan

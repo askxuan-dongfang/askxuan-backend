@@ -10,12 +10,12 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ----------------------------
--- 1. 寺院表 temple（数据字典第1节，6 寺院）
+-- 1. 寺院表 temple（数据字典第1节，10 寺院）
 -- ----------------------------
 DROP TABLE IF EXISTS `temple`;
 CREATE TABLE `temple` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-  `code` VARCHAR(16) NOT NULL COMMENT '寺院编码 T001~T006',
+  `code` VARCHAR(16) NOT NULL COMMENT '寺院编码 T001~T010',
   `name` VARCHAR(64) NOT NULL COMMENT '名称',
   `region` VARCHAR(64) NOT NULL COMMENT '地区',
   `type` VARCHAR(32) NOT NULL COMMENT '类型 汉传佛教/藏传佛教/南传佛教/道教道观/民间地方信仰',
@@ -23,7 +23,7 @@ CREATE TABLE `temple` (
   `sect` VARCHAR(32) NOT NULL COMMENT '宗派 禅宗/全真派/格鲁派/正一派',
   `status` VARCHAR(16) NOT NULL DEFAULT '正常' COMMENT '状态 正常/待审核',
   `address` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '地址',
-  `cover_image` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '封面图',
+  `cover_image` VARCHAR(500) NOT NULL DEFAULT '' COMMENT '封面图',
   `rating` DECIMAL(3,2) NOT NULL DEFAULT 0.00 COMMENT '评分',
   `description` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '简介',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -39,7 +39,11 @@ INSERT INTO `temple` (`code`,`name`,`region`,`type`,`belief_code`,`sect`,`status
 ('T003','少林寺','河南嵩山','汉传佛教','han_buddhism','禅宗','正常','河南省郑州市登封市嵩山少林景区','/assets/temple-card-shaolinsi.jpg',4.80,'禅宗祖庭，少林武术发源地，以禅修、武术、超度、开光法事闻名。'),
 ('T004','大昭寺','西藏拉萨','藏传佛教','tibetan_buddhism','格鲁派','正常','拉萨市城关区八廓街','/assets/temple-card-dazhaosi.jpg',4.90,'藏传佛教圣地，拉萨城市中心，以藏密仪轨、灌顶、超度、祈福闻名。'),
 ('T005','普陀山','浙江舟山','汉传佛教','han_buddhism','禅宗','待审核','舟山市普陀区普陀山','/assets/temple-card-famensi.jpg',4.60,'观音菩萨道场，佛教四大名山之一，以净土法门、观音法门、祈福闻名。'),
-('T006','武当山','湖北十堰','道教','daoism','正一派','正常','十堰市丹江口市武当山特区','/assets/temple-card-qingyanggong.jpg',4.70,'道教圣地，真武大帝道场，以内丹、太极、风水、化太岁闻名。');
+('T006','武当山','湖北十堰','道教','daoism','正一派','正常','十堰市丹江口市武当山特区','/assets/temple-card-qingyanggong.jpg',4.70,'道教圣地，真武大帝道场，以内丹、太极、风水、化太岁闻名。'),
+('T007','九华山化城寺','安徽池州','汉传佛教','han_buddhism','地藏法门','正常','安徽省池州市青阳县九华镇化城路41号','https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Huacheng_Temple_05.jpg/1280px-Huacheng_Temple_05.jpg',4.80,'九华山开山主寺之一，围绕地藏文化、礼佛祈愿与传统佛教文化开展服务。'),
+('T008','北京雍和宫','北京东城','藏传佛教','tibetan_buddhism','格鲁派','正常','北京市东城区雍和宫大街12号','https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Yonghe_Temple%2C_Beijing.JPG/1280px-Yonghe_Temple%2C_Beijing.JPG',4.80,'北京重要藏传佛教寺院，具有完整的历史建筑群和格鲁派文化传承。'),
+('T009','青城山天师洞','四川成都','道教','daoism','正一派','正常','四川省成都市都江堰市青城山景区','https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg/1280px-%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg',4.70,'青城山古建筑群的重要组成部分，展示道教历史、科仪与清静修持传统。'),
+('T010','湄洲妈祖祖庙','福建莆田','民间信仰','folk','妈祖信仰','正常','福建省莆田市秀屿区湄洲北大道988号','https://upload.wikimedia.org/wikipedia/commons/c/c0/%E7%A5%88%E5%B9%B4%E6%9C%9F%E9%97%B4%E7%9A%84%E6%B9%84%E6%B4%B2%E5%A6%88%E7%A5%96%E7%A5%96%E5%BA%993.jpg',4.90,'妈祖信俗的重要传承场所，承载海洋文化、民俗祈愿与非遗交流。');
 
 DROP TABLE IF EXISTS `belief_profile`;
 CREATE TABLE `belief_profile` (
@@ -63,12 +67,12 @@ INSERT INTO `belief_profile` (`code`,`name`,`summary`,`description`,`icon`,`sort
 ('folk','民间信仰','乡土传统与民俗传承','民间信仰承载地域性祭祀、祈愿和文化传统，相关内容须遵循平台审核与合规要求。','seal.fill',40);
 
 -- ----------------------------
--- 2. 法师表 master（数据字典第2节，6 法师）
+-- 2. 法师表 master（数据字典第2节，10 条展示资料）
 -- ----------------------------
 DROP TABLE IF EXISTS `master`;
 CREATE TABLE `master` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
-  `code` VARCHAR(16) NOT NULL COMMENT '法师编码 M001~M006',
+  `code` VARCHAR(16) NOT NULL COMMENT '法师编码 M001~M010',
   `dharma_name` VARCHAR(64) NOT NULL COMMENT '法号',
   `lay_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '俗名',
   `temple_code` VARCHAR(16) NOT NULL COMMENT '所属寺院编码',
@@ -98,7 +102,11 @@ INSERT INTO `master` (`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`
 ('M003','释延心法师','王建军','T003','首座','han_buddhism','禅宗','佛教','已认证','on_shelf','normal','武术,禅修,超度,开光','/assets/master-avatar-zhihai.jpg',4.80),
 ('M004','扎西多吉活佛','—','T004','活佛','tibetan_buddhism','藏密佛教','佛教','已认证','on_shelf','normal','藏密仪轨,灌顶,超度,祈福','/assets/master-avatar-zhaxiduoji.jpg',5.00),
 ('M005','慧明法师','周明华','T005','副住持','han_buddhism','净土宗','佛教','待审核','off_shelf','normal','净土,观音法门,祈福','/assets/master-avatar-shimingyuan.jpg',4.50),
-('M006','真武道长','张志远','T006','知客','daoism','正一派','道教','已认证','on_shelf','normal','内丹,太极,风水,化太岁','/assets/master-avatar-zhangzhishun.jpg',4.70);
+('M006','真武道长','张志远','T006','知客','daoism','正一派','道教','已认证','on_shelf','normal','内丹,太极,风水,化太岁','/assets/master-avatar-zhangzhishun.jpg',4.70),
+('M007','地藏法门演示法师','','T007','客堂法师','han_buddhism','地藏法门','佛教','已认证','on_shelf','normal','地藏文化,祈福,供灯','',4.70),
+('M008','格鲁派演示法师','','T008','文化讲师','tibetan_buddhism','格鲁派','佛教','已认证','on_shelf','normal','藏传文化,祈福,供灯','',4.70),
+('M009','青城演示道长','','T009','文化讲师','daoism','正一派','道教','已认证','on_shelf','normal','道教文化,祈福,养生','',4.60),
+('M010','妈祖文化演示讲师','','T010','文化讲师','folk','妈祖信仰','民间信仰','已认证','on_shelf','normal','妈祖文化,民俗祈愿,海洋文化','',4.80);
 
 -- ----------------------------
 -- 3. 服务类型表 service_type（数据字典第3节，用户端服务）
@@ -469,7 +477,7 @@ INSERT IGNORE INTO `belief_profile` SELECT * FROM `askxuan`.`belief_profile`;
 CREATE TABLE IF NOT EXISTS `temple_image` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `temple_code` VARCHAR(16) NOT NULL COMMENT '寺院编码',
-  `url` VARCHAR(255) NOT NULL COMMENT '图片URL',
+  `url` VARCHAR(500) NOT NULL COMMENT '图片URL',
   `type` VARCHAR(32) NOT NULL DEFAULT 'detail' COMMENT 'cover/detail/hero',
   `sort` INT NOT NULL DEFAULT 0 COMMENT '排序',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -480,7 +488,11 @@ CREATE TABLE IF NOT EXISTS `temple_image` (
 INSERT INTO `temple_image` (`temple_code`,`url`,`type`,`sort`,`create_time`) VALUES
 ('T001','/assets/temple-card-lingyinsi.jpg','cover',0,'2026-06-01 10:00:00'),
 ('T001','/assets/temple-detail-lingyinsi-1.jpg','detail',1,'2026-06-01 10:00:00'),
-('T002','/assets/temple-card-baimasi.jpg','cover',0,'2026-06-01 10:00:00');
+('T002','/assets/temple-card-baimasi.jpg','cover',0,'2026-06-01 10:00:00'),
+('T007','https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Huacheng_Temple_05.jpg/1280px-Huacheng_Temple_05.jpg','cover',0,'2026-08-13 10:00:00'),
+('T008','https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Yonghe_Temple%2C_Beijing.JPG/1280px-Yonghe_Temple%2C_Beijing.JPG','cover',0,'2026-08-13 10:00:00'),
+('T009','https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg/1280px-%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg','cover',0,'2026-08-13 10:00:00'),
+('T010','https://upload.wikimedia.org/wikipedia/commons/c/c0/%E7%A5%88%E5%B9%B4%E6%9C%9F%E9%97%B4%E7%9A%84%E6%B9%84%E6%B4%B2%E5%A6%88%E7%A5%96%E7%A5%96%E5%BA%993.jpg','cover',0,'2026-08-13 10:00:00');
 
 CREATE TABLE IF NOT EXISTS `temple_admin` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -592,7 +604,19 @@ INSERT INTO `temple_service` (`temple_code`,`service_code`,`service_name`,`price
 ('T006','S003','上香',66.00,'["08:00-11:00","14:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
 ('T006','S007','化太岁',388.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
 ('T006','S010','求事业',280.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
-('T006','S011','求风水',688.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00');
+('T006','S011','求风水',688.00,'["09:00-12:00","13:00-17:00"]','on_shelf','2026-06-01 10:00:00'),
+('T007','S001','平安祈福（演示）',168.00,'["09:00-10:00","14:00-15:00"]','on_shelf','2026-08-13 10:00:00'),
+('T007','S002','地藏供灯（演示）',88.00,'["10:00-11:00","15:00-16:00"]','on_shelf','2026-08-13 10:00:00'),
+('T007','S005','追思回向（演示）',498.00,'["14:00-15:30"]','on_shelf','2026-08-13 10:00:00'),
+('T008','S001','吉祥祈愿（演示）',268.00,'["10:00-11:00","15:00-16:00"]','on_shelf','2026-08-13 10:00:00'),
+('T008','S002','长明灯供养（演示）',168.00,'["09:00-10:00","14:00-15:00"]','on_shelf','2026-08-13 10:00:00'),
+('T008','S012','健康祈愿（演示）',368.00,'["10:00-11:00"]','on_shelf','2026-08-13 10:00:00'),
+('T009','S001','平安祈福（演示）',188.00,'["09:00-10:00","14:00-15:00"]','on_shelf','2026-08-13 10:00:00'),
+('T009','S007','顺星化太岁（演示）',388.00,'["10:00-11:30"]','on_shelf','2026-08-13 10:00:00'),
+('T009','S011','居家环境咨询（演示）',688.00,'["14:00-15:00","15:30-16:30"]','on_shelf','2026-08-13 10:00:00'),
+('T010','S001','妈祖平安祈愿（演示）',128.00,'["09:00-10:00","14:00-15:00"]','on_shelf','2026-08-13 10:00:00'),
+('T010','S003','敬香礼仪服务（演示）',68.00,'["08:30-09:30","15:00-16:00"]','on_shelf','2026-08-13 10:00:00'),
+('T010','S004','民俗还愿礼仪（演示）',268.00,'["10:00-11:00"]','on_shelf','2026-08-13 10:00:00');
 
 INSERT IGNORE INTO `temple_service_slot`
 	(`temple_service_id`,`slot_code`,`label`,`start_time`,`end_time`,`capacity`,`status`,`sort`)
