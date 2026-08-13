@@ -69,6 +69,15 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		l.Errorf("查询角色失败 roleId=%d: %v", acc.RoleId, err)
 		return nil, common.ErrSystem
 	}
+	if role.Code == model.RoleCodeTempleAdmin {
+		status, statusErr := templeStatus(l.ctx, l.svcCtx, acc.TempleId)
+		if statusErr != nil {
+			return nil, statusErr
+		}
+		if !canEnableTempleAccount(status) {
+			return nil, common.ErrUserDisabled
+		}
+	}
 
 	// 根据 role.Code 映射 clientId
 	clientID := roleCodeToClientID(role.Code)
