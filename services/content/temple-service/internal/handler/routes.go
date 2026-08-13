@@ -21,6 +21,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/beliefs", Handler: beliefListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/beliefs/:code", Handler: beliefDetailHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/service-types", Handler: serviceTypeListHandler(svcCtx)},
 		{
 			Method:  http.MethodGet,
 			Path:    "/api/v1/temples",
@@ -163,6 +164,17 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		},
 	}
 	server.AddRoutes(rest.WithMiddleware(adminContextMiddleware, platformRoutes...))
+}
+
+func serviceTypeListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := logic.ListServiceTypes(r.Context(), svcCtx)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
 }
 
 func beliefListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

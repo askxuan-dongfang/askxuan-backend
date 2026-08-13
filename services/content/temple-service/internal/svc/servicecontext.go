@@ -78,6 +78,7 @@ type ServiceContext struct {
 	TempleImageModel   model.TempleImageModel
 	TempleAdminModel   model.TempleAdminModel
 	TempleAuditModel   model.TempleAuditModel
+	ServiceTypeModel   model.ServiceTypeModel
 	TempleServiceModel model.TempleServiceModel
 	BlessingTaskModel  model.BlessingTaskModel
 }
@@ -109,6 +110,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		TempleImageModel:   model.NewTempleImageModel(db),
 		TempleAdminModel:   model.NewTempleAdminModel(db),
 		TempleAuditModel:   model.NewTempleAuditModel(db),
+		ServiceTypeModel:   model.NewServiceTypeModel(db),
 		TempleServiceModel: model.NewTempleServiceModel(db),
 		BlessingTaskModel:  model.NewBlessingTaskModel(diyClient),
 	}

@@ -118,11 +118,20 @@ type (
 
 // ============ 寺院服务 ============
 type (
+    ServiceType {
+        Code string `json:"code"`
+        Name string `json:"name"`
+        Category string `json:"category"`
+        PriceRange string `json:"priceRange"`
+    }
+
+    ServiceTypeListResp { List []ServiceType `json:"list"` }
+
     TempleService {
         Id          int64    `json:"id"`
         TempleCode  string   `json:"templeCode"`
         ServiceCode string   `json:"serviceCode"`
-        ServiceName string   `json:"serviceName"`
+        ServiceName string   `json:"serviceName,optional"`
         Price       float64  `json:"price"`
         TimeSlots   []string `json:"timeSlots"`
         Slots       []TempleServiceSlot `json:"slots"`
@@ -151,7 +160,7 @@ type (
 
     TempleServiceCreateReq {
         ServiceCode string   `json:"serviceCode"`
-        ServiceName string   `json:"serviceName"`
+        ServiceName string   `json:"serviceName,optional"` // 旧客户端兼容，服务端忽略
         Price       float64  `json:"price"`
         TimeSlots   []string `json:"timeSlots"`
         Slots       []TempleServiceSlot `json:"slots,optional"`
@@ -164,7 +173,7 @@ type (
 
     TempleServiceUpdateReq {
         Id          int64    `path:"id"`
-        ServiceName string   `json:"serviceName,optional"`
+        ServiceName string   `json:"serviceName,optional"` // 旧客户端兼容，服务端忽略
         Price       float64  `json:"price,optional"`
         TimeSlots   []string `json:"timeSlots,optional"`
         Slots       []TempleServiceSlot `json:"slots,optional"`
@@ -347,6 +356,12 @@ service temple-service {
 
     @handler serviceList
     get /:id/services (TempleServiceListReq) returns (TempleServiceListResp)
+}
+
+@server (group: serviceType)
+service temple-service {
+    @handler serviceTypeList
+    get /api/v1/service-types returns (ServiceTypeListResp)
 }
 
 // ============ 寺院管理台分组 ============

@@ -130,7 +130,18 @@ type TempleImageDeleteReq struct {
 
 // ============ 寺院服务 ============
 
-// TempleService 寺院自定义服务
+type ServiceType struct {
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+	Category   string `json:"category"`
+	PriceRange string `json:"priceRange"`
+}
+
+type ServiceTypeListResp struct {
+	List []ServiceType `json:"list"`
+}
+
+// TempleService 寺院从平台标准目录中开通的服务
 type TempleService struct {
 	Id          int64               `json:"id"`
 	TempleCode  string              `json:"templeCode"`
@@ -167,7 +178,7 @@ type TempleServiceListResp struct {
 // TempleServiceCreateReq 创建服务请求
 type TempleServiceCreateReq struct {
 	ServiceCode string              `json:"serviceCode"`
-	ServiceName string              `json:"serviceName"`
+	ServiceName string              `json:"serviceName,optional"` // 兼容旧客户端，服务端忽略
 	Price       float64             `json:"price"`
 	TimeSlots   []string            `json:"timeSlots"`
 	Slots       []TempleServiceSlot `json:"slots,optional"`
@@ -182,7 +193,7 @@ type TempleServiceCreateResp struct {
 // TempleServiceUpdateReq 更新服务请求
 type TempleServiceUpdateReq struct {
 	Id          int64               `path:"id"`
-	ServiceName string              `json:"serviceName,optional"`
+	ServiceName string              `json:"serviceName,optional"` // 兼容旧客户端，服务端忽略
 	Price       float64             `json:"price,optional"`
 	TimeSlots   []string            `json:"timeSlots,optional"`
 	Slots       []TempleServiceSlot `json:"slots,optional"`

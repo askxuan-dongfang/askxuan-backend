@@ -10,7 +10,7 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-// ============ 寺院自定义服务 MySQL 存储 ============
+// ============ 寺院标准服务开通配置 MySQL 存储 ============
 
 // 服务上下架状态常量
 const (
@@ -21,7 +21,7 @@ const (
 // templeServiceTable 寺院服务表
 const templeServiceTable = "temple_service"
 
-// TempleServiceRecord 寺院自定义服务（避免与 types.TempleService 混淆，model 层加 Record 后缀）
+// TempleServiceRecord 寺院开通的标准服务（避免与 types.TempleService 混淆，model 层加 Record 后缀）
 type TempleServiceRecord struct {
 	Id          int64               `db:"id" json:"id"`
 	TempleCode  string              `db:"temple_code" json:"templeCode"`

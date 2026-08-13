@@ -267,16 +267,25 @@ func (l *AdminServiceCreateLogic) AdminServiceCreate(req *types.TempleServiceCre
 	if err != nil {
 		return nil, err
 	}
-	if req.ServiceCode == "" || req.ServiceName == "" {
+	if req.ServiceCode == "" || req.Price < 0 {
 		return nil, common.ErrParam
+	}
+	serviceType, err := findServiceType(l.ctx, l.svcCtx, req.ServiceCode)
+	if err != nil {
+		return nil, err
+	}
+	if _, findErr := l.svcCtx.TempleServiceModel.FindByCodes(l.ctx, t.Code, serviceType.Code); findErr == nil {
+		return nil, common.NewBizError(40910, "本寺院已开通该服务")
+	} else if !errors.Is(findErr, sqlx.ErrNotFound) {
+		return nil, common.ErrSystem
 	}
 	if !model.ValidIntentTags(req.IntentTags) {
 		return nil, common.ErrParamInvalid
 	}
 	id, err := l.svcCtx.TempleServiceModel.Insert(l.ctx, &model.TempleServiceRecord{
 		TempleCode:  t.Code,
-		ServiceCode: req.ServiceCode,
-		ServiceName: req.ServiceName,
+		ServiceCode: serviceType.Code,
+		ServiceName: serviceType.Name,
 		Price:       req.Price,
 		TimeSlots:   req.TimeSlots,
 	})
@@ -325,10 +334,12 @@ func (l *AdminServiceUpdateLogic) AdminServiceUpdate(req *types.TempleServiceUpd
 	if record.TempleCode != t.Code {
 		return nil, common.ErrTempleIsolation
 	}
-	// 仅更新非空字段
-	if req.ServiceName != "" {
-		record.ServiceName = req.ServiceName
+	// 名称始终回归平台标准字典，旧客户端提交的 serviceName 不生效。
+	serviceType, err := findServiceType(l.ctx, l.svcCtx, record.ServiceCode)
+	if err != nil {
+		return nil, err
 	}
+	record.ServiceName = serviceType.Name
 	if req.Price > 0 {
 		record.Price = req.Price
 	}
