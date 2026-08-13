@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.1
-// source: master_booking.proto
+// source: api/master_booking.proto
 
 package master
 
@@ -31,7 +31,7 @@ type GetBookingMasterReq struct {
 
 func (x *GetBookingMasterReq) Reset() {
 	*x = GetBookingMasterReq{}
-	mi := &file_master_booking_proto_msgTypes[0]
+	mi := &file_api_master_booking_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -43,7 +43,7 @@ func (x *GetBookingMasterReq) String() string {
 func (*GetBookingMasterReq) ProtoMessage() {}
 
 func (x *GetBookingMasterReq) ProtoReflect() protoreflect.Message {
-	mi := &file_master_booking_proto_msgTypes[0]
+	mi := &file_api_master_booking_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -56,7 +56,7 @@ func (x *GetBookingMasterReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBookingMasterReq.ProtoReflect.Descriptor instead.
 func (*GetBookingMasterReq) Descriptor() ([]byte, []int) {
-	return file_master_booking_proto_rawDescGZIP(), []int{0}
+	return file_api_master_booking_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *GetBookingMasterReq) GetMasterCode() string {
@@ -74,20 +74,25 @@ func (x *GetBookingMasterReq) GetMasterId() int64 {
 }
 
 type BookingMaster struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Code           string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	DharmaName     string                 `protobuf:"bytes,3,opt,name=dharma_name,json=dharmaName,proto3" json:"dharma_name,omitempty"`
-	TempleCode     string                 `protobuf:"bytes,4,opt,name=temple_code,json=templeCode,proto3" json:"temple_code,omitempty"`
-	ShelfStatus    string                 `protobuf:"bytes,5,opt,name=shelf_status,json=shelfStatus,proto3" json:"shelf_status,omitempty"`
-	PlatformStatus string                 `protobuf:"bytes,6,opt,name=platform_status,json=platformStatus,proto3" json:"platform_status,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	Id                     int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Code                   string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	DharmaName             string                 `protobuf:"bytes,3,opt,name=dharma_name,json=dharmaName,proto3" json:"dharma_name,omitempty"`
+	TempleCode             string                 `protobuf:"bytes,4,opt,name=temple_code,json=templeCode,proto3" json:"temple_code,omitempty"`
+	ShelfStatus            string                 `protobuf:"bytes,5,opt,name=shelf_status,json=shelfStatus,proto3" json:"shelf_status,omitempty"`
+	PlatformStatus         string                 `protobuf:"bytes,6,opt,name=platform_status,json=platformStatus,proto3" json:"platform_status,omitempty"`
+	TempleName             string                 `protobuf:"bytes,7,opt,name=temple_name,json=templeName,proto3" json:"temple_name,omitempty"`
+	ConsultEnabled         bool                   `protobuf:"varint,8,opt,name=consult_enabled,json=consultEnabled,proto3" json:"consult_enabled,omitempty"`
+	ConsultFee             float64                `protobuf:"fixed64,9,opt,name=consult_fee,json=consultFee,proto3" json:"consult_fee,omitempty"`
+	ConsultValidHours      int32                  `protobuf:"varint,10,opt,name=consult_valid_hours,json=consultValidHours,proto3" json:"consult_valid_hours,omitempty"`
+	ConsultResponseMinutes int32                  `protobuf:"varint,11,opt,name=consult_response_minutes,json=consultResponseMinutes,proto3" json:"consult_response_minutes,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *BookingMaster) Reset() {
 	*x = BookingMaster{}
-	mi := &file_master_booking_proto_msgTypes[1]
+	mi := &file_api_master_booking_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -99,7 +104,7 @@ func (x *BookingMaster) String() string {
 func (*BookingMaster) ProtoMessage() {}
 
 func (x *BookingMaster) ProtoReflect() protoreflect.Message {
-	mi := &file_master_booking_proto_msgTypes[1]
+	mi := &file_api_master_booking_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -112,7 +117,7 @@ func (x *BookingMaster) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BookingMaster.ProtoReflect.Descriptor instead.
 func (*BookingMaster) Descriptor() ([]byte, []int) {
-	return file_master_booking_proto_rawDescGZIP(), []int{1}
+	return file_api_master_booking_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *BookingMaster) GetId() int64 {
@@ -157,15 +162,50 @@ func (x *BookingMaster) GetPlatformStatus() string {
 	return ""
 }
 
-var File_master_booking_proto protoreflect.FileDescriptor
+func (x *BookingMaster) GetTempleName() string {
+	if x != nil {
+		return x.TempleName
+	}
+	return ""
+}
 
-const file_master_booking_proto_rawDesc = "" +
+func (x *BookingMaster) GetConsultEnabled() bool {
+	if x != nil {
+		return x.ConsultEnabled
+	}
+	return false
+}
+
+func (x *BookingMaster) GetConsultFee() float64 {
+	if x != nil {
+		return x.ConsultFee
+	}
+	return 0
+}
+
+func (x *BookingMaster) GetConsultValidHours() int32 {
+	if x != nil {
+		return x.ConsultValidHours
+	}
+	return 0
+}
+
+func (x *BookingMaster) GetConsultResponseMinutes() int32 {
+	if x != nil {
+		return x.ConsultResponseMinutes
+	}
+	return 0
+}
+
+var File_api_master_booking_proto protoreflect.FileDescriptor
+
+const file_api_master_booking_proto_rawDesc = "" +
 	"\n" +
-	"\x14master_booking.proto\x12\x06master\"S\n" +
+	"\x18api/master_booking.proto\x12\x06master\"S\n" +
 	"\x13GetBookingMasterReq\x12\x1f\n" +
 	"\vmaster_code\x18\x01 \x01(\tR\n" +
 	"masterCode\x12\x1b\n" +
-	"\tmaster_id\x18\x02 \x01(\x03R\bmasterId\"\xc1\x01\n" +
+	"\tmaster_id\x18\x02 \x01(\x03R\bmasterId\"\x96\x03\n" +
 	"\rBookingMaster\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x1f\n" +
@@ -174,28 +214,36 @@ const file_master_booking_proto_rawDesc = "" +
 	"\vtemple_code\x18\x04 \x01(\tR\n" +
 	"templeCode\x12!\n" +
 	"\fshelf_status\x18\x05 \x01(\tR\vshelfStatus\x12'\n" +
-	"\x0fplatform_status\x18\x06 \x01(\tR\x0eplatformStatus2^\n" +
+	"\x0fplatform_status\x18\x06 \x01(\tR\x0eplatformStatus\x12\x1f\n" +
+	"\vtemple_name\x18\a \x01(\tR\n" +
+	"templeName\x12'\n" +
+	"\x0fconsult_enabled\x18\b \x01(\bR\x0econsultEnabled\x12\x1f\n" +
+	"\vconsult_fee\x18\t \x01(\x01R\n" +
+	"consultFee\x12.\n" +
+	"\x13consult_valid_hours\x18\n" +
+	" \x01(\x05R\x11consultValidHours\x128\n" +
+	"\x18consult_response_minutes\x18\v \x01(\x05R\x16consultResponseMinutes2^\n" +
 	"\x14MasterBookingService\x12F\n" +
 	"\x10GetBookingMaster\x12\x1b.master.GetBookingMasterReq\x1a\x15.master.BookingMasterB\x11Z\x0f./master;masterb\x06proto3"
 
 var (
-	file_master_booking_proto_rawDescOnce sync.Once
-	file_master_booking_proto_rawDescData []byte
+	file_api_master_booking_proto_rawDescOnce sync.Once
+	file_api_master_booking_proto_rawDescData []byte
 )
 
-func file_master_booking_proto_rawDescGZIP() []byte {
-	file_master_booking_proto_rawDescOnce.Do(func() {
-		file_master_booking_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_master_booking_proto_rawDesc), len(file_master_booking_proto_rawDesc)))
+func file_api_master_booking_proto_rawDescGZIP() []byte {
+	file_api_master_booking_proto_rawDescOnce.Do(func() {
+		file_api_master_booking_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_master_booking_proto_rawDesc), len(file_api_master_booking_proto_rawDesc)))
 	})
-	return file_master_booking_proto_rawDescData
+	return file_api_master_booking_proto_rawDescData
 }
 
-var file_master_booking_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_master_booking_proto_goTypes = []any{
+var file_api_master_booking_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_api_master_booking_proto_goTypes = []any{
 	(*GetBookingMasterReq)(nil), // 0: master.GetBookingMasterReq
 	(*BookingMaster)(nil),       // 1: master.BookingMaster
 }
-var file_master_booking_proto_depIdxs = []int32{
+var file_api_master_booking_proto_depIdxs = []int32{
 	0, // 0: master.MasterBookingService.GetBookingMaster:input_type -> master.GetBookingMasterReq
 	1, // 1: master.MasterBookingService.GetBookingMaster:output_type -> master.BookingMaster
 	1, // [1:2] is the sub-list for method output_type
@@ -205,26 +253,26 @@ var file_master_booking_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_master_booking_proto_init() }
-func file_master_booking_proto_init() {
-	if File_master_booking_proto != nil {
+func init() { file_api_master_booking_proto_init() }
+func file_api_master_booking_proto_init() {
+	if File_api_master_booking_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_master_booking_proto_rawDesc), len(file_master_booking_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_master_booking_proto_rawDesc), len(file_api_master_booking_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_master_booking_proto_goTypes,
-		DependencyIndexes: file_master_booking_proto_depIdxs,
-		MessageInfos:      file_master_booking_proto_msgTypes,
+		GoTypes:           file_api_master_booking_proto_goTypes,
+		DependencyIndexes: file_api_master_booking_proto_depIdxs,
+		MessageInfos:      file_api_master_booking_proto_msgTypes,
 	}.Build()
-	File_master_booking_proto = out.File
-	file_master_booking_proto_goTypes = nil
-	file_master_booking_proto_depIdxs = nil
+	File_api_master_booking_proto = out.File
+	file_api_master_booking_proto_goTypes = nil
+	file_api_master_booking_proto_depIdxs = nil
 }

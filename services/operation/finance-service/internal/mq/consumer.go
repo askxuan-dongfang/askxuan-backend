@@ -15,17 +15,31 @@ import (
 
 // 上游服务约定的交换机
 const (
-	ExchangeBookingEvents = "booking.events"
-	ExchangeOrderEvents   = "order.events"
-	ExchangePaymentEvents = "payment.events"
+	ExchangeBookingEvents      = "booking.events"
+	ExchangeOrderEvents        = "order.events"
+	ExchangePaymentEvents      = "payment.events"
+	ExchangeConsultationEvents = "consultation.events"
 )
 
 // 消费队列约定
 const (
-	QueueFinanceBookingStatus = "finance.booking.status"
-	QueueFinanceOrderStatus   = "finance.order.status"
-	QueueFinancePaymentNotify = "finance.payment.notify"
+	QueueFinanceBookingStatus      = "finance.booking.status"
+	QueueFinanceOrderStatus        = "finance.order.status"
+	QueueFinancePaymentNotify      = "finance.payment.notify"
+	QueueFinanceConsultationStatus = "finance.consultation.status"
 )
+
+type ConsultationNotify struct {
+	ConsultationId string  `json:"consultationId"`
+	UserId         string  `json:"userId"`
+	MasterId       string  `json:"masterId"`
+	MasterName     string  `json:"masterName"`
+	TempleId       string  `json:"templeId"`
+	TempleName     string  `json:"templeName"`
+	ConsultFee     float64 `json:"consultFee"`
+	Action         string  `json:"action"`
+	Time           string  `json:"time"`
+}
 
 // BookingNotify 预约状态通知（与 booking-service 的 mq.BookingNotify 对齐）
 type BookingNotify struct {

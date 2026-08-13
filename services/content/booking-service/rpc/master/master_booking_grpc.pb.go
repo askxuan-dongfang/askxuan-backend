@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v7.34.1
-// source: master_booking.proto
+// source: api/master_booking.proto
 
 package master
 
@@ -117,5 +117,5 @@ var MasterBookingService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "master_booking.proto",
+	Metadata: "api/master_booking.proto",
 }

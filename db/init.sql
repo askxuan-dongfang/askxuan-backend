@@ -34,16 +34,16 @@ CREATE TABLE `temple` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院表';
 
 INSERT INTO `temple` (`code`,`name`,`region`,`type`,`belief_code`,`sect`,`status`,`address`,`cover_image`,`rating`,`description`) VALUES
-('T001','灵隐寺','浙江杭州','汉传佛教','han_buddhism','禅宗','正常','杭州市西湖区灵隐路法云弄1号','/assets/temple-card-lingyinsi.jpg',4.90,'杭州最早的名刹，江南禅宗五大名山之一，以禅修、祈福、开光法事闻名。'),
-('T002','白云观','北京','道教','daoism','全真派','正常','北京市西城区白云观街1号','/assets/temple-card-baimasi.jpg',4.70,'道教全真派三大祖庭之一，北京最大道观，以道教科仪、祈福、化太岁闻名。'),
-('T003','少林寺','河南嵩山','汉传佛教','han_buddhism','禅宗','正常','河南省郑州市登封市嵩山少林景区','/assets/temple-card-shaolinsi.jpg',4.80,'禅宗祖庭，少林武术发源地，以禅修、武术、超度、开光法事闻名。'),
-('T004','大昭寺','西藏拉萨','藏传佛教','tibetan_buddhism','格鲁派','正常','拉萨市城关区八廓街','/assets/temple-card-dazhaosi.jpg',4.90,'藏传佛教圣地，拉萨城市中心，以藏密仪轨、灌顶、超度、祈福闻名。'),
-('T005','普陀山','浙江舟山','汉传佛教','han_buddhism','禅宗','待审核','舟山市普陀区普陀山','/assets/temple-card-famensi.jpg',4.60,'观音菩萨道场，佛教四大名山之一，以净土法门、观音法门、祈福闻名。'),
-('T006','武当山','湖北十堰','道教','daoism','正一派','正常','十堰市丹江口市武当山特区','/assets/temple-card-qingyanggong.jpg',4.70,'道教圣地，真武大帝道场，以内丹、太极、风水、化太岁闻名。'),
-('T007','九华山化城寺','安徽池州','汉传佛教','han_buddhism','地藏法门','正常','安徽省池州市青阳县九华镇化城路41号','https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Huacheng_Temple_05.jpg/1280px-Huacheng_Temple_05.jpg',4.80,'九华山开山主寺之一，围绕地藏文化、礼佛祈愿与传统佛教文化开展服务。'),
-('T008','北京雍和宫','北京东城','藏传佛教','tibetan_buddhism','格鲁派','正常','北京市东城区雍和宫大街12号','https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Yonghe_Temple%2C_Beijing.JPG/1280px-Yonghe_Temple%2C_Beijing.JPG',4.80,'北京重要藏传佛教寺院，具有完整的历史建筑群和格鲁派文化传承。'),
-('T009','青城山天师洞','四川成都','道教','daoism','正一派','正常','四川省成都市都江堰市青城山景区','https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg/1280px-%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg',4.70,'青城山古建筑群的重要组成部分，展示道教历史、科仪与清静修持传统。'),
-('T010','湄洲妈祖祖庙','福建莆田','民间信仰','folk','妈祖信仰','正常','福建省莆田市秀屿区湄洲北大道988号','https://upload.wikimedia.org/wikipedia/commons/c/c0/%E7%A5%88%E5%B9%B4%E6%9C%9F%E9%97%B4%E7%9A%84%E6%B9%84%E6%B4%B2%E5%A6%88%E7%A5%96%E7%A5%96%E5%BA%993.jpg',4.90,'妈祖信俗的重要传承场所，承载海洋文化、民俗祈愿与非遗交流。');
+('T001','灵隐寺','浙江杭州','汉传佛教','han_buddhism','禅宗','正常','浙江省杭州市西湖区灵隐路法云弄1号','https://101.96.228.71/objects/askxuan/temp/20260813173807_T001.jpg',4.90,'灵隐寺创建于东晋咸和元年（326年），位于杭州西湖西面的飞来峰与北高峰之间，是杭州历史悠久的佛教寺院。'),
+('T002','北京白云观','北京西城','道教','daoism','全真派','正常','北京市西城区白云观街9号','https://101.96.228.71/objects/askxuan/temp/20260813173756_T002.jpg',4.70,'北京白云观始建于唐代，是全真道重要祖庭和龙门派祖庭，也是北京现存规模较大的道教宫观。'),
+('T003','嵩山少林寺','河南登封','汉传佛教','han_buddhism','禅宗','正常','河南省郑州市登封市嵩山少林景区','https://101.96.228.71/objects/askxuan/temp/20260813174105_T003.jpg',4.80,'嵩山少林寺始建于北魏太和十九年（495年），位于嵩山少室山五乳峰下，是中国佛教禅宗与少林文化的重要场所。'),
+('T004','大昭寺','西藏拉萨','藏传佛教','tibetan_buddhism','各派共尊','正常','西藏自治区拉萨市城关区八廓西街2号','https://101.96.228.71/objects/askxuan/temp/20260813173802_T004.jpg',4.90,'大昭寺位于拉萨老城中心，始建于公元7世纪，是西藏现存重要古建筑和藏传佛教各教派共同尊崇的寺院。'),
+('T005','普济禅寺','浙江舟山','汉传佛教','han_buddhism','禅宗','待审核','浙江省舟山市普陀区普陀山镇香华街','https://101.96.228.71/objects/askxuan/temp/20260813173810_T005.jpg',4.60,'普济禅寺位于普陀山白华顶南麓，是普陀山规模较大的寺院之一，也是普陀山佛教活动的重要场所。'),
+('T006','武当山紫霄宫','湖北十堰','道教','daoism','武当道教','正常','湖北省十堰市丹江口市武当山特区紫霄村','https://101.96.228.71/objects/askxuan/temp/20260813173804_T006.jpg',4.70,'紫霄宫位于武当山展旗峰下，现存主体建筑形成于明代，是武当山古建筑群的重要组成部分。'),
+('T007','九华山化城寺','安徽池州','汉传佛教','han_buddhism','地藏法门','正常','安徽省池州市青阳县九华山风景区九华街','https://101.96.228.71/objects/askxuan/temp/20260813173807_T007.jpg',4.80,'化城寺位于九华山九华街，是九华山历史悠久的开山寺院和当地佛教建筑群的重要组成部分。'),
+('T008','雍和宫','北京东城','藏传佛教','tibetan_buddhism','格鲁派','正常','北京市东城区雍和宫大街12号','https://101.96.228.71/objects/askxuan/temp/20260813173803_T008.jpg',4.80,'雍和宫位于北京东城区，前身为清代皇家府邸，后改为藏传佛教寺院，是北京现存重要的藏传佛教建筑群。'),
+('T009','青城山天师洞','四川都江堰','道教','daoism','正一派','正常','四川省成都市都江堰市青城山景区','https://101.96.228.71/objects/askxuan/temp/20260813174114_T009.jpg',4.70,'天师洞位于青城山前山，是青城山道教宫观与古建筑群的重要组成部分，现存建筑依山布局。'),
+('T010','湄洲妈祖祖庙','福建莆田','民间信仰','folk','妈祖信俗','正常','福建省莆田市秀屿区湄洲北大道988号','https://101.96.228.71/objects/askxuan/temp/20260813173801_T010.jpg',4.90,'湄洲妈祖祖庙始建于北宋雍熙四年（987年），位于湄洲岛，是妈祖信俗的重要发祥地和传承场所。');
 
 DROP TABLE IF EXISTS `belief_profile`;
 CREATE TABLE `belief_profile` (
@@ -86,6 +86,10 @@ CREATE TABLE `master` (
   `specialties` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '专长，逗号分隔',
   `avatar` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '头像',
   `rating` DECIMAL(3,2) NOT NULL DEFAULT 0.00,
+  `consult_enabled` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否开放即时文字咨询',
+  `consult_fee` DECIMAL(10,2) NOT NULL DEFAULT 39.00 COMMENT '单次即时咨询费',
+  `consult_valid_hours` INT NOT NULL DEFAULT 72 COMMENT '支付后可发送消息时长',
+  `consult_response_minutes` INT NOT NULL DEFAULT 30 COMMENT '承诺首响分钟数',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -96,17 +100,17 @@ CREATE TABLE `master` (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='法师表';
 
-INSERT INTO `master` (`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`belief_code`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`) VALUES
-('M001','智海法师','陈建华','T001','住持','han_buddhism','禅宗','佛教','已认证','on_shelf','normal','佛学,禅修,开光,祈福','/assets/master-avatar-zhihai.jpg',4.90),
-('M002','清风道长','李信军','T002','监院','daoism','全真道派','道教','已认证','on_shelf','normal','道学,风水,命理,祈福','/assets/master-avatar-qingfeng.jpg',4.80),
-('M003','释延心法师','王建军','T003','首座','han_buddhism','禅宗','佛教','已认证','on_shelf','normal','武术,禅修,超度,开光','/assets/master-avatar-zhihai.jpg',4.80),
-('M004','扎西多吉活佛','—','T004','活佛','tibetan_buddhism','藏密佛教','佛教','已认证','on_shelf','normal','藏密仪轨,灌顶,超度,祈福','/assets/master-avatar-zhaxiduoji.jpg',5.00),
-('M005','慧明法师','周明华','T005','副住持','han_buddhism','净土宗','佛教','待审核','off_shelf','normal','净土,观音法门,祈福','/assets/master-avatar-shimingyuan.jpg',4.50),
-('M006','真武道长','张志远','T006','知客','daoism','正一派','道教','已认证','on_shelf','normal','内丹,太极,风水,化太岁','/assets/master-avatar-zhangzhishun.jpg',4.70),
-('M007','地藏法门演示法师','','T007','客堂法师','han_buddhism','地藏法门','佛教','已认证','on_shelf','normal','地藏文化,祈福,供灯','',4.70),
-('M008','格鲁派演示法师','','T008','文化讲师','tibetan_buddhism','格鲁派','佛教','已认证','on_shelf','normal','藏传文化,祈福,供灯','',4.70),
-('M009','青城演示道长','','T009','文化讲师','daoism','正一派','道教','已认证','on_shelf','normal','道教文化,祈福,养生','',4.60),
-('M010','妈祖文化演示讲师','','T010','文化讲师','folk','妈祖信仰','民间信仰','已认证','on_shelf','normal','妈祖文化,民俗祈愿,海洋文化','',4.80);
+INSERT INTO `master` (`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`belief_code`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`,`consult_enabled`,`consult_fee`,`consult_valid_hours`,`consult_response_minutes`) VALUES
+('M001','明觉法师（演示）','林知远','T001','客堂法师','han_buddhism','禅宗','佛教','已认证','on_shelf','normal','禅修入门,佛教文化,祈愿礼仪','https://101.96.228.71/objects/askxuan/temp/20260813174243_M001.jpg',4.90,1,39.00,72,30),
+('M002','玄和道长（演示）','赵清远','T002','经师','daoism','全真派','道教','已认证','on_shelf','normal','道教文化,科仪讲解,养生导引','https://101.96.228.71/objects/askxuan/temp/20260813174246_M002.jpg',4.80,1,49.00,72,30),
+('M003','延澄法师（演示）','周安行','T003','禅修讲师','han_buddhism','禅宗','佛教','已认证','on_shelf','normal','禅修指导,少林文化,静心课程','https://101.96.228.71/objects/askxuan/temp/20260813174238_M003.jpg',4.80,1,39.00,72,30),
+('M004','嘉措讲师（演示）','','T004','文化讲师','tibetan_buddhism','各派共尊','佛教','已认证','on_shelf','normal','藏传佛教文化,寺院历史,祈愿礼仪','https://101.96.228.71/objects/askxuan/temp/20260813174249_M004.jpg',4.90,1,59.00,72,45),
+('M005','慧闻法师（演示）','孙明远','T005','客堂法师','han_buddhism','禅宗','佛教','待审核','off_shelf','normal','观音文化,佛教礼仪,静心交流','https://101.96.228.71/objects/askxuan/temp/20260813174250_M005.jpg',4.50,0,39.00,72,30),
+('M006','守一道长（演示）','张云舟','T006','经师','daoism','武当道教','道教','已认证','on_shelf','normal','武当文化,太极养生,道教礼仪','https://101.96.228.71/objects/askxuan/temp/20260813174248_M006.jpg',4.70,1,49.00,72,30),
+('M007','行愿法师（演示）','吴善行','T007','客堂法师','han_buddhism','地藏法门','佛教','已认证','on_shelf','normal','地藏文化,佛教礼仪,静心交流','https://101.96.228.71/objects/askxuan/temp/20260813173804_M007.png',4.70,1,39.00,72,30),
+('M008','嘉木扬讲师（演示）','','T008','文化讲师','tibetan_buddhism','格鲁派','佛教','已认证','on_shelf','normal','藏传佛教文化,建筑讲解,祈愿礼仪','https://101.96.228.71/objects/askxuan/temp/20260813173803_M008.png',4.70,1,59.00,72,45),
+('M009','静虚道长（演示）','陈守静','T009','经师','daoism','正一派','道教','已认证','on_shelf','normal','青城道教文化,养生导引,礼仪讲解','https://101.96.228.71/objects/askxuan/temp/20260813173803_M009.png',4.60,1,49.00,72,30),
+('M010','林怀恩讲师（演示）','林怀恩','T010','文化讲师','folk','妈祖信俗','民间信仰','已认证','on_shelf','normal','妈祖文化,民俗礼仪,海洋文化','https://101.96.228.71/objects/askxuan/temp/20260813173807_M010.jpg',4.80,1,39.00,72,30);
 
 -- ----------------------------
 -- 3. 服务类型表 service_type（数据字典第3节，用户端服务）
@@ -166,10 +170,10 @@ CREATE TABLE `extra_service` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='DIY加持服务表';
 
 INSERT INTO `extra_service` (`code`,`name`,`temple_code`,`master_code`,`price`,`description`) VALUES
-('E001','灵隐寺·开光加持','T001','M001',168.00,'智海法师亲自为手串开光加持，注入禅宗正能量'),
-('E002','白云观·道长祈福','T002','M002',128.00,'清风道长以全真派科仪为手串祈福消灾'),
-('E003','少林寺·武僧加持','T003','M003',198.00,'释延心法师以少林禅功为手串加持护身'),
-('E004','大昭寺·活佛灌顶','T004','M004',268.00,'扎西多吉活佛以藏密仪轨为手串灌顶加持');
+('E001','灵隐寺·祈愿加持','T001','M001',168.00,'明觉法师（演示）提供线上祈愿礼仪服务'),
+('E002','北京白云观·道教文化祈愿','T002','M002',128.00,'玄和道长（演示）提供道教文化与祈愿礼仪服务'),
+('E003','嵩山少林寺·禅修祈愿','T003','M003',198.00,'延澄法师（演示）提供禅修文化与祈愿服务'),
+('E004','大昭寺·文化祈愿','T004','M004',268.00,'嘉措讲师（演示）提供藏传佛教文化与祈愿礼仪讲解');
 
 -- ----------------------------
 -- 5. 材料表 material（数据字典第5节，14 材料）
@@ -232,8 +236,8 @@ CREATE TABLE `user` (
 
 -- mock 用户（密码明文 123456，联调阶段使用；生产环境应存 bcrypt）
 INSERT INTO `user` (`mobile`,`password`,`nickname`,`avatar`,`gender`,`region`,`bio`) VALUES
-('13800138000','123456','善信居士','/assets/master-avatar-zhihai.jpg','male','浙江杭州','心向菩提，常诵心经。'),
-('13800138001','123456','智海法师','/assets/master-avatar-zhihai.jpg','male','浙江杭州','灵隐寺住持。'),
+('13800138000','123456','善信居士','','male','浙江杭州','心向菩提，常诵心经。'),
+('13800138001','123456','明觉法师（演示）','https://101.96.228.71/objects/askxuan/temp/20260813174243_M001.jpg','male','浙江杭州','虚构演示人物，灵隐寺客堂法师。'),
 ('13800138002','123456','平台管理员','/assets/master-avatar-qingfeng.jpg','unknown','北京','');
 
 -- ----------------------------
@@ -361,16 +365,25 @@ CREATE TABLE IF NOT EXISTS `admin_account` (
 INSERT INTO `admin_account` (`id`,`account`,`password`,`name`,`role_id`,`temple_id`,`master_id`,`status`,`create_time`) VALUES
 (1,'admin','123456','平台超管',1,'','','enabled','2026-07-01 00:00:00'),
 (2,'lingyin_admin','123456','灵隐寺管理员',2,'T001','','enabled','2026-07-01 00:00:00'),
-(3,'zhihai','123456','智海法师',3,'T001','M001','enabled','2026-07-01 00:00:00'),
+(3,'zhihai','123456','明觉法师（演示）',3,'T001','M001','enabled','2026-07-01 00:00:00'),
 (4,'baiyun_admin','123456','白云观管理员',2,'T002','','enabled','2026-07-01 00:00:00'),
 (5,'shaolin_admin','123456','少林寺管理员',2,'T003','','enabled','2026-08-13 00:00:00'),
 (6,'dazhao_admin','123456','大昭寺管理员',2,'T004','','enabled','2026-08-13 00:00:00'),
-(7,'putuo_admin','123456','普陀山管理员',2,'T005','','disabled','2026-08-13 00:00:00'),
-(8,'wudang_admin','123456','武当山管理员',2,'T006','','enabled','2026-08-13 00:00:00'),
+(7,'putuo_admin','123456','普济禅寺管理员',2,'T005','','disabled','2026-08-13 00:00:00'),
+(8,'wudang_admin','123456','武当山紫霄宫管理员',2,'T006','','enabled','2026-08-13 00:00:00'),
 (9,'jiuhua_admin','123456','九华山化城寺管理员',2,'T007','','enabled','2026-08-13 00:00:00'),
-(10,'yonghe_admin','123456','北京雍和宫管理员',2,'T008','','enabled','2026-08-13 00:00:00'),
+(10,'yonghe_admin','123456','雍和宫管理员',2,'T008','','enabled','2026-08-13 00:00:00'),
 (11,'qingcheng_admin','123456','青城山天师洞管理员',2,'T009','','enabled','2026-08-13 00:00:00'),
-(12,'mazu_admin','123456','湄洲妈祖祖庙管理员',2,'T010','','enabled','2026-08-13 00:00:00');
+(12,'mazu_admin','123456','湄洲妈祖祖庙管理员',2,'T010','','enabled','2026-08-13 00:00:00'),
+(13,'xuanhe','123456','玄和道长（演示）',3,'T002','M002','enabled','2026-08-13 00:00:00'),
+(14,'yancheng','123456','延澄法师（演示）',3,'T003','M003','enabled','2026-08-13 00:00:00'),
+(15,'jiacuo','123456','嘉措讲师（演示）',3,'T004','M004','enabled','2026-08-13 00:00:00'),
+(16,'huiwen','123456','慧闻法师（演示）',3,'T005','M005','disabled','2026-08-13 00:00:00'),
+(17,'shouyi','123456','守一道长（演示）',3,'T006','M006','enabled','2026-08-13 00:00:00'),
+(18,'xingyuan','123456','行愿法师（演示）',3,'T007','M007','enabled','2026-08-13 00:00:00'),
+(19,'jiamuyang','123456','嘉木扬讲师（演示）',3,'T008','M008','enabled','2026-08-13 00:00:00'),
+(20,'jingxu','123456','静虚道长（演示）',3,'T009','M009','enabled','2026-08-13 00:00:00'),
+(21,'huaien','123456','林怀恩讲师（演示）',3,'T010','M010','enabled','2026-08-13 00:00:00');
 
 CREATE TABLE IF NOT EXISTS `role` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -494,17 +507,39 @@ CREATE TABLE IF NOT EXISTS `temple_image` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院图片';
 
 INSERT INTO `temple_image` (`temple_code`,`url`,`type`,`sort`,`create_time`) VALUES
-('T001','/assets/temple-card-lingyinsi.jpg','cover',0,'2026-06-01 10:00:00'),
-('T001','/assets/temple-detail-lingyinsi-1.jpg','detail',1,'2026-06-01 10:00:00'),
-('T002','/assets/temple-card-baimasi.jpg','cover',0,'2026-06-01 10:00:00'),
-('T003','/assets/temple-card-shaolinsi.jpg','cover',0,'2026-06-01 10:00:00'),
-('T004','/assets/temple-card-dazhaosi.jpg','cover',0,'2026-06-01 10:00:00'),
-('T005','/assets/temple-card-famensi.jpg','cover',0,'2026-06-01 10:00:00'),
-('T006','/assets/temple-card-qingyanggong.jpg','cover',0,'2026-06-01 10:00:00'),
-('T007','https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Huacheng_Temple_05.jpg/1280px-Huacheng_Temple_05.jpg','cover',0,'2026-08-13 10:00:00'),
-('T008','https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Yonghe_Temple%2C_Beijing.JPG/1280px-Yonghe_Temple%2C_Beijing.JPG','cover',0,'2026-08-13 10:00:00'),
-('T009','https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg/1280px-%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg','cover',0,'2026-08-13 10:00:00'),
-('T010','https://upload.wikimedia.org/wikipedia/commons/c/c0/%E7%A5%88%E5%B9%B4%E6%9C%9F%E9%97%B4%E7%9A%84%E6%B9%84%E6%B4%B2%E5%A6%88%E7%A5%96%E7%A5%96%E5%BA%993.jpg','cover',0,'2026-08-13 10:00:00');
+('T001','https://101.96.228.71/objects/askxuan/temp/20260813173807_T001.jpg','cover',0,'2026-08-13 10:00:00'),
+('T002','https://101.96.228.71/objects/askxuan/temp/20260813173756_T002.jpg','cover',0,'2026-08-13 10:00:00'),
+('T003','https://101.96.228.71/objects/askxuan/temp/20260813174105_T003.jpg','cover',0,'2026-08-13 10:00:00'),
+('T004','https://101.96.228.71/objects/askxuan/temp/20260813173802_T004.jpg','cover',0,'2026-08-13 10:00:00'),
+('T005','https://101.96.228.71/objects/askxuan/temp/20260813173810_T005.jpg','cover',0,'2026-08-13 10:00:00'),
+('T006','https://101.96.228.71/objects/askxuan/temp/20260813173804_T006.jpg','cover',0,'2026-08-13 10:00:00'),
+('T007','https://101.96.228.71/objects/askxuan/temp/20260813173807_T007.jpg','cover',0,'2026-08-13 10:00:00'),
+('T008','https://101.96.228.71/objects/askxuan/temp/20260813173803_T008.jpg','cover',0,'2026-08-13 10:00:00'),
+('T009','https://101.96.228.71/objects/askxuan/temp/20260813174114_T009.jpg','cover',0,'2026-08-13 10:00:00'),
+('T010','https://101.96.228.71/objects/askxuan/temp/20260813173801_T010.jpg','cover',0,'2026-08-13 10:00:00');
+
+CREATE TABLE IF NOT EXISTS `temple_cover_source` (
+  `temple_code` VARCHAR(16) NOT NULL,
+  `image_url` VARCHAR(500) NOT NULL,
+  `source_url` VARCHAR(500) NOT NULL,
+  `attribution` VARCHAR(255) NOT NULL DEFAULT '',
+  `license_name` VARCHAR(64) NOT NULL DEFAULT '',
+  `license_url` VARCHAR(500) NOT NULL DEFAULT '',
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`temple_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院封面实景照片来源与许可';
+
+INSERT INTO `temple_cover_source` (`temple_code`,`image_url`,`source_url`,`attribution`,`license_name`,`license_url`) VALUES
+('T001','https://101.96.228.71/objects/askxuan/temp/20260813173807_T001.jpg','https://commons.wikimedia.org/wiki/File:Blubb_(10595970686).jpg','Ludger Heide','CC BY-SA 2.0','https://creativecommons.org/licenses/by-sa/2.0'),
+('T002','https://101.96.228.71/objects/askxuan/temp/20260813173756_T002.jpg','https://commons.wikimedia.org/wiki/File:WhiteCloudpic1.jpg','Gene Zhang','CC BY 2.0','https://creativecommons.org/licenses/by/2.0'),
+('T003','https://101.96.228.71/objects/askxuan/temp/20260813174105_T003.jpg','https://commons.wikimedia.org/wiki/File:20241103_Gate_of_Shaolin_Temple.jpg','Windmemories','CC BY-SA 4.0','https://creativecommons.org/licenses/by-sa/4.0'),
+('T004','https://101.96.228.71/objects/askxuan/temp/20260813173802_T004.jpg','https://commons.wikimedia.org/wiki/File:Jokhang_Temple_Lhasa_Tibet_China_%E8%A5%BF%E8%97%8F_%E6%8B%89%E8%90%A8_%E5%A4%A7%E6%98%AD%E5%AF%BA_-_panoramio_(6).jpg','Hiroki Ogawa','CC BY 3.0','https://creativecommons.org/licenses/by/3.0'),
+('T005','https://101.96.228.71/objects/askxuan/temp/20260813173810_T005.jpg','https://commons.wikimedia.org/wiki/File:Puji_Temple,_Putuo,_2019-05-11_20.jpg','Siyuwj','CC BY-SA 4.0','https://creativecommons.org/licenses/by-sa/4.0'),
+('T006','https://101.96.228.71/objects/askxuan/temp/20260813173804_T006.jpg','https://commons.wikimedia.org/wiki/File:%E7%B4%AB%E9%9C%84%E5%AE%AB.jpg','gongfu_king','CC BY-SA 2.0','https://creativecommons.org/licenses/by-sa/2.0'),
+('T007','https://101.96.228.71/objects/askxuan/temp/20260813173807_T007.jpg','https://commons.wikimedia.org/wiki/File:Huacheng_Temple_04.jpg','WQL','CC0','https://creativecommons.org/publicdomain/zero/1.0/'),
+('T008','https://101.96.228.71/objects/askxuan/temp/20260813173803_T008.jpg','https://commons.wikimedia.org/wiki/File:Yonghe_Temple,_Beijing.JPG','Regina800809','CC BY-SA 3.0','https://creativecommons.org/licenses/by-sa/3.0'),
+('T009','https://101.96.228.71/objects/askxuan/temp/20260813174114_T009.jpg','https://commons.wikimedia.org/wiki/File:%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg','Kcx36','CC BY-SA 4.0','https://creativecommons.org/licenses/by-sa/4.0'),
+('T010','https://101.96.228.71/objects/askxuan/temp/20260813173801_T010.jpg','https://commons.wikimedia.org/wiki/File:%E7%A5%88%E5%B9%B4%E6%9C%9F%E9%97%B4%E7%9A%84%E6%B9%84%E6%B4%B2%E5%A6%88%E7%A5%96%E7%A5%96%E5%BA%993.jpg','向史公哲曰','CC BY-SA 4.0','https://creativecommons.org/licenses/by-sa/4.0');
 
 CREATE TABLE IF NOT EXISTS `temple_admin` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -546,7 +581,7 @@ CREATE TABLE IF NOT EXISTS `temple_audit` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='寺院入驻审核';
 
 INSERT INTO `temple_audit` (`temple_code`,`applicant_name`,`contact_phone`,`cert_urls`,`status`,`create_time`) VALUES
-('T005','普陀山管委会','0580-1234567','["/assets/cert-putuoshan-1.jpg"]','pending','2026-06-28 09:00:00');
+('T005','普济禅寺演示运营方','0580-1234567','["/assets/cert-putuoshan-1.jpg"]','pending','2026-06-28 09:00:00');
 
 CREATE TABLE IF NOT EXISTS `temple_service` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -685,8 +720,8 @@ USE `askxuan_master`;
 
 -- 法师服务使用独立数据库，保留默认库数据作为向后兼容副本。
 CREATE TABLE IF NOT EXISTS `master` LIKE `askxuan`.`master`;
-INSERT IGNORE INTO `master` (`id`,`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`,`create_time`,`update_time`)
-SELECT `id`,`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`,`create_time`,`update_time` FROM `askxuan`.`master`;
+INSERT IGNORE INTO `master` (`id`,`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`belief_code`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`,`consult_enabled`,`consult_fee`,`consult_valid_hours`,`consult_response_minutes`,`create_time`,`update_time`)
+SELECT `id`,`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`belief_code`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`specialties`,`avatar`,`rating`,`consult_enabled`,`consult_fee`,`consult_valid_hours`,`consult_response_minutes`,`create_time`,`update_time` FROM `askxuan`.`master`;
 
 CREATE TABLE IF NOT EXISTS `master_credential` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -769,9 +804,17 @@ CREATE TABLE IF NOT EXISTS `master_profile_ext` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='法师工作台资料扩展';
 
 INSERT INTO `master_profile_ext` (`master_code`,`bio`,`pricing`) VALUES
-('M001','普陀山出家，擅长祈福法事与超度仪轨，弘法二十余载。','预约法事 200-800 元 / DIY加持 300-500 元'),
-('M002','武当山修道，精通道教科仪与养生功法。','道教科仪 500-1200 元 / 养生咨询 200 元')
-ON DUPLICATE KEY UPDATE master_code=VALUES(master_code);
+('M001','虚构演示人物。设定为禅宗文化与基础禅修讲师，负责线上文化讲解和预约沟通。','演示服务价格以寺院服务目录为准'),
+('M002','虚构演示人物。设定为全真道文化经师，侧重经典文化、礼仪和养生导引讲解。','演示服务价格以寺院服务目录为准'),
+('M003','虚构演示人物。设定为少林禅修文化讲师，提供静心课程与少林文化介绍。','演示服务价格以寺院服务目录为准'),
+('M004','虚构演示人物，不使用活佛等真实宗教头衔。设定为藏传佛教文化讲师。','演示服务价格以寺院服务目录为准'),
+('M005','虚构演示人物。设定为普济禅寺客堂法师，当前资料仍处于平台演示审核流程。','审核通过后按寺院服务目录展示'),
+('M006','虚构演示人物。设定为武当文化经师，侧重太极养生与道教礼仪介绍。','演示服务价格以寺院服务目录为准'),
+('M007','虚构演示人物。设定为九华山地藏文化与佛教礼仪讲师。','演示服务价格以寺院服务目录为准'),
+('M008','虚构演示人物。设定为雍和宫建筑与藏传佛教文化讲师。','演示服务价格以寺院服务目录为准'),
+('M009','虚构演示人物。设定为青城山道教文化与养生导引讲师。','演示服务价格以寺院服务目录为准'),
+('M010','虚构演示人物。设定为妈祖信俗与海洋民俗文化讲师。','演示服务价格以寺院服务目录为准')
+ON DUPLICATE KEY UPDATE bio=VALUES(bio),pricing=VALUES(pricing);
 
 INSERT IGNORE INTO `master_earning`
 (`source_type`,`source_id`,`master_code`,`earning_date`,`service_type`,`service_name`,`user_name`,`amount`,`settle_status`) VALUES
@@ -836,6 +879,7 @@ CREATE TABLE IF NOT EXISTS `booking_review` (
 CREATE TABLE IF NOT EXISTS `booking_chat_message` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `booking_id` VARCHAR(32) NOT NULL COMMENT '已支付预约单号',
+  `source_type` VARCHAR(32) NOT NULL DEFAULT 'booking' COMMENT 'booking/consultation',
   `client_message_id` VARCHAR(128) NOT NULL COMMENT '客户端幂等消息ID',
   `openim_server_msg_id` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'OpenIM服务端消息ID',
   `sender_type` VARCHAR(16) NOT NULL COMMENT 'customer/master',
@@ -849,8 +893,35 @@ CREATE TABLE IF NOT EXISTS `booking_chat_message` (
   KEY `idx_booking_chat_history` (`booking_id`,`status`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='付费预约聊天消息';
 
+CREATE TABLE IF NOT EXISTS `consultation_order` (
+  `order_no` VARCHAR(32) NOT NULL,
+  `request_id` VARCHAR(64) NOT NULL,
+  `user_id` VARCHAR(64) NOT NULL,
+  `master_code` VARCHAR(16) NOT NULL,
+  `master_name` VARCHAR(64) NOT NULL,
+  `temple_code` VARCHAR(16) NOT NULL DEFAULT '',
+  `temple_name` VARCHAR(64) NOT NULL DEFAULT '',
+  `consult_fee` DECIMAL(10,2) NOT NULL,
+  `valid_hours` INT NOT NULL,
+  `response_minutes` INT NOT NULL,
+  `question` VARCHAR(500) NOT NULL DEFAULT '',
+  `price_snapshot` JSON DEFAULT NULL,
+  `payment_no` VARCHAR(64) NOT NULL DEFAULT '',
+  `payment_channel` VARCHAR(32) NOT NULL DEFAULT '',
+  `payment_status` VARCHAR(32) NOT NULL DEFAULT 'pending',
+  `status` VARCHAR(32) NOT NULL DEFAULT 'pending_payment' COMMENT 'pending_payment/active/expired/closed/refunded',
+  `valid_from` DATETIME DEFAULT NULL,
+  `expires_at` DATETIME DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`order_no`),
+  UNIQUE KEY `uk_consult_request` (`user_id`,`request_id`),
+  KEY `idx_consult_user` (`user_id`,`status`,`create_time`),
+  KEY `idx_consult_master` (`master_code`,`status`,`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='独立即时文字咨询订单';
+
 INSERT INTO `booking_review` (`booking_id`,`user_id`,`rating`,`content`,`images`,`master_reply`,`create_time`) VALUES
-('B20260615003','1',5,'白云观化太岁法事非常灵验，清风道长态度慈悲。','["/assets/review-baimasi-1.jpg"]','感恩居士加持，福生无量天尊。','2026-06-21 10:00:00');
+('B20260615003','1',5,'北京白云观演示服务流程清晰，玄和道长讲解耐心。','["/assets/review-baimasi-1.jpg"]','感谢您的体验反馈。','2026-06-21 10:00:00');
 
 -- ============================================================
 -- 六、消息域 askxuan_message（message/message_template/push_log）
@@ -1371,7 +1442,7 @@ USE `askxuan_finance`;
 
 CREATE TABLE IF NOT EXISTS `commission_config` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
-  `biz_type` VARCHAR(32) NOT NULL COMMENT '业务类型 booking/diy_blessing/diy_material/shop_order',
+  `biz_type` VARCHAR(32) NOT NULL COMMENT '业务类型 booking/consultation/diy_blessing/diy_material/shop_order',
   `rate` DECIMAL(5,4) NOT NULL DEFAULT 0.0000 COMMENT '抽成比例',
   `description` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '描述',
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1381,6 +1452,7 @@ CREATE TABLE IF NOT EXISTS `commission_config` (
 
 INSERT INTO `commission_config` (`biz_type`,`rate`,`description`,`update_time`) VALUES
 ('booking',0.1500,'预约服务平台抽成15%','2026-07-01 00:00:00'),
+('consultation',0.2000,'即时文字咨询平台抽成20%','2026-08-14 00:00:00'),
 ('diy_blessing',0.1500,'DIY加持费平台抽成15%','2026-07-01 00:00:00'),
 ('diy_material',0.1000,'DIY材料费平台抽成10%','2026-07-01 00:00:00'),
 ('shop_order',0.1000,'商城订单平台抽成10%','2026-07-01 00:00:00');
@@ -1411,7 +1483,7 @@ CREATE TABLE IF NOT EXISTS `settlement` (
 
 INSERT INTO `settlement` (`settlement_no`,`settle_type`,`target_id`,`target_name`,`period_start`,`period_end`,`order_count`,`total_amount`,`commission_rate`,`commission_amount`,`settle_amount`,`status`,`create_time`) VALUES
 ('SET2026060001','temple','T001','灵隐寺','2026-06-01 00:00:00','2026-06-30 23:59:59',15,3500.00,0.1500,525.00,2975.00,'confirmed','2026-07-01 02:00:00'),
-('SET2026060002','master','M001','智海法师','2026-06-01 00:00:00','2026-06-30 23:59:59',12,2800.00,0.1500,420.00,2380.00,'pending','2026-07-01 02:00:00'),
+('SET2026060002','master','M001','明觉法师（演示）','2026-06-01 00:00:00','2026-06-30 23:59:59',12,2800.00,0.1500,420.00,2380.00,'pending','2026-07-01 02:00:00'),
 ('SET2026060003','shop','SHOP001','东方商城','2026-06-01 00:00:00','2026-06-30 23:59:59',86,25600.00,0.1000,2560.00,23040.00,'paid','2026-07-01 02:00:00');
 
 CREATE TABLE IF NOT EXISTS `withdrawal` (
@@ -1501,8 +1573,8 @@ CREATE TABLE IF NOT EXISTS `review` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评价';
 
 INSERT INTO `review` (`review_no`,`user_id`,`target_type`,`target_id`,`master_code`,`rating`,`content`,`images`,`status`,`create_time`) VALUES
-('RV20260620001','1','booking','B20260615003','M002',5,'清风道长非常专业，化太岁仪式庄重，感觉很安心。','["https://oss.askxuan.com/rv/1.jpg"]','normal','2026-06-20 18:00:00'),
-('RV20260625002','2','booking','B20260628002','M003',4,'释延心法师超度法事很用心，整体体验不错。','[]','normal','2026-06-25 20:30:00'),
+('RV20260620001','1','booking','B20260615003','M002',5,'玄和道长（演示）的文化讲解清晰，整体体验安心。','["https://oss.askxuan.com/rv/1.jpg"]','normal','2026-06-20 18:00:00'),
+('RV20260625002','2','booking','B20260628002','M003',4,'延澄法师（演示）的禅修讲解细致，整体体验不错。','[]','normal','2026-06-25 20:30:00'),
 ('RV20260628003','1','shop_order','SO20260620001','',5,'小叶紫檀手串品质很好，包装精美，非常满意！','["https://oss.askxuan.com/rv/2.jpg","https://oss.askxuan.com/rv/3.jpg"]','normal','2026-06-28 10:00:00');
 
 CREATE TABLE IF NOT EXISTS `review_reply` (
@@ -1562,8 +1634,8 @@ CREATE TABLE IF NOT EXISTS `audit_queue` (
 
 INSERT INTO `audit_queue` (`biz_type`,`biz_id`,`submitter_id`,`content_snapshot`,`status`,`create_time`) VALUES
 ('design','DD20260628001','1','{"name":"紫檀开光手串","materials":["小叶紫檀","蜜蜡佛头"]}','pending','2026-06-28 14:00:00'),
-('temple','T005','T005','{"name":"普陀山","type":"汉传佛教","status":"待审核"}','pending','2026-06-29 10:00:00'),
-('master','M005','T005','{"name":"慧明法师","credential":"戒牒编号XXX"}','pending','2026-06-29 11:00:00'),
+('temple','T005','T005','{"name":"普济禅寺","type":"汉传佛教","status":"待审核"}','pending','2026-06-29 10:00:00'),
+('master','M005','T005','{"name":"慧闻法师（演示）","credential":"演示资质资料"}','pending','2026-06-29 11:00:00'),
 ('design','DD20260620002','2','{"name":"星月菩提手串","materials":["星月菩提","白水晶隔片"]}','approved','2026-06-20 15:00:00');
 
 CREATE TABLE IF NOT EXISTS `audit_log` (

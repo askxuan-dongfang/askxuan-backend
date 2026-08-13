@@ -14,3 +14,21 @@ func TestCanEnableTempleAccount(t *testing.T) {
 		}
 	}
 }
+
+func TestCanEnableMasterAccount(t *testing.T) {
+	if !canEnableMasterAccount("已认证", "normal", "正常") {
+		t.Fatal("verified normal master at an approved temple should be enabled")
+	}
+	cases := []struct {
+		auth, platform, temple string
+	}{
+		{"待审核", "normal", "正常"},
+		{"已认证", "banned", "正常"},
+		{"已认证", "normal", "待审核"},
+	}
+	for _, tc := range cases {
+		if canEnableMasterAccount(tc.auth, tc.platform, tc.temple) {
+			t.Fatalf("unexpected eligible state: %+v", tc)
+		}
+	}
+}

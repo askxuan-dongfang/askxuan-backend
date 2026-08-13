@@ -15,7 +15,7 @@ type Banner struct {
 	Id        int64  `json:"id"`
 	Title     string `json:"title"`
 	ImageUrl  string `json:"imageUrl"`
-	LinkType  string `json:"linkType"`  // temple/master/product/diy/ad_landing
+	LinkType  string `json:"linkType"` // temple/master/product/diy/ad_landing
 	LinkValue string `json:"linkValue"`
 	Sort      int    `json:"sort"`
 	Status    string `json:"status"` // enabled/disabled
@@ -247,7 +247,7 @@ type CouponRecord struct {
 
 // MyCouponReq 我的优惠券列表请求
 type MyCouponReq struct {
-	UserId string `form:"userId"`
+	UserId string `form:"userId,optional"`
 	Status string `form:"status,optional"` // unused/used/expired
 	Page   int    `form:"page,default=1"`
 	Size   int    `form:"size,default=20"`

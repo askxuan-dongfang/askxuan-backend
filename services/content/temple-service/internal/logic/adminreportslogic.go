@@ -161,15 +161,19 @@ func buildMasterRanking(stats map[string]*masterStat) []types.MasterRankItem {
 	return items
 }
 
-// masterNameByCode 法师编码 → 法师名（mock）
+// masterNameByCode 法师编码 → 演示名称。
 func masterNameByCode(code string) string {
 	names := map[string]string{
-		"M001": "智海法师",
-		"M002": "清风道长",
-		"M003": "释延心法师",
-		"M004": "扎西多吉活佛",
-		"M005": "慧明法师",
-		"M006": "真武道长",
+		"M001": "明觉法师（演示）",
+		"M002": "玄和道长（演示）",
+		"M003": "延澄法师（演示）",
+		"M004": "嘉措讲师（演示）",
+		"M005": "慧闻法师（演示）",
+		"M006": "守一道长（演示）",
+		"M007": "行愿法师（演示）",
+		"M008": "嘉木扬讲师（演示）",
+		"M009": "静虚道长（演示）",
+		"M010": "怀恩讲师（演示）",
 	}
 	if name, ok := names[code]; ok {
 		return name

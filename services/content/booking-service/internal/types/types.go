@@ -94,16 +94,21 @@ type ChatListReq struct {
 }
 
 type ChatConversation struct {
-	BookingId     string `json:"bookingId"`
-	PeerId        string `json:"peerId"`
-	PeerName      string `json:"peerName"`
-	PeerAvatar    string `json:"peerAvatar"`
-	TempleName    string `json:"templeName"`
-	ServiceName   string `json:"serviceName"`
-	BookingDate   string `json:"bookingDate"`
-	LastMessage   string `json:"lastMessage"`
-	LastMessageAt string `json:"lastMessageAt"`
-	CanChat       bool   `json:"canChat"`
+	ConversationId string `json:"conversationId"`
+	SourceType     string `json:"sourceType"`
+	SourceId       string `json:"sourceId"`
+	BookingId      string `json:"bookingId"`
+	PeerId         string `json:"peerId"`
+	PeerOpenIMId   string `json:"peerOpenIMId"`
+	PeerName       string `json:"peerName"`
+	PeerAvatar     string `json:"peerAvatar"`
+	TempleName     string `json:"templeName"`
+	ServiceName    string `json:"serviceName"`
+	BookingDate    string `json:"bookingDate"`
+	ExpiresAt      string `json:"expiresAt"`
+	LastMessage    string `json:"lastMessage"`
+	LastMessageAt  string `json:"lastMessageAt"`
+	CanChat        bool   `json:"canChat"`
 }
 
 type ChatListResp struct {
@@ -121,6 +126,8 @@ type ChatMessageListReq struct {
 
 type ChatMessage struct {
 	Id              int64  `json:"id"`
+	ConversationId  string `json:"conversationId"`
+	SourceType      string `json:"sourceType"`
 	BookingId       string `json:"bookingId"`
 	ClientMessageId string `json:"clientMessageId"`
 	SenderType      string `json:"senderType"`
@@ -129,6 +136,62 @@ type ChatMessage struct {
 	Content         string `json:"content"`
 	Status          string `json:"status"`
 	CreateTime      string `json:"createTime"`
+}
+
+type ConsultationQuoteReq struct {
+	MasterId string `form:"masterId"`
+}
+type ConsultationQuoteResp struct {
+	MasterId        string  `json:"masterId"`
+	MasterName      string  `json:"masterName"`
+	TempleId        string  `json:"templeId"`
+	TempleName      string  `json:"templeName"`
+	Enabled         bool    `json:"enabled"`
+	ConsultFee      float64 `json:"consultFee"`
+	ValidHours      int     `json:"validHours"`
+	ResponseMinutes int     `json:"responseMinutes"`
+}
+type ConsultationCreateReq struct {
+	RequestId string `json:"requestId"`
+	MasterId  string `json:"masterId"`
+	Question  string `json:"question,optional"`
+}
+type Consultation struct {
+	Id              string  `json:"id"`
+	UserId          string  `json:"userId"`
+	MasterId        string  `json:"masterId"`
+	MasterName      string  `json:"masterName"`
+	TempleId        string  `json:"templeId"`
+	TempleName      string  `json:"templeName"`
+	ConsultFee      float64 `json:"consultFee"`
+	ValidHours      int     `json:"validHours"`
+	ResponseMinutes int     `json:"responseMinutes"`
+	Question        string  `json:"question"`
+	PaymentNo       string  `json:"paymentNo"`
+	PaymentStatus   string  `json:"paymentStatus"`
+	Status          string  `json:"status"`
+	ValidFrom       string  `json:"validFrom"`
+	ExpiresAt       string  `json:"expiresAt"`
+	Simulated       bool    `json:"simulated"`
+	ConversationId  string  `json:"conversationId"`
+	CreatedAt       string  `json:"createdAt"`
+}
+type ConsultationListReq struct {
+	Status string `form:"status,optional"`
+	Page   int    `form:"page,default=1"`
+	Size   int    `form:"size,default=20"`
+}
+type ConsultationListResp struct {
+	Total int64          `json:"total"`
+	List  []Consultation `json:"list"`
+	Page  int            `json:"page"`
+	Size  int            `json:"size"`
+}
+type ConsultationDetailReq struct {
+	Id string `path:"id"`
+}
+type ConsultationPayReq struct {
+	Id string `path:"id"`
 }
 
 type ChatMessageListResp struct {

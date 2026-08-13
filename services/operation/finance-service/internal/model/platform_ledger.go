@@ -12,13 +12,14 @@ import (
 )
 
 const (
-	LedgerEventPaymentReceipt    = "payment_receipt"
-	LedgerEventBookingSettlement = "booking_settlement"
-	LedgerAccountPlatformCash    = "platform_cash"
-	LedgerAccountCustomerFunds   = "customer_funds_held"
-	LedgerAccountCommission      = "platform_commission"
-	LedgerAccountMasterPayable   = "master_payable"
-	LedgerAccountTemplePayable   = "temple_payable"
+	LedgerEventPaymentReceipt         = "payment_receipt"
+	LedgerEventBookingSettlement      = "booking_settlement"
+	LedgerEventConsultationSettlement = "consultation_settlement"
+	LedgerAccountPlatformCash         = "platform_cash"
+	LedgerAccountCustomerFunds        = "customer_funds_held"
+	LedgerAccountCommission           = "platform_commission"
+	LedgerAccountMasterPayable        = "master_payable"
+	LedgerAccountTemplePayable        = "temple_payable"
 )
 
 type PaymentReceipt struct {
@@ -55,6 +56,37 @@ type BookingSplit struct {
 	MasterSettlementID int64
 	TempleSettlementID int64
 	Created            bool
+}
+
+type ConsultationSettlement struct {
+	ConsultationID string
+	UserID         string
+	MasterID       string
+	MasterName     string
+	PaidAt         string
+	ConsultFee     float64
+}
+
+type ConsultationSplit struct {
+	Rate               float64
+	Total              float64
+	Commission         float64
+	MasterNet          float64
+	MasterSettlementID int64
+	Created            bool
+}
+
+func CalculateConsultationSplit(total, rate float64) (ConsultationSplit, error) {
+	total, rate = money(total), round4(rate)
+	if total <= 0 || rate < 0 || rate > 1 {
+		return ConsultationSplit{}, fmt.Errorf("咨询金额或平台抽成比例无效")
+	}
+	commission := money(total * rate)
+	masterNet := money(total - commission)
+	if !sameMoney(commission+masterNet, total) {
+		return ConsultationSplit{}, fmt.Errorf("咨询分账结果不平衡")
+	}
+	return ConsultationSplit{Rate: rate, Total: total, Commission: commission, MasterNet: masterNet}, nil
 }
 
 type ledgerTransaction struct {
@@ -169,8 +201,8 @@ func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (Bo
 			return fmt.Errorf("重复预约分账与原总账记录不一致")
 		}
 		if created == 0 {
-			split.MasterSettlementID = findSettlementID(ctx, session, booking.BookingID, SettleTypeMaster, booking.MasterID)
-			split.TempleSettlementID = findSettlementID(ctx, session, booking.BookingID, SettleTypeTemple, booking.TempleID)
+			split.MasterSettlementID = findSettlementID(ctx, session, BizTypeBooking, booking.BookingID, SettleTypeMaster, booking.MasterID)
+			split.TempleSettlementID = findSettlementID(ctx, session, BizTypeBooking, booking.BookingID, SettleTypeTemple, booking.TempleID)
 			return nil
 		}
 
@@ -197,7 +229,7 @@ func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (Bo
 			return err
 		}
 		if split.MasterGross > 0 {
-			split.MasterSettlementID, err = insertSettlement(ctx, session, deterministicNo("SETB-M", booking.BookingID, 32), SettleTypeMaster,
+			split.MasterSettlementID, err = insertSettlement(ctx, session, deterministicNo("SETB-M", booking.BookingID, 32), BizTypeBooking, SettleTypeMaster,
 				booking.MasterID, booking.MasterName, booking.BookingID, periodStart, periodEnd,
 				split.MasterGross, split.Rate, split.MasterCommission, split.MasterNet)
 			if err != nil {
@@ -205,7 +237,7 @@ func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (Bo
 			}
 		}
 		if split.TempleGross > 0 {
-			split.TempleSettlementID, err = insertSettlement(ctx, session, deterministicNo("SETB-T", booking.BookingID, 32), SettleTypeTemple,
+			split.TempleSettlementID, err = insertSettlement(ctx, session, deterministicNo("SETB-T", booking.BookingID, 32), BizTypeBooking, SettleTypeTemple,
 				booking.TempleID, booking.TempleName, booking.BookingID, periodStart, periodEnd,
 				split.TempleGross, split.Rate, split.TempleCommission, split.TempleNet)
 			if err != nil {
@@ -222,26 +254,96 @@ func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (Bo
 	return split, err
 }
 
+func AccrueConsultationSettlement(ctx context.Context, consultation ConsultationSettlement) (ConsultationSplit, error) {
+	if consultation.ConsultationID == "" || consultation.MasterID == "" || consultation.PaidAt == "" {
+		return ConsultationSplit{}, fmt.Errorf("咨询分账字段不完整")
+	}
+	var rate float64
+	if err := db.QueryRowCtx(ctx, &rate, `SELECT rate FROM commission_config WHERE biz_type=?`, BizTypeConsultation); err != nil {
+		return ConsultationSplit{}, fmt.Errorf("读取咨询抽成配置失败: %w", err)
+	}
+	split, err := CalculateConsultationSplit(consultation.ConsultFee, rate)
+	if err != nil {
+		return ConsultationSplit{}, err
+	}
+	err = db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		var receipt ledgerTransaction
+		if err := session.QueryRowCtx(ctx, &receipt, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`, BizTypeConsultation, consultation.ConsultationID, LedgerEventPaymentReceipt); err != nil {
+			return fmt.Errorf("咨询款尚未进入平台总账: %w", err)
+		}
+		if !sameMoney(receipt.TotalAmount, split.Total) {
+			return fmt.Errorf("平台收款与咨询价格快照不一致")
+		}
+		res, err := session.ExecCtx(ctx, `INSERT IGNORE INTO finance_transaction (transaction_no,source_type,source_no,payment_no,event_type,total_amount,status) VALUES(?,?,?,?,?,?,?)`,
+			deterministicNo("CST", consultation.ConsultationID, 64), BizTypeConsultation, consultation.ConsultationID, receipt.PaymentNo, LedgerEventConsultationSettlement, split.Total, "posted")
+		if err != nil {
+			return err
+		}
+		created, _ := res.RowsAffected()
+		var settlementTx ledgerTransaction
+		if err := session.QueryRowCtx(ctx, &settlementTx, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`, BizTypeConsultation, consultation.ConsultationID, LedgerEventConsultationSettlement); err != nil {
+			return err
+		}
+		if created == 0 {
+			split.MasterSettlementID = findSettlementID(ctx, session, BizTypeConsultation, consultation.ConsultationID, SettleTypeMaster, consultation.MasterID)
+			return nil
+		}
+		if err := insertLedgerEntry(ctx, session, settlementTx.ID, LedgerAccountCustomerFunds, "", "debit", split.Total); err != nil {
+			return err
+		}
+		if split.Commission > 0 {
+			if err := insertLedgerEntry(ctx, session, settlementTx.ID, LedgerAccountCommission, "", "credit", split.Commission); err != nil {
+				return err
+			}
+		}
+		if split.MasterNet > 0 {
+			if err := insertLedgerEntry(ctx, session, settlementTx.ID, LedgerAccountMasterPayable, consultation.MasterID, "credit", split.MasterNet); err != nil {
+				return err
+			}
+		}
+		paidDate := consultation.PaidAt
+		if len(paidDate) >= 10 {
+			paidDate = paidDate[:10]
+		}
+		periodStart, periodEnd, err := settlementPeriod(paidDate)
+		if err != nil {
+			return err
+		}
+		split.MasterSettlementID, err = insertSettlement(ctx, session, deterministicNo("SETC-M", consultation.ConsultationID, 32), BizTypeConsultation, SettleTypeMaster,
+			consultation.MasterID, consultation.MasterName, consultation.ConsultationID, periodStart, periodEnd,
+			split.Total, split.Rate, split.Commission, split.MasterNet)
+		if err != nil {
+			return err
+		}
+		_, err = session.ExecCtx(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description) VALUES(0,?,'allocation',?)`, split.Commission, fmt.Sprintf("即时咨询平台分账:%s", consultation.ConsultationID))
+		if err == nil {
+			split.Created = true
+		}
+		return err
+	})
+	return split, err
+}
+
 func insertLedgerEntry(ctx context.Context, session sqlx.Session, transactionID int64, account, target, direction string, amount float64) error {
 	_, err := session.ExecCtx(ctx, `INSERT INTO finance_ledger_entry(transaction_id,account_code,target_id,direction,amount)
 		VALUES(?,?,?,?,?)`, transactionID, account, target, direction, money(amount))
 	return err
 }
 
-func insertSettlement(ctx context.Context, session sqlx.Session, settlementNo, settleType, targetID, targetName, sourceNo, periodStart, periodEnd string, gross, rate, commission, net float64) (int64, error) {
+func insertSettlement(ctx context.Context, session sqlx.Session, settlementNo, sourceType, settleType, targetID, targetName, sourceNo, periodStart, periodEnd string, gross, rate, commission, net float64) (int64, error) {
 	res, err := session.ExecCtx(ctx, `INSERT INTO settlement
 		(settlement_no,settle_type,target_id,target_name,period_start,period_end,order_count,total_amount,commission_rate,commission_amount,settle_amount,status,source_type,source_no)
 		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, settlementNo, settleType, targetID, targetName,
-		periodStart, periodEnd, 1, gross, rate, commission, net, SettlementPending, BizTypeBooking, sourceNo)
+		periodStart, periodEnd, 1, gross, rate, commission, net, SettlementPending, sourceType, sourceNo)
 	if err != nil {
 		return 0, err
 	}
 	return res.LastInsertId()
 }
 
-func findSettlementID(ctx context.Context, session sqlx.Session, sourceNo, settleType, targetID string) int64 {
+func findSettlementID(ctx context.Context, session sqlx.Session, sourceType, sourceNo, settleType, targetID string) int64 {
 	var id int64
-	_ = session.QueryRowCtx(ctx, &id, `SELECT id FROM settlement WHERE source_type=? AND source_no=? AND settle_type=? AND target_id=?`, BizTypeBooking, sourceNo, settleType, targetID)
+	_ = session.QueryRowCtx(ctx, &id, `SELECT id FROM settlement WHERE source_type=? AND source_no=? AND settle_type=? AND target_id=?`, sourceType, sourceNo, settleType, targetID)
 	return id
 }
 

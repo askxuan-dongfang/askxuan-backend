@@ -27,9 +27,10 @@ const (
 
 // 订单类型常量
 const (
-	OrderTypeBooking   = "booking"
-	OrderTypeShopOrder = "shop_order"
-	OrderTypeDiyOrder  = "diy_order"
+	OrderTypeBooking      = "booking"
+	OrderTypeConsultation = "consultation"
+	OrderTypeShopOrder    = "shop_order"
+	OrderTypeDiyOrder     = "diy_order"
 )
 
 // paymentValidTransitions 支付合法状态流转（参照 state-machines.md 8.2）

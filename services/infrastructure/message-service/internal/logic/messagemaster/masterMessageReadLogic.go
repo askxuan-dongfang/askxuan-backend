@@ -5,7 +5,6 @@ package messagemaster
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/middleware"
@@ -36,7 +35,7 @@ func (l *MasterMessageReadLogic) MasterMessageRead(req *types.MasterMessageReadR
 	if masterID == 0 {
 		return nil, common.ErrUnauthorized
 	}
-	userId := strconv.FormatInt(masterID, 10)
+	userId := masterRecipientID(masterID)
 
 	if err := l.svcCtx.MessageModel.MarkReadByUser(l.ctx, req.Id, userId); err != nil {
 		l.Errorf("标记法师消息已读失败: %v", err)

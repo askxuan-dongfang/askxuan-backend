@@ -76,7 +76,7 @@ type (
     }
 
     OrderListReq {
-        UserId string `form:"userId"`
+        UserId string `form:"userId,optional"` // 兼容旧客户端；身份以 JWT 为准
         Status string `form:"status,optional"`
         Page   int    `form:"page,default=1"`
         Size   int    `form:"size,default=20"`

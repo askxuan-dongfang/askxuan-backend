@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/master-service/internal/model"
 	"github.com/askxuan/master-service/internal/svc"
 	"github.com/askxuan/master-service/internal/types"
 
@@ -36,6 +37,16 @@ func (l *DetailLogic) Detail(req *types.DetailReq) (*types.Master, error) {
 		}
 		return nil, err
 	}
+	if !isPublicMaster(m) {
+		return nil, common.ErrMasterNotFound
+	}
 	resp := toTypeMaster(m)
 	return &resp, nil
+}
+
+func isPublicMaster(master *model.Master) bool {
+	return master != nil &&
+		master.AuthStatus == model.MasterAuthStatusVerified &&
+		master.ShelfStatus == model.MasterShelfStatusOnShelf &&
+		master.PlatformStatus == model.MasterPlatformStatusNormal
 }

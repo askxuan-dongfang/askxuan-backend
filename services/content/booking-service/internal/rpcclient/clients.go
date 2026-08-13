@@ -19,7 +19,9 @@ type MasterClient interface {
 }
 type PaymentClient interface {
 	AutoPayBooking(ctx context.Context, orderNo, userId string, amount float64) (*paymentrpc.BookingPayment, error)
+	AutoPayConsultation(ctx context.Context, orderNo, userId string, amount float64) (*paymentrpc.BookingPayment, error)
 	GetOrderPayment(ctx context.Context, orderNo string) (*paymentrpc.BookingPayment, error)
+	GetConsultationPayment(ctx context.Context, orderNo string) (*paymentrpc.BookingPayment, error)
 }
 
 type templeClient struct {
@@ -65,8 +67,18 @@ func (c *paymentClient) AutoPayBooking(ctx context.Context, orderNo, userId stri
 	defer cancel()
 	return c.client.AutoPayBooking(ctx, &paymentrpc.AutoPayBookingReq{OrderNo: orderNo, UserId: userId, Amount: amount, IdempotencyKey: "booking:" + orderNo})
 }
+func (c *paymentClient) AutoPayConsultation(ctx context.Context, orderNo, userId string, amount float64) (*paymentrpc.BookingPayment, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	return c.client.AutoPayOrder(ctx, &paymentrpc.AutoPayOrderReq{OrderType: "consultation", OrderNo: orderNo, UserId: userId, Amount: amount, IdempotencyKey: "consultation:" + orderNo})
+}
 func (c *paymentClient) GetOrderPayment(ctx context.Context, orderNo string) (*paymentrpc.BookingPayment, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	return c.client.GetOrderPayment(ctx, &paymentrpc.GetOrderPaymentReq{OrderType: "booking", OrderNo: orderNo})
+}
+func (c *paymentClient) GetConsultationPayment(ctx context.Context, orderNo string) (*paymentrpc.BookingPayment, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	return c.client.GetOrderPayment(ctx, &paymentrpc.GetOrderPaymentReq{OrderType: "consultation", OrderNo: orderNo})
 }

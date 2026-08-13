@@ -49,13 +49,17 @@ func ConfigureEarnings(conn sqlx.SqlConn) {
 }
 
 func RecordBookingEarning(ctx context.Context, sourceID, masterCode, earningDate, serviceName, userName string, amount float64) error {
+	return RecordEarning(ctx, EarningsServiceBooking, sourceID, masterCode, earningDate, EarningsServiceBooking, serviceName, userName, amount)
+}
+
+func RecordEarning(ctx context.Context, sourceType, sourceID, masterCode, earningDate, serviceType, serviceName, userName string, amount float64) error {
 	_, err := earningsDB.ExecCtx(ctx, `INSERT INTO master_earning
 		(source_type,source_id,master_code,earning_date,service_type,service_name,user_name,amount,settle_status)
 		VALUES (?,?,?,?,?,?,?,?,?)
 		ON DUPLICATE KEY UPDATE
 		master_code=VALUES(master_code),earning_date=VALUES(earning_date),service_name=VALUES(service_name),
 		user_name=VALUES(user_name),amount=IF(settle_status='pending',VALUES(amount),amount)`,
-		EarningsServiceBooking, sourceID, masterCode, earningDate, EarningsServiceBooking,
+		sourceType, sourceID, masterCode, earningDate, serviceType,
 		serviceName, userName, amount, EarningsSettlePending)
 	return err
 }

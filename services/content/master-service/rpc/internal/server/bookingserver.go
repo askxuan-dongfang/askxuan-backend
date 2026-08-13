@@ -33,5 +33,10 @@ func (s *MasterBookingServer) GetBookingMaster(ctx context.Context, req *master.
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	return &master.BookingMaster{Id: m.Id, Code: m.Code, DharmaName: m.DharmaName, TempleCode: m.TempleCode, ShelfStatus: m.ShelfStatus, PlatformStatus: m.PlatformStatus}, nil
+	templeName, _ := s.svcCtx.MasterModel.FindTempleNameByCode(ctx, m.TempleCode)
+	return &master.BookingMaster{Id: m.Id, Code: m.Code, DharmaName: m.DharmaName,
+		TempleCode: m.TempleCode, TempleName: templeName, ShelfStatus: m.ShelfStatus,
+		PlatformStatus: m.PlatformStatus, ConsultEnabled: m.ConsultEnabled,
+		ConsultFee: m.ConsultFee, ConsultValidHours: int32(m.ConsultValidHours),
+		ConsultResponseMinutes: int32(m.ConsultResponseMinutes)}, nil
 }

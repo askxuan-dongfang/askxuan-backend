@@ -6,10 +6,11 @@ import (
 )
 
 const (
-	BizTypeBooking     = "booking"
-	BizTypeDiyBlessing = "diy_blessing"
-	BizTypeDiyMaterial = "diy_material"
-	BizTypeShopOrder   = "shop_order"
+	BizTypeBooking      = "booking"
+	BizTypeConsultation = "consultation"
+	BizTypeDiyBlessing  = "diy_blessing"
+	BizTypeDiyMaterial  = "diy_material"
+	BizTypeShopOrder    = "shop_order"
 )
 
 type CommissionConfig struct {

@@ -26,3 +26,19 @@ func TestCalculateBookingSplitRejectsTamperedSnapshot(t *testing.T) {
 		t.Fatal("expected invalid commission rate to fail")
 	}
 }
+
+func TestCalculateConsultationSplitBalanced(t *testing.T) {
+	split, err := CalculateConsultationSplit(39, 0.20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if split.Total != 39 || split.Commission != 7.8 || split.MasterNet != 31.2 {
+		t.Fatalf("unexpected consultation split: %+v", split)
+	}
+	if !sameMoney(split.Commission+split.MasterNet, split.Total) {
+		t.Fatalf("consultation ledger does not balance: %+v", split)
+	}
+	if _, err := CalculateConsultationSplit(39, 1.01); err == nil {
+		t.Fatal("expected invalid consultation commission rate to fail")
+	}
+}

@@ -92,13 +92,18 @@ type (
     }
 
     ChatConversation {
+        ConversationId string `json:"conversationId"`
+        SourceType string `json:"sourceType"`
+        SourceId string `json:"sourceId"`
         BookingId string `json:"bookingId"`
         PeerId string `json:"peerId"`
+        PeerOpenIMId string `json:"peerOpenIMId"`
         PeerName string `json:"peerName"`
         PeerAvatar string `json:"peerAvatar"`
         TempleName string `json:"templeName"`
         ServiceName string `json:"serviceName"`
         BookingDate string `json:"bookingDate"`
+        ExpiresAt string `json:"expiresAt"`
         LastMessage string `json:"lastMessage"`
         LastMessageAt string `json:"lastMessageAt"`
         CanChat bool `json:"canChat"`
@@ -119,6 +124,8 @@ type (
 
     ChatMessage {
         Id int64 `json:"id"`
+        ConversationId string `json:"conversationId"`
+        SourceType string `json:"sourceType"`
         BookingId string `json:"bookingId"`
         ClientMessageId string `json:"clientMessageId"`
         SenderType string `json:"senderType"`
@@ -141,6 +148,56 @@ type (
         ClientMessageId string `json:"clientMessageId"`
         Content string `json:"content"`
     }
+
+    ConsultationQuoteReq { MasterId string `form:"masterId"` }
+    ConsultationQuoteResp {
+        MasterId string `json:"masterId"`
+        MasterName string `json:"masterName"`
+        TempleId string `json:"templeId"`
+        TempleName string `json:"templeName"`
+        Enabled bool `json:"enabled"`
+        ConsultFee float64 `json:"consultFee"`
+        ValidHours int `json:"validHours"`
+        ResponseMinutes int `json:"responseMinutes"`
+    }
+    ConsultationCreateReq {
+        RequestId string `json:"requestId"`
+        MasterId string `json:"masterId"`
+        Question string `json:"question,optional"`
+    }
+    Consultation {
+        Id string `json:"id"`
+        UserId string `json:"userId"`
+        MasterId string `json:"masterId"`
+        MasterName string `json:"masterName"`
+        TempleId string `json:"templeId"`
+        TempleName string `json:"templeName"`
+        ConsultFee float64 `json:"consultFee"`
+        ValidHours int `json:"validHours"`
+        ResponseMinutes int `json:"responseMinutes"`
+        Question string `json:"question"`
+        PaymentNo string `json:"paymentNo"`
+        PaymentStatus string `json:"paymentStatus"`
+        Status string `json:"status"`
+        ValidFrom string `json:"validFrom"`
+        ExpiresAt string `json:"expiresAt"`
+        Simulated bool `json:"simulated"`
+        ConversationId string `json:"conversationId"`
+        CreatedAt string `json:"createdAt"`
+    }
+    ConsultationListReq {
+        Status string `form:"status,optional"`
+        Page int `form:"page,default=1"`
+        Size int `form:"size,default=20"`
+    }
+    ConsultationListResp {
+        Total int64 `json:"total"`
+        List []Consultation `json:"list"`
+        Page int `json:"page"`
+        Size int `json:"size"`
+    }
+    ConsultationDetailReq { Id string `path:"id"` }
+    ConsultationPayReq { Id string `path:"id"` }
 
     ListReq {
         UserId string `form:"userId,optional"`
@@ -286,6 +343,36 @@ service booking-service {
 
     @handler reviewDetail
     get /:id/review (ReviewDetailReq) returns (BookingReview)
+}
+
+@server (
+    group: consultation
+    prefix: /api/v1/consultations
+)
+service booking-service {
+    @handler consultationQuote
+    get /quote (ConsultationQuoteReq) returns (ConsultationQuoteResp)
+    @handler consultationCreate
+    post / (ConsultationCreateReq) returns (Consultation)
+    @handler consultationList
+    get / (ConsultationListReq) returns (ConsultationListResp)
+    @handler consultationDetail
+    get /:id (ConsultationDetailReq) returns (Consultation)
+    @handler consultationPay
+    post /:id/pay (ConsultationPayReq) returns (Consultation)
+}
+
+@server (
+    group: chat
+    prefix: /api/v1/chats
+)
+service booking-service {
+    @handler chatList
+    get / (ChatListReq) returns (ChatListResp)
+    @handler chatMessageList
+    get /:id/messages (ChatMessageListReq) returns (ChatMessageListResp)
+    @handler chatMessageSend
+    post /:id/messages (ChatMessageSendReq) returns (ChatMessage)
 }
 
 // ============ 寺院管理台分组 ============

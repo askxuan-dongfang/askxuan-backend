@@ -48,6 +48,12 @@ Upstreams:
   - Prefix: /api/v1/bookings
     Target: localhost:8085
     ServiceName: booking.service
+  - Prefix: /api/v1/consultations
+    Target: localhost:8085
+    ServiceName: booking.service
+  - Prefix: /api/v1/chats
+    Target: localhost:8085
+    ServiceName: booking.service
   - Prefix: /api/v1/messages
     Target: localhost:8094
     ServiceName: message.service
@@ -207,6 +213,7 @@ Upstreams:
 # GET 请求前缀匹配：/api/v1/temples 匹配 /api/v1/temples 和 /api/v1/temples/T001
 NoAuthPaths:
   - /api/v1/bookings/availability
+  - /api/v1/consultations/quote
   - /api/v1/intentions
   - /api/v1/beliefs
   - /api/v1/service-types

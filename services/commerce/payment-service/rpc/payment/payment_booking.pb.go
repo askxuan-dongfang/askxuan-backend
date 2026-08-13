@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.1
-// source: payment_booking.proto
+// source: api/payment_booking.proto
 
 package payment
 
@@ -33,7 +33,7 @@ type AutoPayBookingReq struct {
 
 func (x *AutoPayBookingReq) Reset() {
 	*x = AutoPayBookingReq{}
-	mi := &file_payment_booking_proto_msgTypes[0]
+	mi := &file_api_payment_booking_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +45,7 @@ func (x *AutoPayBookingReq) String() string {
 func (*AutoPayBookingReq) ProtoMessage() {}
 
 func (x *AutoPayBookingReq) ProtoReflect() protoreflect.Message {
-	mi := &file_payment_booking_proto_msgTypes[0]
+	mi := &file_api_payment_booking_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +58,7 @@ func (x *AutoPayBookingReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AutoPayBookingReq.ProtoReflect.Descriptor instead.
 func (*AutoPayBookingReq) Descriptor() ([]byte, []int) {
-	return file_payment_booking_proto_rawDescGZIP(), []int{0}
+	return file_api_payment_booking_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *AutoPayBookingReq) GetOrderNo() string {
@@ -99,7 +99,7 @@ type GetOrderPaymentReq struct {
 
 func (x *GetOrderPaymentReq) Reset() {
 	*x = GetOrderPaymentReq{}
-	mi := &file_payment_booking_proto_msgTypes[1]
+	mi := &file_api_payment_booking_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -111,7 +111,7 @@ func (x *GetOrderPaymentReq) String() string {
 func (*GetOrderPaymentReq) ProtoMessage() {}
 
 func (x *GetOrderPaymentReq) ProtoReflect() protoreflect.Message {
-	mi := &file_payment_booking_proto_msgTypes[1]
+	mi := &file_api_payment_booking_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -124,7 +124,7 @@ func (x *GetOrderPaymentReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderPaymentReq.ProtoReflect.Descriptor instead.
 func (*GetOrderPaymentReq) Descriptor() ([]byte, []int) {
-	return file_payment_booking_proto_rawDescGZIP(), []int{1}
+	return file_api_payment_booking_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetOrderPaymentReq) GetOrderType() string {
@@ -158,7 +158,7 @@ type BookingPayment struct {
 
 func (x *BookingPayment) Reset() {
 	*x = BookingPayment{}
-	mi := &file_payment_booking_proto_msgTypes[2]
+	mi := &file_api_payment_booking_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -170,7 +170,7 @@ func (x *BookingPayment) String() string {
 func (*BookingPayment) ProtoMessage() {}
 
 func (x *BookingPayment) ProtoReflect() protoreflect.Message {
-	mi := &file_payment_booking_proto_msgTypes[2]
+	mi := &file_api_payment_booking_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -183,7 +183,7 @@ func (x *BookingPayment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BookingPayment.ProtoReflect.Descriptor instead.
 func (*BookingPayment) Descriptor() ([]byte, []int) {
-	return file_payment_booking_proto_rawDescGZIP(), []int{2}
+	return file_api_payment_booking_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *BookingPayment) GetId() int64 {
@@ -249,11 +249,87 @@ func (x *BookingPayment) GetSimulated() bool {
 	return false
 }
 
-var File_payment_booking_proto protoreflect.FileDescriptor
+type AutoPayOrderReq struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	OrderType      string                 `protobuf:"bytes,1,opt,name=order_type,json=orderType,proto3" json:"order_type,omitempty"`
+	OrderNo        string                 `protobuf:"bytes,2,opt,name=order_no,json=orderNo,proto3" json:"order_no,omitempty"`
+	UserId         string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Amount         float64                `protobuf:"fixed64,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
 
-const file_payment_booking_proto_rawDesc = "" +
+func (x *AutoPayOrderReq) Reset() {
+	*x = AutoPayOrderReq{}
+	mi := &file_api_payment_booking_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AutoPayOrderReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AutoPayOrderReq) ProtoMessage() {}
+
+func (x *AutoPayOrderReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_payment_booking_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AutoPayOrderReq.ProtoReflect.Descriptor instead.
+func (*AutoPayOrderReq) Descriptor() ([]byte, []int) {
+	return file_api_payment_booking_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AutoPayOrderReq) GetOrderType() string {
+	if x != nil {
+		return x.OrderType
+	}
+	return ""
+}
+
+func (x *AutoPayOrderReq) GetOrderNo() string {
+	if x != nil {
+		return x.OrderNo
+	}
+	return ""
+}
+
+func (x *AutoPayOrderReq) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *AutoPayOrderReq) GetAmount() float64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *AutoPayOrderReq) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+var File_api_payment_booking_proto protoreflect.FileDescriptor
+
+const file_api_payment_booking_proto_rawDesc = "" +
 	"\n" +
-	"\x15payment_booking.proto\x12\apayment\"\x88\x01\n" +
+	"\x19api/payment_booking.proto\x12\apayment\"\x88\x01\n" +
 	"\x11AutoPayBookingReq\x12\x19\n" +
 	"\border_no\x18\x01 \x01(\tR\aorderNo\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x16\n" +
@@ -274,61 +350,72 @@ const file_payment_booking_proto_rawDesc = "" +
 	"\achannel\x18\x06 \x01(\tR\achannel\x12\x16\n" +
 	"\x06status\x18\a \x01(\tR\x06status\x12\x19\n" +
 	"\btrade_no\x18\b \x01(\tR\atradeNo\x12\x1c\n" +
-	"\tsimulated\x18\t \x01(\bR\tsimulated2\xa7\x01\n" +
+	"\tsimulated\x18\t \x01(\bR\tsimulated\"\xa5\x01\n" +
+	"\x0fAutoPayOrderReq\x12\x1d\n" +
+	"\n" +
+	"order_type\x18\x01 \x01(\tR\torderType\x12\x19\n" +
+	"\border_no\x18\x02 \x01(\tR\aorderNo\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x16\n" +
+	"\x06amount\x18\x04 \x01(\x01R\x06amount\x12'\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey2\xea\x01\n" +
 	"\x15PaymentBookingService\x12E\n" +
-	"\x0eAutoPayBooking\x12\x1a.payment.AutoPayBookingReq\x1a\x17.payment.BookingPayment\x12G\n" +
+	"\x0eAutoPayBooking\x12\x1a.payment.AutoPayBookingReq\x1a\x17.payment.BookingPayment\x12A\n" +
+	"\fAutoPayOrder\x12\x18.payment.AutoPayOrderReq\x1a\x17.payment.BookingPayment\x12G\n" +
 	"\x0fGetOrderPayment\x12\x1b.payment.GetOrderPaymentReq\x1a\x17.payment.BookingPaymentB\x13Z\x11./payment;paymentb\x06proto3"
 
 var (
-	file_payment_booking_proto_rawDescOnce sync.Once
-	file_payment_booking_proto_rawDescData []byte
+	file_api_payment_booking_proto_rawDescOnce sync.Once
+	file_api_payment_booking_proto_rawDescData []byte
 )
 
-func file_payment_booking_proto_rawDescGZIP() []byte {
-	file_payment_booking_proto_rawDescOnce.Do(func() {
-		file_payment_booking_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_payment_booking_proto_rawDesc), len(file_payment_booking_proto_rawDesc)))
+func file_api_payment_booking_proto_rawDescGZIP() []byte {
+	file_api_payment_booking_proto_rawDescOnce.Do(func() {
+		file_api_payment_booking_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_payment_booking_proto_rawDesc), len(file_api_payment_booking_proto_rawDesc)))
 	})
-	return file_payment_booking_proto_rawDescData
+	return file_api_payment_booking_proto_rawDescData
 }
 
-var file_payment_booking_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_payment_booking_proto_goTypes = []any{
+var file_api_payment_booking_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_api_payment_booking_proto_goTypes = []any{
 	(*AutoPayBookingReq)(nil),  // 0: payment.AutoPayBookingReq
 	(*GetOrderPaymentReq)(nil), // 1: payment.GetOrderPaymentReq
 	(*BookingPayment)(nil),     // 2: payment.BookingPayment
+	(*AutoPayOrderReq)(nil),    // 3: payment.AutoPayOrderReq
 }
-var file_payment_booking_proto_depIdxs = []int32{
+var file_api_payment_booking_proto_depIdxs = []int32{
 	0, // 0: payment.PaymentBookingService.AutoPayBooking:input_type -> payment.AutoPayBookingReq
-	1, // 1: payment.PaymentBookingService.GetOrderPayment:input_type -> payment.GetOrderPaymentReq
-	2, // 2: payment.PaymentBookingService.AutoPayBooking:output_type -> payment.BookingPayment
-	2, // 3: payment.PaymentBookingService.GetOrderPayment:output_type -> payment.BookingPayment
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	3, // 1: payment.PaymentBookingService.AutoPayOrder:input_type -> payment.AutoPayOrderReq
+	1, // 2: payment.PaymentBookingService.GetOrderPayment:input_type -> payment.GetOrderPaymentReq
+	2, // 3: payment.PaymentBookingService.AutoPayBooking:output_type -> payment.BookingPayment
+	2, // 4: payment.PaymentBookingService.AutoPayOrder:output_type -> payment.BookingPayment
+	2, // 5: payment.PaymentBookingService.GetOrderPayment:output_type -> payment.BookingPayment
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_payment_booking_proto_init() }
-func file_payment_booking_proto_init() {
-	if File_payment_booking_proto != nil {
+func init() { file_api_payment_booking_proto_init() }
+func file_api_payment_booking_proto_init() {
+	if File_api_payment_booking_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payment_booking_proto_rawDesc), len(file_payment_booking_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_payment_booking_proto_rawDesc), len(file_api_payment_booking_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_payment_booking_proto_goTypes,
-		DependencyIndexes: file_payment_booking_proto_depIdxs,
-		MessageInfos:      file_payment_booking_proto_msgTypes,
+		GoTypes:           file_api_payment_booking_proto_goTypes,
+		DependencyIndexes: file_api_payment_booking_proto_depIdxs,
+		MessageInfos:      file_api_payment_booking_proto_msgTypes,
 	}.Build()
-	File_payment_booking_proto = out.File
-	file_payment_booking_proto_goTypes = nil
-	file_payment_booking_proto_depIdxs = nil
+	File_api_payment_booking_proto = out.File
+	file_api_payment_booking_proto_goTypes = nil
+	file_api_payment_booking_proto_depIdxs = nil
 }

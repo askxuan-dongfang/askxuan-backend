@@ -10,7 +10,7 @@ info (
 // ============ 法师基础 ============
 type (
     Master {
-        Id          string   `json:"id"`          // 法师编码 M001~M006
+        Id          string   `json:"id"`          // 法师编码 M001~M010
         DharmaName  string   `json:"dharmaName"`  // 法号
         LayName     string   `json:"layName"`     // 俗名
         TempleId    string   `json:"templeId"`    // 所属寺院编码
@@ -20,9 +20,15 @@ type (
         Sect        string   `json:"sect"`        // 宗派
         Type        string   `json:"type"`        // 类型 佛教/道教
         AuthStatus  string   `json:"authStatus"`  // 认证状态
+        ShelfStatus string   `json:"shelfStatus"` // 上下架状态
+        PlatformStatus string `json:"platformStatus"` // 平台状态
         Specialties []string `json:"specialties"` // 专长
         Avatar      string   `json:"avatar"`      // 头像
         Rating      float64  `json:"rating"`      // 评分
+        ConsultEnabled bool   `json:"consultEnabled"` // 是否开放即时文字咨询
+        ConsultFee float64    `json:"consultFee"` // 单次文字咨询费
+        ConsultValidHours int `json:"consultValidHours"` // 支付后可发送消息时长
+        ConsultResponseMinutes int `json:"consultResponseMinutes"` // 承诺首响时间
     }
 
     ListReq {
@@ -39,6 +45,26 @@ type (
         List  []Master `json:"list"`
         Page  int      `json:"page"`
         Size  int      `json:"size"`
+    }
+
+    PlatformMasterListReq {
+        BeliefCode     string `form:"beliefCode,optional"`
+        Sect           string `form:"sect,optional"`
+        Type           string `form:"type,optional"`
+        TempleId       string `form:"templeId,optional"`
+        AuthStatus     string `form:"authStatus,optional"`
+        ShelfStatus    string `form:"shelfStatus,optional"`
+        PlatformStatus string `form:"platformStatus,optional"`
+        Page           int    `form:"page,default=1"`
+        Size           int    `form:"size,default=20"`
+    }
+
+    MasterConsultConfigReq {
+        Id string `path:"id"`
+        ConsultEnabled bool `json:"consultEnabled"`
+        ConsultFee float64 `json:"consultFee"`
+        ConsultValidHours int `json:"consultValidHours"`
+        ConsultResponseMinutes int `json:"consultResponseMinutes"`
     }
 
     DetailReq {
@@ -73,6 +99,10 @@ type (
         Type        string   `json:"type"`
         Specialties []string `json:"specialties"`
         Avatar      string   `json:"avatar,optional"`
+        ConsultEnabled bool   `json:"consultEnabled,optional"`
+        ConsultFee float64    `json:"consultFee,optional"`
+        ConsultValidHours int `json:"consultValidHours,optional"`
+        ConsultResponseMinutes int `json:"consultResponseMinutes,optional"`
     }
 
     AdminMasterCreateResp {
@@ -88,6 +118,10 @@ type (
         Sect        string   `json:"sect,optional"`
         Specialties []string `json:"specialties,optional"`
         Avatar      string   `json:"avatar,optional"`
+        ConsultEnabled bool   `json:"consultEnabled,optional"`
+        ConsultFee float64    `json:"consultFee,optional"`
+        ConsultValidHours int `json:"consultValidHours,optional"`
+        ConsultResponseMinutes int `json:"consultResponseMinutes,optional"`
     }
 
     AdminMasterStatusReq {
@@ -382,6 +416,9 @@ service master-service {
     jwt: Auth
 )
 service master-service {
+    @handler platformMasterList
+    get / (PlatformMasterListReq) returns (ListResp)
+
     @handler platformAuditList
     get /audits (MasterAuditListReq) returns (MasterAuditListResp)
 
@@ -393,4 +430,7 @@ service master-service {
 
     @handler platformMasterStatus
     put /:id/status (MasterPlatformStatusReq) returns (MasterPlatformStatusResp)
+
+    @handler platformMasterConsultConfig
+    put /:id/consultation (MasterConsultConfigReq) returns (Master)
 }

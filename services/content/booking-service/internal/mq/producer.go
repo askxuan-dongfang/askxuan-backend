@@ -12,8 +12,21 @@ import (
 
 // 预约事件交换机约定
 const (
-	ExchangeBookingEvents = "booking.events" // fanout 交换机
+	ExchangeBookingEvents      = "booking.events" // fanout 交换机
+	ExchangeConsultationEvents = "consultation.events"
 )
+
+type ConsultationNotify struct {
+	ConsultationId string  `json:"consultationId"`
+	UserId         string  `json:"userId"`
+	MasterId       string  `json:"masterId"`
+	MasterName     string  `json:"masterName"`
+	TempleId       string  `json:"templeId,omitempty"`
+	TempleName     string  `json:"templeName,omitempty"`
+	ConsultFee     float64 `json:"consultFee"`
+	Action         string  `json:"action"`
+	Time           string  `json:"time"`
+}
 
 // BookingNotify 预约通知事件，由 booking-service 发送、message-service 消费
 type BookingNotify struct {
@@ -83,9 +96,28 @@ func (p *Producer) ensureChannel() error {
 		_ = conn.Close()
 		return fmt.Errorf("声明交换机失败: %w", err)
 	}
+	if err := ch.ExchangeDeclare(ExchangeConsultationEvents, "fanout", true, false, false, false, nil); err != nil {
+		_ = ch.Close()
+		_ = conn.Close()
+		return fmt.Errorf("声明咨询事件交换机失败: %w", err)
+	}
 	p.conn = conn
 	p.ch = ch
 	return nil
+}
+
+func (p *Producer) PublishConsultation(ctx context.Context, evt ConsultationNotify) error {
+	if evt.Time == "" {
+		evt.Time = time.Now().Format("2006-01-02 15:04:05")
+	}
+	body, _ := json.Marshal(evt)
+	if err := p.ensureChannel(); err != nil {
+		return nil
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.ch.PublishWithContext(ctx, ExchangeConsultationEvents, "", false, false,
+		amqp.Publishing{ContentType: "application/json", Body: body, DeliveryMode: amqp.Persistent, Timestamp: time.Now()})
 }
 
 // Publish 发布预约事件

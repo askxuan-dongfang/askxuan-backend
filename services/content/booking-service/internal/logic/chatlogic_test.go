@@ -44,6 +44,26 @@ func TestBookingMessageMarker(t *testing.T) {
 	}
 }
 
+func TestChatMessageMarker(t *testing.T) {
+	for _, test := range []struct {
+		ex, sourceType, sourceID, clientID string
+	}{
+		{"askxuan-chat:consultation:C202608140001:ios-1", "consultation", "C202608140001", "ios-1"},
+		{"askxuan-chat:booking:B202608140001:ios-2", "booking", "B202608140001", "ios-2"},
+		{"askxuan-booking:B202608140001:legacy-1", "booking", "B202608140001", "legacy-1"},
+	} {
+		t.Run(test.sourceType+test.clientID, func(t *testing.T) {
+			sourceType, sourceID, clientID, ok := parseChatMessageMarker(test.ex)
+			if !ok || sourceType != test.sourceType || sourceID != test.sourceID || clientID != test.clientID {
+				t.Fatalf("unexpected marker: %q %q %q %v", sourceType, sourceID, clientID, ok)
+			}
+		})
+	}
+	if _, _, _, ok := parseChatMessageMarker("askxuan-chat:other:X1:c1"); ok {
+		t.Fatal("unknown source type must be rejected")
+	}
+}
+
 func TestDecodeOpenIMText(t *testing.T) {
 	if got := decodeOpenIMText(`{"content":"付款后可沟通"}`); got != "付款后可沟通" {
 		t.Fatalf("decoded text = %q", got)

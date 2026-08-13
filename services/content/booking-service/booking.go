@@ -45,7 +45,17 @@ func startPaymentSync(ctx context.Context, svcCtx *svc.ServiceContext) {
 		if err := json.Unmarshal(body, &event); err != nil {
 			return nil
 		}
-		if event.OrderType != "booking" || event.Action != "success" {
+		if event.Action != "success" {
+			return nil
+		}
+		if event.OrderType == "consultation" {
+			updated, changed, err := svcCtx.ConsultationModel.Activate(ctx, event.OrderNo, event.PaymentNo, "mock")
+			if err == nil && changed {
+				NewConsultationPaymentPublisher(ctx, svcCtx).Publish(updated)
+			}
+			return err
+		}
+		if event.OrderType != "booking" {
 			return nil
 		}
 		updated, changed, err := svcCtx.BookingModel.UpdatePayment(ctx, event.OrderNo, event.PaymentNo, "mock", model.PaymentStatusSuccess, model.StatusPending)
@@ -63,6 +73,26 @@ func startPaymentSync(ctx context.Context, svcCtx *svc.ServiceContext) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				if count, err := svcCtx.ConsultationModel.ExpireActive(ctx); err != nil {
+					logx.Errorf("更新到期即时咨询失败: %v", err)
+				} else if count > 0 {
+					logx.Infof("已将 %d 个即时咨询会话标记为到期", count)
+				}
+				consultations, err := svcCtx.ConsultationModel.FindPendingPayments(ctx, 100)
+				if err == nil {
+					for _, consultation := range consultations {
+						payment, payErr := svcCtx.PaymentClient.GetConsultationPayment(ctx, consultation.Id)
+						if payErr != nil || payment.Status != model.PaymentStatusSuccess {
+							continue
+						}
+						updated, changed, activateErr := svcCtx.ConsultationModel.Activate(ctx, consultation.Id, payment.PaymentNo, payment.Channel)
+						if activateErr != nil {
+							logx.Errorf("即时咨询支付对账失败 consultation=%s: %v", consultation.Id, activateErr)
+						} else if changed {
+							NewConsultationPaymentPublisher(ctx, svcCtx).Publish(updated)
+						}
+					}
+				}
 				if count, err := svcCtx.BookingModel.ExpirePendingPayments(ctx); err != nil {
 					logx.Errorf("取消支付超时预约失败: %v", err)
 				} else if count > 0 {
@@ -88,6 +118,23 @@ func startPaymentSync(ctx context.Context, svcCtx *svc.ServiceContext) {
 			}
 		}
 	}()
+}
+
+type consultationPaymentPublisher struct {
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewConsultationPaymentPublisher(ctx context.Context, svcCtx *svc.ServiceContext) *consultationPaymentPublisher {
+	return &consultationPaymentPublisher{ctx: ctx, svcCtx: svcCtx}
+}
+func (p *consultationPaymentPublisher) Publish(row *model.Consultation) {
+	if row == nil || p.svcCtx.MqProducer == nil {
+		return
+	}
+	_ = p.svcCtx.MqProducer.PublishConsultation(p.ctx, mq.ConsultationNotify{ConsultationId: row.Id, UserId: row.UserId,
+		MasterId: row.MasterId, MasterName: row.MasterName, TempleId: row.TempleId, TempleName: row.TempleName,
+		ConsultFee: row.ConsultFee, Action: "paid"})
 }
 
 func recordRecoveredPayment(ctx context.Context, svcCtx *svc.ServiceContext, booking *model.Booking, remark string) {

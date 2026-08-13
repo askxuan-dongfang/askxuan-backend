@@ -61,23 +61,27 @@ const (
 
 // Master 法师表（对应 askxuan.master）
 type Master struct {
-	Id             int64   `db:"id" json:"id"`
-	Code           string  `db:"code" json:"code"` // 法师编码 M001~M006
-	DharmaName     string  `db:"dharma_name" json:"dharmaName"`
-	LayName        string  `db:"lay_name" json:"layName"`
-	TempleCode     string  `db:"temple_code" json:"templeCode"`
-	Position       string  `db:"position" json:"position"`
-	BeliefCode     string  `db:"belief_code" json:"beliefCode"`
-	Sect           string  `db:"sect" json:"sect"`
-	Type           string  `db:"type" json:"type"` // 佛教/道教
-	AuthStatus     string  `db:"auth_status" json:"authStatus"`
-	ShelfStatus    string  `db:"shelf_status" json:"shelfStatus"`
-	PlatformStatus string  `db:"platform_status" json:"platformStatus"`
-	Specialties    string  `db:"specialties" json:"specialties"` // 逗号分隔
-	Avatar         string  `db:"avatar" json:"avatar"`
-	Rating         float64 `db:"rating" json:"rating"`
-	CreateTime     string  `db:"create_time" json:"createTime"`
-	UpdateTime     string  `db:"update_time" json:"updateTime"`
+	Id                     int64   `db:"id" json:"id"`
+	Code                   string  `db:"code" json:"code"` // 法师编码 M001~M010
+	DharmaName             string  `db:"dharma_name" json:"dharmaName"`
+	LayName                string  `db:"lay_name" json:"layName"`
+	TempleCode             string  `db:"temple_code" json:"templeCode"`
+	Position               string  `db:"position" json:"position"`
+	BeliefCode             string  `db:"belief_code" json:"beliefCode"`
+	Sect                   string  `db:"sect" json:"sect"`
+	Type                   string  `db:"type" json:"type"` // 佛教/道教
+	AuthStatus             string  `db:"auth_status" json:"authStatus"`
+	ShelfStatus            string  `db:"shelf_status" json:"shelfStatus"`
+	PlatformStatus         string  `db:"platform_status" json:"platformStatus"`
+	Specialties            string  `db:"specialties" json:"specialties"` // 逗号分隔
+	Avatar                 string  `db:"avatar" json:"avatar"`
+	Rating                 float64 `db:"rating" json:"rating"`
+	ConsultEnabled         bool    `db:"consult_enabled" json:"consultEnabled"`
+	ConsultFee             float64 `db:"consult_fee" json:"consultFee"`
+	ConsultValidHours      int     `db:"consult_valid_hours" json:"consultValidHours"`
+	ConsultResponseMinutes int     `db:"consult_response_minutes" json:"consultResponseMinutes"`
+	CreateTime             string  `db:"create_time" json:"createTime"`
+	UpdateTime             string  `db:"update_time" json:"updateTime"`
 }
 
 // MasterModel 法师模型接口
@@ -88,6 +92,8 @@ type MasterModel interface {
 	FindList(ctx context.Context, templeCode, shelfStatus string, page, size int) ([]*Master, int64, error)
 	// FindAll 平台查询所有法师（按 shelfStatus 筛选，空则全部）
 	FindAll(ctx context.Context, shelfStatus string, page, size int) ([]*Master, int64, error)
+	// FindPlatformList 平台查询全量法师，不应用 C 端可见性条件。
+	FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus string, page, size int) ([]*Master, int64, error)
 	// FindCList C端公开列表（仅 on_shelf + normal），按 sect/type/templeCode 筛选
 	FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode string, page, size int) ([]*Master, int64, error)
 	FindTempleNameByCode(ctx context.Context, templeCode string) (string, error)
@@ -96,6 +102,7 @@ type MasterModel interface {
 	UpdateShelfStatus(ctx context.Context, id int64, status string) error
 	UpdatePlatformStatus(ctx context.Context, id int64, status string) error
 	UpdateAuthStatus(ctx context.Context, code, status string) error
+	UpdateConsultConfig(ctx context.Context, id int64, enabled bool, fee float64, validHours, responseMinutes int) error
 	// NextCode 生成下一个法师编码（基于 MAX(id)+1，格式 M00x）
 	NextCode(ctx context.Context) (string, error)
 }
@@ -146,6 +153,30 @@ func (m *masterModel) FindAll(ctx context.Context, shelfStatus string, page, siz
 	if shelfStatus != "" {
 		where = "WHERE shelf_status = ?"
 		args = append(args, shelfStatus)
+	}
+	return m.queryPage(ctx, where, args, "ORDER BY id DESC", page, size)
+}
+
+func (m *masterModel) FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus string, page, size int) ([]*Master, int64, error) {
+	where := "WHERE 1 = 1"
+	args := make([]interface{}, 0, 7)
+	filters := []struct {
+		column string
+		value  string
+	}{
+		{"belief_code", beliefCode},
+		{"sect", sect},
+		{"type", mtype},
+		{"temple_code", templeCode},
+		{"auth_status", authStatus},
+		{"shelf_status", shelfStatus},
+		{"platform_status", platformStatus},
+	}
+	for _, filter := range filters {
+		if filter.value != "" {
+			where += " AND " + filter.column + " = ?"
+			args = append(args, filter.value)
+		}
 	}
 	return m.queryPage(ctx, where, args, "ORDER BY id DESC", page, size)
 }
@@ -207,11 +238,12 @@ func (m *masterModel) queryPage(ctx context.Context, where string, args []interf
 }
 
 func (m *masterModel) Insert(ctx context.Context, data *Master) (int64, error) {
-	query := fmt.Sprintf("INSERT INTO %s (code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, specialties, avatar, rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table)
+	query := fmt.Sprintf("INSERT INTO %s (code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table)
 	res, err := m.conn.ExecCtx(ctx, query,
 		data.Code, data.DharmaName, data.LayName, data.TempleCode, data.Position, data.BeliefCode,
 		data.Sect, data.Type, data.AuthStatus, data.ShelfStatus, data.PlatformStatus,
-		data.Specialties, data.Avatar, data.Rating)
+		data.Specialties, data.Avatar, data.Rating, data.ConsultEnabled, data.ConsultFee,
+		data.ConsultValidHours, data.ConsultResponseMinutes)
 	if err != nil {
 		return 0, err
 	}
@@ -223,10 +255,11 @@ func (m *masterModel) Insert(ctx context.Context, data *Master) (int64, error) {
 }
 
 func (m *masterModel) Update(ctx context.Context, data *Master) error {
-	query := fmt.Sprintf("UPDATE %s SET dharma_name = ?, lay_name = ?, position = ?, belief_code = ?, sect = ?, type = ?, specialties = ?, avatar = ? WHERE id = ?", m.table)
+	query := fmt.Sprintf("UPDATE %s SET dharma_name = ?, lay_name = ?, position = ?, belief_code = ?, sect = ?, type = ?, specialties = ?, avatar = ?, consult_enabled = ?, consult_fee = ?, consult_valid_hours = ?, consult_response_minutes = ? WHERE id = ?", m.table)
 	_, err := m.conn.ExecCtx(ctx, query,
 		data.DharmaName, data.LayName, data.Position, data.BeliefCode, data.Sect, data.Type,
-		data.Specialties, data.Avatar, data.Id)
+		data.Specialties, data.Avatar, data.ConsultEnabled, data.ConsultFee,
+		data.ConsultValidHours, data.ConsultResponseMinutes, data.Id)
 	return err
 }
 
@@ -248,6 +281,11 @@ func (m *masterModel) UpdateAuthStatus(ctx context.Context, code, status string)
 	return err
 }
 
+func (m *masterModel) UpdateConsultConfig(ctx context.Context, id int64, enabled bool, fee float64, validHours, responseMinutes int) error {
+	_, err := m.conn.ExecCtx(ctx, `UPDATE master SET consult_enabled=?,consult_fee=?,consult_valid_hours=?,consult_response_minutes=? WHERE id=?`, enabled, fee, validHours, responseMinutes, id)
+	return err
+}
+
 func (m *masterModel) NextCode(ctx context.Context) (string, error) {
 	var nextId int64
 	query := fmt.Sprintf("SELECT IFNULL(MAX(id), 0) + 1 FROM %s", m.table)
@@ -259,4 +297,4 @@ func (m *masterModel) NextCode(ctx context.Context) (string, error) {
 }
 
 // masterRows 法师表查询字段
-const masterRows = "id, code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, specialties, avatar, rating, create_time, update_time"
+const masterRows = "id, code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes, create_time, update_time"

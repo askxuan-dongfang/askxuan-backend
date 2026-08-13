@@ -4,20 +4,25 @@ package types
 
 // Master 法师
 type Master struct {
-	Id          string   `json:"id"`
-	DharmaName  string   `json:"dharmaName"`
-	LayName     string   `json:"layName"`
-	TempleId    string   `json:"templeId"`
-	TempleName  string   `json:"templeName"`
-	Position    string   `json:"position"`
-	BeliefCode  string   `json:"beliefCode"`
-	Sect        string   `json:"sect"`
-	Type        string   `json:"type"`
-	AuthStatus  string   `json:"authStatus"`
-	ShelfStatus string   `json:"shelfStatus"`
-	Specialties []string `json:"specialties"`
-	Avatar      string   `json:"avatar"`
-	Rating      float64  `json:"rating"`
+	Id                     string   `json:"id"`
+	DharmaName             string   `json:"dharmaName"`
+	LayName                string   `json:"layName"`
+	TempleId               string   `json:"templeId"`
+	TempleName             string   `json:"templeName"`
+	Position               string   `json:"position"`
+	BeliefCode             string   `json:"beliefCode"`
+	Sect                   string   `json:"sect"`
+	Type                   string   `json:"type"`
+	AuthStatus             string   `json:"authStatus"`
+	ShelfStatus            string   `json:"shelfStatus"`
+	PlatformStatus         string   `json:"platformStatus"`
+	Specialties            []string `json:"specialties"`
+	Avatar                 string   `json:"avatar"`
+	Rating                 float64  `json:"rating"`
+	ConsultEnabled         bool     `json:"consultEnabled"`
+	ConsultFee             float64  `json:"consultFee"`
+	ConsultValidHours      int      `json:"consultValidHours"`
+	ConsultResponseMinutes int      `json:"consultResponseMinutes"`
 }
 
 // ListReq 列表查询请求
@@ -36,6 +41,27 @@ type ListResp struct {
 	List  []Master `json:"list"`
 	Page  int      `json:"page"`
 	Size  int      `json:"size"`
+}
+
+// PlatformMasterListReq 平台法师全量列表请求。
+type PlatformMasterListReq struct {
+	BeliefCode     string `form:"beliefCode,optional"`
+	Sect           string `form:"sect,optional"`
+	Type           string `form:"type,optional"`
+	TempleId       string `form:"templeId,optional"`
+	AuthStatus     string `form:"authStatus,optional"`
+	ShelfStatus    string `form:"shelfStatus,optional"`
+	PlatformStatus string `form:"platformStatus,optional"`
+	Page           int    `form:"page,default=1"`
+	Size           int    `form:"size,default=20"`
+}
+
+type MasterConsultConfigReq struct {
+	Id                     string  `path:"id"`
+	ConsultEnabled         bool    `json:"consultEnabled"`
+	ConsultFee             float64 `json:"consultFee"`
+	ConsultValidHours      int     `json:"consultValidHours"`
+	ConsultResponseMinutes int     `json:"consultResponseMinutes"`
 }
 
 // DetailReq 详情请求
@@ -63,16 +89,20 @@ type AdminMasterListResp struct {
 
 // AdminMasterCreateReq 创建法师请求
 type AdminMasterCreateReq struct {
-	DharmaName  string   `json:"dharmaName"`
-	LayName     string   `json:"layName"`
-	TempleId    string   `json:"templeId"`
-	TempleName  string   `json:"templeName,optional"`
-	Position    string   `json:"position"`
-	BeliefCode  string   `json:"beliefCode"`
-	Sect        string   `json:"sect"`
-	Type        string   `json:"type"`
-	Specialties []string `json:"specialties"`
-	Avatar      string   `json:"avatar,optional"`
+	DharmaName             string   `json:"dharmaName"`
+	LayName                string   `json:"layName"`
+	TempleId               string   `json:"templeId"`
+	TempleName             string   `json:"templeName,optional"`
+	Position               string   `json:"position"`
+	BeliefCode             string   `json:"beliefCode"`
+	Sect                   string   `json:"sect"`
+	Type                   string   `json:"type"`
+	Specialties            []string `json:"specialties"`
+	Avatar                 string   `json:"avatar,optional"`
+	ConsultEnabled         bool     `json:"consultEnabled,optional"`
+	ConsultFee             float64  `json:"consultFee,optional"`
+	ConsultValidHours      int      `json:"consultValidHours,optional"`
+	ConsultResponseMinutes int      `json:"consultResponseMinutes,optional"`
 }
 
 // AdminMasterCreateResp 创建法师响应
@@ -82,14 +112,18 @@ type AdminMasterCreateResp struct {
 
 // AdminMasterUpdateReq 更新法师请求
 type AdminMasterUpdateReq struct {
-	Id          string   `path:"id"`
-	DharmaName  string   `json:"dharmaName,optional"`
-	LayName     string   `json:"layName,optional"`
-	Position    string   `json:"position,optional"`
-	BeliefCode  string   `json:"beliefCode,optional"`
-	Sect        string   `json:"sect,optional"`
-	Specialties []string `json:"specialties,optional"`
-	Avatar      string   `json:"avatar,optional"`
+	Id                     string   `path:"id"`
+	DharmaName             string   `json:"dharmaName,optional"`
+	LayName                string   `json:"layName,optional"`
+	Position               string   `json:"position,optional"`
+	BeliefCode             string   `json:"beliefCode,optional"`
+	Sect                   string   `json:"sect,optional"`
+	Specialties            []string `json:"specialties,optional"`
+	Avatar                 string   `json:"avatar,optional"`
+	ConsultEnabled         bool     `json:"consultEnabled,optional"`
+	ConsultFee             float64  `json:"consultFee,optional"`
+	ConsultValidHours      int      `json:"consultValidHours,optional"`
+	ConsultResponseMinutes int      `json:"consultResponseMinutes,optional"`
 }
 
 // AdminMasterStatusReq 法师上下架请求

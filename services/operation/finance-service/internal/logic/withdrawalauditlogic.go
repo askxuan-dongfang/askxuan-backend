@@ -55,10 +55,17 @@ func (l *WithdrawalAuditLogic) WithdrawalAudit(req *types.WithdrawalAuditReq) (*
 	// 发 MQ 通知
 	_ = l.svcCtx.MqProducer.PublishWithdrawalNotify(l.ctx, mq.WithdrawalNotify{
 		WithdrawalId: fmt.Sprintf("%d", req.Id),
-		UserId:       w.ApplicantId,
+		UserId:       withdrawalNotificationRecipient(w.ApplicantType, w.ApplicantId),
 		Amount:       w.Amount,
 		Status:       targetStatus,
 		Time:         now,
 	})
 	return &types.WithdrawalAuditResp{Id: req.Id, Status: targetStatus}, nil
+}
+
+func withdrawalNotificationRecipient(applicantType, applicantID string) string {
+	if applicantType == model.SettleTypeMaster {
+		return masterNotificationRecipient(applicantID)
+	}
+	return applicantID
 }

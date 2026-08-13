@@ -38,6 +38,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 		{
 			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/platform/masters",
+			Handler: platformMasterListHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodGet,
 			Path:    "/api/v1/admin/temples/masters",
 			Handler: adminMasterListHandler(svcCtx),
 		},
@@ -147,6 +152,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Method:  http.MethodPut,
 			Path:    "/api/v1/admin/platform/masters/:id/status",
 			Handler: platformMasterStatusHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPut,
+			Path:    "/api/v1/admin/platform/masters/:id/consultation",
+			Handler: platformMasterConsultConfigHandler(svcCtx),
 		},
 	}...))
 }
@@ -397,6 +407,23 @@ func workspaceScheduleUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc
 
 // ============ 平台管理台 Handler ============
 
+func platformMasterListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.PlatformMasterListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewPlatformMasterListLogic(r.Context(), svcCtx)
+		resp, err := l.PlatformMasterList(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
 func platformAuditListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.MasterAuditListReq
@@ -462,6 +489,22 @@ func platformMasterStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		} else {
 			common.Ok(w, resp)
 		}
+	}
+}
+
+func platformMasterConsultConfigHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MasterConsultConfigReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewPlatformMasterStatusLogic(r.Context(), svcCtx).PlatformMasterConsultConfig(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
 	}
 }
 

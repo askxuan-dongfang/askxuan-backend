@@ -88,10 +88,14 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 				if !ok {
 					return nil
 				}
-				if err := model.RecordBookingEarning(ctx, evt.SourceNo, evt.TargetId, evt.EarningDate, evt.ServiceName, evt.UserId, evt.Amount); err != nil {
-					return fmt.Errorf("记录预约分成 %s 失败: %w", evt.SourceNo, err)
+				serviceType := model.EarningsServiceBooking
+				if evt.SourceType == "consultation" {
+					serviceType = model.EarningsServiceConsult
 				}
-				logx.Infof("平台预约分成已进入大师待结算收益 bookingId=%s masterCode=%s amount=%.2f", evt.SourceNo, evt.TargetId, evt.Amount)
+				if err := model.RecordEarning(ctx, evt.SourceType, evt.SourceNo, evt.TargetId, evt.EarningDate, serviceType, evt.ServiceName, evt.UserId, evt.Amount); err != nil {
+					return fmt.Errorf("记录法师分成 %s 失败: %w", evt.SourceNo, err)
+				}
+				logx.Infof("平台分成已进入大师待结算收益 sourceType=%s sourceNo=%s masterCode=%s amount=%.2f", evt.SourceType, evt.SourceNo, evt.TargetId, evt.Amount)
 				return nil
 			},
 		},

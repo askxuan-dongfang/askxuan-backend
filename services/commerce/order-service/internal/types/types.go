@@ -67,7 +67,7 @@ type OrderCreateResp struct {
 }
 
 type OrderListReq struct {
-	UserId string `form:"userId"`
+	UserId string `form:"userId,optional"`
 	Status string `form:"status,optional"`
 	Page   int    `form:"page,default=1"`
 	Size   int    `form:"size,default=20"`

@@ -28,6 +28,15 @@ type chatParticipant struct {
 	SenderName string
 }
 
+type chatEntitlement struct {
+	SourceType string
+	SourceID   string
+	UserID     string
+	MasterCode string
+	MasterName string
+	CanSend    bool
+}
+
 type ChatListLogic struct {
 	logx.Logger
 	ctx    context.Context
@@ -62,15 +71,33 @@ func (l *ChatListLogic) List(req *types.ChatListReq) (*types.ChatListResp, error
 		return nil, common.ErrSystem
 	}
 	list := make([]types.ChatConversation, 0, len(rows))
+	masterOpenIMIDs := make(map[string]string)
 	for _, row := range rows {
 		peerID, peerName := row.MasterCode, row.MasterName
+		peerOpenIMID := ""
 		if isMaster {
 			peerID, peerName = row.UserId, "预约用户"
+			peerOpenIMID = "u_" + row.UserId
+		} else if cached, ok := masterOpenIMIDs[row.MasterCode]; ok {
+			peerOpenIMID = cached
+		} else if master, lookupErr := l.svcCtx.MasterClient.GetByCode(l.ctx, row.MasterCode); lookupErr == nil {
+			peerOpenIMID = "m_" + strconv.FormatInt(master.Id, 10)
+			masterOpenIMIDs[row.MasterCode] = peerOpenIMID
+		} else {
+			l.Errorf("查询会话对端 OpenIM ID 失败: masterCode=%s err=%v", row.MasterCode, lookupErr)
 		}
 		list = append(list, types.ChatConversation{
-			BookingId: row.BookingId, PeerId: peerID, PeerName: peerName,
+			ConversationId: row.BookingId, SourceType: row.SourceType, SourceId: row.BookingId,
+			BookingId: func() string {
+				if row.SourceType == "booking" {
+					return row.BookingId
+				}
+				return ""
+			}(),
+			PeerId: peerID, PeerOpenIMId: peerOpenIMID, PeerName: peerName,
 			TempleName: row.TempleName, ServiceName: row.ServiceName, BookingDate: row.BookingDate,
-			LastMessage: row.LastMessage, LastMessageAt: row.LastMessageAt, CanChat: true,
+			ExpiresAt: row.ExpiresAt, LastMessage: row.LastMessage, LastMessageAt: row.LastMessageAt,
+			CanChat: row.ChatStatus == "active",
 		})
 	}
 	return &types.ChatListResp{Total: total, List: list, Page: page, Size: size}, nil
@@ -87,18 +114,15 @@ func NewChatMessageListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *C
 }
 
 func (l *ChatMessageListLogic) List(req *types.ChatMessageListReq) (*types.ChatMessageListResp, error) {
-	booking, err := l.svcCtx.BookingModel.FindOne(l.ctx, req.Id)
+	entitlement, err := loadChatEntitlement(l.ctx, l.svcCtx, req.Id)
 	if err != nil {
-		if errors.Is(err, sqlx.ErrNotFound) {
-			return nil, common.ErrBookingNotFound
-		}
-		return nil, common.ErrSystem
+		return nil, err
 	}
-	if _, err := resolveChatParticipant(l.ctx, l.svcCtx, booking); err != nil {
+	if _, err := resolveChatParticipant(l.ctx, l.svcCtx, entitlement, false); err != nil {
 		return nil, err
 	}
 	page, size := normalizeChatPage(req.Page, req.Size, 50)
-	rows, total, err := l.svcCtx.ChatModel.ListMessages(l.ctx, booking.Id, page, size)
+	rows, total, err := l.svcCtx.ChatModel.ListMessages(l.ctx, entitlement.SourceID, page, size)
 	if err != nil {
 		l.Errorf("查询预约聊天记录失败: %v", err)
 		return nil, common.ErrSystem
@@ -125,14 +149,11 @@ func (l *ChatMessageSendLogic) Send(req *types.ChatMessageSendReq) (*types.ChatM
 	if content == "" || len([]rune(content)) > maxChatMessageLength {
 		return nil, common.ErrParamInvalid
 	}
-	booking, err := l.svcCtx.BookingModel.FindOne(l.ctx, req.Id)
+	entitlement, err := loadChatEntitlement(l.ctx, l.svcCtx, req.Id)
 	if err != nil {
-		if errors.Is(err, sqlx.ErrNotFound) {
-			return nil, common.ErrBookingNotFound
-		}
-		return nil, common.ErrSystem
+		return nil, err
 	}
-	participant, err := resolveChatParticipant(l.ctx, l.svcCtx, booking)
+	participant, err := resolveChatParticipant(l.ctx, l.svcCtx, entitlement, true)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +162,8 @@ func (l *ChatMessageSendLogic) Send(req *types.ChatMessageSendReq) (*types.ChatM
 		clientMessageID = fmt.Sprintf("askxuan-%d-%s", time.Now().UnixNano(), participant.SenderID)
 	}
 	row, created, err := l.svcCtx.ChatModel.Insert(l.ctx, &model.BookingChatMessage{
-		BookingId: booking.Id, ClientMessageId: clientMessageID, SenderType: participant.SenderType,
+		BookingId: entitlement.SourceID, SourceType: entitlement.SourceType,
+		ClientMessageId: clientMessageID, SenderType: participant.SenderType,
 		SenderId: participant.SenderID, ReceiverId: participant.ReceiverID, Content: content, Status: "pending",
 	})
 	if err != nil {
@@ -157,7 +179,7 @@ func (l *ChatMessageSendLogic) Send(req *types.ChatMessageSendReq) (*types.ChatM
 	err = l.svcCtx.IMClient.SendMessage(l.ctx, &commonim.SendMsgReq{
 		SendID: participant.SenderID, RecvID: participant.ReceiverID, SenderName: participant.SenderName,
 		SenderPlatformID: 1, SessionType: 1, ContentType: 101, Content: map[string]string{"content": content},
-		Ex: "askxuan-booking:" + booking.Id + ":" + clientMessageID,
+		Ex: chatMessageMarker(entitlement.SourceType, entitlement.SourceID, clientMessageID),
 	})
 	if err != nil {
 		_ = l.svcCtx.ChatModel.UpdateDelivery(l.ctx, row.Id, "failed", "")
@@ -185,8 +207,39 @@ func chatDeliveryDecision(created bool, row *model.BookingChatMessage, requested
 	return false, requestedContent
 }
 
-func resolveChatParticipant(ctx context.Context, svcCtx *svc.ServiceContext, booking *model.Booking) (*chatParticipant, error) {
-	if booking.PaymentStatus != model.PaymentStatusSuccess || booking.Status == model.StatusCancelled || booking.MasterId == "" {
+func loadChatEntitlement(ctx context.Context, svcCtx *svc.ServiceContext, sourceID string) (*chatEntitlement, error) {
+	if booking, err := svcCtx.BookingModel.FindOne(ctx, sourceID); err == nil {
+		return &chatEntitlement{SourceType: "booking", SourceID: booking.Id, UserID: booking.UserId,
+			MasterCode: booking.MasterId, MasterName: booking.MasterName,
+			CanSend: bookingHasChatEntitlement(booking, booking.UserId)}, nil
+	} else if !errors.Is(err, sqlx.ErrNotFound) {
+		return nil, common.ErrSystem
+	}
+	consultation, err := svcCtx.ConsultationModel.FindOne(ctx, sourceID)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrConsultationNotFound
+		}
+		return nil, common.ErrSystem
+	}
+	canSend := consultation.PaymentStatus == model.ConsultationPaymentSuccess && consultation.Status == model.ConsultationStatusActive
+	if canSend && consultation.ExpiresAt != "" {
+		if expiry, parseErr := time.ParseInLocation("2006-01-02 15:04:05", consultation.ExpiresAt, time.Local); parseErr == nil && !expiry.After(time.Now()) {
+			canSend = false
+		}
+	}
+	return &chatEntitlement{SourceType: "consultation", SourceID: consultation.Id, UserID: consultation.UserId,
+		MasterCode: consultation.MasterId, MasterName: consultation.MasterName, CanSend: canSend}, nil
+}
+
+func resolveChatParticipant(ctx context.Context, svcCtx *svc.ServiceContext, entitlement *chatEntitlement, requireSend bool) (*chatParticipant, error) {
+	if entitlement == nil || entitlement.MasterCode == "" {
+		return nil, common.ErrBookingChatUnavailable
+	}
+	if requireSend && !entitlement.CanSend {
+		if entitlement.SourceType == "consultation" {
+			return nil, common.ErrConsultationExpired
+		}
 		return nil, common.ErrBookingChatUnavailable
 	}
 	if masterID := middleware.MasterIDFromCtx(ctx); masterID > 0 {
@@ -194,29 +247,29 @@ func resolveChatParticipant(ctx context.Context, svcCtx *svc.ServiceContext, boo
 		if err != nil {
 			return nil, common.ErrDependencyUnavailable
 		}
-		if master.Code != booking.MasterId {
+		if master.Code != entitlement.MasterCode {
 			return nil, common.ErrForbidden
 		}
-		return &chatParticipant{SenderType: "master", SenderID: "m_" + strconv.FormatInt(master.Id, 10), ReceiverID: "u_" + booking.UserId, SenderName: booking.MasterName}, nil
+		return &chatParticipant{SenderType: "master", SenderID: "m_" + strconv.FormatInt(master.Id, 10), ReceiverID: "u_" + entitlement.UserID, SenderName: entitlement.MasterName}, nil
 	}
 	userID, err := authenticatedUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if userID != booking.UserId {
+	if userID != entitlement.UserID {
 		return nil, common.ErrForbidden
 	}
-	master, err := svcCtx.MasterClient.GetByCode(ctx, booking.MasterId)
+	master, err := svcCtx.MasterClient.GetByCode(ctx, entitlement.MasterCode)
 	if err != nil {
 		return nil, common.ErrDependencyUnavailable
 	}
-	return &chatParticipant{SenderType: "customer", SenderID: "u_" + userID, ReceiverID: "m_" + strconv.FormatInt(master.Id, 10), SenderName: "预约用户"}, nil
+	return &chatParticipant{SenderType: "customer", SenderID: "u_" + userID, ReceiverID: "m_" + strconv.FormatInt(master.Id, 10), SenderName: "咨询用户"}, nil
 }
 
 // AuthorizeOpenIMMessage is used by OpenIM's synchronous before-send webhook.
 // Booking text must carry the server-issued marker so multiple bookings between
 // the same customer and master remain isolated.
-func AuthorizeOpenIMMessage(ctx context.Context, svcCtx *svc.ServiceContext, sendID, recvID, ex string) (*model.Booking, error) {
+func AuthorizeOpenIMMessage(ctx context.Context, svcCtx *svc.ServiceContext, sendID, recvID, ex string) (*chatEntitlement, error) {
 	userID, masterNumericID, isBookingPair, err := parseOpenIMBookingPair(sendID, recvID)
 	if err != nil {
 		return nil, common.ErrBookingChatUnavailable
@@ -224,28 +277,22 @@ func AuthorizeOpenIMMessage(ctx context.Context, svcCtx *svc.ServiceContext, sen
 	if !isBookingPair {
 		return nil, nil
 	}
-	bookingID, _, marked := parseBookingMessageMarker(ex)
+	sourceType, sourceID, _, marked := parseChatMessageMarker(ex)
 	if !marked {
 		return nil, common.ErrBookingChatUnavailable
 	}
-	booking, err := svcCtx.BookingModel.FindOne(ctx, bookingID)
-	if err != nil {
-		if errors.Is(err, sqlx.ErrNotFound) {
-			return nil, common.ErrBookingChatUnavailable
-		}
-		return nil, common.ErrSystem
-	}
-	if !bookingHasChatEntitlement(booking, userID) {
+	entitlement, err := loadChatEntitlement(ctx, svcCtx, sourceID)
+	if err != nil || entitlement.SourceType != sourceType || entitlement.UserID != userID || !entitlement.CanSend {
 		return nil, common.ErrBookingChatUnavailable
 	}
-	master, err := svcCtx.MasterClient.GetByCode(ctx, booking.MasterId)
+	master, err := svcCtx.MasterClient.GetByCode(ctx, entitlement.MasterCode)
 	if err != nil {
 		return nil, common.ErrDependencyUnavailable
 	}
 	if master.Id != masterNumericID {
 		return nil, common.ErrBookingChatUnavailable
 	}
-	return booking, nil
+	return entitlement, nil
 }
 
 func bookingHasChatEntitlement(booking *model.Booking, userID string) bool {
@@ -254,12 +301,12 @@ func bookingHasChatEntitlement(booking *model.Booking, userID string) bool {
 }
 
 func RecordOpenIMMessage(ctx context.Context, svcCtx *svc.ServiceContext, callback OpenIMCallbackMessage) error {
-	booking, err := AuthorizeOpenIMMessage(ctx, svcCtx, callback.SendID, callback.RecvID, callback.Ex)
-	if err != nil || booking == nil {
+	entitlement, err := AuthorizeOpenIMMessage(ctx, svcCtx, callback.SendID, callback.RecvID, callback.Ex)
+	if err != nil || entitlement == nil {
 		return err
 	}
 	clientMessageID := callback.ClientMsgID
-	if bookingID, markedClientID, ok := parseBookingMessageMarker(callback.Ex); ok && bookingID == booking.Id {
+	if _, sourceID, markedClientID, ok := parseChatMessageMarker(callback.Ex); ok && sourceID == entitlement.SourceID {
 		clientMessageID = markedClientID
 	}
 	if clientMessageID == "" {
@@ -273,7 +320,8 @@ func RecordOpenIMMessage(ctx context.Context, svcCtx *svc.ServiceContext, callba
 		senderType = "master"
 	}
 	row, _, err := svcCtx.ChatModel.Insert(ctx, &model.BookingChatMessage{
-		BookingId: booking.Id, ClientMessageId: clientMessageID, OpenIMServerMsgId: callback.ServerMsgID,
+		BookingId: entitlement.SourceID, SourceType: entitlement.SourceType,
+		ClientMessageId: clientMessageID, OpenIMServerMsgId: callback.ServerMsgID,
 		SenderType: senderType, SenderId: callback.SendID, ReceiverId: callback.RecvID,
 		Content: decodeOpenIMText(callback.Content), Status: "sent",
 	})
@@ -326,6 +374,26 @@ func parseBookingMessageMarker(ex string) (string, string, bool) {
 	}(), len(parts) == 2 && parts[0] != "" && parts[1] != ""
 }
 
+func chatMessageMarker(sourceType, sourceID, clientMessageID string) string {
+	return "askxuan-chat:" + sourceType + ":" + sourceID + ":" + clientMessageID
+}
+
+func parseChatMessageMarker(ex string) (string, string, string, bool) {
+	const prefix = "askxuan-chat:"
+	if strings.HasPrefix(ex, prefix) {
+		parts := strings.SplitN(strings.TrimPrefix(ex, prefix), ":", 3)
+		if len(parts) == 3 && (parts[0] == "booking" || parts[0] == "consultation") && parts[1] != "" && parts[2] != "" {
+			return parts[0], parts[1], parts[2], true
+		}
+		return "", "", "", false
+	}
+	bookingID, clientID, ok := parseBookingMessageMarker(ex)
+	if !ok {
+		return "", "", "", false
+	}
+	return "booking", bookingID, clientID, true
+}
+
 func decodeOpenIMText(content string) string {
 	var payload struct {
 		Content string `json:"content"`
@@ -347,7 +415,13 @@ func normalizeChatPage(page, size, defaultSize int) (int, int) {
 }
 
 func toChatMessage(row *model.BookingChatMessage) types.ChatMessage {
-	return types.ChatMessage{Id: row.Id, BookingId: row.BookingId, ClientMessageId: row.ClientMessageId,
+	return types.ChatMessage{Id: row.Id, ConversationId: row.BookingId, SourceType: row.SourceType,
+		BookingId: func() string {
+			if row.SourceType == "booking" {
+				return row.BookingId
+			}
+			return ""
+		}(), ClientMessageId: row.ClientMessageId,
 		SenderType: row.SenderType, SenderId: row.SenderId, ReceiverId: row.ReceiverId,
 		Content: row.Content, Status: row.Status, CreateTime: row.CreateTime}
 }

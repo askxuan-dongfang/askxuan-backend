@@ -215,7 +215,7 @@ func ParseBlessingAssign(body []byte) (BlessingAssign, bool) {
 func ParseSettlementAccrued(body []byte) (SettlementAccrued, bool) {
 	var evt SettlementAccrued
 	if err := json.Unmarshal(body, &evt); err != nil || evt.EventType != "settlement.accrued" ||
-		evt.SourceType != "booking" || evt.TargetType != "master" || evt.SourceNo == "" || evt.TargetId == "" || evt.Amount <= 0 {
+		(evt.SourceType != "booking" && evt.SourceType != "consultation") || evt.TargetType != "master" || evt.SourceNo == "" || evt.TargetId == "" || evt.Amount <= 0 {
 		return SettlementAccrued{}, false
 	}
 	return evt, true

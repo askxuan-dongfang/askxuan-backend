@@ -336,3 +336,21 @@ The backup React Native client did not preserve callback parameter inference thr
 Annotate service and availability slot callback values with the shared contract types.
 
 ---
+
+## [ERR-20260814-001] sandbox-httptest-listener
+
+**Logged**: 2026-08-14T00:50:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The restricted workspace sandbox blocked Go `httptest` from opening a loopback listener.
+
+### Error
+`httptest: failed to listen on a port: listen tcp6 [::1]:0: bind: operation not permitted`
+
+### Resolution
+Rerun the unchanged full workspace suite with approved non-sandbox execution. All modules passed.
+
+---

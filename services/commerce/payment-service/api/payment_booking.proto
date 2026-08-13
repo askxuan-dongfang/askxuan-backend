@@ -28,7 +28,16 @@ message BookingPayment {
   bool simulated = 9;
 }
 
+message AutoPayOrderReq {
+  string order_type = 1;
+  string order_no = 2;
+  string user_id = 3;
+  double amount = 4;
+  string idempotency_key = 5;
+}
+
 service PaymentBookingService {
   rpc AutoPayBooking(AutoPayBookingReq) returns (BookingPayment);
+  rpc AutoPayOrder(AutoPayOrderReq) returns (BookingPayment);
   rpc GetOrderPayment(GetOrderPaymentReq) returns (BookingPayment);
 }

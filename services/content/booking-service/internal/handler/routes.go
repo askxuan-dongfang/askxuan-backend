@@ -26,6 +26,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		Path:    "/api/v1/bookings/availability",
 		Handler: availabilityHandler(svcCtx),
 	})
+	server.AddRoute(rest.Route{Method: http.MethodGet, Path: "/api/v1/consultations/quote", Handler: consultationQuoteHandler(svcCtx)})
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodPost, Path: "/openim/booking-chat-webhook", Handler: bookingChatWebhookHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/openim/booking-chat-webhook/:command", Handler: bookingChatWebhookHandler(svcCtx)},
@@ -33,6 +34,13 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 
 	// ============ C端分组（需JWT） ============
 	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/chats", Handler: chatListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/chats/:id/messages", Handler: chatMessageListHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/chats/:id/messages", Handler: chatMessageSendHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/consultations", Handler: consultationCreateHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/consultations", Handler: consultationListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/consultations/:id", Handler: consultationDetailHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/consultations/:id/pay", Handler: consultationPayHandler(svcCtx)},
 		{
 			Method:  http.MethodGet,
 			Path:    "/api/v1/bookings/chats",
@@ -170,6 +178,86 @@ func availabilityHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewAvailabilityLogic(r.Context(), svcCtx).Availability(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func consultationQuoteHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ConsultationQuoteReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewConsultationLogic(r.Context(), svcCtx).Quote(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func consultationCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ConsultationCreateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewConsultationLogic(r.Context(), svcCtx).Create(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func consultationListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ConsultationListReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewConsultationLogic(r.Context(), svcCtx).List(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func consultationDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ConsultationDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewConsultationLogic(r.Context(), svcCtx).Detail(&req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func consultationPayHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ConsultationPayReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewConsultationLogic(r.Context(), svcCtx).Pay(&req)
 		if err != nil {
 			common.JsonError(w, err)
 			return

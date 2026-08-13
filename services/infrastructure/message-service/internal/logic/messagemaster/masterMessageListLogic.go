@@ -15,6 +15,10 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
+func masterRecipientID(masterID int64) string {
+	return "m_" + strconv.FormatInt(masterID, 10)
+}
+
 // MasterMessageListLogic 法师消息列表逻辑
 type MasterMessageListLogic struct {
 	logx.Logger
@@ -36,8 +40,9 @@ func (l *MasterMessageListLogic) MasterMessageList(req *types.MasterMessageListR
 	if masterID == 0 {
 		return nil, common.ErrUnauthorized
 	}
-	// masterId 作为 user_id 查询消息
-	userID := strconv.FormatInt(masterID, 10)
+	// Customer and master numeric IDs live in different tables and can collide.
+	// Keep master recipients in the same m_<id> namespace used by OpenIM.
+	userID := masterRecipientID(masterID)
 
 	list, total, err := l.svcCtx.MessageModel.List(l.ctx, userID, req.IsRead, req.Page, req.Size)
 	if err != nil {

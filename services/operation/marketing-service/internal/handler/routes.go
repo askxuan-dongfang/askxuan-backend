@@ -102,9 +102,12 @@ func customerCouponReceiveHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
-		if userId := r.Header.Get("X-User-Id"); userId != "" {
-			req.UserId = userId
+		userId := r.Header.Get("X-User-Id")
+		if userId == "" {
+			common.JsonError(w, common.ErrUnauthorized)
+			return
 		}
+		req.UserId = userId
 		resp, err := logic.NewCustomerCouponReceiveLogic(r.Context(), svcCtx).Receive(&req)
 		respond(w, resp, err)
 	}

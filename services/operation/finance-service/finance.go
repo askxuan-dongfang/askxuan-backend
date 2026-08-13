@@ -58,6 +58,41 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 	}
 	bindings := []mq.Binding{
 		{
+			Exchange: mq.ExchangeConsultationEvents,
+			Queue:    mq.QueueFinanceConsultationStatus,
+			Handler: func(body []byte) error {
+				var evt mq.ConsultationNotify
+				if err := json.Unmarshal(body, &evt); err != nil {
+					return nil
+				}
+				if evt.Action != "paid" {
+					return nil
+				}
+				earningDate := evt.Time
+				if len(earningDate) >= 10 {
+					earningDate = earningDate[:10]
+				}
+				split, err := model.AccrueConsultationSettlement(ctx, model.ConsultationSettlement{
+					ConsultationID: evt.ConsultationId, UserID: evt.UserId, MasterID: evt.MasterId,
+					MasterName: evt.MasterName, PaidAt: evt.Time, ConsultFee: evt.ConsultFee,
+				})
+				if err != nil {
+					return fmt.Errorf("即时咨询平台分账失败: %w", err)
+				}
+				if split.MasterNet > 0 && svcCtx.MqProducer != nil {
+					if err := svcCtx.MqProducer.PublishSettlementAccrued(ctx, mq.SettlementAccrued{
+						SourceType: model.BizTypeConsultation, SourceNo: evt.ConsultationId,
+						TargetType: model.SettleTypeMaster, TargetId: evt.MasterId, UserId: evt.UserId,
+						ServiceName: "即时文字咨询", EarningDate: earningDate, Amount: split.MasterNet,
+					}); err != nil {
+						return fmt.Errorf("发布咨询分成事件失败: %w", err)
+					}
+				}
+				logx.Infof("即时咨询平台分账完成: consultation=%s gross=%.2f commission=%.2f master=%.2f", evt.ConsultationId, split.Total, split.Commission, split.MasterNet)
+				return nil
+			},
+		},
+		{
 			Exchange: mq.ExchangeBookingEvents,
 			Queue:    mq.QueueFinanceBookingStatus,
 			Handler: func(body []byte) error {

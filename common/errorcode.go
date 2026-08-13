@@ -54,17 +54,20 @@ var (
 	ErrBlessingNotFound      = &BizError{Code: 40413, Msg: "加持任务不存在"}
 	ErrTempleServiceNotFound = &BizError{Code: 40414, Msg: "寺院未提供该服务"}
 	ErrBookingSlotNotFound   = &BizError{Code: 40415, Msg: "预约时段不存在或已停用"}
+	ErrConsultationNotFound  = &BizError{Code: 40416, Msg: "咨询订单不存在"}
 
 	// 业务冲突 40901-40999
-	ErrUserAlreadyExists      = &BizError{Code: 40901, Msg: "用户已存在"}
-	ErrBookingStatusInvalid   = &BizError{Code: 40902, Msg: "预约状态流转非法"}
-	ErrStatusInvalid          = &BizError{Code: 40903, Msg: "状态流转非法"}
-	ErrDuplicateOperation     = &BizError{Code: 40904, Msg: "重复操作"}
-	ErrStockInsufficient      = &BizError{Code: 40905, Msg: "库存不足"}
-	ErrOrderStatusConflict    = &BizError{Code: 40906, Msg: "订单状态不允许此操作"}
-	ErrBookingSlotFull        = &BizError{Code: 40907, Msg: "预约时段已满"}
-	ErrBookingPaymentExpired  = &BizError{Code: 40908, Msg: "预约支付已过期"}
-	ErrBookingChatUnavailable = &BizError{Code: 40909, Msg: "付款成功后才能与法师对话"}
+	ErrUserAlreadyExists       = &BizError{Code: 40901, Msg: "用户已存在"}
+	ErrBookingStatusInvalid    = &BizError{Code: 40902, Msg: "预约状态流转非法"}
+	ErrStatusInvalid           = &BizError{Code: 40903, Msg: "状态流转非法"}
+	ErrDuplicateOperation      = &BizError{Code: 40904, Msg: "重复操作"}
+	ErrStockInsufficient       = &BizError{Code: 40905, Msg: "库存不足"}
+	ErrOrderStatusConflict     = &BizError{Code: 40906, Msg: "订单状态不允许此操作"}
+	ErrBookingSlotFull         = &BizError{Code: 40907, Msg: "预约时段已满"}
+	ErrBookingPaymentExpired   = &BizError{Code: 40908, Msg: "预约支付已过期"}
+	ErrBookingChatUnavailable  = &BizError{Code: 40909, Msg: "当前没有有效的付费咨询或预约沟通资格"}
+	ErrConsultationUnavailable = &BizError{Code: 40910, Msg: "该法师暂未开放即时咨询"}
+	ErrConsultationExpired     = &BizError{Code: 40911, Msg: "本次咨询已到期，请重新付费发起咨询"}
 
 	// 第三方服务错误 50201-50299
 	ErrPaymentService        = &BizError{Code: 50201, Msg: "支付服务异常"}

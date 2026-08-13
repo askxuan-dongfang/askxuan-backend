@@ -78,6 +78,15 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 			return nil, common.ErrUserDisabled
 		}
 	}
+	if role.Code == model.RoleCodeMaster {
+		status, statusErr := masterAccountStatusFor(l.ctx, l.svcCtx, acc.MasterId)
+		if statusErr != nil {
+			return nil, statusErr
+		}
+		if !canEnableMasterAccount(status.authStatus, status.platformStatus, status.templeStatus) {
+			return nil, common.ErrUserDisabled
+		}
+	}
 
 	// 根据 role.Code 映射 clientId
 	clientID := roleCodeToClientID(role.Code)

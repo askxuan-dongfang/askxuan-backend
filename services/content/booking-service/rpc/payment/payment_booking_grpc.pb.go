@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v7.34.1
-// source: payment_booking.proto
+// source: api/payment_booking.proto
 
 package payment
 
@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	PaymentBookingService_AutoPayBooking_FullMethodName  = "/payment.PaymentBookingService/AutoPayBooking"
+	PaymentBookingService_AutoPayOrder_FullMethodName    = "/payment.PaymentBookingService/AutoPayOrder"
 	PaymentBookingService_GetOrderPayment_FullMethodName = "/payment.PaymentBookingService/GetOrderPayment"
 )
 
@@ -28,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PaymentBookingServiceClient interface {
 	AutoPayBooking(ctx context.Context, in *AutoPayBookingReq, opts ...grpc.CallOption) (*BookingPayment, error)
+	AutoPayOrder(ctx context.Context, in *AutoPayOrderReq, opts ...grpc.CallOption) (*BookingPayment, error)
 	GetOrderPayment(ctx context.Context, in *GetOrderPaymentReq, opts ...grpc.CallOption) (*BookingPayment, error)
 }
 
@@ -49,6 +51,16 @@ func (c *paymentBookingServiceClient) AutoPayBooking(ctx context.Context, in *Au
 	return out, nil
 }
 
+func (c *paymentBookingServiceClient) AutoPayOrder(ctx context.Context, in *AutoPayOrderReq, opts ...grpc.CallOption) (*BookingPayment, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BookingPayment)
+	err := c.cc.Invoke(ctx, PaymentBookingService_AutoPayOrder_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *paymentBookingServiceClient) GetOrderPayment(ctx context.Context, in *GetOrderPaymentReq, opts ...grpc.CallOption) (*BookingPayment, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BookingPayment)
@@ -64,6 +76,7 @@ func (c *paymentBookingServiceClient) GetOrderPayment(ctx context.Context, in *G
 // for forward compatibility.
 type PaymentBookingServiceServer interface {
 	AutoPayBooking(context.Context, *AutoPayBookingReq) (*BookingPayment, error)
+	AutoPayOrder(context.Context, *AutoPayOrderReq) (*BookingPayment, error)
 	GetOrderPayment(context.Context, *GetOrderPaymentReq) (*BookingPayment, error)
 	mustEmbedUnimplementedPaymentBookingServiceServer()
 }
@@ -77,6 +90,9 @@ type UnimplementedPaymentBookingServiceServer struct{}
 
 func (UnimplementedPaymentBookingServiceServer) AutoPayBooking(context.Context, *AutoPayBookingReq) (*BookingPayment, error) {
 	return nil, status.Error(codes.Unimplemented, "method AutoPayBooking not implemented")
+}
+func (UnimplementedPaymentBookingServiceServer) AutoPayOrder(context.Context, *AutoPayOrderReq) (*BookingPayment, error) {
+	return nil, status.Error(codes.Unimplemented, "method AutoPayOrder not implemented")
 }
 func (UnimplementedPaymentBookingServiceServer) GetOrderPayment(context.Context, *GetOrderPaymentReq) (*BookingPayment, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOrderPayment not implemented")
@@ -120,6 +136,24 @@ func _PaymentBookingService_AutoPayBooking_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PaymentBookingService_AutoPayOrder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AutoPayOrderReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentBookingServiceServer).AutoPayOrder(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentBookingService_AutoPayOrder_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentBookingServiceServer).AutoPayOrder(ctx, req.(*AutoPayOrderReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PaymentBookingService_GetOrderPayment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetOrderPaymentReq)
 	if err := dec(in); err != nil {
@@ -150,10 +184,14 @@ var PaymentBookingService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PaymentBookingService_AutoPayBooking_Handler,
 		},
 		{
+			MethodName: "AutoPayOrder",
+			Handler:    _PaymentBookingService_AutoPayOrder_Handler,
+		},
+		{
 			MethodName: "GetOrderPayment",
 			Handler:    _PaymentBookingService_GetOrderPayment_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "payment_booking.proto",
+	Metadata: "api/payment_booking.proto",
 }

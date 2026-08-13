@@ -19,18 +19,19 @@ type IMClient interface {
 
 // ServiceContext booking 服务依赖容器
 type ServiceContext struct {
-	Config         config.Config
-	DB             sqlx.SqlConn
-	MqProducer     *mq.Producer
-	MqConsumer     *mq.Consumer
-	BookingModel   model.BookingModel
-	StatusLogModel model.BookingStatusLogModel
-	ReviewModel    model.BookingReviewModel
-	TempleClient   rpcclient.TempleClient
-	MasterClient   rpcclient.MasterClient
-	PaymentClient  rpcclient.PaymentClient
-	IMClient       IMClient
-	ChatModel      model.BookingChatModel
+	Config            config.Config
+	DB                sqlx.SqlConn
+	MqProducer        *mq.Producer
+	MqConsumer        *mq.Consumer
+	BookingModel      model.BookingModel
+	StatusLogModel    model.BookingStatusLogModel
+	ReviewModel       model.BookingReviewModel
+	TempleClient      rpcclient.TempleClient
+	MasterClient      rpcclient.MasterClient
+	PaymentClient     rpcclient.PaymentClient
+	IMClient          IMClient
+	ChatModel         model.BookingChatModel
+	ConsultationModel model.ConsultationModel
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -41,17 +42,18 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost,
 	)
 	return &ServiceContext{
-		Config:         c,
-		DB:             db,
-		MqProducer:     producer,
-		MqConsumer:     mq.NewConsumer(c.RabbitMQ.Host, c.RabbitMQ.Port, c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost),
-		BookingModel:   model.NewBookingModel(db),
-		StatusLogModel: model.NewBookingStatusLogModel(db),
-		ReviewModel:    model.NewBookingReviewModel(db),
-		TempleClient:   rpcclient.NewTempleClient(zrpc.MustNewClient(c.TempleRpc)),
-		MasterClient:   rpcclient.NewMasterClient(zrpc.MustNewClient(c.MasterRpc)),
-		PaymentClient:  rpcclient.NewPaymentClient(zrpc.MustNewClient(c.PaymentRpc)),
-		IMClient:       commonim.NewClient(c.IM.APIURL, c.IM.AdminUserID, c.IM.Secret),
-		ChatModel:      model.NewBookingChatModel(db),
+		Config:            c,
+		DB:                db,
+		MqProducer:        producer,
+		MqConsumer:        mq.NewConsumer(c.RabbitMQ.Host, c.RabbitMQ.Port, c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost),
+		BookingModel:      model.NewBookingModel(db),
+		StatusLogModel:    model.NewBookingStatusLogModel(db),
+		ReviewModel:       model.NewBookingReviewModel(db),
+		TempleClient:      rpcclient.NewTempleClient(zrpc.MustNewClient(c.TempleRpc)),
+		MasterClient:      rpcclient.NewMasterClient(zrpc.MustNewClient(c.MasterRpc)),
+		PaymentClient:     rpcclient.NewPaymentClient(zrpc.MustNewClient(c.PaymentRpc)),
+		IMClient:          commonim.NewClient(c.IM.APIURL, c.IM.AdminUserID, c.IM.Secret),
+		ChatModel:         model.NewBookingChatModel(db),
+		ConsultationModel: model.NewConsultationModel(db),
 	}
 }

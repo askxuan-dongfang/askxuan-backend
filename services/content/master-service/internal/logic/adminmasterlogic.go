@@ -89,19 +89,33 @@ func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateR
 	}
 
 	master := &model.Master{
-		Code:           code,
-		DharmaName:     req.DharmaName,
-		LayName:        req.LayName,
-		TempleCode:     req.TempleId,
-		Position:       req.Position,
-		BeliefCode:     model.NormalizeBeliefCode(req.BeliefCode, req.Type, req.Sect),
-		Sect:           req.Sect,
-		Type:           req.Type,
-		AuthStatus:     model.MasterAuthStatusPending, // 新建法师默认待审核
-		ShelfStatus:    model.MasterShelfStatusOffShelf,
-		PlatformStatus: model.MasterPlatformStatusNormal,
-		Specialties:    joinSpecialties(req.Specialties),
-		Avatar:         req.Avatar,
+		Code:                   code,
+		DharmaName:             req.DharmaName,
+		LayName:                req.LayName,
+		TempleCode:             req.TempleId,
+		Position:               req.Position,
+		BeliefCode:             model.NormalizeBeliefCode(req.BeliefCode, req.Type, req.Sect),
+		Sect:                   req.Sect,
+		Type:                   req.Type,
+		AuthStatus:             model.MasterAuthStatusPending, // 新建法师默认待审核
+		ShelfStatus:            model.MasterShelfStatusOffShelf,
+		PlatformStatus:         model.MasterPlatformStatusNormal,
+		Specialties:            joinSpecialties(req.Specialties),
+		Avatar:                 req.Avatar,
+		ConsultEnabled:         true,
+		ConsultFee:             39,
+		ConsultValidHours:      72,
+		ConsultResponseMinutes: 30,
+	}
+	if req.ConsultFee > 0 {
+		master.ConsultEnabled = req.ConsultEnabled
+		master.ConsultFee = req.ConsultFee
+	}
+	if req.ConsultValidHours > 0 {
+		master.ConsultValidHours = req.ConsultValidHours
+	}
+	if req.ConsultResponseMinutes > 0 {
+		master.ConsultResponseMinutes = req.ConsultResponseMinutes
 	}
 
 	_, err = l.svcCtx.MasterModel.Insert(l.ctx, master)
@@ -163,6 +177,16 @@ func (l *AdminMasterUpdateLogic) AdminMasterUpdate(req *types.AdminMasterUpdateR
 	}
 	if req.Avatar != "" {
 		master.Avatar = req.Avatar
+	}
+	if req.ConsultFee > 0 {
+		master.ConsultEnabled = req.ConsultEnabled
+		master.ConsultFee = req.ConsultFee
+	}
+	if req.ConsultValidHours > 0 {
+		master.ConsultValidHours = req.ConsultValidHours
+	}
+	if req.ConsultResponseMinutes > 0 {
+		master.ConsultResponseMinutes = req.ConsultResponseMinutes
 	}
 
 	if err := l.svcCtx.MasterModel.Update(l.ctx, master); err != nil {

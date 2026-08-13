@@ -13,6 +13,8 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
+var errMasterAccountAlreadyBound = common.NewBizError(40906, "该法师已绑定 Master App 账号")
+
 // ============ 账号管理 ============
 
 // AdminAccountListLogic 账号列表
@@ -106,8 +108,13 @@ func (l *AdminAccountCreateLogic) AdminAccountCreate(req *types.AdminAccountCrea
 	if exist != nil {
 		return nil, common.ErrUserAlreadyExists
 	}
+	if binding.masterAccount {
+		if err := ensureMasterAccountAvailable(l.ctx, l.svcCtx, binding.masterId, 0); err != nil {
+			return nil, err
+		}
+	}
 
-	status, err := initialAdminAccountStatus(l.ctx, l.svcCtx, binding.templeId, binding.templeAdmin)
+	status, err := initialAdminAccountStatus(l.ctx, l.svcCtx, binding)
 	if err != nil {
 		return nil, err
 	}
@@ -192,8 +199,13 @@ func (l *AdminAccountUpdateLogic) AdminAccountUpdate(req *types.AdminAccountUpda
 	updated.MasterId = binding.masterId
 	updated.ShopId = binding.shopId
 	updated.Status = exist.Status
-	if binding.templeAdmin {
-		allowedStatus, statusErr := initialAdminAccountStatus(l.ctx, l.svcCtx, binding.templeId, true)
+	if binding.masterAccount {
+		if err := ensureMasterAccountAvailable(l.ctx, l.svcCtx, binding.masterId, updated.Id); err != nil {
+			return nil, err
+		}
+	}
+	if binding.templeAdmin || binding.masterAccount {
+		allowedStatus, statusErr := initialAdminAccountStatus(l.ctx, l.svcCtx, binding)
 		if statusErr != nil {
 			return nil, statusErr
 		}
@@ -267,6 +279,15 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 			return nil, common.ErrStatusInvalid
 		}
 	}
+	if req.Status == model.AccountStatusEnabled && role.Code == model.RoleCodeMaster {
+		status, err := masterAccountStatusFor(l.ctx, l.svcCtx, account.MasterId)
+		if err != nil {
+			return nil, err
+		}
+		if !canEnableMasterAccount(status.authStatus, status.platformStatus, status.templeStatus) {
+			return nil, common.ErrStatusInvalid
+		}
+	}
 
 	if err := l.svcCtx.AdminAccountModel.UpdateStatus(l.ctx, req.Id, req.Status); err != nil {
 		l.Errorf("更新账号状态失败 id=%d: %v", req.Id, err)
@@ -280,10 +301,11 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 }
 
 type adminAccountBinding struct {
-	templeId    string
-	masterId    string
-	shopId      int64
-	templeAdmin bool
+	templeId      string
+	masterId      string
+	shopId        int64
+	templeAdmin   bool
+	masterAccount bool
 }
 
 func validateAdminAccountBinding(ctx context.Context, svcCtx *svc.ServiceContext, roleId int64, templeId, masterId string, shopId int64) (*adminAccountBinding, error) {
@@ -316,7 +338,7 @@ func validateAdminAccountBinding(ctx context.Context, svcCtx *svc.ServiceContext
 		if templeId != "" && templeId != ownerTempleId {
 			return nil, common.ErrParam
 		}
-		return &adminAccountBinding{templeId: ownerTempleId, masterId: masterId}, nil
+		return &adminAccountBinding{templeId: ownerTempleId, masterId: masterId, masterAccount: true}, nil
 
 	case model.RoleCodeShopAdmin:
 		if shopId == 0 {
@@ -354,18 +376,66 @@ func findMasterTempleId(ctx context.Context, svcCtx *svc.ServiceContext, masterI
 	return templeId, nil
 }
 
-func initialAdminAccountStatus(ctx context.Context, svcCtx *svc.ServiceContext, templeId string, templeAdmin bool) (string, error) {
-	if templeId == "" || !templeAdmin {
-		return model.AccountStatusEnabled, nil
+func initialAdminAccountStatus(ctx context.Context, svcCtx *svc.ServiceContext, binding *adminAccountBinding) (string, error) {
+	if binding.templeAdmin {
+		status, err := templeStatus(ctx, svcCtx, binding.templeId)
+		if err != nil {
+			return "", err
+		}
+		if !canEnableTempleAccount(status) {
+			return model.AccountStatusDisabled, nil
+		}
 	}
-	status, err := templeStatus(ctx, svcCtx, templeId)
+	if binding.masterAccount {
+		status, err := masterAccountStatusFor(ctx, svcCtx, binding.masterId)
+		if err != nil {
+			return "", err
+		}
+		if !canEnableMasterAccount(status.authStatus, status.platformStatus, status.templeStatus) {
+			return model.AccountStatusDisabled, nil
+		}
+	}
+	return model.AccountStatusEnabled, nil
+}
+
+type masterAccountStatus struct {
+	authStatus     string
+	platformStatus string
+	templeStatus   string
+}
+
+func masterAccountStatusFor(ctx context.Context, svcCtx *svc.ServiceContext, masterId string) (*masterAccountStatus, error) {
+	var row struct {
+		AuthStatus     string `db:"auth_status"`
+		PlatformStatus string `db:"platform_status"`
+		TempleStatus   string `db:"temple_status"`
+	}
+	err := svcCtx.DB.QueryRowCtx(ctx, &row, `SELECT m.auth_status, m.platform_status, t.status AS temple_status
+		FROM askxuan_master.master m
+		JOIN askxuan_temple.temple t ON t.code = m.temple_code
+		WHERE m.code = ?`, masterId)
 	if err != nil {
-		return "", err
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrMasterNotFound
+		}
+		return nil, common.ErrSystem
 	}
-	if canEnableTempleAccount(status) {
-		return model.AccountStatusEnabled, nil
+	return &masterAccountStatus{authStatus: row.AuthStatus, platformStatus: row.PlatformStatus, templeStatus: row.TempleStatus}, nil
+}
+
+func canEnableMasterAccount(authStatus, platformStatus, templeStatus string) bool {
+	return authStatus == "已认证" && platformStatus == "normal" && canEnableTempleAccount(templeStatus)
+}
+
+func ensureMasterAccountAvailable(ctx context.Context, svcCtx *svc.ServiceContext, masterId string, excludeId int64) error {
+	var count int64
+	if err := svcCtx.DB.QueryRowCtx(ctx, &count, "SELECT COUNT(1) FROM admin_account WHERE master_id = ? AND id <> ?", masterId, excludeId); err != nil {
+		return common.ErrSystem
 	}
-	return model.AccountStatusDisabled, nil
+	if count > 0 {
+		return errMasterAccountAlreadyBound
+	}
+	return nil
 }
 
 func templeStatus(ctx context.Context, svcCtx *svc.ServiceContext, templeId string) (string, error) {

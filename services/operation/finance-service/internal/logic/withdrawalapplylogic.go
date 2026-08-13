@@ -52,7 +52,7 @@ func (l *WithdrawalApplyLogic) WithdrawalApply(req *types.WithdrawalApplyReq) (*
 	if l.svcCtx.MqProducer != nil {
 		_ = l.svcCtx.MqProducer.PublishWithdrawalNotify(l.ctx, mq.WithdrawalNotify{
 			WithdrawalId: strconv.FormatInt(w.Id, 10),
-			UserId:       applicantID,
+			UserId:       masterNotificationRecipient(applicantID),
 			Amount:       w.Amount,
 			Status:       w.Status,
 			Time:         w.CreateTime,
@@ -68,4 +68,8 @@ func (l *WithdrawalApplyLogic) WithdrawalApply(req *types.WithdrawalApplyReq) (*
 		Status:        w.Status,
 		CreateTime:    w.CreateTime,
 	}, nil
+}
+
+func masterNotificationRecipient(masterID string) string {
+	return "m_" + masterID
 }

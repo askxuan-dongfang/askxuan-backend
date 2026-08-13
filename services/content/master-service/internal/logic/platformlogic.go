@@ -19,6 +19,44 @@ import (
 // errAuditNotFound 审核记录不存在
 var errAuditNotFound = common.NewBizError(40414, "审核记录不存在")
 
+// PlatformMasterListLogic 平台法师全量列表。
+type PlatformMasterListLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewPlatformMasterListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *PlatformMasterListLogic {
+	return &PlatformMasterListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *PlatformMasterListLogic) PlatformMasterList(req *types.PlatformMasterListReq) (*types.ListResp, error) {
+	page, size := req.Page, req.Size
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 20
+	}
+	list, total, err := l.svcCtx.MasterModel.FindPlatformList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, req.AuthStatus, req.ShelfStatus, req.PlatformStatus, page, size)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]types.Master, 0, len(list))
+	for _, master := range list {
+		out = append(out, toTypeMasterWithTempleName(master, l.templeName(master.TempleCode)))
+	}
+	return &types.ListResp{Total: total, List: out, Page: page, Size: size}, nil
+}
+
+func (l *PlatformMasterListLogic) templeName(templeCode string) string {
+	name, err := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, templeCode)
+	if err != nil {
+		return ""
+	}
+	return name
+}
+
 // PlatformAuditListLogic 资质审核列表
 type PlatformAuditListLogic struct {
 	logx.Logger
@@ -166,6 +204,27 @@ func (l *PlatformMasterStatusLogic) PlatformMasterStatus(req *types.MasterPlatfo
 		return nil, err
 	}
 	return &types.MasterPlatformStatusResp{Id: req.Id, Status: req.Status}, nil
+}
+
+func (l *PlatformMasterStatusLogic) PlatformMasterConsultConfig(req *types.MasterConsultConfigReq) (*types.Master, error) {
+	if req.ConsultFee <= 0 || req.ConsultValidHours < 1 || req.ConsultValidHours > 720 || req.ConsultResponseMinutes < 1 || req.ConsultResponseMinutes > 1440 {
+		return nil, common.ErrParamInvalid
+	}
+	master, err := l.svcCtx.MasterModel.FindByCode(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrMasterNotFound
+		}
+		return nil, err
+	}
+	if err := l.svcCtx.MasterModel.UpdateConsultConfig(l.ctx, master.Id, req.ConsultEnabled, req.ConsultFee, req.ConsultValidHours, req.ConsultResponseMinutes); err != nil {
+		return nil, err
+	}
+	master.ConsultEnabled, master.ConsultFee = req.ConsultEnabled, req.ConsultFee
+	master.ConsultValidHours, master.ConsultResponseMinutes = req.ConsultValidHours, req.ConsultResponseMinutes
+	templeName, _ := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, master.TempleCode)
+	resp := toTypeMasterWithTempleName(master, templeName)
+	return &resp, nil
 }
 
 // ============ 平台审核共享辅助 ============
