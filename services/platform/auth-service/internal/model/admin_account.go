@@ -104,9 +104,13 @@ func (m *defaultAdminAccountModel) FindList(ctx context.Context, keyword, status
 // Insert 新建账号，返回自增 ID
 func (m *defaultAdminAccountModel) Insert(ctx context.Context, data *AdminAccount) (int64, error) {
 	query := fmt.Sprintf(`INSERT INTO %s (account, password, name, role_id, temple_id, master_id, shop_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, adminAccountTable)
+	status := data.Status
+	if status == "" {
+		status = AccountStatusEnabled
+	}
 	res, err := m.conn.ExecCtx(ctx, query,
 		data.Account, data.Password, data.Name, data.RoleId,
-		data.TempleId, data.MasterId, data.ShopId, AccountStatusEnabled)
+		data.TempleId, data.MasterId, data.ShopId, status)
 	if err != nil {
 		return 0, err
 	}

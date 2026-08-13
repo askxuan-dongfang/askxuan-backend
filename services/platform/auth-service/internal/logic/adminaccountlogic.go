@@ -107,8 +107,13 @@ func (l *AdminAccountCreateLogic) AdminAccountCreate(req *types.AdminAccountCrea
 		return nil, common.ErrUserAlreadyExists
 	}
 
-	// MVP-1 明文存储密码
-	id, err := l.svcCtx.AdminAccountModel.Insert(l.ctx, &model.AdminAccount{
+	status, err := initialAdminAccountStatus(l.ctx, l.svcCtx, binding.templeId, binding.templeAdmin)
+	if err != nil {
+		return nil, err
+	}
+
+	// MVP-1 明文存储密码。账号与寺院管理员关系必须在同一事务写入。
+	account := &model.AdminAccount{
 		Account:  req.Account,
 		Password: req.Password,
 		Name:     req.Name,
@@ -116,7 +121,9 @@ func (l *AdminAccountCreateLogic) AdminAccountCreate(req *types.AdminAccountCrea
 		TempleId: binding.templeId,
 		MasterId: binding.masterId,
 		ShopId:   binding.shopId,
-	})
+		Status:   status,
+	}
+	id, err := insertAdminAccountWithBinding(l.ctx, l.svcCtx.DB, account, binding.templeAdmin)
 	if err != nil {
 		l.Errorf("创建账号失败: %v", err)
 		return nil, common.ErrSystem
@@ -162,14 +169,20 @@ func (l *AdminAccountUpdateLogic) AdminAccountUpdate(req *types.AdminAccountUpda
 	if req.RoleId != 0 {
 		updated.RoleId = req.RoleId
 	}
-	if req.TempleId != "" {
+	if req.RoleId != 0 && req.RoleId != exist.RoleId {
 		updated.TempleId = req.TempleId
-	}
-	if req.MasterId != "" {
 		updated.MasterId = req.MasterId
-	}
-	if req.ShopId != 0 {
 		updated.ShopId = req.ShopId
+	} else {
+		if req.TempleId != "" {
+			updated.TempleId = req.TempleId
+		}
+		if req.MasterId != "" {
+			updated.MasterId = req.MasterId
+		}
+		if req.ShopId != 0 {
+			updated.ShopId = req.ShopId
+		}
 	}
 	binding, err := validateAdminAccountBinding(l.ctx, l.svcCtx, updated.RoleId, updated.TempleId, updated.MasterId, updated.ShopId)
 	if err != nil {
@@ -178,8 +191,18 @@ func (l *AdminAccountUpdateLogic) AdminAccountUpdate(req *types.AdminAccountUpda
 	updated.TempleId = binding.templeId
 	updated.MasterId = binding.masterId
 	updated.ShopId = binding.shopId
+	updated.Status = exist.Status
+	if binding.templeAdmin {
+		allowedStatus, statusErr := initialAdminAccountStatus(l.ctx, l.svcCtx, binding.templeId, true)
+		if statusErr != nil {
+			return nil, statusErr
+		}
+		if allowedStatus == model.AccountStatusDisabled {
+			updated.Status = model.AccountStatusDisabled
+		}
+	}
 
-	if err := l.svcCtx.AdminAccountModel.Update(l.ctx, updated); err != nil {
+	if err := updateAdminAccountWithBinding(l.ctx, l.svcCtx.DB, updated, binding.templeAdmin); err != nil {
 		l.Errorf("更新账号失败 id=%d: %v", req.Id, err)
 		return nil, common.ErrSystem
 	}
@@ -199,7 +222,7 @@ func (l *AdminAccountUpdateLogic) AdminAccountUpdate(req *types.AdminAccountUpda
 		TempleId:      updated.TempleId,
 		MasterId:      updated.MasterId,
 		ShopId:        updated.ShopId,
-		Status:        exist.Status,
+		Status:        updated.Status,
 		LastLoginTime: exist.LastLoginTime,
 		CreateTime:    exist.CreateTime,
 	}, nil
@@ -223,12 +246,26 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 	}
 
 	// 校验账号存在
-	if _, err := l.svcCtx.AdminAccountModel.FindByID(l.ctx, req.Id); err != nil {
+	account, err := l.svcCtx.AdminAccountModel.FindByID(l.ctx, req.Id)
+	if err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
 			return nil, common.ErrUserNotFound
 		}
 		l.Errorf("查询账号失败 id=%d: %v", req.Id, err)
 		return nil, common.ErrSystem
+	}
+	role, roleErr := l.svcCtx.RoleModel.FindByID(l.ctx, account.RoleId)
+	if roleErr != nil {
+		return nil, common.ErrSystem
+	}
+	if req.Status == model.AccountStatusEnabled && role.Code == model.RoleCodeTempleAdmin {
+		status, err := templeStatus(l.ctx, l.svcCtx, account.TempleId)
+		if err != nil {
+			return nil, err
+		}
+		if !canEnableTempleAccount(status) {
+			return nil, common.ErrStatusInvalid
+		}
 	}
 
 	if err := l.svcCtx.AdminAccountModel.UpdateStatus(l.ctx, req.Id, req.Status); err != nil {
@@ -243,9 +280,10 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 }
 
 type adminAccountBinding struct {
-	templeId string
-	masterId string
-	shopId   int64
+	templeId    string
+	masterId    string
+	shopId      int64
+	templeAdmin bool
 }
 
 func validateAdminAccountBinding(ctx context.Context, svcCtx *svc.ServiceContext, roleId int64, templeId, masterId string, shopId int64) (*adminAccountBinding, error) {
@@ -265,7 +303,7 @@ func validateAdminAccountBinding(ctx context.Context, svcCtx *svc.ServiceContext
 		if err := ensureTempleExists(ctx, svcCtx, templeId); err != nil {
 			return nil, err
 		}
-		return &adminAccountBinding{templeId: templeId}, nil
+		return &adminAccountBinding{templeId: templeId, templeAdmin: true}, nil
 
 	case model.RoleCodeMaster:
 		if masterId == "" {
@@ -314,4 +352,72 @@ func findMasterTempleId(ctx context.Context, svcCtx *svc.ServiceContext, masterI
 		return "", common.ErrSystem
 	}
 	return templeId, nil
+}
+
+func initialAdminAccountStatus(ctx context.Context, svcCtx *svc.ServiceContext, templeId string, templeAdmin bool) (string, error) {
+	if templeId == "" || !templeAdmin {
+		return model.AccountStatusEnabled, nil
+	}
+	status, err := templeStatus(ctx, svcCtx, templeId)
+	if err != nil {
+		return "", err
+	}
+	if canEnableTempleAccount(status) {
+		return model.AccountStatusEnabled, nil
+	}
+	return model.AccountStatusDisabled, nil
+}
+
+func templeStatus(ctx context.Context, svcCtx *svc.ServiceContext, templeId string) (string, error) {
+	var status string
+	if err := svcCtx.DB.QueryRowCtx(ctx, &status, "SELECT status FROM askxuan_temple.temple WHERE code = ?", templeId); err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return "", common.ErrTempleNotFound
+		}
+		return "", common.ErrSystem
+	}
+	return status, nil
+}
+
+func canEnableTempleAccount(status string) bool {
+	return status == "正常" || status == "推荐"
+}
+
+func insertAdminAccountWithBinding(ctx context.Context, db sqlx.SqlConn, account *model.AdminAccount, templeAdmin bool) (int64, error) {
+	var id int64
+	err := db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		result, err := session.ExecCtx(ctx, `INSERT INTO admin_account
+			(account,password,name,role_id,temple_id,master_id,shop_id,status)
+			VALUES (?,?,?,?,?,?,?,?)`, account.Account, account.Password, account.Name,
+			account.RoleId, account.TempleId, account.MasterId, account.ShopId, account.Status)
+		if err != nil {
+			return err
+		}
+		id, err = result.LastInsertId()
+		if err != nil || !templeAdmin {
+			return err
+		}
+		_, err = session.ExecCtx(ctx, `INSERT INTO askxuan_temple.temple_admin
+			(temple_code,account_id,role) VALUES (?,?,'admin')`, account.TempleId, id)
+		return err
+	})
+	return id, err
+}
+
+func updateAdminAccountWithBinding(ctx context.Context, db sqlx.SqlConn, account *model.AdminAccount, templeAdmin bool) error {
+	return db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		if _, err := session.ExecCtx(ctx, `UPDATE admin_account SET name=?,role_id=?,temple_id=?,master_id=?,shop_id=?,status=? WHERE id=?`,
+			account.Name, account.RoleId, account.TempleId, account.MasterId, account.ShopId, account.Status, account.Id); err != nil {
+			return err
+		}
+		if _, err := session.ExecCtx(ctx, "DELETE FROM askxuan_temple.temple_admin WHERE account_id = ?", account.Id); err != nil {
+			return err
+		}
+		if !templeAdmin {
+			return nil
+		}
+		_, err := session.ExecCtx(ctx, `INSERT INTO askxuan_temple.temple_admin
+			(temple_code,account_id,role) VALUES (?,?,'admin')`, account.TempleId, account.Id)
+		return err
+	})
 }

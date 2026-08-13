@@ -74,6 +74,7 @@ DROP PROCEDURE migrate_table_if_present;
 GRANT ALL PRIVILEGES ON askxuan_auth.* TO 'auth_user'@'%';
 GRANT SELECT ON askxuan_user.user TO 'auth_user'@'%';
 GRANT SELECT ON askxuan_temple.temple TO 'auth_user'@'%';
+GRANT SELECT, INSERT, DELETE ON askxuan_temple.temple_admin TO 'auth_user'@'%';
 GRANT SELECT ON askxuan_master.master TO 'auth_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_user.* TO 'user_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_temple.* TO 'temple_user'@'%';

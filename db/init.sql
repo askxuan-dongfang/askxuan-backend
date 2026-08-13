@@ -362,7 +362,15 @@ INSERT INTO `admin_account` (`id`,`account`,`password`,`name`,`role_id`,`temple_
 (1,'admin','123456','平台超管',1,'','','enabled','2026-07-01 00:00:00'),
 (2,'lingyin_admin','123456','灵隐寺管理员',2,'T001','','enabled','2026-07-01 00:00:00'),
 (3,'zhihai','123456','智海法师',3,'T001','M001','enabled','2026-07-01 00:00:00'),
-(4,'baiyun_admin','123456','白云观管理员',2,'T002','','enabled','2026-07-01 00:00:00');
+(4,'baiyun_admin','123456','白云观管理员',2,'T002','','enabled','2026-07-01 00:00:00'),
+(5,'shaolin_admin','123456','少林寺管理员',2,'T003','','enabled','2026-08-13 00:00:00'),
+(6,'dazhao_admin','123456','大昭寺管理员',2,'T004','','enabled','2026-08-13 00:00:00'),
+(7,'putuo_admin','123456','普陀山管理员',2,'T005','','disabled','2026-08-13 00:00:00'),
+(8,'wudang_admin','123456','武当山管理员',2,'T006','','enabled','2026-08-13 00:00:00'),
+(9,'jiuhua_admin','123456','九华山化城寺管理员',2,'T007','','enabled','2026-08-13 00:00:00'),
+(10,'yonghe_admin','123456','北京雍和宫管理员',2,'T008','','enabled','2026-08-13 00:00:00'),
+(11,'qingcheng_admin','123456','青城山天师洞管理员',2,'T009','','enabled','2026-08-13 00:00:00'),
+(12,'mazu_admin','123456','湄洲妈祖祖庙管理员',2,'T010','','enabled','2026-08-13 00:00:00');
 
 CREATE TABLE IF NOT EXISTS `role` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -489,6 +497,10 @@ INSERT INTO `temple_image` (`temple_code`,`url`,`type`,`sort`,`create_time`) VAL
 ('T001','/assets/temple-card-lingyinsi.jpg','cover',0,'2026-06-01 10:00:00'),
 ('T001','/assets/temple-detail-lingyinsi-1.jpg','detail',1,'2026-06-01 10:00:00'),
 ('T002','/assets/temple-card-baimasi.jpg','cover',0,'2026-06-01 10:00:00'),
+('T003','/assets/temple-card-shaolinsi.jpg','cover',0,'2026-06-01 10:00:00'),
+('T004','/assets/temple-card-dazhaosi.jpg','cover',0,'2026-06-01 10:00:00'),
+('T005','/assets/temple-card-famensi.jpg','cover',0,'2026-06-01 10:00:00'),
+('T006','/assets/temple-card-qingyanggong.jpg','cover',0,'2026-06-01 10:00:00'),
 ('T007','https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Huacheng_Temple_05.jpg/1280px-Huacheng_Temple_05.jpg','cover',0,'2026-08-13 10:00:00'),
 ('T008','https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Yonghe_Temple%2C_Beijing.JPG/1280px-Yonghe_Temple%2C_Beijing.JPG','cover',0,'2026-08-13 10:00:00'),
 ('T009','https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg/1280px-%E9%9D%92%E5%9F%8E%E5%B1%B1%E5%A4%A9%E5%B8%88%E6%B4%9E-%E3%80%8C%E5%8F%A4%E5%B8%B8%E9%81%93%E8%A7%82%E3%80%8D%E9%97%A8%E6%A5%BC.jpg','cover',0,'2026-08-13 10:00:00'),
@@ -507,7 +519,15 @@ CREATE TABLE IF NOT EXISTS `temple_admin` (
 
 INSERT INTO `temple_admin` (`temple_code`,`account_id`,`role`,`create_time`) VALUES
 ('T001',2,'admin','2026-07-01 00:00:00'),
-('T002',4,'admin','2026-07-01 00:00:00');
+('T002',4,'admin','2026-07-01 00:00:00'),
+('T003',5,'admin','2026-08-13 00:00:00'),
+('T004',6,'admin','2026-08-13 00:00:00'),
+('T005',7,'admin','2026-08-13 00:00:00'),
+('T006',8,'admin','2026-08-13 00:00:00'),
+('T007',9,'admin','2026-08-13 00:00:00'),
+('T008',10,'admin','2026-08-13 00:00:00'),
+('T009',11,'admin','2026-08-13 00:00:00'),
+('T010',12,'admin','2026-08-13 00:00:00');
 
 CREATE TABLE IF NOT EXISTS `temple_audit` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
