@@ -316,6 +316,22 @@ test: ## 运行所有模块单元测试
 		(cd $$path && go test ./... -count=1) || echo "  (测试失败 $$path)"; \
 	done
 
+lint-ci: ## 逐模块 golangci-lint（GOWORK=off 规避 go.work 的 -mod 限制；需先安装 golangci-lint）
+	@failed=0; for path in $(SERVICE_PATHS) common; do \
+		echo "==> golangci-lint: $$path"; \
+		(cd $$path && GOWORK=off golangci-lint run --timeout 5m ./...) || failed=1; \
+	done; \
+	if [ $$failed -ne 0 ]; then echo "❌ lint 存在失败模块"; exit 1; fi; \
+	echo "✅ 全部模块 lint 通过"
+
+test-ci: ## CI 用：任一模块测试失败立即非零退出
+	@failed=0; for path in $(SERVICE_PATHS) common; do \
+		echo "==> go test: $$path"; \
+		(cd $$path && go test ./... -count=1) || failed=1; \
+	done; \
+	if [ $$failed -ne 0 ]; then echo "❌ 存在失败模块"; exit 1; fi; \
+	echo "✅ 全部模块测试通过"
+
 test-verbose: ## 运行所有模块单元测试（详细输出）
 	@for path in $(SERVICE_PATHS) common; do \
 		echo "==> go test -v: $$path"; \
