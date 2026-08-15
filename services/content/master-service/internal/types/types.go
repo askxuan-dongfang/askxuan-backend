@@ -293,6 +293,8 @@ type MasterProfileResp struct {
 	Bio         string   `json:"bio"`
 	Pricing     string   `json:"pricing"`
 	Rating      float64  `json:"rating"`
+	ManageBy    string                    `json:"manageBy"`               // temple/platform
+	ServiceTags []MasterServiceTagItemResp `json:"serviceTags,omitempty"` // 我的服务标签
 }
 
 // MasterProfileUpdateReq 法师资料更新请求
@@ -360,6 +362,27 @@ type MasterServiceTagsReq struct {
 // MasterServiceTagsResp 大师服务标签列表
 type MasterServiceTagsResp struct {
 	List []MasterServiceTagItemResp `json:"list"`
+}
+
+// PlatformMasterCreateReq 平台创建野生大师（无寺庙，需资质审核后上架）
+type PlatformMasterCreateReq struct {
+	DharmaName             string   `json:"dharmaName"`
+	LayName                string   `json:"layName,optional"`
+	Position               string   `json:"position,optional"`
+	BeliefCode             string   `json:"beliefCode"`
+	Sect                   string   `json:"sect"`
+	Type                   string   `json:"type"`
+	Specialties            []string `json:"specialties,optional"`
+	Avatar                 string   `json:"avatar,optional"`
+	ConsultEnabled         bool     `json:"consultEnabled,optional"`
+	ConsultFee             float64  `json:"consultFee,optional"`
+	ConsultValidHours      int      `json:"consultValidHours,optional"`
+	ConsultResponseMinutes int      `json:"consultResponseMinutes,optional"`
+}
+
+// PlatformMasterCreateResp 平台创建野生大师响应
+type PlatformMasterCreateResp struct {
+	Id string `json:"id"`
 }
 
 // MasterPlatformStatusReq 平台法师状态请求

@@ -57,6 +57,52 @@ func (l *PlatformMasterListLogic) templeName(templeCode string) string {
 	return name
 }
 
+// PlatformMasterCreateLogic 平台创建野生大师（无寺庙，初始待审核）
+type PlatformMasterCreateLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewPlatformMasterCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *PlatformMasterCreateLogic {
+	return &PlatformMasterCreateLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *PlatformMasterCreateLogic) Create(req *types.PlatformMasterCreateReq) (*types.PlatformMasterCreateResp, error) {
+	if req.DharmaName == "" || req.BeliefCode == "" || req.Sect == "" || req.Type == "" {
+		return nil, common.ErrParamMissing
+	}
+	code, err := l.svcCtx.MasterModel.NextWildCode(l.ctx)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	master := &model.Master{
+		Code:                   code,
+		DharmaName:             req.DharmaName,
+		LayName:                req.LayName,
+		TempleCode:             "",
+		Position:               req.Position,
+		BeliefCode:             model.NormalizeBeliefCode(req.BeliefCode, req.Type, req.Sect),
+		Sect:                   req.Sect,
+		Type:                   req.Type,
+		AuthStatus:             model.MasterAuthStatusPending,
+		ShelfStatus:            model.MasterShelfStatusOffShelf,
+		PlatformStatus:         model.MasterPlatformStatusNormal,
+		ManageBy:               "platform",
+		Specialties:            joinSpecialties(req.Specialties),
+		Avatar:                 req.Avatar,
+		ConsultEnabled:         req.ConsultEnabled,
+		ConsultFee:             req.ConsultFee,
+		ConsultValidHours:      req.ConsultValidHours,
+		ConsultResponseMinutes: req.ConsultResponseMinutes,
+	}
+	if _, err := l.svcCtx.MasterModel.Insert(l.ctx, master); err != nil {
+		l.Errorf("创建野生大师失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	return &types.PlatformMasterCreateResp{Id: code}, nil
+}
+
 // PlatformAuditListLogic 资质审核列表
 type PlatformAuditListLogic struct {
 	logx.Logger

@@ -47,7 +47,18 @@ func (l *WorkspaceProfileGetLogic) WorkspaceProfileGet(req *types.MasterProfileR
 		l.Errorf("查询法师资料扩展失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	return toProfileResp(master, ext), nil
+	resp := toProfileResp(master, ext)
+	resp.ManageBy = master.ManageBy
+	if tags, tagErr := l.svcCtx.MasterModel.ListServiceTagsByMaster(l.ctx, masterCode); tagErr == nil {
+		for _, t := range tags {
+			resp.ServiceTags = append(resp.ServiceTags, types.MasterServiceTagItemResp{
+				ServiceCode: t.ServiceCode,
+				Price:       t.Price,
+				Status:      t.Status,
+			})
+		}
+	}
+	return resp, nil
 }
 
 // WorkspaceProfileUpdateLogic 更新法师资料

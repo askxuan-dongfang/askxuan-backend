@@ -108,6 +108,8 @@ type MasterModel interface {
 	UpdateConsultConfig(ctx context.Context, id int64, enabled bool, fee float64, validHours, responseMinutes int) error
 	// NextCode 生成下一个法师编码（基于 MAX(id)+1，格式 M00x）
 	NextCode(ctx context.Context) (string, error)
+	// NextWildCode 生成下一个野生大师编码（格式 W00x）
+	NextWildCode(ctx context.Context) (string, error)
 	ListServiceTagsByMaster(ctx context.Context, masterCode string) ([]*MasterServiceTag, error)
 	ReplaceServiceTags(ctx context.Context, masterCode string, tags []types.MasterServiceTagItem) error
 	// CountServiceType 校验服务编码存在于固定目录（跨库只读 askxuan_temple.service_type）
@@ -249,10 +251,10 @@ func (m *masterModel) queryPage(ctx context.Context, where string, args []interf
 }
 
 func (m *masterModel) Insert(ctx context.Context, data *Master) (int64, error) {
-	query := fmt.Sprintf("INSERT INTO %s (code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, manage_by, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table)
+	query := fmt.Sprintf("INSERT INTO %s (code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, manage_by, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table)
 	res, err := m.conn.ExecCtx(ctx, query,
 		data.Code, data.DharmaName, data.LayName, data.TempleCode, data.Position, data.BeliefCode,
-		data.Sect, data.Type, data.AuthStatus, data.ShelfStatus, data.PlatformStatus,
+		data.Sect, data.Type, data.AuthStatus, data.ShelfStatus, data.PlatformStatus, data.ManageBy,
 		data.Specialties, data.Avatar, data.Rating, data.ConsultEnabled, data.ConsultFee,
 		data.ConsultValidHours, data.ConsultResponseMinutes)
 	if err != nil {
@@ -305,6 +307,15 @@ func (m *masterModel) NextCode(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("M%03d", nextId), nil
+}
+
+func (m *masterModel) NextWildCode(ctx context.Context) (string, error) {
+	var count int64
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE manage_by='platform'", m.table)
+	if err := m.conn.QueryRowCtx(ctx, &count, query); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("W%03d", count+1), nil
 }
 
 // masterRows 法师表查询字段

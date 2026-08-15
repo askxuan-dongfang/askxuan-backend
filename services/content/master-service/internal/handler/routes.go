@@ -42,6 +42,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: platformMasterListHandler(svcCtx),
 		},
 		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/admin/platform/masters",
+			Handler: platformMasterCreateHandler(svcCtx),
+		},
+		{
 			Method:  http.MethodGet,
 			Path:    "/api/v1/admin/temples/masters",
 			Handler: adminMasterListHandler(svcCtx),
@@ -417,6 +422,22 @@ func workspaceScheduleUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc
 }
 
 // ============ 平台管理台 Handler ============
+
+func platformMasterCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.PlatformMasterCreateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewPlatformMasterCreateLogic(r.Context(), svcCtx).Create(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
 
 func platformMasterListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
