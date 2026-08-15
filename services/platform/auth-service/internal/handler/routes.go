@@ -40,6 +40,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/auth/admin/login",
 			Handler: adminLoginHandler(svcCtx),
 		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/auth/im-token",
+			Handler: imTokenHandler(svcCtx),
+		},
 	})
 
 	// ============ 管理台分组（需JWT，由网关鉴权） ============
@@ -130,6 +135,33 @@ func logoutHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		_ = httpx.Parse(r, &req)
 		l := logic.NewLogoutLogic(r.Context(), svcCtx)
 		resp, err := l.Logout(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+// imTokenHandler 为已登录用户续签 OpenIM token。
+// 身份由网关注入的请求头透传：X-User-Id（C端用户）、X-Master-Id（法师端）。
+func imTokenHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.IMTokenReq
+		_ = httpx.Parse(r, &req)
+		userID := r.Header.Get("X-User-Id")
+		userType := r.Header.Get("X-User-Type")
+		masterID := r.Header.Get("X-Master-Id")
+
+		openimUserID := ""
+		if userType == "master" && masterID != "" {
+			openimUserID = "m_" + masterID
+		} else if userID != "" {
+			openimUserID = "u_" + userID
+		}
+
+		l := logic.NewImTokenLogic(r.Context(), svcCtx, openimUserID)
+		resp, err := l.ImToken(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

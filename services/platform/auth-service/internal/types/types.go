@@ -38,6 +38,15 @@ type RefreshResp struct {
 	ExpiresIn   int64  `json:"expiresIn"`
 }
 
+// IMTokenReq OpenIM token 续签请求（无请求体，身份由网关 JWT 头透传）
+type IMTokenReq struct {
+}
+
+// IMTokenResp OpenIM token 续签响应
+type IMTokenResp struct {
+	IMToken string `json:"imToken"`
+}
+
 // LogoutReq 登出请求
 type LogoutReq struct {
 	AccessToken string `json:"accessToken,optional"`

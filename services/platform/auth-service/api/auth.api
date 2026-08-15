@@ -193,6 +193,8 @@ service auth-service {
 
     @handler adminLogin
     post /admin/login (AdminLoginReq) returns (LoginResp)
+    @handler imToken
+    post /im-token (IMTokenReq) returns (IMTokenResp)
 }
 
 // ============ 管理台分组（需JWT + 平台超管角色） ============
