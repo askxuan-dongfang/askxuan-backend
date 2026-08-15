@@ -465,7 +465,7 @@ func (m *communityModel) SetFollow(ctx context.Context, masterId, userId string,
 }
 
 func (m *communityModel) ListFollowedMasters(ctx context.Context, userId string) ([]string, error) {
-	var ids []string
+	ids := make([]string, 0)
 	err := m.conn.QueryRowsCtx(ctx, &ids, "SELECT master_id FROM master_follow WHERE user_id=? ORDER BY create_time DESC LIMIT 50", userId)
 	if err != nil {
 		return nil, err
