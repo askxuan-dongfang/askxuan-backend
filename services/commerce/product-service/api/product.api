@@ -80,6 +80,18 @@ type (
         Id int64 `path:"id"`
     }
 
+    ProductFavoriteReq {
+        Id int64 `path:"id"`
+    }
+
+    FavoriteResp {
+        Favorited bool `json:"favorited"`
+    }
+
+    FavoritesResp {
+        List []Product `json:"list"`
+    }
+
     CustomerCategoryTreeReq {
     }
 
@@ -267,6 +279,23 @@ service product-service {
 
     @handler customerIntention
     get /intentions (CustomerIntentionReq) returns (CustomerIntentionResp)
+}
+
+// ==================== C端收藏（需鉴权，网关注入 X-User-Id） ====================
+
+@server (
+    group: product.favorite
+    prefix: /api/v1
+)
+service product-service {
+    @handler productFavorite
+    post /products/:id/favorite (ProductFavoriteReq) returns (FavoriteResp)
+
+    @handler productUnfavorite
+    delete /products/:id/favorite (ProductFavoriteReq) returns (FavoriteResp)
+
+    @handler productFavorites
+    get /favorites/products returns (FavoritesResp)
 }
 
 // ==================== 商城台路由（需鉴权） ====================

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/middleware"
@@ -36,6 +37,21 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Method:  http.MethodGet,
 			Path:    "/api/v1/temples/:id/services",
 			Handler: serviceListHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/temples/:id/favorite",
+			Handler: templeFavoriteHandler(svcCtx, true),
+		},
+		{
+			Method:  http.MethodDelete,
+			Path:    "/api/v1/temples/:id/favorite",
+			Handler: templeFavoriteHandler(svcCtx, false),
+		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/favorites/temples",
+			Handler: templeFavoritesHandler(svcCtx),
 		},
 	})
 
@@ -329,6 +345,45 @@ func serviceListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		} else {
 			common.Ok(w, resp)
 		}
+	}
+}
+
+// templeFavoriteHandler 收藏/取消收藏寺院（JWT 由网关校验，服务内取 X-User-Id）
+func templeFavoriteHandler(svcCtx *svc.ServiceContext, favorited bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId, err := strconv.ParseInt(r.Header.Get(svc.HeaderUserID), 10, 64)
+		if err != nil || userId <= 0 {
+			common.JsonError(w, common.ErrUnauthorized)
+			return
+		}
+		var req types.TempleFavoriteReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.SetTempleFavorite(r.Context(), svcCtx, userId, req.Id, favorited)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+// templeFavoritesHandler 查询用户收藏的寺院列表
+func templeFavoritesHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId, err := strconv.ParseInt(r.Header.Get(svc.HeaderUserID), 10, 64)
+		if err != nil || userId <= 0 {
+			common.JsonError(w, common.ErrUnauthorized)
+			return
+		}
+		resp, err := logic.ListFavoriteTemples(r.Context(), svcCtx, userId)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
 	}
 }
 

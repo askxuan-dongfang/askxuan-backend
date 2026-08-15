@@ -95,6 +95,23 @@ type DetailReq struct {
 	Id string `path:"id,optional"`
 }
 
+// ============ 寺院收藏 ============
+
+// TempleFavoriteReq 收藏/取消收藏请求（:id 为寺院编码 code）
+type TempleFavoriteReq struct {
+	Id string `path:"id"`
+}
+
+// FavoriteResp 收藏操作结果
+type FavoriteResp struct {
+	Favorited bool `json:"favorited"`
+}
+
+// FavoritesResp 收藏寺院列表
+type FavoritesResp struct {
+	List []Temple `json:"list"`
+}
+
 // ============ 寺院图片 ============
 
 // TempleImage 寺院图片

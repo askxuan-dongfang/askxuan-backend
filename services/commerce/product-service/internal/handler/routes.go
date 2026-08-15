@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/middleware"
@@ -24,6 +25,9 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/products/categories", Handler: customerCategoryTreeHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/intentions", Handler: customerIntentionHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/intentions/tags", Handler: customerIntentionTagListHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/products/:id/favorite", Handler: productFavoriteHandler(svcCtx, true)},
+		{Method: http.MethodDelete, Path: "/api/v1/products/:id/favorite", Handler: productFavoriteHandler(svcCtx, false)},
+		{Method: http.MethodGet, Path: "/api/v1/favorites/products", Handler: productFavoritesHandler(svcCtx)},
 	})
 
 	// ===== 商城台路由 =====
@@ -179,6 +183,45 @@ func customerCategoryTreeHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		} else {
 			common.Ok(w, resp)
 		}
+	}
+}
+
+// productFavoriteHandler 收藏/取消收藏商品（JWT 由网关校验，服务内取 X-User-Id）
+func productFavoriteHandler(svcCtx *svc.ServiceContext, favorited bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId, err := strconv.ParseInt(r.Header.Get("X-User-Id"), 10, 64)
+		if err != nil || userId <= 0 {
+			common.JsonError(w, common.ErrUnauthorized)
+			return
+		}
+		var req types.ProductFavoriteReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.SetProductFavorite(r.Context(), svcCtx, userId, req.Id, favorited)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+// productFavoritesHandler 查询用户收藏的商品列表
+func productFavoritesHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId, err := strconv.ParseInt(r.Header.Get("X-User-Id"), 10, 64)
+		if err != nil || userId <= 0 {
+			common.JsonError(w, common.ErrUnauthorized)
+			return
+		}
+		resp, err := logic.ListFavoriteProducts(r.Context(), svcCtx, userId)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
 	}
 }
 

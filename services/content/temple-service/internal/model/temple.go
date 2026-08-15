@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/askxuan/temple-service/internal/types"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -77,6 +78,8 @@ type TempleModel interface {
 	Update(ctx context.Context, data *Temple) error
 	UpdateStatus(ctx context.Context, id int64, status string) error
 	Delete(ctx context.Context, id int64) error
+	SetTempleFavorite(ctx context.Context, userId int64, templeCode string, favorited bool) (bool, error)
+	ListFavoriteTemples(ctx context.Context, userId int64) ([]types.Temple, error)
 }
 
 type defaultTempleModel struct {

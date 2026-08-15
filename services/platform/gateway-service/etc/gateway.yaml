@@ -111,6 +111,12 @@ Upstreams:
   - Prefix: /openim
     Target: localhost:8094
     ServiceName: message.service
+  - Prefix: /api/v1/favorites/temples
+    Target: localhost:8083
+    ServiceName: temple.service
+  - Prefix: /api/v1/favorites/products
+    Target: localhost:8086
+    ServiceName: product.service
 
   # ============ 管理台路由（/api/v1/admin/*） ============
   - Prefix: /api/v1/admin/files

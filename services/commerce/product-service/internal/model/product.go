@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/askxuan/product-service/internal/types"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -44,6 +45,8 @@ type ProductModel interface {
 	Update(ctx context.Context, data *Product) error
 	UpdateStatus(ctx context.Context, id int64, status string) error
 	Delete(ctx context.Context, id int64) error
+	SetProductFavorite(ctx context.Context, userId int64, productId int64, favorited bool) (bool, error)
+	ListFavoriteProducts(ctx context.Context, userId int64) ([]types.Product, error)
 }
 
 type defaultProductModel struct {

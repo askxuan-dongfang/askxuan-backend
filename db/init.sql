@@ -712,6 +712,14 @@ CREATE TABLE IF NOT EXISTS `service_schedule` (
   KEY `idx_service` (`service_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务时段';
 
+CREATE TABLE IF NOT EXISTS `temple_favorite` (
+  `user_id` BIGINT NOT NULL COMMENT '用户ID',
+  `temple_code` VARCHAR(16) NOT NULL COMMENT '寺院编码',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`,`temple_code`),
+  KEY `idx_user` (`user_id`,`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收藏寺院';
+
 -- ============================================================
 -- 四、法师域 askxuan_master（master_credential/master_schedule/master_audit）
 -- ============================================================
@@ -1132,6 +1140,14 @@ INSERT INTO `product_image` (`product_id`,`image_url`,`sort`,`type`) VALUES
 (1,'/assets/product-xiaoyezitan.jpg',0,'main'),
 (1,'/assets/product-xiaoyezitan-2.jpg',1,'detail'),
 (2,'/assets/product-xingyueputi.jpg',0,'main');
+
+CREATE TABLE IF NOT EXISTS `product_favorite` (
+  `user_id` BIGINT NOT NULL COMMENT '用户ID',
+  `product_id` BIGINT NOT NULL COMMENT '商品ID',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`,`product_id`),
+  KEY `idx_user` (`user_id`,`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收藏商品';
 
 -- ============================================================
 -- 八、DIY域 askxuan_diy（material_sku/diy_design/diy_order/diy_order_item/blessing_task）

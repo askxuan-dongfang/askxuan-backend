@@ -72,6 +72,20 @@ type CustomerProductDetailReq struct {
 	Id int64 `path:"id"`
 }
 
+// ===== C端收藏 =====
+
+type ProductFavoriteReq struct {
+	Id int64 `path:"id"`
+}
+
+type FavoriteResp struct {
+	Favorited bool `json:"favorited"`
+}
+
+type FavoritesResp struct {
+	List []Product `json:"list"`
+}
+
 type CustomerCategoryTreeReq struct{}
 
 type CustomerCategoryTreeResp struct {

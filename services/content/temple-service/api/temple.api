@@ -342,6 +342,21 @@ type (
     }
 )
 
+// ============ 寺院收藏（C端） ============
+type (
+    TempleFavoriteReq {
+        Id string `path:"id"` // 寺院编码 code
+    }
+
+    FavoriteResp {
+        Favorited bool `json:"favorited"`
+    }
+
+    FavoritesResp {
+        List []Temple `json:"list"`
+    }
+)
+
 // ============ C端分组（保留+扩展） ============
 @server (
     group: temple
@@ -356,6 +371,21 @@ service temple-service {
 
     @handler serviceList
     get /:id/services (TempleServiceListReq) returns (TempleServiceListResp)
+
+    @handler templeFavorite
+    post /:id/favorite (TempleFavoriteReq) returns (FavoriteResp)
+
+    @handler templeUnfavorite
+    delete /:id/favorite (TempleFavoriteReq) returns (FavoriteResp)
+}
+
+@server (
+    group: templeFavorites
+    prefix: /api/v1/favorites
+)
+service temple-service {
+    @handler templeFavorites
+    get /temples returns (FavoritesResp)
 }
 
 @server (group: serviceType)
