@@ -62,3 +62,9 @@ INSERT INTO `master_service_tag` (`master_code`,`service_code`,`price`,`status`)
 ('W004','S002',36.00,'enabled'),
 ('W004','S009',46.00,'enabled')
 ON DUPLICATE KEY UPDATE `status`='enabled';
+
+-- 7. 野生大师平台抽成费率（默认 10%，平台可调）
+USE askxuan_finance;
+INSERT INTO `commission_config` (`biz_type`,`rate`,`description`,`update_time`) VALUES
+('wild_master',0.1000,'野生大师平台抽成（默认10%，平台可调）',NOW())
+ON DUPLICATE KEY UPDATE `description`=VALUES(`description`);

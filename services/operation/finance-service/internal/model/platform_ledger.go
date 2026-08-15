@@ -161,11 +161,16 @@ func RecordPlatformReceipt(ctx context.Context, receipt PaymentReceipt) error {
 }
 
 func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (BookingSplit, error) {
-	if booking.BookingID == "" || booking.TempleID == "" || booking.MasterID == "" || booking.BookingDate == "" {
+	if booking.BookingID == "" || booking.MasterID == "" || booking.BookingDate == "" {
 		return BookingSplit{}, fmt.Errorf("预约分账字段不完整")
 	}
+	// 野生大师（大师直约，无寺庙）使用独立费率；寺庙为空时 TempleNet 恒为 0
+	bizType := BizTypeBooking
+	if booking.TempleID == "" {
+		bizType = BizTypeWildMaster
+	}
 	var rate float64
-	if err := db.QueryRowCtx(ctx, &rate, `SELECT rate FROM commission_config WHERE biz_type=?`, BizTypeBooking); err != nil {
+	if err := db.QueryRowCtx(ctx, &rate, `SELECT rate FROM commission_config WHERE biz_type=?`, bizType); err != nil {
 		return BookingSplit{}, fmt.Errorf("读取预约抽成配置失败: %w", err)
 	}
 	split, err := CalculateBookingSplit(booking.ServiceFee, booking.MeritMoney, booking.TotalFee, rate)

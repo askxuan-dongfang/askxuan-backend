@@ -7,6 +7,7 @@ import (
 
 const (
 	BizTypeBooking      = "booking"
+	BizTypeWildMaster   = "wild_master"
 	BizTypeConsultation = "consultation"
 	BizTypeDiyBlessing  = "diy_blessing"
 	BizTypeDiyMaterial  = "diy_material"
