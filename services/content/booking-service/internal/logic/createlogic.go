@@ -77,9 +77,24 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 		return nil, common.ErrBookingSlotNotFound
 	}
 	timeRange := slot.StartTime + "-" + slot.EndTime
-	total := service.Price + req.MeritMoney
-	snapshot, _ := json.Marshal(map[string]interface{}{"serviceCode": service.ServiceCode, "serviceName": service.ServiceName, "serviceFee": service.Price, "meritMoney": req.MeritMoney, "totalFee": total, "slotCode": slot.Code, "timeSlot": timeRange})
-	created, err := l.svcCtx.BookingModel.InsertWithReservation(l.ctx, &model.Booking{RequestId: req.RequestId, UserId: req.UserId, TempleId: service.TempleCode, TempleName: service.TempleName, MasterId: master.Code, MasterName: master.DharmaName, ServiceId: service.ServiceCode, ServiceName: service.ServiceName, BookingDate: req.BookingDate, SlotCode: slot.Code, TimeSlot: timeRange, ServiceFee: service.Price, MeritMoney: req.MeritMoney, MeritMoneyTier: req.MeritMoneyTier, TotalFee: total, PriceSnapshot: string(snapshot), Note: req.Note}, int(slot.Capacity))
+
+	// 双轨制：指定大师执行时，大师按自身服务标签价格分流，寺院服务费+功德归寺院。
+	// 大师未配置该服务标签时回退原计价（服务费全归大师），兼容存量数据。
+	templeFee := service.Price
+	masterFee := service.Price
+	meritToTemple := req.MeritMoney
+	if detail, fErr := fetchMasterDetail(l.svcCtx, master.Code); fErr == nil {
+		for _, t := range detail.ServiceTags {
+			if t.ServiceCode == service.ServiceCode && (t.Status == "" || t.Status == "enabled") {
+				masterFee = t.Price
+				meritToTemple = service.Price + req.MeritMoney
+				break
+			}
+		}
+	}
+	total := masterFee + meritToTemple
+	snapshot, _ := json.Marshal(map[string]interface{}{"serviceCode": service.ServiceCode, "serviceName": service.ServiceName, "templeFee": templeFee, "masterFee": masterFee, "meritMoney": req.MeritMoney, "totalFee": total, "slotCode": slot.Code, "timeSlot": timeRange})
+	created, err := l.svcCtx.BookingModel.InsertWithReservation(l.ctx, &model.Booking{RequestId: req.RequestId, UserId: req.UserId, TempleId: service.TempleCode, TempleName: service.TempleName, MasterId: master.Code, MasterName: master.DharmaName, ServiceId: service.ServiceCode, ServiceName: service.ServiceName, BookingDate: req.BookingDate, SlotCode: slot.Code, TimeSlot: timeRange, ServiceFee: masterFee, MeritMoney: meritToTemple, MeritMoneyTier: req.MeritMoneyTier, TotalFee: total, PriceSnapshot: string(snapshot), Note: req.Note}, int(slot.Capacity))
 	if err != nil {
 		if errors.Is(err, model.ErrSlotFull) {
 			return nil, common.ErrBookingSlotFull

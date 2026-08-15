@@ -135,14 +135,18 @@ func (l *DirectBookingLogic) autoPay(b *model.Booking) *types.CreateResp {
 
 // fetchMaster 经网关读取大师公开详情
 func (l *DirectBookingLogic) fetchMaster(masterCode string) (*masterDetail, error) {
-	base := strings.TrimRight(l.svcCtx.Config.GatewayBaseURL, "/")
+	return fetchMasterDetail(l.svcCtx, masterCode)
+}
+
+// fetchMasterDetail 经网关读取大师公开详情（含服务标签）
+func fetchMasterDetail(svcCtx *svc.ServiceContext, masterCode string) (*masterDetail, error) {
+	base := strings.TrimRight(svcCtx.Config.GatewayBaseURL, "/")
 	if base == "" {
 		base = "http://localhost:8080"
 	}
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Get(fmt.Sprintf("%s/api/v1/masters/%s", base, masterCode))
 	if err != nil {
-		l.Errorf("读取大师详情失败: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
