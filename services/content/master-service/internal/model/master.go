@@ -2,6 +2,8 @@ package model
 
 import (
 	"context"
+
+	"github.com/askxuan/master-service/internal/types"
 	"fmt"
 	"regexp"
 	"strings"
@@ -96,7 +98,7 @@ type MasterModel interface {
 	// FindPlatformList 平台查询全量法师，不应用 C 端可见性条件。
 	FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus string, page, size int) ([]*Master, int64, error)
 	// FindCList C端公开列表（仅 on_shelf + normal），按 sect/type/templeCode 筛选
-	FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode string, page, size int) ([]*Master, int64, error)
+	FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy string, page, size int) ([]*Master, int64, error)
 	FindTempleNameByCode(ctx context.Context, templeCode string) (string, error)
 	Insert(ctx context.Context, data *Master) (int64, error)
 	Update(ctx context.Context, data *Master) error
@@ -106,6 +108,10 @@ type MasterModel interface {
 	UpdateConsultConfig(ctx context.Context, id int64, enabled bool, fee float64, validHours, responseMinutes int) error
 	// NextCode 生成下一个法师编码（基于 MAX(id)+1，格式 M00x）
 	NextCode(ctx context.Context) (string, error)
+	ListServiceTagsByMaster(ctx context.Context, masterCode string) ([]*MasterServiceTag, error)
+	ReplaceServiceTags(ctx context.Context, masterCode string, tags []types.MasterServiceTagItem) error
+	// CountServiceType 校验服务编码存在于固定目录（跨库只读 askxuan_temple.service_type）
+	CountServiceType(ctx context.Context, serviceCode string) (int64, error)
 }
 
 type masterModel struct {
@@ -182,7 +188,7 @@ func (m *masterModel) FindPlatformList(ctx context.Context, beliefCode, sect, mt
 	return m.queryPage(ctx, where, args, "ORDER BY id DESC", page, size)
 }
 
-func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode string, page, size int) ([]*Master, int64, error) {
+func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy string, page, size int) ([]*Master, int64, error) {
 	where := "WHERE shelf_status = ? AND platform_status = ?"
 	args := []interface{}{MasterShelfStatusOnShelf, MasterPlatformStatusNormal}
 	if beliefCode != "" {
@@ -200,6 +206,10 @@ func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, te
 	if templeCode != "" {
 		where += " AND temple_code = ?"
 		args = append(args, templeCode)
+	}
+	if manageBy != "" {
+		where += " AND manage_by = ?"
+		args = append(args, manageBy)
 	}
 	return m.queryPage(ctx, where, args, "ORDER BY rating DESC, id DESC", page, size)
 }

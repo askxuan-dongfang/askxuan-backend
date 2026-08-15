@@ -118,6 +118,17 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/admin/masters/earnings/details",
 			Handler: workspaceEarningsDetailsHandler(svcCtx),
 		},
+		// 我的服务标签
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/masters/service-tags",
+			Handler: workspaceServiceTagsGetHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPut,
+			Path:    "/api/v1/admin/masters/service-tags",
+			Handler: workspaceServiceTagsPutHandler(svcCtx),
+		},
 		// 个人资料
 		{
 			Method:  http.MethodGet,
@@ -545,6 +556,33 @@ func workspaceEarningsDetailsHandler(svcCtx *svc.ServiceContext) http.HandlerFun
 }
 
 // ============ 法师工作台 - 个人资料 Handler ============
+
+func workspaceServiceTagsGetHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := logic.WorkspaceServiceTags(r.Context(), svcCtx)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func workspaceServiceTagsPutHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MasterServiceTagsReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.WorkspaceUpdateServiceTags(r.Context(), svcCtx, &req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
 
 func workspaceProfileGetHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

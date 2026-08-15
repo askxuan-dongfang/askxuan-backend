@@ -39,7 +39,7 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 		size = 20
 	}
 
-	list, total, err := l.svcCtx.MasterModel.FindCList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, page, size)
+	list, total, err := l.svcCtx.MasterModel.FindCList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, req.ManageBy, page, size)
 	if err != nil {
 		return nil, err
 	}

@@ -390,3 +390,56 @@ func unmarshalStrSlice(s string) []string {
 	}
 	return out
 }
+
+// ============ 我的服务标签（两类大师通用） ============
+
+// WorkspaceServiceTags 查询我的服务标签
+func WorkspaceServiceTags(ctx context.Context, svcCtx *svc.ServiceContext) (*types.MasterServiceTagsResp, error) {
+	code, err := currentMasterCode(ctx, svcCtx)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := svcCtx.MasterModel.ListServiceTagsByMaster(ctx, code)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	resp := &types.MasterServiceTagsResp{List: make([]types.MasterServiceTagItemResp, 0, len(tags))}
+	for _, t := range tags {
+		resp.List = append(resp.List, types.MasterServiceTagItemResp{
+			ServiceCode: t.ServiceCode,
+			Price:       t.Price,
+			Status:      t.Status,
+		})
+	}
+	return resp, nil
+}
+
+// WorkspaceUpdateServiceTags 覆盖式更新我的服务标签（复用 S001-S013 目录）
+func WorkspaceUpdateServiceTags(ctx context.Context, svcCtx *svc.ServiceContext, req *types.MasterServiceTagsReq) (*types.MasterServiceTagsResp, error) {
+	code, err := currentMasterCode(ctx, svcCtx)
+	if err != nil {
+		return nil, err
+	}
+	if len(req.Tags) > 13 {
+		return nil, common.ErrParamInvalid
+	}
+	seen := make(map[string]bool, len(req.Tags))
+	for _, t := range req.Tags {
+		if t.ServiceCode == "" || t.Price < 0 {
+			return nil, common.ErrParamInvalid
+		}
+		if seen[t.ServiceCode] {
+			return nil, common.ErrParamInvalid
+		}
+		seen[t.ServiceCode] = true
+		// 目录校验（服务类型表在寺院域，master 用户已有只读授权）
+		cnt, err := svcCtx.MasterModel.CountServiceType(ctx, t.ServiceCode)
+		if err != nil || cnt == 0 {
+			return nil, common.ErrParamInvalid
+		}
+	}
+	if err := svcCtx.MasterModel.ReplaceServiceTags(ctx, code, req.Tags); err != nil {
+		return nil, common.ErrSystem
+	}
+	return WorkspaceServiceTags(ctx, svcCtx)
+}

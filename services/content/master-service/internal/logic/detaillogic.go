@@ -41,6 +41,14 @@ func (l *DetailLogic) Detail(req *types.DetailReq) (*types.Master, error) {
 		return nil, common.ErrMasterNotFound
 	}
 	resp := toTypeMaster(m)
+	if tags, err := l.svcCtx.MasterModel.ListServiceTagsByMaster(l.ctx, m.Code); err == nil {
+		for _, t := range tags {
+			resp.ServiceTags = append(resp.ServiceTags, types.MasterServiceTagItem{
+				ServiceCode: t.ServiceCode,
+				Price:       t.Price,
+			})
+		}
+	}
 	return &resp, nil
 }
 

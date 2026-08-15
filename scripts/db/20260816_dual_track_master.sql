@@ -29,10 +29,10 @@ CREATE TABLE IF NOT EXISTS `master_service_tag` (
 
 -- 3. 野生大师种子（平台管理，无寺庙；资质已认证）
 INSERT INTO `master` (`code`,`dharma_name`,`lay_name`,`temple_code`,`position`,`belief_code`,`sect`,`type`,`auth_status`,`shelf_status`,`platform_status`,`manage_by`,`specialties`,`avatar`,`rating`,`consult_enabled`,`consult_fee`,`consult_valid_hours`,`consult_response_minutes`) VALUES
-('W001','云游道人（演示）','陈道玄','','独立道长','taoism','正一派','道教','verified','on_shelf','normal','platform','八字命理,风水堪舆','',4.9,1,39.00,72,30),
-('W002','慧远居士（演示）','周明远','','独立居士','han_buddhism','净土宗','汉传佛教','verified','on_shelf','normal','platform','姻缘测算,六爻梅花','',4.8,1,29.00,72,30),
-('W003','紫微先生（演示）','吴子谦','','命理师','taoism','全真派','道教','verified','on_shelf','normal','platform','紫微斗数,奇门遁甲','',4.9,1,49.00,72,30),
-('W004','塔罗心语（演示）','林小满','','占卜师','han_buddhism','禅宗','汉传佛教','verified','on_shelf','normal','platform','塔罗牌,姻缘测算','',4.7,1,19.00,72,30)
+('W001','云游道人（演示）','陈道玄','','独立道长','taoism','正一派','道教','已认证','on_shelf','normal','platform','八字命理,风水堪舆','',4.9,1,39.00,72,30),
+('W002','慧远居士（演示）','周明远','','独立居士','han_buddhism','净土宗','汉传佛教','已认证','on_shelf','normal','platform','姻缘测算,六爻梅花','',4.8,1,29.00,72,30),
+('W003','紫微先生（演示）','吴子谦','','命理师','taoism','全真派','道教','已认证','on_shelf','normal','platform','紫微斗数,奇门遁甲','',4.9,1,49.00,72,30),
+('W004','塔罗心语（演示）','林小满','','占卜师','han_buddhism','禅宗','汉传佛教','已认证','on_shelf','normal','platform','塔罗牌,姻缘测算','',4.7,1,19.00,72,30)
 ON DUPLICATE KEY UPDATE `manage_by`='platform', `temple_code`='';
 
 -- 4. 野生大师法师端账号（平台分发；角色 role_id=3 即 master）
@@ -45,11 +45,11 @@ ON DUPLICATE KEY UPDATE `status`='enabled';
 
 -- 5. 资质认证记录（平台已认证）
 INSERT INTO `master_credential` (`master_code`,`cert_type`,`cert_url`,`status`,`submit_time`,`audit_time`) VALUES
-('W001','identity','','verified',NOW(),NOW()),
-('W002','identity','','verified',NOW(),NOW()),
-('W003','identity','','verified',NOW(),NOW()),
-('W004','identity','','verified',NOW(),NOW())
-ON DUPLICATE KEY UPDATE `status`='verified';
+('W001','identity','','已认证',NOW(),NOW()),
+('W002','identity','','已认证',NOW(),NOW()),
+('W003','identity','','已认证',NOW(),NOW()),
+('W004','identity','','已认证',NOW(),NOW())
+ON DUPLICATE KEY UPDATE `status`='已认证';
 
 -- 6. 野生大师服务标签
 INSERT INTO `master_service_tag` (`master_code`,`service_code`,`price`,`status`) VALUES

@@ -410,9 +410,9 @@ func masterAccountStatusFor(ctx context.Context, svcCtx *svc.ServiceContext, mas
 		PlatformStatus string `db:"platform_status"`
 		TempleStatus   string `db:"temple_status"`
 	}
-	err := svcCtx.DB.QueryRowCtx(ctx, &row, `SELECT m.auth_status, m.platform_status, t.status AS temple_status
+	err := svcCtx.DB.QueryRowCtx(ctx, &row, `SELECT m.auth_status, m.platform_status, COALESCE(t.status, '') AS temple_status
 		FROM askxuan_master.master m
-		JOIN askxuan_temple.temple t ON t.code = m.temple_code
+		LEFT JOIN askxuan_temple.temple t ON t.code = m.temple_code
 		WHERE m.code = ?`, masterId)
 	if err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
@@ -424,7 +424,9 @@ func masterAccountStatusFor(ctx context.Context, svcCtx *svc.ServiceContext, mas
 }
 
 func canEnableMasterAccount(authStatus, platformStatus, templeStatus string) bool {
-	return authStatus == "已认证" && platformStatus == "normal" && canEnableTempleAccount(templeStatus)
+	// 野生大师（templeStatus 为空）不受寺庙状态约束
+	return authStatus == "已认证" && platformStatus == "normal" &&
+		(templeStatus == "" || canEnableTempleAccount(templeStatus))
 }
 
 func ensureMasterAccountAvailable(ctx context.Context, svcCtx *svc.ServiceContext, masterId string, excludeId int64) error {

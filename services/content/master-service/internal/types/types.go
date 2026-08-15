@@ -17,6 +17,7 @@ type Master struct {
 	ShelfStatus            string   `json:"shelfStatus"`
 	PlatformStatus         string   `json:"platformStatus"`
 	ManageBy               string   `json:"manageBy"` // temple=寺庙绑定 / platform=平台(野生)
+	ServiceTags            []MasterServiceTagItem `json:"serviceTags,omitempty"` // 大师服务标签
 	Specialties            []string `json:"specialties"`
 	Avatar                 string   `json:"avatar"`
 	Rating                 float64  `json:"rating"`
@@ -32,6 +33,7 @@ type ListReq struct {
 	Sect       string `form:"sect,optional"`
 	Type       string `form:"type,optional"`
 	TempleId   string `form:"templeId,optional"`
+	ManageBy   string `form:"manageBy,optional"` // temple/platform：找师傅专栏传 platform
 	Page       int    `form:"page,default=1"`
 	Size       int    `form:"size,default=20"`
 }
@@ -334,6 +336,29 @@ type MasterAuditListResp struct {
 type MasterAuditActionReq struct {
 	Id          int64  `path:"id"`
 	AuditRemark string `json:"auditRemark,optional"`
+}
+
+// MasterServiceTagItem 大师服务标签项
+type MasterServiceTagItem struct {
+	ServiceCode string  `json:"serviceCode"`
+	Price       float64 `json:"price"`
+}
+
+// MasterServiceTagItemResp 标签项（含状态）
+type MasterServiceTagItemResp struct {
+	ServiceCode string  `json:"serviceCode"`
+	Price       float64 `json:"price"`
+	Status      string  `json:"status"`
+}
+
+// MasterServiceTagsReq 更新大师服务标签请求
+type MasterServiceTagsReq struct {
+	Tags []MasterServiceTagItem `json:"tags"`
+}
+
+// MasterServiceTagsResp 大师服务标签列表
+type MasterServiceTagsResp struct {
+	List []MasterServiceTagItemResp `json:"list"`
 }
 
 // MasterPlatformStatusReq 平台法师状态请求
