@@ -55,6 +55,7 @@ type CommunityModel interface {
 	ListComments(ctx context.Context, postNo, status string, page, size int) (int64, []types.Comment, error)
 	ReviewComment(ctx context.Context, commentNo, auditorId, status, remark string) (*types.Comment, error)
 	SetFollow(ctx context.Context, masterId, userId string, following bool) (bool, error)
+	ListFollowedMasters(ctx context.Context, userId string) ([]string, error)
 }
 
 type communityModel struct{ conn sqlx.SqlConn }
@@ -461,6 +462,15 @@ func (m *communityModel) SetFollow(ctx context.Context, masterId, userId string,
 	}
 	_, err := m.conn.ExecCtx(ctx, "DELETE FROM master_follow WHERE master_id=? AND user_id=?", masterId, userId)
 	return false, err
+}
+
+func (m *communityModel) ListFollowedMasters(ctx context.Context, userId string) ([]string, error) {
+	var ids []string
+	err := m.conn.QueryRowsCtx(ctx, &ids, "SELECT master_id FROM master_follow WHERE user_id=? ORDER BY create_time DESC LIMIT 50", userId)
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 func rowToPost(r *postRow) types.Post {

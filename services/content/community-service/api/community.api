@@ -146,6 +146,8 @@ service community-service {
     get /posts/:id/comments (CommentListReq) returns (CommentListResp)
     @handler createComment
     post /posts/:id/comments (CommentCreateReq) returns (Comment)
+    @handler myFollowing
+    get /masters/following returns (FollowedMastersResp)
     @handler follow
     post /masters/:id/follow (FollowReq) returns (FollowResp)
     @handler unfollow

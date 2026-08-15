@@ -22,11 +22,18 @@ func RegisterHandlers(server *rest.Server, s *svc.ServiceContext) {
 		{Method: http.MethodPost, Path: "/api/v1/community/posts/:id/like", Handler: like(s, true)}, {Method: http.MethodDelete, Path: "/api/v1/community/posts/:id/like", Handler: like(s, false)},
 		{Method: http.MethodGet, Path: "/api/v1/community/posts/:id/comments", Handler: comments(s)}, {Method: http.MethodPost, Path: "/api/v1/community/posts/:id/comments", Handler: createComment(s)},
 		{Method: http.MethodPost, Path: "/api/v1/community/masters/:id/follow", Handler: follow(s, true)}, {Method: http.MethodDelete, Path: "/api/v1/community/masters/:id/follow", Handler: follow(s, false)},
+		{Method: http.MethodGet, Path: "/api/v1/community/masters/following", Handler: myFollowing(s)},
 		{Method: http.MethodGet, Path: "/api/v1/admin/masters/community/posts", Handler: masterPosts(s)}, {Method: http.MethodPost, Path: "/api/v1/admin/masters/community/posts", Handler: createPost(s)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/masters/community/posts/:id", Handler: updatePost(s)}, {Method: http.MethodPut, Path: "/api/v1/admin/masters/community/posts/:id/status", Handler: postStatus(s)},
 		{Method: http.MethodGet, Path: "/api/v1/admin/platform/community/posts", Handler: adminPosts(s)}, {Method: http.MethodPut, Path: "/api/v1/admin/platform/community/posts/:id/approve", Handler: reviewPost(s, "approved")}, {Method: http.MethodPut, Path: "/api/v1/admin/platform/community/posts/:id/reject", Handler: reviewPost(s, "rejected")},
 		{Method: http.MethodGet, Path: "/api/v1/admin/platform/community/comments", Handler: adminComments(s)}, {Method: http.MethodPut, Path: "/api/v1/admin/platform/community/comments/:id/approve", Handler: reviewComment(s, "approved")}, {Method: http.MethodPut, Path: "/api/v1/admin/platform/community/comments/:id/reject", Handler: reviewComment(s, "rejected")},
 	})
+}
+func myFollowing(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		v, e := logic.MyFollowing(r.Context(), s, r.Header.Get("X-User-Id"))
+		respond(w, v, e)
+	}
 }
 func feed(s *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -7,6 +7,11 @@ type Asset struct {
 	Sort      int    `json:"sort"`
 }
 
+// FollowedMastersResp 我关注的法师 ID 列表（关注时间倒序）
+type FollowedMastersResp struct {
+	List []string `json:"list"`
+}
+
 type Post struct {
 	Id           string  `json:"id"`
 	MasterId     string  `json:"masterId"`

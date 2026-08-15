@@ -11,6 +11,18 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
+// MyFollowing 返回当前用户关注的法师 ID 列表（关注时间倒序，上限 50）
+func MyFollowing(ctx context.Context, s *svc.ServiceContext, userId string) (*types.FollowedMastersResp, error) {
+	if userId == "" {
+		return nil, common.ErrUnauthorized
+	}
+	ids, err := s.Model.ListFollowedMasters(ctx, userId)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	return &types.FollowedMastersResp{List: ids}, nil
+}
+
 func Feed(ctx context.Context, s *svc.ServiceContext, req *types.FeedReq) (*types.PostListResp, error) {
 	page, size := normalizePage(req.Page, req.Size)
 	total, list, err := s.Model.ListPosts(ctx, "approved", req.Type, req.BeliefCode, "", page, size)
