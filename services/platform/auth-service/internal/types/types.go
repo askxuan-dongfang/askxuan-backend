@@ -12,10 +12,13 @@ type LoginReq struct {
 
 // UserInfo 用户简要信息
 type UserInfo struct {
-	UserId   int64  `json:"userId"`
-	Nickname string `json:"nickname"`
-	Avatar   string `json:"avatar"`
-	Mobile   string `json:"mobile"`
+	UserId     int64  `json:"userId"`
+	Nickname   string `json:"nickname"`
+	Avatar     string `json:"avatar"`
+	Mobile     string `json:"mobile"`
+	TempleId   string `json:"templeId,optional"`   // 寺院编码（temple_admin 登录时返回）
+	TempleName string `json:"templeName,optional"` // 寺院名称
+	MasterId   string `json:"masterId,optional"`   // 法师编码（master 登录时返回）
 }
 
 // LoginResp 登录响应

@@ -73,7 +73,7 @@ type DetailReq struct {
 
 // AdminMasterListReq 管理台法师列表请求
 type AdminMasterListReq struct {
-	TempleId string `form:"templeId"`
+	TempleId string `form:"templeId,optional"` // 服务端隔离以网关 X-Temple-Code 为准，客户端参数仅供兼容
 	Status   string `form:"status,optional"`
 	Page     int    `form:"page,default=1"`
 	Size     int    `form:"size,default=20"`

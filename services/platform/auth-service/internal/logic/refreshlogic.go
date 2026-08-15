@@ -80,6 +80,7 @@ func (l *RefreshLogic) Refresh(req *types.RefreshReq) (*types.RefreshResp, error
 
 			// templeId 转换：VARCHAR → int64
 			if acc.TempleId != "" {
+				info.TempleCode = acc.TempleId
 				if id, err := strconv.ParseInt(acc.TempleId, 10, 64); err == nil {
 					info.TempleID = id
 				} else {

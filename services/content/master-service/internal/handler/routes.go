@@ -207,7 +207,7 @@ func adminMasterListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		l := logic.NewAdminMasterListLogic(r.Context(), svcCtx)
-		resp, err := l.AdminMasterList(&req)
+		resp, err := l.AdminMasterList(&req, r.Header.Get("X-Temple-Code"))
 		if err != nil {
 			common.JsonError(w, err)
 		} else {
@@ -224,7 +224,7 @@ func adminMasterCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		l := logic.NewAdminMasterCreateLogic(r.Context(), svcCtx)
-		resp, err := l.AdminMasterCreate(&req)
+		resp, err := l.AdminMasterCreate(&req, r.Header.Get("X-Temple-Code"))
 		if err != nil {
 			common.JsonError(w, err)
 		} else {
@@ -241,7 +241,7 @@ func adminMasterUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		l := logic.NewAdminMasterUpdateLogic(r.Context(), svcCtx)
-		resp, err := l.AdminMasterUpdate(&req)
+		resp, err := l.AdminMasterUpdate(&req, r.Header.Get("X-Temple-Code"))
 		if err != nil {
 			common.JsonError(w, err)
 		} else {
@@ -258,7 +258,7 @@ func adminMasterStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		l := logic.NewAdminMasterStatusLogic(r.Context(), svcCtx)
-		resp, err := l.AdminMasterStatus(&req)
+		resp, err := l.AdminMasterStatus(&req, r.Header.Get("X-Temple-Code"))
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

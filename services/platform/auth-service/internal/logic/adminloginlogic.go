@@ -125,13 +125,14 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	access, err := common.GenAccessToken(
 		l.svcCtx.Config.Auth.AccessSecret,
 		common.TokenInfo{
-			UserId:   acc.Id,
-			Mobile:   acc.Account,
-			UserType: "admin",
-			Roles:    []string{role.Code},
-			ClientID: clientID,
-			TempleID: templeID,
-			MasterID: masterID,
+			UserId:     acc.Id,
+			Mobile:     acc.Account,
+			UserType:   "admin",
+			Roles:      []string{role.Code},
+			ClientID:   clientID,
+			TempleID:   templeID,
+			TempleCode: acc.TempleId,
+			MasterID:   masterID,
 		},
 		l.svcCtx.Config.Auth.AccessExpire,
 	)
@@ -171,14 +172,23 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		imCancel()
 	}
 
+	templeName := ""
+	if acc.TempleId != "" {
+		_ = l.svcCtx.DB.QueryRowCtx(l.ctx, &templeName,
+			"SELECT name FROM askxuan_temple.temple WHERE code = ?", acc.TempleId)
+	}
+
 	return &types.LoginResp{
 		AccessToken:  access,
 		RefreshToken: refresh,
 		ExpiresIn:    l.svcCtx.Config.Auth.AccessExpire,
 		UserInfo: types.UserInfo{
-			UserId:   acc.Id,
-			Nickname: acc.Name,
-			Mobile:   acc.Account,
+			UserId:     acc.Id,
+			Nickname:   acc.Name,
+			Mobile:     acc.Account,
+			TempleId:   acc.TempleId,
+			TempleName: templeName,
+			MasterId:   acc.MasterId,
 		},
 		IMToken: imToken,
 	}, nil

@@ -15,6 +15,7 @@ type CustomClaims struct {
 	Roles    []string `json:"roles,omitempty"`             // 角色列表：customer/temple_admin/master/shop_admin/platform_super/platform_service
 	ClientID string   `json:"clientId,omitempty"`          // 端标识：customer/temple-admin/master/shop-admin/platform-admin
 	TempleID int64    `json:"templeId,omitempty"`          // 寺院ID（temple_admin 专用）
+	TempleCode string `json:"templeCode,omitempty"`        // 寺院编码（如 T001，temple_admin 专用，服务端隔离依据）
 	MasterID int64    `json:"masterId,omitempty"`          // 法师ID（master 专用）
 	Type     string   `json:"type,omitempty"`              // access / refresh
 	jwt.RegisteredClaims
@@ -28,6 +29,7 @@ type TokenInfo struct {
 	Roles    []string
 	ClientID string
 	TempleID int64
+	TempleCode string
 	MasterID int64
 }
 
@@ -45,8 +47,9 @@ func GenAccessToken(secret string, info TokenInfo, expireSeconds int64) (string,
 		UserType: info.UserType,
 		Roles:    info.Roles,
 		ClientID: info.ClientID,
-		TempleID: info.TempleID,
-		MasterID: info.MasterID,
+		TempleID:   info.TempleID,
+		TempleCode: info.TempleCode,
+		MasterID:   info.MasterID,
 		Type:     "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),

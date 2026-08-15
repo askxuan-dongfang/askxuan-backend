@@ -27,9 +27,9 @@ func NewAdminMasterListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *A
 }
 
 // AdminMasterList 寺院查询本寺院法师列表（按 templeId + status 筛选 + 分页）
-func (l *AdminMasterListLogic) AdminMasterList(req *types.AdminMasterListReq) (*types.AdminMasterListResp, error) {
-	if req.TempleId == "" {
-		return nil, common.ErrParamMissing
+func (l *AdminMasterListLogic) AdminMasterList(req *types.AdminMasterListReq, templeCode string) (*types.AdminMasterListResp, error) {
+	if templeCode == "" {
+		return nil, common.ErrUnauthorized
 	}
 	page := req.Page
 	size := req.Size
@@ -40,7 +40,7 @@ func (l *AdminMasterListLogic) AdminMasterList(req *types.AdminMasterListReq) (*
 		size = 20
 	}
 
-	list, total, err := l.svcCtx.MasterModel.FindList(l.ctx, req.TempleId, req.Status, page, size)
+	list, total, err := l.svcCtx.MasterModel.FindList(l.ctx, templeCode, req.Status, page, size)
 	if err != nil {
 		return nil, err
 	}
@@ -69,14 +69,17 @@ func NewAdminMasterCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 // AdminMasterCreate 寺院添加法师（创建法师记录 + 触发资质审核流程）
-func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateReq) (*types.AdminMasterCreateResp, error) {
-	if req.DharmaName == "" || req.TempleId == "" || req.Position == "" || req.Sect == "" || req.Type == "" {
+func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateReq, templeCode string) (*types.AdminMasterCreateResp, error) {
+	if templeCode == "" {
+		return nil, common.ErrUnauthorized
+	}
+	if req.DharmaName == "" || req.Position == "" || req.Sect == "" || req.Type == "" {
 		return nil, common.ErrParamMissing
 	}
 	if req.BeliefCode != "" && !model.IsValidBeliefCode(req.BeliefCode) {
 		return nil, common.ErrParamInvalid
 	}
-	if _, err := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, req.TempleId); err != nil {
+	if _, err := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, templeCode); err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
 			return nil, common.ErrTempleNotFound
 		}
@@ -92,7 +95,7 @@ func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateR
 		Code:                   code,
 		DharmaName:             req.DharmaName,
 		LayName:                req.LayName,
-		TempleCode:             req.TempleId,
+		TempleCode:             templeCode,
 		Position:               req.Position,
 		BeliefCode:             model.NormalizeBeliefCode(req.BeliefCode, req.Type, req.Sect),
 		Sect:                   req.Sect,
@@ -126,7 +129,7 @@ func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateR
 	// 触发资质审核流程：插入一条 pending 审核记录
 	_, _ = l.svcCtx.MasterAuditModel.InsertAuditLog(l.ctx, &model.MasterAudit{
 		MasterCode: code,
-		TempleCode: req.TempleId,
+		TempleCode: templeCode,
 	})
 
 	return &types.AdminMasterCreateResp{Id: code}, nil
@@ -144,13 +147,19 @@ func NewAdminMasterUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 // AdminMasterUpdate 更新法师信息（req.Id 为法师编码 code）
-func (l *AdminMasterUpdateLogic) AdminMasterUpdate(req *types.AdminMasterUpdateReq) (*types.Master, error) {
+func (l *AdminMasterUpdateLogic) AdminMasterUpdate(req *types.AdminMasterUpdateReq, templeCode string) (*types.Master, error) {
+	if templeCode == "" {
+		return nil, common.ErrUnauthorized
+	}
 	master, err := l.svcCtx.MasterModel.FindByCode(l.ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
 			return nil, common.ErrMasterNotFound
 		}
 		return nil, err
+	}
+	if master.TempleCode != templeCode {
+		return nil, common.ErrForbidden
 	}
 
 	// 部分字段更新
@@ -208,7 +217,10 @@ func NewAdminMasterStatusLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 // AdminMasterStatus 法师上下架（req.Id 为法师编码 code）
-func (l *AdminMasterStatusLogic) AdminMasterStatus(req *types.AdminMasterStatusReq) (*types.AdminMasterStatusResp, error) {
+func (l *AdminMasterStatusLogic) AdminMasterStatus(req *types.AdminMasterStatusReq, templeCode string) (*types.AdminMasterStatusResp, error) {
+	if templeCode == "" {
+		return nil, common.ErrUnauthorized
+	}
 	if req.Status != model.MasterShelfStatusOnShelf && req.Status != model.MasterShelfStatusOffShelf {
 		return nil, common.ErrParamInvalid
 	}
@@ -218,6 +230,9 @@ func (l *AdminMasterStatusLogic) AdminMasterStatus(req *types.AdminMasterStatusR
 			return nil, common.ErrMasterNotFound
 		}
 		return nil, err
+	}
+	if master.TempleCode != templeCode {
+		return nil, common.ErrForbidden
 	}
 	if err := l.svcCtx.MasterModel.UpdateShelfStatus(l.ctx, master.Id, req.Status); err != nil {
 		return nil, err

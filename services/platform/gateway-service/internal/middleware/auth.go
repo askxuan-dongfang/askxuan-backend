@@ -16,6 +16,7 @@ const (
 	HeaderRoles      = "X-User-Roles"
 	HeaderClientID   = "X-Client-Id"
 	HeaderTempleID   = "X-Temple-Id"
+	HeaderTempleCode = "X-Temple-Code"
 	HeaderMasterID   = "X-Master-Id"
 )
 
@@ -133,6 +134,9 @@ func Auth(secret string, noAuthPaths []string) func(http.Handler) http.Handler {
 			}
 			if claims.TempleID > 0 {
 				r.Header.Set(HeaderTempleID, strconv.FormatInt(claims.TempleID, 10))
+			}
+			if claims.TempleCode != "" {
+				r.Header.Set(HeaderTempleCode, claims.TempleCode)
 			}
 			if claims.MasterID > 0 {
 				r.Header.Set(HeaderMasterID, strconv.FormatInt(claims.MasterID, 10))
