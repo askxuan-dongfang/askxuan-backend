@@ -207,6 +207,11 @@ type TempleServiceCreateResp struct {
 	Id int64 `json:"id"`
 }
 
+// TempleServiceDetailReq 服务详情请求
+type TempleServiceDetailReq struct {
+	Id int64 `path:"id"`
+}
+
 // TempleServiceUpdateReq 更新服务请求
 type TempleServiceUpdateReq struct {
 	Id          int64               `path:"id"`

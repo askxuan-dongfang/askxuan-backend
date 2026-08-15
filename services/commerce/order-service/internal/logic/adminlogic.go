@@ -26,6 +26,53 @@ type AdminOrderListLogic struct {
 	svcCtx *svc.ServiceContext
 }
 
+// OrderReportLogic 商城经营报表
+type OrderReportLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewOrderReportLogic(ctx context.Context, svcCtx *svc.ServiceContext) *OrderReportLogic {
+	return &OrderReportLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *OrderReportLogic) Report() (*types.OrderReportResp, error) {
+	stats, err := l.svcCtx.ShopOrderModel.GetReportStats(l.ctx)
+	if err != nil {
+		l.Errorf("查询商城报表统计失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	trendRows, err := l.svcCtx.ShopOrderModel.GetReportTrend(l.ctx, 7)
+	if err != nil {
+		l.Errorf("查询商城趋势失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	topRows, err := l.svcCtx.ShopOrderModel.GetReportTopProducts(l.ctx, 5)
+	if err != nil {
+		l.Errorf("查询热销商品失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	resp := &types.OrderReportResp{
+		TodayOrders: stats.TodayOrders,
+		TodaySales:  stats.TodaySales,
+		PendingShip: stats.PendingShip,
+		TotalOrders: stats.TotalOrders,
+		TotalSales:  stats.TotalSales,
+		Trend:       make([]types.OrderReportTrendPoint, 0, len(trendRows)),
+		TopProducts: make([]types.OrderReportTopProduct, 0, len(topRows)),
+	}
+	for _, r := range trendRows {
+		resp.Trend = append(resp.Trend, types.OrderReportTrendPoint{Date: r.Date, Sales: r.Sales, Orders: r.Orders})
+	}
+	for _, t := range topRows {
+		resp.TopProducts = append(resp.TopProducts, types.OrderReportTopProduct{
+			ProductId: t.ProductId, ProductName: t.ProductName, Sales: t.Sales, OrderCount: t.OrderCount,
+		})
+	}
+	return resp, nil
+}
+
 func NewAdminOrderListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminOrderListLogic {
 	return &AdminOrderListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
 }
@@ -143,6 +190,29 @@ func (l *AdminReturnListLogic) List(req *types.AdminReturnListReq) (*types.Admin
 		resp.List = append(resp.List, toTypesReturn(r))
 	}
 	return resp, nil
+}
+
+// AdminReturnDetailLogic 退换货详情
+type AdminReturnDetailLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewAdminReturnDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminReturnDetailLogic {
+	return &AdminReturnDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *AdminReturnDetailLogic) Detail(req *types.AdminReturnDetailReq) (*types.ReturnOrder, error) {
+	r, err := l.svcCtx.ReturnOrderModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if err == sqlx.ErrNotFound {
+			return nil, common.ErrOrderNotFound
+		}
+		return nil, common.ErrSystem
+	}
+	t := toTypesReturn(r)
+	return &t, nil
 }
 
 // AdminReturnReviewLogic 审核退换货

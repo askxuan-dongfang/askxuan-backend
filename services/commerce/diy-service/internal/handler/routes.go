@@ -41,10 +41,12 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPut, Path: "/api/v1/admin/diy/orders/:id/make-complete", Handler: adminDiyOrderMakeCompleteHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/diy/orders/:id/ship", Handler: adminDiyOrderShipHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/admin/diy/materials", Handler: adminMaterialListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/admin/diy/materials/:id", Handler: adminMaterialDetailHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/admin/diy/materials", Handler: adminMaterialCreateHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/diy/materials/:id", Handler: adminMaterialUpdateHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/diy/materials/:id/status", Handler: adminMaterialStatusHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/admin/diy/blessing-services", Handler: adminBlessingServiceListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/admin/diy/blessing-services/:id", Handler: adminBlessingServiceDetailHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/admin/diy/blessing-services", Handler: adminBlessingServiceCreateHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/diy/blessing-services/:id", Handler: adminBlessingServiceUpdateHandler(svcCtx)},
 		{Method: http.MethodDelete, Path: "/api/v1/admin/diy/blessing-services/:id", Handler: adminBlessingServiceDeleteHandler(svcCtx)},
@@ -326,6 +328,22 @@ func adminMaterialListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	}
 }
 
+func adminMaterialDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MaterialDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminMaterialDetailLogic(r.Context(), svcCtx).Detail(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
 func adminMaterialCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.AdminMaterialCreateReq
@@ -382,6 +400,22 @@ func adminBlessingServiceListHandler(svcCtx *svc.ServiceContext) http.HandlerFun
 			return
 		}
 		resp, err := logic.NewAdminBlessingServiceListLogic(r.Context(), svcCtx).List(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminBlessingServiceDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminBlessingServiceDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminBlessingServiceDetailLogic(r.Context(), svcCtx).Detail(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

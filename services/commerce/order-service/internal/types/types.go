@@ -137,6 +137,10 @@ type AdminReturnListResp struct {
 	Size  int           `json:"size"`
 }
 
+type AdminReturnDetailReq struct {
+	Id int64 `path:"id"`
+}
+
 type AdminReturnReviewReq struct {
 	Id     int64  `path:"id"`
 	Action string `json:"action"`
@@ -146,4 +150,30 @@ type AdminReturnReviewReq struct {
 type AdminReturnRefundReq struct {
 	Id     int64   `path:"id"`
 	Amount float64 `json:"amount"`
+}
+
+// OrderReportTrendPoint 报表趋势点
+type OrderReportTrendPoint struct {
+	Date   string  `json:"date"`
+	Sales  float64 `json:"sales"`
+	Orders int     `json:"orders"`
+}
+
+// OrderReportTopProduct 热销商品
+type OrderReportTopProduct struct {
+	ProductId   int64   `json:"productId"`
+	ProductName string  `json:"productName"`
+	Sales       float64 `json:"sales"`
+	OrderCount  int     `json:"orderCount"`
+}
+
+// OrderReportResp 商城经营报表（真实聚合）
+type OrderReportResp struct {
+	TodayOrders  int                     `json:"todayOrders"`
+	TodaySales   float64                 `json:"todaySales"`
+	PendingShip  int                     `json:"pendingShip"`
+	TotalOrders  int                     `json:"totalOrders"`
+	TotalSales   float64                 `json:"totalSales"`
+	Trend        []OrderReportTrendPoint `json:"trend"`
+	TopProducts  []OrderReportTopProduct `json:"topProducts"`
 }

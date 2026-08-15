@@ -369,6 +369,40 @@ func (l *AdminServiceUpdateLogic) AdminServiceUpdate(req *types.TempleServiceUpd
 	return &resp, nil
 }
 
+// AdminServiceDetailLogic 服务详情
+type AdminServiceDetailLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewAdminServiceDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminServiceDetailLogic {
+	return &AdminServiceDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *AdminServiceDetailLogic) AdminServiceDetail(req *types.TempleServiceDetailReq) (*types.TempleService, error) {
+	t, err := getCurrentTemple(l.ctx, l.svcCtx)
+	if err != nil {
+		return nil, err
+	}
+	record, err := l.svcCtx.TempleServiceModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrTempleNotFound
+		}
+		l.Errorf("查询寺院服务失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	if record.TempleCode != t.Code {
+		return nil, common.ErrTempleIsolation
+	}
+	resp := toTypeTempleService(record)
+	if tags, tagErr := l.svcCtx.TempleServiceModel.FindIntentTags(l.ctx, req.Id); tagErr == nil {
+		resp.IntentTags = tags
+	}
+	return &resp, nil
+}
+
 // AdminServiceStatusLogic 服务上下架
 type AdminServiceStatusLogic struct {
 	logx.Logger

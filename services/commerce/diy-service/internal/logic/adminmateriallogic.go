@@ -275,3 +275,50 @@ func toTypesBlessingService(s *model.ExtraService) types.BlessingService {
 		Status:      s.Status,
 	}
 }
+
+// AdminMaterialDetailLogic 商城台材料详情
+type AdminMaterialDetailLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewAdminMaterialDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminMaterialDetailLogic {
+	return &AdminMaterialDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *AdminMaterialDetailLogic) Detail(req *types.MaterialDetailReq) (*types.Material, error) {
+	m, err := l.svcCtx.MaterialModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if err == sqlx.ErrNotFound {
+			return nil, common.NewBizError(40415, "材料不存在")
+		}
+		return nil, common.ErrSystem
+	}
+	t := toTypesMaterial(m)
+	return &t, nil
+}
+
+// AdminBlessingServiceDetailLogic 商城台加持服务详情
+type AdminBlessingServiceDetailLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewAdminBlessingServiceDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminBlessingServiceDetailLogic {
+	return &AdminBlessingServiceDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *AdminBlessingServiceDetailLogic) Detail(req *types.AdminBlessingServiceDetailReq) (*types.BlessingService, error) {
+	s, err := l.svcCtx.ExtraServiceModel.FindOne(l.ctx, req.Id)
+	if err == sqlx.ErrNotFound {
+		return nil, common.NewBizError(40415, "加持服务不存在")
+	}
+	if err != nil {
+		l.Errorf("查询加持服务失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	t := toTypesBlessingService(s)
+	return &t, nil
+}

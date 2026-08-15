@@ -30,9 +30,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	// ===== 商城台路由 =====
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/admin/orders", Handler: adminOrderListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/admin/orders/report", Handler: orderReportHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/admin/orders/:id", Handler: adminOrderDetailHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/orders/:id/ship", Handler: adminOrderShipHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/admin/orders/returns", Handler: adminReturnListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/admin/orders/returns/:id", Handler: adminReturnDetailHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/orders/returns/:id/review", Handler: adminReturnReviewHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/orders/returns/:id/refund", Handler: adminReturnRefundHandler(svcCtx)},
 	})
@@ -48,6 +50,17 @@ func orderCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewOrderCreateLogic(r.Context(), svcCtx).Create(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func orderReportHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := logic.NewOrderReportLogic(r.Context(), svcCtx).Report()
 		if err != nil {
 			common.JsonError(w, err)
 		} else {
@@ -178,6 +191,22 @@ func adminReturnListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewAdminReturnListLogic(r.Context(), svcCtx).List(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminReturnDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminReturnDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminReturnDetailLogic(r.Context(), svcCtx).Detail(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

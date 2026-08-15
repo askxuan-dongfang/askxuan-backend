@@ -83,6 +83,9 @@ type ShopOrderModel interface {
 	FindListByUser(ctx context.Context, userId, status string, page, size int) ([]*ShopOrder, int64, error)
 	FindListAdmin(ctx context.Context, status string, page, size int) ([]*ShopOrder, int64, error)
 	UpdateStatus(ctx context.Context, id int64, status string) (*ShopOrder, error)
+	GetReportStats(ctx context.Context) (*ReportStats, error)
+	GetReportTrend(ctx context.Context, days int) ([]*OrderReportRow, error)
+	GetReportTopProducts(ctx context.Context, limit int) ([]*OrderTopProduct, error)
 }
 
 type defaultShopOrderModel struct {

@@ -97,6 +97,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: adminServiceCreateHandler(svcCtx),
 		},
 		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/temples/services/:id",
+			Handler: adminServiceDetailHandler(svcCtx),
+		},
+		{
 			Method:  http.MethodPut,
 			Path:    "/api/v1/admin/temples/services/:id",
 			Handler: adminServiceUpdateHandler(svcCtx),
@@ -505,6 +510,23 @@ func adminServiceUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewAdminServiceUpdateLogic(r.Context(), svcCtx)
 		resp, err := l.AdminServiceUpdate(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminServiceDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.TempleServiceDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewAdminServiceDetailLogic(r.Context(), svcCtx)
+		resp, err := l.AdminServiceDetail(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

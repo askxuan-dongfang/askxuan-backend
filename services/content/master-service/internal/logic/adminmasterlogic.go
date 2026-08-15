@@ -205,6 +205,36 @@ func (l *AdminMasterUpdateLogic) AdminMasterUpdate(req *types.AdminMasterUpdateR
 	return &resp, nil
 }
 
+// AdminMasterDetailLogic 法师详情
+type AdminMasterDetailLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewAdminMasterDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminMasterDetailLogic {
+	return &AdminMasterDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+// AdminMasterDetail 法师详情（req.Id 为法师编码 code）
+func (l *AdminMasterDetailLogic) AdminMasterDetail(req *types.AdminMasterDetailReq, templeCode string) (*types.Master, error) {
+	if templeCode == "" {
+		return nil, common.ErrUnauthorized
+	}
+	master, err := l.svcCtx.MasterModel.FindByCode(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrMasterNotFound
+		}
+		return nil, err
+	}
+	if master.TempleCode != templeCode {
+		return nil, common.ErrForbidden
+	}
+	resp := toTypeMaster(master)
+	return &resp, nil
+}
+
 // AdminMasterStatusLogic 法师上下架
 type AdminMasterStatusLogic struct {
 	logx.Logger

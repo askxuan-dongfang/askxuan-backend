@@ -113,6 +113,11 @@ type AdminMasterCreateResp struct {
 	Id string `json:"id"`
 }
 
+// AdminMasterDetailReq 寺庙台法师详情请求
+type AdminMasterDetailReq struct {
+	Id string `path:"id"` // 法师编码 code
+}
+
 // AdminMasterUpdateReq 更新法师请求
 type AdminMasterUpdateReq struct {
 	Id                     string   `path:"id"`

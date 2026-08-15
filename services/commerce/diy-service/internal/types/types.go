@@ -50,6 +50,11 @@ type DiyOrderItem struct {
 	Subtype      string  `json:"subtype,optional"`
 }
 
+// MaterialDetailReq 材料详情
+type MaterialDetailReq struct {
+	Id int64 `path:"id"`
+}
+
 // Material 材料库
 type Material struct {
 	Id           int64   `json:"id"`
@@ -329,6 +334,10 @@ type AdminBlessingServiceCreateReq struct {
 
 type AdminBlessingServiceCreateResp struct {
 	Id int64 `json:"id"`
+}
+
+type AdminBlessingServiceDetailReq struct {
+	Id int64 `path:"id"`
 }
 
 type AdminBlessingServiceUpdateReq struct {

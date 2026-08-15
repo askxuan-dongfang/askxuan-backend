@@ -57,6 +57,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: adminMasterCreateHandler(svcCtx),
 		},
 		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/temples/masters/:id",
+			Handler: adminMasterDetailHandler(svcCtx),
+		},
+		{
 			Method:  http.MethodPut,
 			Path:    "/api/v1/admin/temples/masters/:id",
 			Handler: adminMasterUpdateHandler(svcCtx),
@@ -258,6 +263,23 @@ func adminMasterUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewAdminMasterUpdateLogic(r.Context(), svcCtx)
 		resp, err := l.AdminMasterUpdate(&req, r.Header.Get("X-Temple-Code"))
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminMasterDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminMasterDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewAdminMasterDetailLogic(r.Context(), svcCtx)
+		resp, err := l.AdminMasterDetail(&req, r.Header.Get("X-Temple-Code"))
 		if err != nil {
 			common.JsonError(w, err)
 		} else {
