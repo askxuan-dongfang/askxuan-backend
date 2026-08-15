@@ -28,6 +28,7 @@ MySQL:
 
 # JWT 签名密钥
 AuthSecret: "askxuan-access-secret-change-in-prod"
+GatewayBaseURL: http://localhost:8080
 
 IM:
   APIURL: "http://127.0.0.1:10002"

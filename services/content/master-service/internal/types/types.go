@@ -342,6 +342,7 @@ type MasterAuditActionReq struct {
 type MasterServiceTagItem struct {
 	ServiceCode string  `json:"serviceCode"`
 	Price       float64 `json:"price"`
+	Status      string  `json:"status,omitempty"` // enabled/disabled/pending_review
 }
 
 // MasterServiceTagItemResp 标签项（含状态）

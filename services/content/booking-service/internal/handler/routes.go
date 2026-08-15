@@ -52,6 +52,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: createHandler(svcCtx),
 		},
 		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/master-bookings/:id",
+			Handler: directBookingHandler(svcCtx),
+		},
+		{
 			Method:  http.MethodGet,
 			Path:    "/api/v1/bookings",
 			Handler: listHandler(svcCtx),
@@ -327,6 +332,23 @@ func chatMessageSendHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		common.Ok(w, resp)
+	}
+}
+
+// directBookingHandler 大师直约（先付费咨询后预约）
+func directBookingHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.DirectBookingReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewDirectBookingLogic(r.Context(), svcCtx).Create(req.MasterCode, &req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
 	}
 }
 

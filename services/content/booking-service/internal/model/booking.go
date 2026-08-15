@@ -76,6 +76,7 @@ type SlotAvailability struct {
 
 type BookingModel interface {
 	InsertWithReservation(ctx context.Context, data *Booking, capacity int) (*Booking, error)
+	InsertDirect(ctx context.Context, data *Booking) (*Booking, error)
 	FindByRequest(ctx context.Context, userId, requestId string) (*Booking, error)
 	FindOne(ctx context.Context, bookingNo string) (*Booking, error)
 	FindList(ctx context.Context, userId, status, templeId string, page, size int) ([]*Booking, int64, error)
@@ -92,6 +93,22 @@ type defaultBookingModel struct{ conn sqlx.SqlConn }
 func NewBookingModel(conn sqlx.SqlConn) BookingModel { return &defaultBookingModel{conn: conn} }
 
 const bookingSelect = `booking_no,COALESCE(request_id,'') request_id,user_id,temple_code,temple_name,master_code,master_name,service_code,service_name,DATE_FORMAT(booking_date,'%Y-%m-%d') booking_date,slot_code,time_slot,service_fee,merit_money,merit_money_tier,total_fee,COALESCE(CAST(price_snapshot AS CHAR),'') price_snapshot,payment_no,payment_channel,payment_status,COALESCE(DATE_FORMAT(payment_expire_time,'%Y-%m-%d %H:%i:%s'),'') payment_expire_time,slot_reserved,status,note,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
+
+// InsertDirect 大师直约：不占寺院时段库存（野生大师或直连寺庙大师）
+func (m *defaultBookingModel) InsertDirect(ctx context.Context, data *Booking) (*Booking, error) {
+	now := time.Now()
+	data.Id = fmt.Sprintf("B%s%06d", now.Format("20060102150405"), now.Nanosecond()/1e3%1000000)
+	data.Status = StatusPendingPayment
+	data.PaymentStatus = PaymentStatusPending
+	data.PaymentExpireTime = now.Add(15 * time.Minute).Format("2006-01-02 15:04:05")
+	data.CreatedAt = now.Format("2006-01-02 15:04:05")
+	const insert = `INSERT INTO booking(booking_no,request_id,user_id,temple_code,temple_name,master_code,master_name,service_code,service_name,booking_date,slot_code,time_slot,service_fee,merit_money,merit_money_tier,total_fee,price_snapshot,payment_no,payment_channel,payment_status,payment_expire_time,slot_reserved,status,note,create_time) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CAST(? AS JSON),'','','pending',?,0,?,?,?)`
+	_, err := m.conn.ExecCtx(ctx, insert, data.Id, nullString(data.RequestId), data.UserId, data.TempleId, data.TempleName, data.MasterId, data.MasterName, data.ServiceId, data.ServiceName, data.BookingDate, data.SlotCode, data.TimeSlot, data.ServiceFee, data.MeritMoney, data.MeritMoneyTier, data.TotalFee, data.PriceSnapshot, data.PaymentExpireTime, data.Status, data.Note, data.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
 
 func (m *defaultBookingModel) InsertWithReservation(ctx context.Context, data *Booking, capacity int) (*Booking, error) {
 	if capacity < 1 {

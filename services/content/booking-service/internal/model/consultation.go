@@ -45,6 +45,7 @@ type ConsultationModel interface {
 	FindByRequest(ctx context.Context, userID, requestID string) (*Consultation, error)
 	Activate(ctx context.Context, id, paymentNo, channel string) (*Consultation, bool, error)
 	List(ctx context.Context, userID, masterCode, status string, page, size int) ([]*Consultation, int64, error)
+	HasPaidConsultation(ctx context.Context, userID, masterCode string) (bool, error)
 	FindPendingPayments(ctx context.Context, limit int) ([]*Consultation, error)
 	ExpireActive(ctx context.Context) (int64, error)
 }
@@ -134,4 +135,16 @@ func (m *defaultConsultationModel) ExpireActive(ctx context.Context) (int64, err
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+// HasPaidConsultation 是否存在对该法师的已付费咨询（先咨询后预约的前置条件）
+func (m *defaultConsultationModel) HasPaidConsultation(ctx context.Context, userID, masterCode string) (bool, error) {
+	var cnt int64
+	err := m.conn.QueryRowCtx(ctx, &cnt,
+		"SELECT COUNT(1) FROM consultation_order WHERE user_id=? AND master_code=? AND payment_status='success' AND status NOT IN ('pending_payment','refunded')",
+		userID, masterCode)
+	if err != nil {
+		return false, err
+	}
+	return cnt > 0, nil
 }

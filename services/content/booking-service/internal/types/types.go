@@ -190,6 +190,15 @@ type ConsultationListResp struct {
 type ConsultationDetailReq struct {
 	Id string `path:"id"`
 }
+// DirectBookingReq 大师直约请求（先付费咨询后预约服务）
+type DirectBookingReq struct {
+	MasterCode  string `path:"id"`              // 路径参数：法师编码
+	ServiceCode string `json:"serviceCode"`
+	BookingDate string `json:"bookingDate"` // YYYY-MM-DD
+	RequestId   string `json:"requestId"`   // 客户端幂等请求号
+	Note        string `json:"note,optional"`
+}
+
 type ConsultationPayReq struct {
 	Id string `path:"id"`
 }

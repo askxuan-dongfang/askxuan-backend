@@ -19,6 +19,8 @@ type Config struct {
 	rest.RestConf
 	RabbitMQ   RabbitMQConf
 	AuthSecret string // JWT 签名密钥
+	// GatewayBaseURL 网关地址（直约校验用，经网关读取大师公开详情；本地 localhost:8080，容器内自动改写）
+	GatewayBaseURL string
 	TempleRpc  zrpc.RpcClientConf
 	MasterRpc  zrpc.RpcClientConf
 	PaymentRpc zrpc.RpcClientConf

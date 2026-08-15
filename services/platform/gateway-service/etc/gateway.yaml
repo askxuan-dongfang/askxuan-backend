@@ -51,6 +51,9 @@ Upstreams:
   - Prefix: /api/v1/consultations
     Target: localhost:8085
     ServiceName: booking.service
+  - Prefix: /api/v1/master-bookings
+    Target: localhost:8085
+    ServiceName: booking.service
   - Prefix: /api/v1/chats
     Target: localhost:8085
     ServiceName: booking.service

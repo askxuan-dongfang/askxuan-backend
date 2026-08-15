@@ -46,6 +46,7 @@ func (l *DetailLogic) Detail(req *types.DetailReq) (*types.Master, error) {
 			resp.ServiceTags = append(resp.ServiceTags, types.MasterServiceTagItem{
 				ServiceCode: t.ServiceCode,
 				Price:       t.Price,
+				Status:      t.Status,
 			})
 		}
 	}
