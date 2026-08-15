@@ -73,6 +73,7 @@ type Master struct {
 	AuthStatus             string  `db:"auth_status" json:"authStatus"`
 	ShelfStatus            string  `db:"shelf_status" json:"shelfStatus"`
 	PlatformStatus         string  `db:"platform_status" json:"platformStatus"`
+	ManageBy               string  `db:"manage_by" json:"manageBy"` // temple=寺庙绑定 / platform=平台(野生)
 	Specialties            string  `db:"specialties" json:"specialties"` // 逗号分隔
 	Avatar                 string  `db:"avatar" json:"avatar"`
 	Rating                 float64 `db:"rating" json:"rating"`
@@ -238,7 +239,7 @@ func (m *masterModel) queryPage(ctx context.Context, where string, args []interf
 }
 
 func (m *masterModel) Insert(ctx context.Context, data *Master) (int64, error) {
-	query := fmt.Sprintf("INSERT INTO %s (code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table)
+	query := fmt.Sprintf("INSERT INTO %s (code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, manage_by, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table)
 	res, err := m.conn.ExecCtx(ctx, query,
 		data.Code, data.DharmaName, data.LayName, data.TempleCode, data.Position, data.BeliefCode,
 		data.Sect, data.Type, data.AuthStatus, data.ShelfStatus, data.PlatformStatus,
@@ -297,4 +298,4 @@ func (m *masterModel) NextCode(ctx context.Context) (string, error) {
 }
 
 // masterRows 法师表查询字段
-const masterRows = "id, code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes, create_time, update_time"
+const masterRows = "id, code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, manage_by, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes, create_time, update_time"

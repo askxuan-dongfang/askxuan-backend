@@ -82,6 +82,7 @@ func toTypeMasterWithTempleName(m *model.Master, templeName string) types.Master
 		AuthStatus:             m.AuthStatus,
 		ShelfStatus:            m.ShelfStatus,
 		PlatformStatus:         m.PlatformStatus,
+		ManageBy:               m.ManageBy,
 		Specialties:            splitSpecialties(m.Specialties),
 		Avatar:                 m.Avatar,
 		Rating:                 m.Rating,

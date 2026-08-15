@@ -16,6 +16,7 @@ type Master struct {
 	AuthStatus             string   `json:"authStatus"`
 	ShelfStatus            string   `json:"shelfStatus"`
 	PlatformStatus         string   `json:"platformStatus"`
+	ManageBy               string   `json:"manageBy"` // temple=寺庙绑定 / platform=平台(野生)
 	Specialties            []string `json:"specialties"`
 	Avatar                 string   `json:"avatar"`
 	Rating                 float64  `json:"rating"`
