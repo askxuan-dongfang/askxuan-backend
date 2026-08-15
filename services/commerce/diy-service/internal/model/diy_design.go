@@ -122,7 +122,7 @@ func (m *defaultDiyDesignModel) FindListByUserWithOrders(ctx context.Context, us
 
 	offset := (page - 1) * size
 	listQuery := fmt.Sprintf(`SELECT d.id, d.design_no, d.user_id, d.name, d.design_data, d.total_price, d.status, d.bless_service_code, d.create_time, d.update_time,
-		o.order_no, o.status AS order_status
+		COALESCE(o.order_no,'') AS order_no, COALESCE(o.status,'') AS order_status
 		FROM %s d
 		LEFT JOIN askxuan_diy.diy_order o ON o.design_id = d.id
 			AND o.id = (SELECT MAX(id) FROM askxuan_diy.diy_order o2 WHERE o2.design_id = d.id)
