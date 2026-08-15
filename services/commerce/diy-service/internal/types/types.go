@@ -98,6 +98,29 @@ type DesignListReq struct {
 	Size int `form:"size,default=20"`
 }
 
+// MyDesignItem 我的设计（含最新订单信息）
+type MyDesignItem struct {
+	Id               int64   `json:"id"`
+	DesignNo         string  `json:"designNo"`
+	Name             string  `json:"name"`
+	DesignData       string  `json:"designData"`
+	TotalPrice       float64 `json:"totalPrice"`
+	Status           string  `json:"status"`
+	BlessServiceCode string  `json:"blessServiceCode,omitempty"`
+	CreateTime       string  `json:"createTime"`
+	UpdateTime       string  `json:"updateTime"`
+	OrderNo          string  `json:"orderNo,omitempty"`
+	OrderStatus      string  `json:"orderStatus,omitempty"`
+}
+
+// MyDesignListResp 我的设计列表
+type MyDesignListResp struct {
+	Total int64          `json:"total"`
+	List  []MyDesignItem `json:"list"`
+	Page  int            `json:"page"`
+	Size  int            `json:"size"`
+}
+
 type DesignListResp struct {
 	Total int64       `json:"total"`
 	List  []DiyDesign `json:"list"`

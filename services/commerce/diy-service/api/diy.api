@@ -91,6 +91,34 @@ type (
         Size int `form:"size,default=20"`
     }
 
+    MyDesignListReq {
+        Page int `form:"page,default=1"`
+        Size int `form:"size,default=20"`
+    }
+
+    // MyDesignItem 我的设计（含最新订单信息）
+    MyDesignItem {
+        Id               int64  `json:"id"`
+        DesignNo         string `json:"designNo"`
+        Name             string `json:"name"`
+        DesignData       string `json:"designData"`
+        TotalPrice       float64 `json:"totalPrice"`
+        Status           string `json:"status"`
+        BlessServiceCode string `json:"blessServiceCode,optional"`
+        CreateTime       string `json:"createTime"`
+        UpdateTime       string `json:"updateTime"`
+        OrderNo          string `json:"orderNo,optional"`
+        OrderStatus      string `json:"orderStatus,optional"`
+    }
+
+    // MyDesignListResp 我的设计列表
+    MyDesignListResp {
+        Total int64          `json:"total"`
+        List  []MyDesignItem `json:"list"`
+        Page  int            `json:"page"`
+        Size  int            `json:"size"`
+    }
+
     DesignListResp {
         Total int64        `json:"total"`
         List  []DiyDesign  `json:"list"`
@@ -340,6 +368,8 @@ type (
 service diy-service {
     @handler designList
     get /designs (DesignListReq) returns (DesignListResp)
+    @handler myDesignList
+    get /my-designs (MyDesignListReq) returns (MyDesignListResp)
 
     @handler designSave
     post /designs (DesignSaveReq) returns (DesignSaveResp)

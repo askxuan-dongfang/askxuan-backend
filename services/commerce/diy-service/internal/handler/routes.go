@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/middleware"
@@ -21,6 +22,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	// ===== C端路由 =====
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/diy/designs", Handler: designListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/diy/my-designs", Handler: myDesignListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/diy/designs", Handler: designSaveHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/designs/:id", Handler: designDetailHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/diy/designs/:id/order", Handler: diyDesignOrderCreateHandler(svcCtx)},
@@ -50,6 +52,35 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 }
 
 // ===== C端 handler =====
+
+// myDesignListHandler 我的设计列表（网关 JWT 后透传 X-User-Id）
+func myDesignListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId := r.Header.Get("X-User-Id")
+		if userId == "" {
+			common.JsonError(w, common.ErrUnauthorized)
+			return
+		}
+		page := 1
+		size := 20
+		if p := r.URL.Query().Get("page"); p != "" {
+			if v, err := strconv.Atoi(p); err == nil {
+				page = v
+			}
+		}
+		if s := r.URL.Query().Get("size"); s != "" {
+			if v, err := strconv.Atoi(s); err == nil {
+				size = v
+			}
+		}
+		resp, err := logic.NewMyDesignListLogic(r.Context(), svcCtx).List(userId, page, size)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
 
 func designListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -76,6 +76,51 @@ func (l *DesignListLogic) List(req *types.DesignListReq) (*types.DesignListResp,
 	return resp, nil
 }
 
+// MyDesignListLogic 我的设计列表（全部状态：草稿/审核/公开 + 已下单信息）
+type MyDesignListLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewMyDesignListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MyDesignListLogic {
+	return &MyDesignListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *MyDesignListLogic) List(userId string, page, size int) (*types.MyDesignListResp, error) {
+	if userId == "" {
+		return nil, common.ErrUnauthorized
+	}
+	if page <= 0 {
+		page = 1
+	}
+	if size <= 0 || size > 100 {
+		size = 20
+	}
+	list, total, err := l.svcCtx.DiyDesignModel.FindListByUserWithOrders(l.ctx, userId, page, size)
+	if err != nil {
+		l.Errorf("查询我的设计列表失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	resp := &types.MyDesignListResp{Total: total, Page: page, Size: size}
+	for _, d := range list {
+		resp.List = append(resp.List, types.MyDesignItem{
+			Id:               d.Id,
+			DesignNo:         d.DesignNo,
+			Name:             d.Name,
+			DesignData:       d.DesignData,
+			TotalPrice:       d.TotalPrice,
+			Status:           d.Status,
+			BlessServiceCode: d.BlessServiceCode,
+			CreateTime:       d.CreateTime,
+			UpdateTime:       d.UpdateTime,
+			OrderNo:          d.OrderNo,
+			OrderStatus:      d.OrderStatus,
+		})
+	}
+	return resp, nil
+}
+
 // DesignSaveLogic 保存设计
 type DesignSaveLogic struct {
 	logx.Logger
