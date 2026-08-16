@@ -179,6 +179,16 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/admin/platform/masters/:id/consultation",
 			Handler: platformMasterConsultConfigHandler(svcCtx),
 		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/platform/masters/:id",
+			Handler: platformMasterDetailHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPut,
+			Path:    "/api/v1/admin/platform/masters/:id",
+			Handler: platformMasterUpdateHandler(svcCtx),
+		},
 	}...))
 }
 
@@ -559,6 +569,38 @@ func platformMasterConsultConfigHandler(svcCtx *svc.ServiceContext) http.Handler
 			return
 		}
 		common.Ok(w, resp)
+	}
+}
+
+func platformMasterDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.PlatformMasterDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewPlatformMasterDetailLogic(r.Context(), svcCtx).PlatformMasterDetail(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func platformMasterUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.PlatformMasterUpdateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewPlatformMasterUpdateLogic(r.Context(), svcCtx).PlatformMasterUpdate(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
 	}
 }
 

@@ -288,3 +288,94 @@ func toTypeAudit(a *model.MasterAudit) types.MasterAudit {
 		CreateTime:     a.CreateTime,
 	}
 }
+
+// PlatformMasterDetailLogic 平台法师详情
+type PlatformMasterDetailLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewPlatformMasterDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *PlatformMasterDetailLogic {
+	return &PlatformMasterDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+// PlatformMasterDetail 平台法师详情（req.Id 为法师编码 code）
+func (l *PlatformMasterDetailLogic) PlatformMasterDetail(req *types.PlatformMasterDetailReq) (*types.Master, error) {
+	master, err := l.svcCtx.MasterModel.FindByCode(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrMasterNotFound
+		}
+		return nil, err
+	}
+	templeName, _ := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, master.TempleCode)
+	resp := toTypeMasterWithTempleName(master, templeName)
+	return &resp, nil
+}
+
+// PlatformMasterUpdateLogic 平台编辑法师（野生大师由平台直管）
+type PlatformMasterUpdateLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewPlatformMasterUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *PlatformMasterUpdateLogic {
+	return &PlatformMasterUpdateLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+// PlatformMasterUpdate 平台编辑法师资料（req.Id 为法师编码 code）
+func (l *PlatformMasterUpdateLogic) PlatformMasterUpdate(req *types.PlatformMasterUpdateReq) (*types.Master, error) {
+	master, err := l.svcCtx.MasterModel.FindByCode(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrMasterNotFound
+		}
+		return nil, err
+	}
+	if req.DharmaName != "" {
+		master.DharmaName = req.DharmaName
+	}
+	if req.LayName != "" {
+		master.LayName = req.LayName
+	}
+	if req.Position != "" {
+		master.Position = req.Position
+	}
+	if req.BeliefCode != "" {
+		if !model.IsValidBeliefCode(req.BeliefCode) {
+			return nil, common.ErrParamInvalid
+		}
+		master.BeliefCode = req.BeliefCode
+	}
+	if req.Sect != "" {
+		master.Sect = req.Sect
+	}
+	if req.Type != "" {
+		master.Type = req.Type
+	}
+	if req.Specialties != nil {
+		master.Specialties = joinSpecialties(req.Specialties)
+	}
+	if req.Avatar != "" {
+		master.Avatar = req.Avatar
+	}
+	if req.ConsultFee > 0 {
+		master.ConsultEnabled = req.ConsultEnabled
+		master.ConsultFee = req.ConsultFee
+	}
+	if req.ConsultValidHours > 0 {
+		master.ConsultValidHours = req.ConsultValidHours
+	}
+	if req.ConsultResponseMinutes > 0 {
+		master.ConsultResponseMinutes = req.ConsultResponseMinutes
+	}
+
+	if err := l.svcCtx.MasterModel.Update(l.ctx, master); err != nil {
+		return nil, err
+	}
+	templeName, _ := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, master.TempleCode)
+	resp := toTypeMasterWithTempleName(master, templeName)
+	return &resp, nil
+}

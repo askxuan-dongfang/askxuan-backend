@@ -146,6 +146,28 @@ type AdminMasterStatusResp struct {
 	Status string `json:"status"`
 }
 
+// PlatformMasterDetailReq 平台法师详情请求
+type PlatformMasterDetailReq struct {
+	Id string `path:"id"` // 法师编码 code
+}
+
+// PlatformMasterUpdateReq 平台编辑法师请求（野生大师无寺庙归属，平台为唯一管理方）
+type PlatformMasterUpdateReq struct {
+	Id                     string   `path:"id"`
+	DharmaName             string   `json:"dharmaName,optional"`
+	LayName                string   `json:"layName,optional"`
+	Position               string   `json:"position,optional"`
+	BeliefCode             string   `json:"beliefCode,optional"`
+	Sect                   string   `json:"sect,optional"`
+	Type                   string   `json:"type,optional"`
+	Specialties            []string `json:"specialties,optional"`
+	Avatar                 string   `json:"avatar,optional"`
+	ConsultEnabled         bool     `json:"consultEnabled,optional"`
+	ConsultFee             float64  `json:"consultFee,optional"`
+	ConsultValidHours      int      `json:"consultValidHours,optional"`
+	ConsultResponseMinutes int      `json:"consultResponseMinutes,optional"`
+}
+
 // ============ 法师工作台 - 加持任务（修复 Gap-4/15） ============
 
 // BlessingTask 加持任务
