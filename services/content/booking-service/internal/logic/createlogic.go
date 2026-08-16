@@ -36,7 +36,7 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 		return nil, common.ErrForbidden
 	}
 	req.UserId = authUser
-	if req.UserId == "" || req.TempleId == "" || req.MasterId == "" || req.ServiceId == "" || req.BookingDate == "" || (req.SlotCode == "" && req.TimeSlot == "") || req.MeritMoney < 0 {
+	if req.UserId == "" || req.TempleId == "" || req.ServiceId == "" || req.BookingDate == "" || (req.SlotCode == "" && req.TimeSlot == "") || req.MeritMoney < 0 {
 		return nil, common.ErrParam
 	}
 	date, err := time.ParseInLocation("2006-01-02", req.BookingDate, time.Local)
@@ -58,18 +58,41 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 	if service.TempleStatus != "正常" || service.ServiceStatus != "on_shelf" {
 		return nil, common.NewBizError(40310, "寺院服务当前不可预约")
 	}
-	master, err := l.svcCtx.MasterClient.GetByCode(l.ctx, req.MasterId)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			return nil, common.ErrMasterNotFound
+
+	// 双轨制：指定大师执行时，大师按自身服务标签价格分流，寺院服务费+功德归寺院；
+	// 大师未配置该服务标签时回退原计价（服务费全归大师），兼容存量数据。
+	// 未指定大师（masterId 为空）= 全寺执行：服务费与功德全归寺院。
+	templeFee := service.Price
+	var masterCode, masterName string
+	masterFee := service.Price
+	meritToTemple := req.MeritMoney
+	if req.MasterId == "" {
+		masterFee = 0
+		meritToTemple = service.Price + req.MeritMoney
+	} else {
+		master, masterErr := l.svcCtx.MasterClient.GetByCode(l.ctx, req.MasterId)
+		if masterErr != nil {
+			if status.Code(masterErr) == codes.NotFound {
+				return nil, common.ErrMasterNotFound
+			}
+			return nil, common.ErrDependencyUnavailable
 		}
-		return nil, common.ErrDependencyUnavailable
-	}
-	if master.ShelfStatus != "on_shelf" || (master.PlatformStatus != "" && master.PlatformStatus != "normal") {
-		return nil, common.NewBizError(40308, "法师当前不可预约")
-	}
-	if master.TempleCode != req.TempleId {
-		return nil, common.NewBizError(40309, "法师不属于所选寺院")
+		if master.ShelfStatus != "on_shelf" || (master.PlatformStatus != "" && master.PlatformStatus != "normal") {
+			return nil, common.NewBizError(40308, "法师当前不可预约")
+		}
+		if master.TempleCode != req.TempleId {
+			return nil, common.NewBizError(40309, "法师不属于所选寺院")
+		}
+		masterCode, masterName = master.Code, master.DharmaName
+		if detail, fErr := fetchMasterDetail(l.svcCtx, master.Code); fErr == nil {
+			for _, t := range detail.ServiceTags {
+				if t.ServiceCode == service.ServiceCode && (t.Status == "" || t.Status == "enabled") {
+					masterFee = t.Price
+					meritToTemple = service.Price + req.MeritMoney
+					break
+				}
+			}
+		}
 	}
 
 	slot := selectSlot(service.Slots, req.SlotCode, req.TimeSlot)
@@ -78,23 +101,9 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 	}
 	timeRange := slot.StartTime + "-" + slot.EndTime
 
-	// 双轨制：指定大师执行时，大师按自身服务标签价格分流，寺院服务费+功德归寺院。
-	// 大师未配置该服务标签时回退原计价（服务费全归大师），兼容存量数据。
-	templeFee := service.Price
-	masterFee := service.Price
-	meritToTemple := req.MeritMoney
-	if detail, fErr := fetchMasterDetail(l.svcCtx, master.Code); fErr == nil {
-		for _, t := range detail.ServiceTags {
-			if t.ServiceCode == service.ServiceCode && (t.Status == "" || t.Status == "enabled") {
-				masterFee = t.Price
-				meritToTemple = service.Price + req.MeritMoney
-				break
-			}
-		}
-	}
 	total := masterFee + meritToTemple
 	snapshot, _ := json.Marshal(map[string]interface{}{"serviceCode": service.ServiceCode, "serviceName": service.ServiceName, "templeFee": templeFee, "masterFee": masterFee, "meritMoney": req.MeritMoney, "totalFee": total, "slotCode": slot.Code, "timeSlot": timeRange})
-	created, err := l.svcCtx.BookingModel.InsertWithReservation(l.ctx, &model.Booking{RequestId: req.RequestId, UserId: req.UserId, TempleId: service.TempleCode, TempleName: service.TempleName, MasterId: master.Code, MasterName: master.DharmaName, ServiceId: service.ServiceCode, ServiceName: service.ServiceName, BookingDate: req.BookingDate, SlotCode: slot.Code, TimeSlot: timeRange, ServiceFee: masterFee, MeritMoney: meritToTemple, MeritMoneyTier: req.MeritMoneyTier, TotalFee: total, PriceSnapshot: string(snapshot), Note: req.Note}, int(slot.Capacity))
+	created, err := l.svcCtx.BookingModel.InsertWithReservation(l.ctx, &model.Booking{RequestId: req.RequestId, UserId: req.UserId, TempleId: service.TempleCode, TempleName: service.TempleName, MasterId: masterCode, MasterName: masterName, ServiceId: service.ServiceCode, ServiceName: service.ServiceName, BookingDate: req.BookingDate, SlotCode: slot.Code, TimeSlot: timeRange, ServiceFee: masterFee, MeritMoney: meritToTemple, MeritMoneyTier: req.MeritMoneyTier, TotalFee: total, PriceSnapshot: string(snapshot), Note: req.Note}, int(slot.Capacity))
 	if err != nil {
 		if errors.Is(err, model.ErrSlotFull) {
 			return nil, common.ErrBookingSlotFull

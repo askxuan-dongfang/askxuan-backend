@@ -161,7 +161,8 @@ func RecordPlatformReceipt(ctx context.Context, receipt PaymentReceipt) error {
 }
 
 func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (BookingSplit, error) {
-	if booking.BookingID == "" || booking.MasterID == "" || booking.BookingDate == "" {
+	// MasterID 允许为空（全寺执行预约：服务费与功德全归寺院，大师分成为 0）
+	if booking.BookingID == "" || booking.BookingDate == "" {
 		return BookingSplit{}, fmt.Errorf("预约分账字段不完整")
 	}
 	// 野生大师（大师直约，无寺庙）使用独立费率；寺庙为空时 TempleNet 恒为 0
