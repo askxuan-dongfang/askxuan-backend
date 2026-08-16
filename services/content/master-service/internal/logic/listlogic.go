@@ -28,7 +28,7 @@ func NewListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ListLogic {
 	}
 }
 
-// List 法师列表查询，支持按宗派(sect)/类型(type)/寺院(templeId)筛选 + 分页
+// List 法师列表查询，支持按宗派(sect)/类型(type)/寺院(templeId)/管理方(manageBy)/可提供服务(serviceCode)筛选 + 分页
 func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 	page := req.Page
 	size := req.Size
@@ -39,14 +39,32 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 		size = 20
 	}
 
-	list, total, err := l.svcCtx.MasterModel.FindCList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, req.ManageBy, page, size)
+	list, total, err := l.svcCtx.MasterModel.FindCList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, req.ManageBy, req.ServiceCode, page, size)
 	if err != nil {
 		return nil, err
 	}
 
+	// 批量补全大师服务标签（可提供服务），供 C 端按服务筛选展示
+	codes := make([]string, 0, len(list))
+	for _, m := range list {
+		codes = append(codes, m.Code)
+	}
+	tagMap, _ := l.svcCtx.MasterModel.ListServiceTagsByMasters(l.ctx, codes)
+
 	out := make([]types.Master, 0, len(list))
 	for _, m := range list {
-		out = append(out, l.toTypeMaster(m))
+		t := l.toTypeMaster(m)
+		if tags := tagMap[m.Code]; len(tags) > 0 {
+			t.ServiceTags = make([]types.MasterServiceTagItem, 0, len(tags))
+			for _, tag := range tags {
+				t.ServiceTags = append(t.ServiceTags, types.MasterServiceTagItem{
+					ServiceCode: tag.ServiceCode,
+					Price:       tag.Price,
+					Status:      tag.Status,
+				})
+			}
+		}
+		out = append(out, t)
 	}
 
 	return &types.ListResp{

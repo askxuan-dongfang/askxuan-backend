@@ -189,6 +189,16 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/admin/platform/masters/:id",
 			Handler: platformMasterUpdateHandler(svcCtx),
 		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/platform/masters/:id/service-tags",
+			Handler: platformMasterServiceTagsGetHandler(svcCtx),
+		},
+		{
+			Method:  http.MethodPut,
+			Path:    "/api/v1/admin/platform/masters/:id/service-tags",
+			Handler: platformMasterServiceTagsPutHandler(svcCtx),
+		},
 	}...))
 }
 
@@ -596,6 +606,38 @@ func platformMasterUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewPlatformMasterUpdateLogic(r.Context(), svcCtx).PlatformMasterUpdate(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func platformMasterServiceTagsGetHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.PlatformMasterDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewPlatformMasterServiceTagsLogic(r.Context(), svcCtx).PlatformMasterServiceTags(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func platformMasterServiceTagsPutHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.PlatformMasterTagsUpdateReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewPlatformUpdateMasterServiceTagsLogic(r.Context(), svcCtx).PlatformUpdateMasterServiceTags(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

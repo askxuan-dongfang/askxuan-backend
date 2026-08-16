@@ -80,6 +80,7 @@ GRANT ALL PRIVILEGES ON askxuan_user.* TO 'user_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_temple.* TO 'temple_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_master.* TO 'master_user'@'%';
 GRANT SELECT ON askxuan_temple.temple TO 'master_user'@'%';
+GRANT SELECT ON askxuan_temple.service_type TO 'master_user'@'%'; -- C端按可提供服务筛选：读取服务目录指定大师（master_codes）
 GRANT ALL PRIVILEGES ON askxuan_booking.* TO 'booking_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_review.* TO 'review_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_product.* TO 'product_user'@'%';

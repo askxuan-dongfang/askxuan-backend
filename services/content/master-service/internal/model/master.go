@@ -97,8 +97,8 @@ type MasterModel interface {
 	FindAll(ctx context.Context, shelfStatus string, page, size int) ([]*Master, int64, error)
 	// FindPlatformList 平台查询全量法师，不应用 C 端可见性条件。
 	FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus string, page, size int) ([]*Master, int64, error)
-	// FindCList C端公开列表（仅 on_shelf + normal），按 sect/type/templeCode 筛选
-	FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy string, page, size int) ([]*Master, int64, error)
+	// FindCList C端公开列表（仅 on_shelf + normal），按 sect/type/templeCode/manageBy/serviceCode 筛选
+	FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy, serviceCode string, page, size int) ([]*Master, int64, error)
 	FindTempleNameByCode(ctx context.Context, templeCode string) (string, error)
 	Insert(ctx context.Context, data *Master) (int64, error)
 	Update(ctx context.Context, data *Master) error
@@ -111,6 +111,8 @@ type MasterModel interface {
 	// NextWildCode 生成下一个野生大师编码（格式 W00x）
 	NextWildCode(ctx context.Context) (string, error)
 	ListServiceTagsByMaster(ctx context.Context, masterCode string) ([]*MasterServiceTag, error)
+	// ListServiceTagsByMasters 批量查询大师服务标签（按 master_code 分组）
+	ListServiceTagsByMasters(ctx context.Context, masterCodes []string) (map[string][]*MasterServiceTag, error)
 	ReplaceServiceTags(ctx context.Context, masterCode string, tags []types.MasterServiceTagItem) error
 	// CountServiceType 校验服务编码存在于固定目录（跨库只读 askxuan_temple.service_type）
 	CountServiceType(ctx context.Context, serviceCode string) (int64, error)
@@ -190,7 +192,7 @@ func (m *masterModel) FindPlatformList(ctx context.Context, beliefCode, sect, mt
 	return m.queryPage(ctx, where, args, "ORDER BY id DESC", page, size)
 }
 
-func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy string, page, size int) ([]*Master, int64, error) {
+func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy, serviceCode string, page, size int) ([]*Master, int64, error) {
 	where := "WHERE shelf_status = ? AND platform_status = ?"
 	args := []interface{}{MasterShelfStatusOnShelf, MasterPlatformStatusNormal}
 	if beliefCode != "" {
@@ -212,6 +214,11 @@ func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, te
 	if manageBy != "" {
 		where += " AND manage_by = ?"
 		args = append(args, manageBy)
+	}
+	if serviceCode != "" {
+		// 按可提供服务筛选：大师标签（master_service_tag.enabled）或服务目录指定大师（service_type.master_codes）
+		where += " AND (EXISTS (SELECT 1 FROM " + masterServiceTagTable + " mst WHERE mst.master_code = " + m.table + ".code AND mst.service_code = ? AND mst.status = 'enabled') OR FIND_IN_SET(" + m.table + ".code, (SELECT master_codes FROM askxuan_temple.service_type WHERE code = ?)))"
+		args = append(args, serviceCode, serviceCode)
 	}
 	return m.queryPage(ctx, where, args, "ORDER BY rating DESC, id DESC", page, size)
 }

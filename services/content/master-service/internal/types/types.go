@@ -29,13 +29,14 @@ type Master struct {
 
 // ListReq 列表查询请求
 type ListReq struct {
-	BeliefCode string `form:"beliefCode,optional"`
-	Sect       string `form:"sect,optional"`
-	Type       string `form:"type,optional"`
-	TempleId   string `form:"templeId,optional"`
-	ManageBy   string `form:"manageBy,optional"` // temple/platform：找师傅专栏传 platform
-	Page       int    `form:"page,default=1"`
-	Size       int    `form:"size,default=20"`
+	BeliefCode  string `form:"beliefCode,optional"`
+	Sect        string `form:"sect,optional"`
+	Type        string `form:"type,optional"`
+	TempleId    string `form:"templeId,optional"`
+	ManageBy    string `form:"manageBy,optional"`    // temple/platform：找师傅专栏传 platform
+	ServiceCode string `form:"serviceCode,optional"` // 按可提供服务筛选（master_service_tag，enabled）
+	Page        int    `form:"page,default=1"`
+	Size        int    `form:"size,default=20"`
 }
 
 // ListResp 列表查询响应
@@ -383,6 +384,12 @@ type MasterServiceTagItemResp struct {
 
 // MasterServiceTagsReq 更新大师服务标签请求
 type MasterServiceTagsReq struct {
+	Tags []MasterServiceTagItem `json:"tags"`
+}
+
+// PlatformMasterTagsUpdateReq 平台配置大师服务标签请求（path 为法师编码）
+type PlatformMasterTagsUpdateReq struct {
+	Id   string                 `path:"id"`
 	Tags []MasterServiceTagItem `json:"tags"`
 }
 

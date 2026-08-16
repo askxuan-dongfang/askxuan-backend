@@ -42,9 +42,27 @@ func (l *PlatformMasterListLogic) PlatformMasterList(req *types.PlatformMasterLi
 	if err != nil {
 		return nil, err
 	}
+	// 批量补全大师服务标签（可提供服务），平台端展示两类大师的服务配置
+	codes := make([]string, 0, len(list))
+	for _, master := range list {
+		codes = append(codes, master.Code)
+	}
+	tagMap, _ := l.svcCtx.MasterModel.ListServiceTagsByMasters(l.ctx, codes)
+
 	out := make([]types.Master, 0, len(list))
 	for _, master := range list {
-		out = append(out, toTypeMasterWithTempleName(master, l.templeName(master.TempleCode)))
+		t := toTypeMasterWithTempleName(master, l.templeName(master.TempleCode))
+		if tags := tagMap[master.Code]; len(tags) > 0 {
+			t.ServiceTags = make([]types.MasterServiceTagItem, 0, len(tags))
+			for _, tag := range tags {
+				t.ServiceTags = append(t.ServiceTags, types.MasterServiceTagItem{
+					ServiceCode: tag.ServiceCode,
+					Price:       tag.Price,
+					Status:      tag.Status,
+				})
+			}
+		}
+		out = append(out, t)
 	}
 	return &types.ListResp{Total: total, List: out, Page: page, Size: size}, nil
 }
@@ -378,4 +396,92 @@ func (l *PlatformMasterUpdateLogic) PlatformMasterUpdate(req *types.PlatformMast
 	templeName, _ := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, master.TempleCode)
 	resp := toTypeMasterWithTempleName(master, templeName)
 	return &resp, nil
+}
+
+// PlatformMasterServiceTagsLogic 平台查看大师服务标签
+type PlatformMasterServiceTagsLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewPlatformMasterServiceTagsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *PlatformMasterServiceTagsLogic {
+	return &PlatformMasterServiceTagsLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+// PlatformMasterServiceTags 查询某位大师的服务标签（path id 为法师编码）
+func (l *PlatformMasterServiceTagsLogic) PlatformMasterServiceTags(req *types.PlatformMasterDetailReq) (*types.MasterServiceTagsResp, error) {
+	if _, err := l.svcCtx.MasterModel.FindByCode(l.ctx, req.Id); err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrMasterNotFound
+		}
+		return nil, err
+	}
+	tags, err := l.svcCtx.MasterModel.ListServiceTagsByMaster(l.ctx, req.Id)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	resp := &types.MasterServiceTagsResp{List: make([]types.MasterServiceTagItemResp, 0, len(tags))}
+	for _, t := range tags {
+		resp.List = append(resp.List, types.MasterServiceTagItemResp{
+			ServiceCode: t.ServiceCode,
+			Price:       t.Price,
+			Status:      t.Status,
+		})
+	}
+	return resp, nil
+}
+
+// PlatformUpdateMasterServiceTagsLogic 平台配置大师服务标签（覆盖式）
+type PlatformUpdateMasterServiceTagsLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewPlatformUpdateMasterServiceTagsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *PlatformUpdateMasterServiceTagsLogic {
+	return &PlatformUpdateMasterServiceTagsLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+// PlatformUpdateMasterServiceTags 覆盖式更新大师服务标签（复用 S001-S013 目录）
+func (l *PlatformUpdateMasterServiceTagsLogic) PlatformUpdateMasterServiceTags(req *types.PlatformMasterTagsUpdateReq) (*types.MasterServiceTagsResp, error) {
+	if _, err := l.svcCtx.MasterModel.FindByCode(l.ctx, req.Id); err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrMasterNotFound
+		}
+		return nil, err
+	}
+	if len(req.Tags) > 13 {
+		return nil, common.ErrParamInvalid
+	}
+	seen := make(map[string]bool, len(req.Tags))
+	for _, t := range req.Tags {
+		if t.ServiceCode == "" || t.Price < 0 {
+			return nil, common.ErrParamInvalid
+		}
+		if seen[t.ServiceCode] {
+			return nil, common.ErrParamInvalid
+		}
+		seen[t.ServiceCode] = true
+		cnt, err := l.svcCtx.MasterModel.CountServiceType(l.ctx, t.ServiceCode)
+		if err != nil || cnt == 0 {
+			return nil, common.ErrParamInvalid
+		}
+	}
+	if err := l.svcCtx.MasterModel.ReplaceServiceTags(l.ctx, req.Id, req.Tags); err != nil {
+		return nil, common.ErrSystem
+	}
+	tags, err := l.svcCtx.MasterModel.ListServiceTagsByMaster(l.ctx, req.Id)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	resp := &types.MasterServiceTagsResp{List: make([]types.MasterServiceTagItemResp, 0, len(tags))}
+	for _, t := range tags {
+		resp.List = append(resp.List, types.MasterServiceTagItemResp{
+			ServiceCode: t.ServiceCode,
+			Price:       t.Price,
+			Status:      t.Status,
+		})
+	}
+	return resp, nil
 }

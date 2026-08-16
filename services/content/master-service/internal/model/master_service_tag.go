@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/askxuan/master-service/internal/types"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -61,4 +62,29 @@ func (m *masterModel) CountServiceType(_ context.Context, serviceCode string) (i
 		return 1, nil
 	}
 	return 0, nil
+}
+
+// ListServiceTagsByMasters 批量查询多位法师的服务标签（按 master_code 分组，空入参返回空 map）
+func (m *masterModel) ListServiceTagsByMasters(ctx context.Context, masterCodes []string) (map[string][]*MasterServiceTag, error) {
+	result := make(map[string][]*MasterServiceTag, len(masterCodes))
+	if len(masterCodes) == 0 {
+		return result, nil
+	}
+	placeholders := make([]string, 0, len(masterCodes))
+	args := make([]interface{}, 0, len(masterCodes))
+	for _, code := range masterCodes {
+		placeholders = append(placeholders, "?")
+		args = append(args, code)
+	}
+	query := fmt.Sprintf(
+		"SELECT id, master_code, service_code, price, status, create_time, update_time FROM %s WHERE master_code IN (%s) ORDER BY id",
+		masterServiceTagTable, strings.Join(placeholders, ","))
+	var list []*MasterServiceTag
+	if err := m.conn.QueryRowsCtx(ctx, &list, query, args...); err != nil {
+		return nil, err
+	}
+	for _, t := range list {
+		result[t.MasterCode] = append(result[t.MasterCode], t)
+	}
+	return result, nil
 }
