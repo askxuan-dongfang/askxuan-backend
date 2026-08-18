@@ -87,6 +87,9 @@ GRANT ALL PRIVILEGES ON askxuan_product.* TO 'product_user'@'%';
 GRANT SELECT ON askxuan_temple.temple TO 'product_user'@'%';
 GRANT SELECT ON askxuan_temple.temple_service TO 'product_user'@'%';
 GRANT SELECT ON askxuan_temple.temple_service_intent_tag TO 'product_user'@'%';
+GRANT SELECT ON askxuan_temple.service_type TO 'product_user'@'%'; -- 按心愿办聚合：大师服务标签联表
+GRANT SELECT ON askxuan_master.master TO 'product_user'@'%'; -- 按心愿办聚合：双轨大师
+GRANT SELECT ON askxuan_master.master_service_tag TO 'product_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_diy.* TO 'diy_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_order.* TO 'order_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_payment.* TO 'payment_user'@'%';

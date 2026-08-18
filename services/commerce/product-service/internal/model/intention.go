@@ -31,6 +31,7 @@ type IntentionResource struct {
 	OrderTarget  string  `db:"order_target"`
 	TempleCode   string  `db:"temple_code"`
 	ServiceCode  string  `db:"service_code"`
+	MasterCode   string  `db:"master_code"`
 	UpdatedAt    string  `db:"updated_at"`
 }
 
@@ -103,16 +104,20 @@ func (m *intentionModel) UpdateTagStatus(ctx context.Context, code, status strin
 func resourceUnion(code string) (string, []interface{}) {
 	productWhere := "p.status='on_shelf' AND p.stock > 0"
 	serviceWhere := "ts.status='on_shelf' AND t.status='正常'"
+	// 双轨大师：已认证+上架+正常，服务标签 enabled
+	masterWhere := "mst.status='enabled' AND m.auth_status='已认证' AND m.shelf_status='on_shelf' AND m.platform_status='normal'"
 	var args []interface{}
 	if code != "" {
 		productWhere += " AND pit.tag_code=?"
 		serviceWhere += " AND tsit.tag_code=?"
-		args = append(args, code, code)
+		// 大师分支：心愿对应的标准服务编码（service 型诉求的 landing_value）
+		masterWhere += " AND mst.service_code IN (SELECT landing_value FROM intent_tag WHERE code=? AND landing_type='service')"
+		args = append(args, code, code, code)
 	}
 	query := fmt.Sprintf(`
 SELECT DISTINCT 'product' resource_type, CAST(p.id AS CHAR) source_id, p.name title,
   COALESCE(p.description,'') subtitle, p.price, p.main_image image,
-  CONCAT('product:',p.id) order_target, '' temple_code, '' service_code,
+  CONCAT('product:',p.id) order_target, '' temple_code, '' service_code, '' master_code,
   DATE_FORMAT(p.update_time,'%%Y-%%m-%%d %%H:%%i:%%s') updated_at
 FROM product p JOIN product_intent_tag pit ON pit.product_id=p.id WHERE %s
 UNION ALL
@@ -120,12 +125,23 @@ SELECT DISTINCT 'service' resource_type, CAST(ts.id AS CHAR) source_id,
   CONCAT(t.name,' · ',ts.service_name) title, COALESCE(t.description,'') subtitle,
   ts.price, t.cover_image image,
   CONCAT('service:',ts.temple_code,':',ts.service_code) order_target,
-  ts.temple_code, ts.service_code,
+  ts.temple_code, ts.service_code, '' master_code,
   DATE_FORMAT(ts.update_time,'%%Y-%%m-%%d %%H:%%i:%%s') updated_at
 FROM askxuan_temple.temple_service ts
 JOIN askxuan_temple.temple t ON t.code=ts.temple_code
 JOIN askxuan_temple.temple_service_intent_tag tsit ON tsit.temple_service_id=ts.id
-WHERE %s`, productWhere, serviceWhere)
+WHERE %s
+UNION ALL
+SELECT DISTINCT 'master' resource_type, mst.master_code source_id,
+  CONCAT(m.dharma_name,' · ',st.name) title, CONCAT(m.type,' · ',m.sect) subtitle,
+  mst.price, COALESCE(m.avatar,'') image,
+  CONCAT('master:',mst.master_code,':',mst.service_code) order_target,
+  m.temple_code temple_code, mst.service_code service_code, mst.master_code master_code,
+  DATE_FORMAT(mst.update_time,'%%Y-%%m-%%d %%H:%%i:%%s') updated_at
+FROM askxuan_master.master_service_tag mst
+JOIN askxuan_master.master m ON m.code=mst.master_code
+JOIN askxuan_temple.service_type st ON st.code=mst.service_code
+WHERE %s`, productWhere, serviceWhere, masterWhere)
 	return query, args
 }
 
@@ -140,7 +156,7 @@ func (m *intentionModel) FindResources(ctx context.Context, code string, page, s
 	}
 	listArgs := append(append([]interface{}{}, args...), (page-1)*size, size)
 	var resources []*IntentionResource
-	query := "SELECT resource_type,source_id,title,subtitle,price,image,order_target,temple_code,service_code,updated_at FROM (" + union + ") intention_resources ORDER BY updated_at DESC,resource_type,source_id DESC LIMIT ?,?"
+	query := "SELECT resource_type,source_id,title,subtitle,price,image,order_target,temple_code,service_code,master_code,updated_at FROM (" + union + ") intention_resources ORDER BY updated_at DESC,resource_type,source_id DESC LIMIT ?,?"
 	if err := m.conn.QueryRowsCtx(ctx, &resources, query, listArgs...); err != nil {
 		return nil, 0, err
 	}

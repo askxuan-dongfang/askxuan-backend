@@ -142,7 +142,7 @@ func (l *CustomerIntentionLogic) List(req *types.CustomerIntentionReq) (*types.C
 	}
 	out := make([]types.IntentionResource, 0, len(resources))
 	for _, item := range resources {
-		out = append(out, types.IntentionResource{ResourceType: item.ResourceType, SourceId: item.SourceId, Title: item.Title, Subtitle: item.Subtitle, Price: item.Price, Image: item.Image, OrderTarget: item.OrderTarget, TempleCode: item.TempleCode, ServiceCode: item.ServiceCode})
+		out = append(out, types.IntentionResource{ResourceType: item.ResourceType, SourceId: item.SourceId, Title: item.Title, Subtitle: item.Subtitle, Price: item.Price, Image: item.Image, OrderTarget: item.OrderTarget, TempleCode: item.TempleCode, ServiceCode: item.ServiceCode, MasterCode: item.MasterCode})
 	}
 	return &types.CustomerIntentionResp{Tags: outTags, Total: total, List: out, Page: req.Page, Size: req.Size}, nil
 }

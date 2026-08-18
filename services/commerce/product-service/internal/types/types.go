@@ -145,6 +145,7 @@ type IntentionResource struct {
 	OrderTarget  string  `json:"orderTarget"`
 	TempleCode   string  `json:"templeCode,omitempty"`
 	ServiceCode  string  `json:"serviceCode,omitempty"`
+	MasterCode   string  `json:"masterCode,omitempty"` // 双轨大师资源：大师编码
 }
 
 type CustomerIntentionReq struct {
