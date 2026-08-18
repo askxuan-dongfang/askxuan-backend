@@ -1122,13 +1122,13 @@ CREATE TABLE IF NOT EXISTS `product_intent_tag` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品诉求标签映射';
 
 INSERT INTO `intent_tag` (`code`,`name`,`description`,`icon`,`landing_type`,`landing_value`,`action_title`,`sort`) VALUES
-('peace','求平安','祈福、护佑与健康相关商品和服务','shield.lefthalf.filled','service','S001','办理平安祈福',10),
-('wealth','求财运','财运、供养与事业助力相关商品和服务','banknote.fill','service','S009','办理财运祈福',20),
-('love','求姻缘','姻缘、人际与家庭相关商品和服务','heart.fill','service','S008','办理姻缘祈愿',30),
-('career','求事业','事业、风水与开光相关商品和服务','briefcase.fill','service','S010','办理事业祈愿',40),
-('study','求学业','学业、智慧与考试相关商品和服务','book.fill','service','S013','办理学业祈愿',50),
+('peace','求平安','祈福、护佑与健康相关寺院与大师服务','shield.lefthalf.filled','service','S001','办理平安祈福',10),
+('wealth','求财运','财运、供养与事业助力相关寺院与大师服务','banknote.fill','service','S009','办理财运祈福',20),
+('love','求姻缘','姻缘、人际与家庭相关寺院与大师服务','heart.fill','service','S008','办理姻缘祈愿',30),
+('career','求事业','事业、风水与开光相关寺院与大师服务','briefcase.fill','service','S010','办理事业祈愿',40),
+('study','求学业','学业、智慧与考试相关寺院与大师服务','book.fill','service','S013','办理学业祈愿',50),
 ('taisui','化太岁','本命年与化太岁相关服务','circle.hexagongrid.fill','service','S007','办理化太岁',60),
-('diy','定手串','手串材料与定制相关商品','circle.grid.cross.fill','diy','','开始定制',70),
+('diy','定手串','手串材料与定制服务','circle.grid.cross.fill','diy','','开始定制',70),
 ('rite','做法事','超度等法事服务','hands.sparkles.fill','service','S005','预约法事',80);
 
 INSERT IGNORE INTO `product_intent_tag` (`product_id`,`tag_code`)
