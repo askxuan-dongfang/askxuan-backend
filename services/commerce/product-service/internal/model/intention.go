@@ -102,10 +102,12 @@ func (m *intentionModel) UpdateTagStatus(ctx context.Context, code, status strin
 }
 
 func resourceUnion(code string) (string, []interface{}) {
-	// 按心愿办：仅聚合寺院服务 + 双轨大师服务（不含商品）
+	// 按心愿办：仅聚合寺院服务 + 野生大师服务（不含商品、不含寺庙绑定大师——
+	// 寺庙绑定大师的预约走寺院服务，已在 service 分支体现，避免点进大师主页预约栏与
+	// 标签价对不上/为空）
 	serviceWhere := "ts.status='on_shelf' AND t.status='正常'"
-	// 双轨大师：已认证+上架+正常，服务标签 enabled
-	masterWhere := "mst.status='enabled' AND m.auth_status='已认证' AND m.shelf_status='on_shelf' AND m.platform_status='normal'"
+	// 野生大师：平台直管、已认证+上架+正常，服务标签 enabled（直约路径可下单）
+	masterWhere := "mst.status='enabled' AND m.manage_by='platform' AND m.auth_status='已认证' AND m.shelf_status='on_shelf' AND m.platform_status='normal'"
 	var args []interface{}
 	if code != "" {
 		serviceWhere += " AND tsit.tag_code=?"
