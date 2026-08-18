@@ -102,25 +102,18 @@ func (m *intentionModel) UpdateTagStatus(ctx context.Context, code, status strin
 }
 
 func resourceUnion(code string) (string, []interface{}) {
-	productWhere := "p.status='on_shelf' AND p.stock > 0"
+	// 按心愿办：仅聚合寺院服务 + 双轨大师服务（不含商品）
 	serviceWhere := "ts.status='on_shelf' AND t.status='正常'"
 	// 双轨大师：已认证+上架+正常，服务标签 enabled
 	masterWhere := "mst.status='enabled' AND m.auth_status='已认证' AND m.shelf_status='on_shelf' AND m.platform_status='normal'"
 	var args []interface{}
 	if code != "" {
-		productWhere += " AND pit.tag_code=?"
 		serviceWhere += " AND tsit.tag_code=?"
 		// 大师分支：心愿对应的标准服务编码（service 型诉求的 landing_value）
 		masterWhere += " AND mst.service_code IN (SELECT landing_value FROM intent_tag WHERE code=? AND landing_type='service')"
-		args = append(args, code, code, code)
+		args = append(args, code, code)
 	}
 	query := fmt.Sprintf(`
-SELECT DISTINCT 'product' resource_type, CAST(p.id AS CHAR) source_id, p.name title,
-  COALESCE(p.description,'') subtitle, p.price, p.main_image image,
-  CONCAT('product:',p.id) order_target, '' temple_code, '' service_code, '' master_code,
-  DATE_FORMAT(p.update_time,'%%Y-%%m-%%d %%H:%%i:%%s') updated_at
-FROM product p JOIN product_intent_tag pit ON pit.product_id=p.id WHERE %s
-UNION ALL
 SELECT DISTINCT 'service' resource_type, CAST(ts.id AS CHAR) source_id,
   CONCAT(t.name,' · ',ts.service_name) title, COALESCE(t.description,'') subtitle,
   ts.price, t.cover_image image,
@@ -141,7 +134,7 @@ SELECT DISTINCT 'master' resource_type, mst.master_code source_id,
 FROM askxuan_master.master_service_tag mst
 JOIN askxuan_master.master m ON m.code=mst.master_code
 JOIN askxuan_temple.service_type st ON st.code=mst.service_code
-WHERE %s`, productWhere, serviceWhere, masterWhere)
+WHERE %s`, serviceWhere, masterWhere)
 	return query, args
 }
 
