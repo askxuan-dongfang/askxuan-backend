@@ -16,19 +16,21 @@ func TestValidateIntentCodes(t *testing.T) {
 
 func TestResourceUnionUsesQualifiedTempleCatalog(t *testing.T) {
 	query, args := resourceUnion("peace")
-	for _, table := range []string{"askxuan_temple.temple_service", "askxuan_temple.temple", "askxuan_temple.temple_service_intent_tag"} {
+	for _, table := range []string{
+		"askxuan_temple.temple_service",
+		"askxuan_temple.temple",
+		"askxuan_temple.temple_service_intent_tag",
+		"askxuan_master.master",
+		"askxuan_master.master_service_tag",
+	} {
 		if !strings.Contains(query, table) {
 			t.Fatalf("missing qualified table %s", table)
 		}
 	}
+	if strings.Contains(query, "askxuan_product.product") {
+		t.Fatal("intention aggregation must not include products")
+	}
 	if len(args) != 2 || args[0] != "peace" || args[1] != "peace" {
 		t.Fatalf("unexpected args: %#v", args)
-	}
-}
-
-func TestUniqueCodes(t *testing.T) {
-	got := uniqueCodes([]string{"peace", " peace ", "", "diy"})
-	if len(got) != 2 || got[0] != "peace" || got[1] != "diy" {
-		t.Fatalf("unexpected unique tags: %#v", got)
 	}
 }

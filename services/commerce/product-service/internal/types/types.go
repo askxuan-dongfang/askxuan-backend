@@ -14,7 +14,6 @@ type Product struct {
 	MarketPrice       float64        `json:"marketPrice"`
 	Stock             int            `json:"stock"`
 	Tags              string         `json:"tags"`
-	IntentTags        []string       `json:"intentTags"`
 	FreightTemplateId int64          `json:"freightTemplateId"`
 	Skus              []ProductSku   `json:"skus"`
 	Images            []ProductImage `json:"images"`
@@ -180,16 +179,15 @@ type AdminProductListResp struct {
 }
 
 type AdminProductCreateReq struct {
-	Name              string   `json:"name"`
-	CategoryId        int64    `json:"categoryId"`
-	Description       string   `json:"description"`
-	MainImage         string   `json:"mainImage"`
-	Price             float64  `json:"price"`
-	MarketPrice       float64  `json:"marketPrice"`
-	Stock             int      `json:"stock"`
-	Tags              string   `json:"tags"`
-	IntentTags        []string `json:"intentTags,optional"`
-	FreightTemplateId int64    `json:"freightTemplateId"`
+	Name              string  `json:"name"`
+	CategoryId        int64   `json:"categoryId"`
+	Description       string  `json:"description"`
+	MainImage         string  `json:"mainImage"`
+	Price             float64 `json:"price"`
+	MarketPrice       float64 `json:"marketPrice"`
+	Stock             int     `json:"stock"`
+	Tags              string  `json:"tags"`
+	FreightTemplateId int64   `json:"freightTemplateId"`
 }
 
 type AdminProductCreateResp struct {
@@ -201,17 +199,16 @@ type AdminProductDetailReq struct {
 }
 
 type AdminProductUpdateReq struct {
-	Id                int64    `path:"id"`
-	Name              string   `json:"name"`
-	CategoryId        int64    `json:"categoryId"`
-	Description       string   `json:"description"`
-	MainImage         string   `json:"mainImage"`
-	Price             float64  `json:"price"`
-	MarketPrice       float64  `json:"marketPrice"`
-	Stock             int      `json:"stock"`
-	Tags              string   `json:"tags"`
-	IntentTags        []string `json:"intentTags,optional"`
-	FreightTemplateId int64    `json:"freightTemplateId"`
+	Id                int64   `path:"id"`
+	Name              string  `json:"name"`
+	CategoryId        int64   `json:"categoryId"`
+	Description       string  `json:"description"`
+	MainImage         string  `json:"mainImage"`
+	Price             float64 `json:"price"`
+	MarketPrice       float64 `json:"marketPrice"`
+	Stock             int     `json:"stock"`
+	Tags              string  `json:"tags"`
+	FreightTemplateId int64   `json:"freightTemplateId"`
 }
 
 type AdminProductDeleteReq struct {

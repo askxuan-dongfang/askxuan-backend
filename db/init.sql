@@ -83,6 +83,7 @@ CREATE TABLE `master` (
   `auth_status` VARCHAR(16) NOT NULL COMMENT '认证状态 已认证/待审核',
   `shelf_status` VARCHAR(16) NOT NULL DEFAULT 'off_shelf' COMMENT '上下架状态 on_shelf/off_shelf',
   `platform_status` VARCHAR(16) NOT NULL DEFAULT 'normal' COMMENT '平台状态 normal/banned',
+  `manage_by` VARCHAR(16) NOT NULL DEFAULT 'temple' COMMENT '管理方 temple/platform',
   `specialties` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '专长，逗号分隔',
   `avatar` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '头像',
   `rating` DECIMAL(3,2) NOT NULL DEFAULT 0.00,
@@ -811,6 +812,29 @@ CREATE TABLE IF NOT EXISTS `master_profile_ext` (
   PRIMARY KEY (`master_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='法师工作台资料扩展';
 
+CREATE TABLE IF NOT EXISTS `master_service_tag` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `master_code` VARCHAR(16) NOT NULL COMMENT '法师编码',
+  `service_code` VARCHAR(16) NOT NULL COMMENT '固定服务编码 S001-S013',
+  `price` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '大师服务价格',
+  `status` VARCHAR(16) NOT NULL DEFAULT 'enabled' COMMENT 'enabled/disabled/pending_review',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_master_service` (`master_code`,`service_code`),
+  KEY `idx_master_service_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='大师可提供的固定服务';
+
+INSERT INTO `master_service_tag` (`master_code`,`service_code`,`price`,`status`) VALUES
+('M001','S001',39.00,'enabled'),('M001','S002',39.00,'enabled'),
+('M002','S007',49.00,'enabled'),('M002','S009',49.00,'enabled'),
+('M003','S010',39.00,'enabled'),('M003','S013',39.00,'enabled'),
+('M004','S001',59.00,'enabled'),('M004','S012',59.00,'enabled'),
+('M006','S007',49.00,'enabled'),('M006','S011',49.00,'enabled'),
+('M007','S005',39.00,'enabled'),('M008','S001',59.00,'enabled'),
+('M009','S012',49.00,'enabled'),('M010','S002',39.00,'enabled')
+ON DUPLICATE KEY UPDATE `price`=VALUES(`price`),`status`=VALUES(`status`);
+
 INSERT INTO `master_profile_ext` (`master_code`,`bio`,`pricing`) VALUES
 ('M001','虚构演示人物。设定为禅宗文化与基础禅修讲师，负责线上文化讲解和预约沟通。','演示服务价格以寺院服务目录为准'),
 ('M002','虚构演示人物。设定为全真道文化经师，侧重经典文化、礼仪和养生导引讲解。','演示服务价格以寺院服务目录为准'),
@@ -1119,7 +1143,7 @@ CREATE TABLE IF NOT EXISTS `product_intent_tag` (
   KEY `idx_product_intent_code` (`tag_code`),
   CONSTRAINT `fk_intent_product` FOREIGN KEY (`product_id`) REFERENCES `product` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_product_intent_tag` FOREIGN KEY (`tag_code`) REFERENCES `intent_tag` (`code`) ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品诉求标签映射';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='历史商品诉求映射（已停用）';
 
 INSERT INTO `intent_tag` (`code`,`name`,`description`,`icon`,`landing_type`,`landing_value`,`action_title`,`sort`) VALUES
 ('peace','求平安','祈福、护佑与健康相关寺院与大师服务','shield.lefthalf.filled','service','S001','办理平安祈福',10),
@@ -1130,11 +1154,6 @@ INSERT INTO `intent_tag` (`code`,`name`,`description`,`icon`,`landing_type`,`lan
 ('taisui','化太岁','本命年与化太岁相关服务','circle.hexagongrid.fill','service','S007','办理化太岁',60),
 ('diy','定手串','手串材料与定制服务','circle.grid.cross.fill','diy','','开始定制',70),
 ('rite','做法事','超度等法事服务','hands.sparkles.fill','service','S005','预约法事',80);
-
-INSERT IGNORE INTO `product_intent_tag` (`product_id`,`tag_code`)
-SELECT id, 'diy' FROM `product` WHERE product_no IN ('P20260600001','P20260600002');
-INSERT IGNORE INTO `product_intent_tag` (`product_id`,`tag_code`)
-SELECT id, 'peace' FROM `product` WHERE product_no='P20260600001';
 
 INSERT INTO `product_image` (`product_id`,`image_url`,`sort`,`type`) VALUES
 (1,'/assets/product-xiaoyezitan.jpg',0,'main'),

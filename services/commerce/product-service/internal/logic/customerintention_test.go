@@ -35,9 +35,6 @@ func (f *fakeIntentionModel) FindResources(_ context.Context, code string, page,
 	f.code, f.page, f.size = code, page, size
 	return []*model.IntentionResource{{ResourceType: "service", SourceId: "1", Title: "灵隐寺 · 祈福", Price: 200, OrderTarget: "service:T001:S001", TempleCode: "T001", ServiceCode: "S001"}}, 1, nil
 }
-func (*fakeIntentionModel) FindProductTags(context.Context, int64) ([]string, error)  { return nil, nil }
-func (*fakeIntentionModel) ReplaceProductTags(context.Context, int64, []string) error { return nil }
-
 func TestCustomerIntentionList(t *testing.T) {
 	fake := &fakeIntentionModel{}
 	logic := NewCustomerIntentionLogic(context.Background(), &svc.ServiceContext{IntentionModel: fake})

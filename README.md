@@ -160,7 +160,7 @@ bash scripts/test-mvp3-audit-closed-loop.sh
 # App 改进：信仰流派专题、筛选和管理闭环
 bash scripts/test-app5-belief-closed-loop.sh
 
-# App 改进：诉求聚合商品/寺院服务混排闭环
+# App 改进：诉求聚合寺院服务/大师服务双轨闭环
 bash scripts/test-app6-intention-closed-loop.sh
 
 # App 改进：AI 默认会话、所有权、异步回复和重启恢复闭环

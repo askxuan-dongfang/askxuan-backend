@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -43,8 +42,6 @@ type IntentionModel interface {
 	UpdateTag(ctx context.Context, tag *IntentTag) error
 	UpdateTagStatus(ctx context.Context, code, status string) error
 	FindResources(ctx context.Context, code string, page, size int) ([]*IntentionResource, int64, error)
-	FindProductTags(ctx context.Context, productId int64) ([]string, error)
-	ReplaceProductTags(ctx context.Context, productId int64, tags []string) error
 }
 
 type intentionModel struct{ conn sqlx.SqlConn }
@@ -154,52 +151,4 @@ func (m *intentionModel) FindResources(ctx context.Context, code string, page, s
 		return nil, 0, err
 	}
 	return resources, total, nil
-}
-
-func (m *intentionModel) FindProductTags(ctx context.Context, productId int64) ([]string, error) {
-	var rows []struct {
-		Code string `db:"tag_code"`
-	}
-	if err := m.conn.QueryRowsCtx(ctx, &rows, "SELECT tag_code FROM product_intent_tag WHERE product_id=? ORDER BY tag_code", productId); err != nil {
-		return nil, err
-	}
-	tags := make([]string, 0, len(rows))
-	for _, row := range rows {
-		tags = append(tags, row.Code)
-	}
-	return tags, nil
-}
-
-func (m *intentionModel) ReplaceProductTags(ctx context.Context, productId int64, tags []string) error {
-	if err := ValidateIntentCodes(tags); err != nil {
-		return err
-	}
-	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
-		if _, err := session.ExecCtx(ctx, "DELETE FROM product_intent_tag WHERE product_id=?", productId); err != nil {
-			return err
-		}
-		for _, code := range uniqueCodes(tags) {
-			if _, err := session.ExecCtx(ctx, "INSERT INTO product_intent_tag(product_id,tag_code) VALUES(?,?)", productId, code); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-func uniqueCodes(codes []string) []string {
-	seen := make(map[string]struct{}, len(codes))
-	out := make([]string, 0, len(codes))
-	for _, raw := range codes {
-		code := strings.TrimSpace(raw)
-		if code == "" {
-			continue
-		}
-		if _, ok := seen[code]; ok {
-			continue
-		}
-		seen[code] = struct{}{}
-		out = append(out, code)
-	}
-	return out
 }

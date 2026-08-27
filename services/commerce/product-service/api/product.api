@@ -23,7 +23,6 @@ type (
         MarketPrice      float64        `json:"marketPrice"`
         Stock            int            `json:"stock"`
         Tags             string         `json:"tags"`
-        IntentTags       []string       `json:"intentTags,optional"`
         FreightTemplateId int64         `json:"freightTemplateId"`
         Skus             []ProductSku   `json:"skus,optional"`
         Images           []ProductImage `json:"images,optional"`
@@ -117,6 +116,7 @@ type (
         OrderTarget  string  `json:"orderTarget"`
         TempleCode   string  `json:"templeCode,optional"`
         ServiceCode  string  `json:"serviceCode,optional"`
+        MasterCode   string  `json:"masterCode,optional"`
     }
 
     CustomerIntentionReq {
@@ -161,7 +161,6 @@ type (
         MarketPrice       float64 `json:"marketPrice,optional"`
         Stock             int     `json:"stock"`
         Tags              string  `json:"tags,optional"`
-        IntentTags        []string `json:"intentTags,optional"`
         FreightTemplateId int64   `json:"freightTemplateId,optional"`
     }
 
@@ -183,7 +182,6 @@ type (
         MarketPrice       float64 `json:"marketPrice,optional"`
         Stock             int     `json:"stock"`
         Tags              string  `json:"tags,optional"`
-        IntentTags        []string `json:"intentTags,optional"`
         FreightTemplateId int64   `json:"freightTemplateId,optional"`
     }
 

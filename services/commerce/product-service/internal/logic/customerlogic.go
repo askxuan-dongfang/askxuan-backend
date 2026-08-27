@@ -71,10 +71,6 @@ func (l *CustomerProductDetailLogic) Detail(req *types.CustomerProductDetailReq)
 		return nil, common.ErrSystem
 	}
 	resp := toTypesProduct(p)
-	if tags, tagErr := l.svcCtx.IntentionModel.FindProductTags(l.ctx, req.Id); tagErr == nil {
-		resp.IntentTags = tags
-	}
-
 	// 查 SKU
 	skus, err := l.svcCtx.ProductSkuModel.ListByProductId(l.ctx, req.Id)
 	if err == nil {
