@@ -59,10 +59,12 @@ for rpc_key in temple.rpc master.rpc product.rpc diy.rpc order.rpc payment.rpc; 
   fi
 done
 
+openim_secret="${OPENIM_SECRET:-openIM123}"
+openim_payload="$(printf '{\"secret\":\"%s\",\"userID\":\"imAdmin\"}' "${openim_secret}")"
 openim_response="$(curl --connect-timeout 3 --max-time 10 -fsS -X POST http://127.0.0.1:10002/auth/get_admin_token \
   -H 'Content-Type: application/json' \
   -H "operationID: askxuan-stack-check" \
-  -d '{"secret":"openIM123","userID":"imAdmin"}' 2>/dev/null || true)"
+  -d "${openim_payload}" 2>/dev/null || true)"
 if printf '%s' "${openim_response}" | grep -Eq '"errCode"[[:space:]]*:[[:space:]]*0'; then
   echo "OK: OpenIM REST admin token"
 else
