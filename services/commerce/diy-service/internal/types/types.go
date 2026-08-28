@@ -64,6 +64,13 @@ type Material struct {
 	Unit         string  `json:"unit"`
 	Category     string  `json:"category"`
 	FiveElements string  `json:"fiveElements"`
+	MaterialType string  `json:"materialType"`
+	Shape        string  `json:"shape"`
+	DiameterMm   float64 `json:"diameterMm"`
+	ColorHex     string  `json:"colorHex"`
+	TextureKey   string  `json:"textureKey"`
+	Finish       string  `json:"finish"`
+	Translucency float64 `json:"translucency"`
 	Image        string  `json:"image"`
 	Stock        int     `json:"stock"`
 	Status       string  `json:"status"`
@@ -286,6 +293,13 @@ type AdminMaterialCreateReq struct {
 	Unit         string  `json:"unit"`
 	Category     string  `json:"category"`
 	FiveElements string  `json:"fiveElements"`
+	MaterialType string  `json:"materialType"`
+	Shape        string  `json:"shape"`
+	DiameterMm   float64 `json:"diameterMm"`
+	ColorHex     string  `json:"colorHex"`
+	TextureKey   string  `json:"textureKey"`
+	Finish       string  `json:"finish"`
+	Translucency float64 `json:"translucency"`
 	Image        string  `json:"image"`
 	Stock        int     `json:"stock"`
 }
@@ -302,6 +316,13 @@ type AdminMaterialUpdateReq struct {
 	Unit         string  `json:"unit"`
 	Category     string  `json:"category"`
 	FiveElements string  `json:"fiveElements"`
+	MaterialType string  `json:"materialType"`
+	Shape        string  `json:"shape"`
+	DiameterMm   float64 `json:"diameterMm"`
+	ColorHex     string  `json:"colorHex"`
+	TextureKey   string  `json:"textureKey"`
+	Finish       string  `json:"finish"`
+	Translucency float64 `json:"translucency"`
 	Image        string  `json:"image"`
 	Stock        int     `json:"stock"`
 }

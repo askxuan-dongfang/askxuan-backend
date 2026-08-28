@@ -44,6 +44,13 @@ type Material struct {
 	Unit         string  `db:"unit" json:"unit"`
 	Category     string  `db:"category" json:"category"`
 	FiveElements string  `db:"five_elements" json:"fiveElements"`
+	MaterialType string  `db:"material_type" json:"materialType"`
+	Shape        string  `db:"shape" json:"shape"`
+	DiameterMm   float64 `db:"diameter_mm" json:"diameterMm"`
+	ColorHex     string  `db:"color_hex" json:"colorHex"`
+	TextureKey   string  `db:"texture_key" json:"textureKey"`
+	Finish       string  `db:"finish" json:"finish"`
+	Translucency float64 `db:"translucency" json:"translucency"`
 	Image        string  `db:"image" json:"image"`
 	Stock        int     `db:"stock" json:"stock"`
 	Status       string  `db:"status" json:"status"`
@@ -107,26 +114,82 @@ func NewMaterialModel(conn sqlx.SqlConn) MaterialModel {
 	return &defaultMaterialModel{conn: conn}
 }
 
+func normalizeMaterialPresentation(data *Material) {
+	fiveElements := map[string]string{"金": "metal", "木": "wood", "水": "water", "火": "fire", "土": "earth"}
+	if normalized, ok := fiveElements[data.FiveElements]; ok {
+		data.FiveElements = normalized
+	}
+	if data.MaterialType == "" {
+		switch data.Category {
+		case MaterialCategoryCord:
+			data.MaterialType = "cord"
+		case MaterialCategoryTassel:
+			data.MaterialType = "textile"
+		case MaterialCategorySpacer, MaterialCategoryThreeWay:
+			data.MaterialType = "metal"
+		default:
+			data.MaterialType = "gemstone"
+		}
+	}
+	if data.Shape == "" {
+		shapeByCategory := map[string]string{
+			MaterialCategorySpacer: "disc", MaterialCategoryBuddhaHead: "buddha_head",
+			MaterialCategoryPendant: "pendant", MaterialCategoryTassel: "tassel",
+			MaterialCategoryThreeWay: "three_way", MaterialCategoryCord: "cord",
+		}
+		data.Shape = shapeByCategory[data.Category]
+		if data.Shape == "" {
+			data.Shape = "round"
+		}
+	}
+	if data.DiameterMm <= 0 && data.Category != MaterialCategoryCord {
+		data.DiameterMm = 10
+	}
+	if len(data.ColorHex) != 7 || data.ColorHex[0] != '#' {
+		colors := map[string]string{"wood": "#5D936C", "fire": "#B93631", "earth": "#A36C22", "metal": "#B9C2C4", "water": "#315B96"}
+		data.ColorHex = colors[data.FiveElements]
+		if data.ColorHex == "" {
+			data.ColorHex = "#8A6E4A"
+		}
+	}
+	if data.TextureKey == "" {
+		data.TextureKey = "plain"
+	}
+	if data.Finish == "" {
+		data.Finish = "polished"
+	}
+	if data.Translucency < 0 {
+		data.Translucency = 0
+	} else if data.Translucency > 1 {
+		data.Translucency = 1
+	}
+}
+
 func (m *defaultMaterialModel) Insert(ctx context.Context, data *Material) (*Material, error) {
+	normalizeMaterialPresentation(data)
 	if data.Status == "" {
 		data.Status = MaterialStatusOnShelf
 	}
-	query := fmt.Sprintf(`INSERT INTO %s (name, spec, unit_price, unit, category, five_elements, image, stock, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, materialTable)
-	result, err := m.conn.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.Image, data.Stock, data.Status)
-	if err != nil {
-		return nil, err
-	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-	data.Id = id
-	return data, nil
+	err := m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		query := fmt.Sprintf(`INSERT INTO %s (name,spec,unit_price,unit,category,five_elements,material_type,shape,diameter_mm,color_hex,texture_key,finish,translucency,image,stock,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, materialTable)
+		result, err := session.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.MaterialType, data.Shape, data.DiameterMm, data.ColorHex, data.TextureKey, data.Finish, data.Translucency, data.Image, data.Stock, data.Status)
+		if err != nil {
+			return err
+		}
+		id, err := result.LastInsertId()
+		if err != nil {
+			return err
+		}
+		data.Id = id
+		_, err = session.ExecCtx(ctx, fmt.Sprintf(`INSERT INTO %s (material_id,spec,price,stock) VALUES (?,?,?,?)`, materialSkuTable), id, data.Spec, data.UnitPrice, data.Stock)
+		return err
+	})
+	return data, err
 }
 
 func (m *defaultMaterialModel) FindOne(ctx context.Context, id int64) (*Material, error) {
 	var mat Material
-	query := fmt.Sprintf(`SELECT id, name, spec, unit_price, unit, category, five_elements, image, stock, status FROM %s WHERE id = ?`, materialTable)
+	query := fmt.Sprintf(`SELECT m.id,m.name,m.spec,COALESCE((SELECT MIN(ms.price) FROM %s ms WHERE ms.material_id=m.id),m.unit_price) unit_price,m.unit,m.category,m.five_elements,m.material_type,m.shape,m.diameter_mm,m.color_hex,m.texture_key,m.finish,m.translucency,m.image,COALESCE((SELECT SUM(ms.stock) FROM %s ms WHERE ms.material_id=m.id),m.stock) stock,m.status FROM %s m WHERE m.id=?`, materialSkuTable, materialSkuTable, materialTable)
 	err := m.conn.QueryRowCtx(ctx, &mat, query, id)
 	if err != nil {
 		return nil, err
@@ -156,7 +219,7 @@ func (m *defaultMaterialModel) FindList(ctx context.Context, category, keyword s
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, name, spec, unit_price, unit, category, five_elements, image, stock, status FROM %s WHERE %s ORDER BY id ASC LIMIT ?, ?`, materialTable, where)
+	listQuery := fmt.Sprintf(`SELECT m.id,m.name,m.spec,COALESCE((SELECT MIN(ms.price) FROM %s ms WHERE ms.material_id=m.id),m.unit_price) unit_price,m.unit,m.category,m.five_elements,m.material_type,m.shape,m.diameter_mm,m.color_hex,m.texture_key,m.finish,m.translucency,m.image,COALESCE((SELECT SUM(ms.stock) FROM %s ms WHERE ms.material_id=m.id),m.stock) stock,m.status FROM %s m WHERE %s ORDER BY m.id ASC LIMIT ?,?`, materialSkuTable, materialSkuTable, materialTable, where)
 	listArgs := append(args, offset, size)
 	var list []*Material
 	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, listArgs...); err != nil {
@@ -166,9 +229,25 @@ func (m *defaultMaterialModel) FindList(ctx context.Context, category, keyword s
 }
 
 func (m *defaultMaterialModel) Update(ctx context.Context, data *Material) error {
-	query := fmt.Sprintf(`UPDATE %s SET name=?, spec=?, unit_price=?, unit=?, category=?, five_elements=?, image=?, stock=? WHERE id=?`, materialTable)
-	_, err := m.conn.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.Image, data.Stock, data.Id)
-	return err
+	normalizeMaterialPresentation(data)
+	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		query := fmt.Sprintf(`UPDATE %s SET name=?,spec=?,unit_price=?,unit=?,category=?,five_elements=?,material_type=?,shape=?,diameter_mm=?,color_hex=?,texture_key=?,finish=?,translucency=?,image=?,stock=? WHERE id=?`, materialTable)
+		if _, err := session.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.MaterialType, data.Shape, data.DiameterMm, data.ColorHex, data.TextureKey, data.Finish, data.Translucency, data.Image, data.Stock, data.Id); err != nil {
+			return err
+		}
+		result, err := session.ExecCtx(ctx, fmt.Sprintf(`UPDATE %s SET spec=?,price=?,stock=? WHERE material_id=?`, materialSkuTable), data.Spec, data.UnitPrice, data.Stock, data.Id)
+		if err != nil {
+			return err
+		}
+		affected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if affected == 0 {
+			_, err = session.ExecCtx(ctx, fmt.Sprintf(`INSERT INTO %s (material_id,spec,price,stock) VALUES (?,?,?,?)`, materialSkuTable), data.Id, data.Spec, data.UnitPrice, data.Stock)
+		}
+		return err
+	})
 }
 
 func (m *defaultMaterialModel) UpdateStatus(ctx context.Context, id int64, status string) error {

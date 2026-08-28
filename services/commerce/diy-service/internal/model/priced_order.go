@@ -141,8 +141,19 @@ func resolvePricedItem(ctx context.Context, session sqlx.Session, requested Pric
 	if requested.MaterialId <= 0 || requested.Quantity <= 0 {
 		return nil, 0, ErrOrderPricingInvalid
 	}
-	var material Material
-	if err := session.QueryRowCtx(ctx, &material, `SELECT id,name,spec,unit_price,unit,category,five_elements,image,stock,status FROM material WHERE id=? FOR UPDATE`, requested.MaterialId); err != nil {
+	// Pricing only needs the inventory contract. Keep it independent from
+	// presentation fields that can evolve without changing order locking SQL.
+	var material struct {
+		Id        int64   `db:"id"`
+		Name      string  `db:"name"`
+		Spec      string  `db:"spec"`
+		UnitPrice float64 `db:"unit_price"`
+		Unit      string  `db:"unit"`
+		Category  string  `db:"category"`
+		Stock     int     `db:"stock"`
+		Status    string  `db:"status"`
+	}
+	if err := session.QueryRowCtx(ctx, &material, `SELECT id,name,spec,unit_price,unit,category,stock,status FROM material WHERE id=? FOR UPDATE`, requested.MaterialId); err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
 			return nil, 0, ErrOrderMaterialUnavailable
 		}

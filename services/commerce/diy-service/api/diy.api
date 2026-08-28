@@ -65,6 +65,13 @@ type (
         Unit         string  `json:"unit"`
         Category     string  `json:"category"` // main_bead/spacer/buddha_head/pendant/tassel/three_way/cord
         FiveElements string  `json:"fiveElements,optional"`
+        MaterialType string  `json:"materialType,optional"` // crystal/jade/gemstone/wood/seed/metal/ceramic/glass/textile/cord
+        Shape        string  `json:"shape,optional"` // round/faceted/barrel/disc/three_way/buddha_head/pendant/tassel/cord
+        DiameterMm   float64 `json:"diameterMm,optional"`
+        ColorHex     string  `json:"colorHex,optional"`
+        TextureKey   string  `json:"textureKey,optional"`
+        Finish       string  `json:"finish,optional"` // polished/matte/carved/brushed/woven/natural
+        Translucency float64 `json:"translucency,optional"` // 0~1
         Image        string  `json:"image"`
         Stock        int     `json:"stock"`
         Status       string  `json:"status"`
@@ -281,6 +288,13 @@ type (
         Unit         string  `json:"unit"`
         Category     string  `json:"category"`
         FiveElements string  `json:"fiveElements,optional"`
+        MaterialType string  `json:"materialType,optional"`
+        Shape        string  `json:"shape,optional"`
+        DiameterMm   float64 `json:"diameterMm,optional"`
+        ColorHex     string  `json:"colorHex,optional"`
+        TextureKey   string  `json:"textureKey,optional"`
+        Finish       string  `json:"finish,optional"`
+        Translucency float64 `json:"translucency,optional"`
         Image        string  `json:"image"`
         Stock        int     `json:"stock"`
     }
@@ -297,6 +311,13 @@ type (
         Unit         string  `json:"unit"`
         Category     string  `json:"category"`
         FiveElements string  `json:"fiveElements,optional"`
+        MaterialType string  `json:"materialType,optional"`
+        Shape        string  `json:"shape,optional"`
+        DiameterMm   float64 `json:"diameterMm,optional"`
+        ColorHex     string  `json:"colorHex,optional"`
+        TextureKey   string  `json:"textureKey,optional"`
+        Finish       string  `json:"finish,optional"`
+        Translucency float64 `json:"translucency,optional"`
         Image        string  `json:"image"`
         Stock        int     `json:"stock"`
     }
