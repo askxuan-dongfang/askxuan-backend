@@ -35,12 +35,11 @@ BEGIN
 END//
 DELIMITER ;
 
-CALL add_diy_material_render_columns('askxuan');
 CALL add_diy_material_render_columns('askxuan_diy');
 DROP PROCEDURE add_diy_material_render_columns;
 
 DROP TEMPORARY TABLE IF EXISTS `diy_material_catalog`;
-CREATE TEMPORARY TABLE `diy_material_catalog` LIKE `askxuan`.`material`;
+CREATE TEMPORARY TABLE `diy_material_catalog` LIKE `askxuan_diy`.`material`;
 
 INSERT INTO `diy_material_catalog` (`name`,`spec`,`unit_price`,`unit`,`category`,`five_elements`,`material_type`,`shape`,`diameter_mm`,`color_hex`,`texture_key`,`finish`,`translucency`,`image`,`stock`,`status`) VALUES
 ('小叶紫檀圆珠','10mm',28.00,'颗','main_bead','wood','wood','round',10,'#6B2727','wood_grain','polished',0.00,'/assets/materials/rosewood.jpg',500,'on_shelf'),
@@ -89,7 +88,7 @@ INSERT INTO `diy_material_catalog` (`name`,`spec`,`unit_price`,`unit`,`category`
 ('五色编绳','',5.00,'根','cord','earth','cord','cord',0,'#A35B43','cord','woven',0.00,'',900,'on_shelf'),
 ('玉线','',2.00,'根','cord','wood','cord','cord',0,'#DDD7C9','cord','woven',0.00,'',1200,'on_shelf');
 
-UPDATE `askxuan`.`material` material
+UPDATE `askxuan_diy`.`material` material
 JOIN `diy_material_catalog` catalog ON catalog.name=material.name
 SET material.spec=catalog.spec,
     material.unit_price=catalog.unit_price,
@@ -107,18 +106,12 @@ SET material.spec=catalog.spec,
     material.stock=catalog.stock,
     material.status=catalog.status;
 
-INSERT INTO `askxuan`.`material` (`name`,`spec`,`unit_price`,`unit`,`category`,`five_elements`,`material_type`,`shape`,`diameter_mm`,`color_hex`,`texture_key`,`finish`,`translucency`,`image`,`stock`,`status`)
+INSERT INTO `askxuan_diy`.`material` (`name`,`spec`,`unit_price`,`unit`,`category`,`five_elements`,`material_type`,`shape`,`diameter_mm`,`color_hex`,`texture_key`,`finish`,`translucency`,`image`,`stock`,`status`)
 SELECT catalog.name,catalog.spec,catalog.unit_price,catalog.unit,catalog.category,catalog.five_elements,catalog.material_type,catalog.shape,catalog.diameter_mm,catalog.color_hex,catalog.texture_key,catalog.finish,catalog.translucency,catalog.image,catalog.stock,catalog.status
 FROM `diy_material_catalog` catalog
 WHERE NOT EXISTS (
-  SELECT 1 FROM `askxuan`.`material` material WHERE material.name=catalog.name
+  SELECT 1 FROM `askxuan_diy`.`material` material WHERE material.name=catalog.name
 );
-
-INSERT INTO `askxuan_diy`.`material` (`id`,`name`,`spec`,`unit_price`,`unit`,`category`,`five_elements`,`material_type`,`shape`,`diameter_mm`,`color_hex`,`texture_key`,`finish`,`translucency`,`image`,`stock`,`status`)
-SELECT `id`,`name`,`spec`,`unit_price`,`unit`,`category`,`five_elements`,`material_type`,`shape`,`diameter_mm`,`color_hex`,`texture_key`,`finish`,`translucency`,`image`,`stock`,`status`
-FROM `askxuan`.`material`
-ON DUPLICATE KEY UPDATE
-`name`=VALUES(`name`),`spec`=VALUES(`spec`),`unit_price`=VALUES(`unit_price`),`unit`=VALUES(`unit`),`category`=VALUES(`category`),`five_elements`=VALUES(`five_elements`),`material_type`=VALUES(`material_type`),`shape`=VALUES(`shape`),`diameter_mm`=VALUES(`diameter_mm`),`color_hex`=VALUES(`color_hex`),`texture_key`=VALUES(`texture_key`),`finish`=VALUES(`finish`),`translucency`=VALUES(`translucency`),`image`=IF(VALUES(`image`)='',`image`,VALUES(`image`)),`stock`=VALUES(`stock`),`status`=VALUES(`status`);
 
 UPDATE `askxuan_diy`.`material_sku` sku
 JOIN `askxuan_diy`.`material` material ON material.id=sku.material_id
