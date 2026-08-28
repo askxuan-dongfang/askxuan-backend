@@ -478,7 +478,9 @@ CREATE TABLE IF NOT EXISTS `user_profile` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户画像';
 
 INSERT INTO `user_profile` (`user_id`,`preference_tags`,`total_orders`,`total_spent`,`last_active_time`) VALUES
-(1,'祈福,开光',3,600.00,'2026-06-30 18:00:00');
+(1,'祈福,开光',3,600.00,'2026-06-30 18:00:00'),
+(2,'',0,0.00,'2026-06-30 18:00:00'),
+(3,'',0,0.00,'2026-06-30 18:00:00');
 
 -- ============================================================
 -- 三、寺院域 askxuan_temple（temple_image/temple_admin/temple_audit/temple_service/service_schedule）

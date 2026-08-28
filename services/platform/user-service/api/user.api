@@ -22,12 +22,15 @@ type (
 
     RegisterReq {
         Mobile   string `json:"mobile"`
-        Code     string `json:"code"`     // 验证码
+        Code     string `json:"code,optional"` // 旧客户端兼容字段，演示注册不校验
         Nickname string `json:"nickname,optional"`
     }
 
     RegisterResp {
-        UserId int64 `json:"userId"`
+        UserId   int64  `json:"userId"`
+        Mobile   string `json:"mobile"`
+        Nickname string `json:"nickname"`
+        IMReady  bool   `json:"imReady"`
     }
 
     ProfileReq {

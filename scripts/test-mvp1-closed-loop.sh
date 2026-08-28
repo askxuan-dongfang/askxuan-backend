@@ -52,7 +52,7 @@ USER_ID=""
 MOBILE="13900000$((RANDOM % 10000))"
 REG_RESP=$(curl -s -X POST "$BASE/api/v1/users/register" \
     -H 'Content-Type: application/json' \
-    -d "{\"mobile\":\"$MOBILE\",\"code\":\"1234\",\"nickname\":\"测试用户\"}")
+    -d "{\"mobile\":\"$MOBILE\",\"nickname\":\"测试用户\"}")
 REG_CODE=$(echo "$REG_RESP" | jq -r '.code // 0')
 if [ "$REG_CODE" = "0" ] || echo "$REG_RESP" | jq -e '.data.userId' > /dev/null 2>&1; then
     USER_ID=$(echo "$REG_RESP" | jq -r '.data.userId // empty')

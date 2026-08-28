@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/askxuan/common v0.0.0
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/zeromicro/go-zero v1.7.2
 )
 
@@ -15,7 +16,6 @@ require (
 	github.com/fatih/color v1.17.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect

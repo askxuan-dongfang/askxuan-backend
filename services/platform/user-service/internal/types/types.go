@@ -17,13 +17,16 @@ type UserProfile struct {
 // RegisterReq 注册请求
 type RegisterReq struct {
 	Mobile   string `json:"mobile"`
-	Code     string `json:"code"`
+	Code     string `json:"code,optional"`
 	Nickname string `json:"nickname,optional"`
 }
 
 // RegisterResp 注册响应
 type RegisterResp struct {
-	UserId int64 `json:"userId"`
+	UserId   int64  `json:"userId"`
+	Mobile   string `json:"mobile"`
+	Nickname string `json:"nickname"`
+	IMReady  bool   `json:"imReady"`
 }
 
 // ProfileReq 查询资料请求（userId 从 JWT 取）

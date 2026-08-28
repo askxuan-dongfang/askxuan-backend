@@ -82,22 +82,29 @@ func (m *defaultUserModel) FindByID(ctx context.Context, id int64) (*User, error
 
 // Insert 注册新用户
 func (m *defaultUserModel) Insert(ctx context.Context, data *User) (int64, error) {
-	const query = `INSERT INTO ` + userTable + ` (mobile, password, nickname, avatar, gender, region, bio, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-	res, err := m.conn.ExecCtx(ctx, query,
-		data.Mobile, data.Password, data.Nickname, data.Avatar,
-		data.Gender, data.Region, data.Bio, UserStatusNormal)
-	if err != nil {
-		return 0, err
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
+	const insertUser = `INSERT INTO ` + userTable + ` (mobile, password, nickname, avatar, gender, region, bio, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	const insertProfile = `INSERT INTO ` + userProfileTable + ` (user_id, preference_tags, total_orders, total_spent, last_active_time) VALUES (?, '', 0, 0.00, NOW())`
+
+	var id int64
+	err := m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		res, err := session.ExecCtx(ctx, insertUser,
+			data.Mobile, data.Password, data.Nickname, data.Avatar,
+			data.Gender, data.Region, data.Bio, UserStatusNormal)
+		if err != nil {
+			return err
+		}
+		id, err = res.LastInsertId()
+		if err != nil {
+			return err
+		}
+		_, err = session.ExecCtx(ctx, insertProfile, id)
+		return err
+	})
+	return id, err
 }
 
 // Update 更新用户资料（仅更新非空字段）
-// 注：birthday 为 DATE 类型，空字符串会报 Incorrect date value，用 NULLIF(?, '') 转为 NULL
+// 注：birthday 为 DATE 类型，空字符串会报 Incorrect date value，用 NULLIF(?, ”) 转为 NULL
 func (m *defaultUserModel) Update(ctx context.Context, data *User) error {
 	const query = `UPDATE ` + userTable + ` SET nickname = ?, avatar = ?, gender = ?, birthday = NULLIF(?, ''), region = ?, bio = ? WHERE id = ?`
 	_, err := m.conn.ExecCtx(ctx, query,
