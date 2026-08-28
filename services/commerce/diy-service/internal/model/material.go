@@ -83,6 +83,7 @@ type MaterialModel interface {
 	Insert(ctx context.Context, data *Material) (*Material, error)
 	FindOne(ctx context.Context, id int64) (*Material, error)
 	FindList(ctx context.Context, category, keyword string, page, size int) ([]*Material, int64, error)
+	FindListByStatus(ctx context.Context, category, keyword, status string, page, size int) ([]*Material, int64, error)
 	Update(ctx context.Context, data *Material) error
 	UpdateStatus(ctx context.Context, id int64, status string) error
 }
@@ -198,6 +199,10 @@ func (m *defaultMaterialModel) FindOne(ctx context.Context, id int64) (*Material
 }
 
 func (m *defaultMaterialModel) FindList(ctx context.Context, category, keyword string, page, size int) ([]*Material, int64, error) {
+	return m.FindListByStatus(ctx, category, keyword, "", page, size)
+}
+
+func materialListFilter(category, keyword, status string) (string, []interface{}) {
 	where := "1=1"
 	var args []interface{}
 	if category != "" {
@@ -208,6 +213,15 @@ func (m *defaultMaterialModel) FindList(ctx context.Context, category, keyword s
 		where += " AND name LIKE ?"
 		args = append(args, "%"+keyword+"%")
 	}
+	if status != "" {
+		where += " AND status = ?"
+		args = append(args, status)
+	}
+	return where, args
+}
+
+func (m *defaultMaterialModel) FindListByStatus(ctx context.Context, category, keyword, status string, page, size int) ([]*Material, int64, error) {
+	where, args := materialListFilter(category, keyword, status)
 
 	countQuery := fmt.Sprintf(`SELECT COUNT(1) FROM %s WHERE %s`, materialTable, where)
 	var total int64

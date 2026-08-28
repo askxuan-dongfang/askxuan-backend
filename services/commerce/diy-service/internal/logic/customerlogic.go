@@ -194,7 +194,7 @@ func (l *MaterialListLogic) List(req *types.MaterialListReq) (*types.MaterialLis
 	if req.Size <= 0 {
 		req.Size = 50
 	}
-	list, total, err := l.svcCtx.MaterialModel.FindList(l.ctx, req.Category, "", req.Page, req.Size)
+	list, total, err := l.svcCtx.MaterialModel.FindListByStatus(l.ctx, req.Category, "", model.MaterialStatusOnShelf, req.Page, req.Size)
 	if err != nil {
 		l.Errorf("查询材料列表失败: %v", err)
 		return nil, common.ErrSystem

@@ -1,6 +1,9 @@
 package model
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestNormalizeMaterialPresentationSupportsLegacyAdminPayload(t *testing.T) {
 	material := &Material{Category: MaterialCategorySpacer, FiveElements: "金", Translucency: 2}
@@ -30,5 +33,16 @@ func TestNormalizeMaterialPresentationKeepsConfiguredAppearance(t *testing.T) {
 
 	if material.MaterialType != "crystal" || material.Shape != "faceted" || material.DiameterMm != 8 || material.ColorHex != "#77ACC4" {
 		t.Fatalf("configured appearance changed: %#v", material)
+	}
+}
+
+func TestMaterialListFilterIncludesPublicShelfStatus(t *testing.T) {
+	where, args := materialListFilter(MaterialCategoryMainBead, "玉", MaterialStatusOnShelf)
+	if where != "1=1 AND category = ? AND name LIKE ? AND status = ?" {
+		t.Fatalf("unexpected filter: %s", where)
+	}
+	want := []interface{}{MaterialCategoryMainBead, "%玉%", MaterialStatusOnShelf}
+	if !reflect.DeepEqual(args, want) {
+		t.Fatalf("unexpected args: %#v", args)
 	}
 }
