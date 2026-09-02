@@ -354,6 +354,16 @@ services:
     volumes:
       - ./.docker/etc/ai:/app/etc:ro
     depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      etcd:
+        condition: service_healthy
       taibu-mcp:
         condition: service_healthy
 
