@@ -39,6 +39,8 @@ type (
         SessionNo string `json:"sessionNo"`
         UserId    string `json:"userId"`
         SkillCode string `json:"skillCode"`
+		SelectionMode string `json:"selectionMode"`
+		SkillVersion string `json:"skillVersion"`
         Title     string `json:"title"`
         Status    string `json:"status"` // active/closed
         CreatedAt string `json:"createdAt"`
@@ -50,6 +52,7 @@ type (
         SkillCode string `json:"skillCode,optional"`
         Question  string `json:"question,optional"`
         Inputs    map[string]interface{} `json:"inputs,optional"`
+		Attachments []AIImageAttachment `json:"attachments,optional"`
     }
 
     SessionCreateResp {
@@ -85,6 +88,8 @@ type (
         Role      string `json:"role"` // user/assistant
         Content   string `json:"content"`
         Inputs map[string]interface{} `json:"inputs,optional"`
+		Attachments []AIImageAttachment `json:"attachments,optional"`
+		RunId int64 `json:"runId"`
         Tokens    int    `json:"tokens"`
         PromptTokens int `json:"promptTokens"`
         CompletionTokens int `json:"completionTokens"`
@@ -93,6 +98,7 @@ type (
         CostMicros int64 `json:"costMicros"`
         FinishReason string `json:"finishReason"`
         Status    string `json:"status"` // pending/completed/failed
+		Stage string `json:"stage"`
         ErrorMessage string `json:"errorMessage"`
         Retryable bool `json:"retryable"`
         CreatedAt string `json:"createdAt"`
@@ -131,6 +137,7 @@ type (
         UserId  string `json:"userId,optional"`
         Content string `json:"content"`
         Inputs map[string]interface{} `json:"inputs,optional"`
+		Attachments []AIImageAttachment `json:"attachments,optional"`
     }
 
     MessageSendResp {
@@ -163,6 +170,45 @@ type (
         DailyTokens int64 `json:"dailyTokens"`
         DailyCostMicros int64 `json:"dailyCostMicros"`
     }
+
+	AIImageAttachment {
+		MediaId int64 `json:"mediaId"`
+		URL string `json:"url"`
+		ContentType string `json:"contentType"`
+		Width int `json:"width,optional"`
+		Height int `json:"height,optional"`
+	}
+
+	MessageTraceReq {
+		Id int64 `path:"id"`
+		MessageId int64 `path:"messageId"`
+		UserId string `form:"userId,optional"`
+	}
+
+	AIToolTrace {
+		Id int64 `json:"id"`
+		Server string `json:"server"`
+		Tool string `json:"tool"`
+		Arguments map[string]interface{} `json:"arguments"`
+		ResultSummary string `json:"resultSummary"`
+		Status string `json:"status"`
+		LatencyMs int `json:"latencyMs"`
+		ErrorMessage string `json:"errorMessage"`
+	}
+
+	MessageTraceResp {
+		RunId int64 `json:"runId"`
+		RunNo string `json:"runNo"`
+		SkillCode string `json:"skillCode"`
+		SkillVersion string `json:"skillVersion"`
+		SelectionMode string `json:"selectionMode"`
+		Status string `json:"status"`
+		Stage string `json:"stage"`
+		Provider string `json:"provider"`
+		Model string `json:"model"`
+		ReasoningTokens int `json:"reasoningTokens"`
+		Tools []AIToolTrace `json:"tools"`
+	}
 )
 
 @server (
@@ -193,6 +239,9 @@ service ai-service {
 
     @handler messageStream
     get /sessions/:id/messages/:messageId/stream (MessageStreamReq)
+
+	@handler messageTrace
+	get /sessions/:id/messages/:messageId/trace (MessageTraceReq) returns (MessageTraceResp)
 
     @handler usageSummary
     get /usage (UsageSummaryReq) returns (UsageSummaryResp)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -71,6 +72,9 @@ func (g *Guard) Validate(schemaJSON, content string, inputs map[string]interface
 		}
 		if present && field.Type == "select" && !isAllowedOption(value, field.Options) {
 			return "", fmt.Errorf("%w: %s option", ErrInvalidInputs, field.Key)
+		}
+		if present && !isEmpty(value) && !isValidFieldValue(value, field.Type) {
+			return "", fmt.Errorf("%w: %s type", ErrInvalidInputs, field.Key)
 		}
 	}
 	for key := range inputs {
@@ -146,4 +150,31 @@ func isAllowedOption(value interface{}, options []Option) bool {
 		}
 	}
 	return false
+}
+
+func isValidFieldValue(value interface{}, fieldType string) bool {
+	text, ok := value.(string)
+	if !ok {
+		return false
+	}
+	text = strings.TrimSpace(text)
+	switch fieldType {
+	case "date":
+		_, err := time.Parse("2006-01-02", text)
+		return err == nil
+	case "time":
+		_, err := time.Parse("15:04", text)
+		return err == nil
+	case "datetime":
+		for _, layout := range []string{"2006-01-02T15:04", "2006-01-02T15:04:05", "2006-01-02 15:04", "2006-01-02 15:04:05"} {
+			if _, err := time.Parse(layout, text); err == nil {
+				return true
+			}
+		}
+		return false
+	case "text", "select", "":
+		return utf8.RuneCountInString(text) <= 500
+	default:
+		return false
+	}
 }

@@ -29,6 +29,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions/:id/messages", Handler: messageSendHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions/:id/messages/:messageId/retry", Handler: messageRetryHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id/messages/:messageId/stream", Handler: messageStreamHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id/messages/:messageId/trace", Handler: messageTraceHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/usage", Handler: usageSummaryHandler(svcCtx)},
 		{Method: http.MethodDelete, Path: "/api/v1/ai/sessions/:id", Handler: sessionDeleteHandler(svcCtx)},
 	})
@@ -190,6 +191,24 @@ func usageSummaryHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	}
 }
 
+func messageTraceHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MessageTraceReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		userID, err := resolveUserID(r, req.UserId)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		req.UserId = userID
+		resp, err := logic.NewMessageTraceLogic(r.Context(), svcCtx).Trace(&req)
+		respond(w, resp, err)
+	}
+}
+
 func messageStreamHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.MessageStreamReq
@@ -212,7 +231,7 @@ func messageStreamHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		w.Header().Set("Connection", "keep-alive")
 		w.Header().Set("X-Accel-Buffering", "no")
 
-		lastContent := ""
+		lastContent, lastStage := "", ""
 		ticker := time.NewTicker(180 * time.Millisecond)
 		defer ticker.Stop()
 		timeout := time.NewTimer(70 * time.Second)
@@ -231,12 +250,16 @@ func messageStreamHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 				writeSSE(w, flusher, "delta", map[string]interface{}{"messageId": message.Id, "content": delta, "snapshot": message.Content})
 				lastContent = message.Content
 			}
+			if message.Stage != "" && message.Stage != lastStage {
+				writeSSE(w, flusher, "stage", map[string]interface{}{"messageId": message.Id, "runId": message.RunId, "stage": message.Stage})
+				lastStage = message.Stage
+			}
 			switch message.Status {
 			case "completed":
 				writeSSE(w, flusher, "done", map[string]interface{}{
 					"messageId": message.Id, "content": message.Content, "status": message.Status,
 					"promptTokens": message.PromptTokens, "completionTokens": message.CompletionTokens,
-					"provider": message.Provider, "model": message.Model, "costMicros": message.CostMicros,
+					"provider": message.Provider, "model": message.Model, "costMicros": message.CostMicros, "runId": message.RunId, "stage": message.Stage,
 				})
 				return
 			case "failed":

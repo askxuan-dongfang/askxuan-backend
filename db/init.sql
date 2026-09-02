@@ -1952,6 +1952,7 @@ CREATE TABLE IF NOT EXISTS `ai_skill` (
   `source_ref` VARCHAR(255) NOT NULL DEFAULT '',
   `prompt_template` TEXT COMMENT '提示词模板',
   `input_schema` JSON NULL,
+	`routing_keywords` JSON NULL,
   `capabilities` JSON NULL,
   `tool_config` JSON NULL,
   `risk_level` VARCHAR(16) NOT NULL DEFAULT 'medium',
@@ -1988,6 +1989,8 @@ CREATE TABLE IF NOT EXISTS `ai_session` (
   `session_no` VARCHAR(32) NOT NULL COMMENT '会话编码',
   `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
   `skill_code` VARCHAR(32) NOT NULL COMMENT '技能编码',
+	`selection_mode` VARCHAR(16) NOT NULL DEFAULT 'explicit',
+	`skill_version` VARCHAR(32) NOT NULL DEFAULT '',
   `title` VARCHAR(100) NOT NULL DEFAULT '新对话' COMMENT '会话标题',
   `status` VARCHAR(32) NOT NULL DEFAULT 'active' COMMENT 'active/closed',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2007,6 +2010,8 @@ CREATE TABLE IF NOT EXISTS `ai_message` (
   `role` VARCHAR(32) NOT NULL COMMENT 'user/assistant',
   `content` TEXT COMMENT '消息内容',
   `input_json` JSON NULL COMMENT '技能结构化输入快照',
+	`attachments_json` JSON NULL COMMENT '图片附件快照',
+	`run_id` BIGINT NOT NULL DEFAULT 0,
   `tokens` INT NOT NULL DEFAULT 0 COMMENT 'token消耗',
   `prompt_tokens` INT NOT NULL DEFAULT 0,
   `completion_tokens` INT NOT NULL DEFAULT 0,
@@ -2015,6 +2020,7 @@ CREATE TABLE IF NOT EXISTS `ai_message` (
   `cost_micros` BIGINT NOT NULL DEFAULT 0,
   `finish_reason` VARCHAR(32) NOT NULL DEFAULT '',
   `status` VARCHAR(16) NOT NULL DEFAULT 'completed' COMMENT 'pending/completed/failed',
+	`stage` VARCHAR(32) NOT NULL DEFAULT '',
   `error_message` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'Provider失败原因',
   `retry_count` INT NOT NULL DEFAULT 0 COMMENT '重试次数',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2022,6 +2028,42 @@ CREATE TABLE IF NOT EXISTS `ai_message` (
   KEY `idx_session` (`session_id`),
   KEY `idx_message_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI消息';
+
+CREATE TABLE IF NOT EXISTS `ai_run` (
+	`id` BIGINT NOT NULL AUTO_INCREMENT,
+	`run_no` VARCHAR(40) NOT NULL,
+	`session_id` BIGINT NOT NULL,
+	`message_id` BIGINT NOT NULL,
+	`user_id` VARCHAR(64) NOT NULL,
+	`skill_code` VARCHAR(32) NOT NULL,
+	`skill_version` VARCHAR(32) NOT NULL DEFAULT '',
+	`selection_mode` VARCHAR(16) NOT NULL DEFAULT 'explicit',
+	`provider` VARCHAR(32) NOT NULL DEFAULT '',
+	`model` VARCHAR(128) NOT NULL DEFAULT '',
+	`status` VARCHAR(16) NOT NULL DEFAULT 'running',
+	`stage` VARCHAR(32) NOT NULL DEFAULT 'accepted',
+	`reasoning_tokens` INT NOT NULL DEFAULT 0,
+	`error_message` VARCHAR(255) NOT NULL DEFAULT '',
+	`started_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+	`completed_at` DATETIME(3) NULL,
+	PRIMARY KEY (`id`), UNIQUE KEY `uk_run_no` (`run_no`), KEY `idx_message` (`message_id`),
+	KEY `idx_user_started` (`user_id`,`started_at`), KEY `idx_session` (`session_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI智能体运行记录';
+
+CREATE TABLE IF NOT EXISTS `ai_tool_call` (
+	`id` BIGINT NOT NULL AUTO_INCREMENT,
+	`run_id` BIGINT NOT NULL,
+	`server_code` VARCHAR(32) NOT NULL,
+	`tool_name` VARCHAR(64) NOT NULL,
+	`arguments_summary` JSON NULL,
+	`result_summary` TEXT,
+	`status` VARCHAR(16) NOT NULL DEFAULT 'running',
+	`latency_ms` INT NOT NULL DEFAULT 0,
+	`error_message` VARCHAR(255) NOT NULL DEFAULT '',
+	`create_time` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+	`complete_time` DATETIME(3) NULL,
+	PRIMARY KEY (`id`), UNIQUE KEY `uk_run_tool` (`run_id`,`tool_name`), KEY `idx_status_time` (`status`,`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI受控工具调用轨迹';
 
 INSERT INTO `ai_message` (`session_id`,`role`,`content`,`tokens`,`status`,`create_time`) VALUES
 (1,'user','请帮我看看今年的事业运势',0,'completed','2026-06-30 09:01:00'),

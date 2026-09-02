@@ -330,6 +330,9 @@ services:
       AI_BASE_URL: ${AI_BASE_URL:-}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-}
+      AI_VISION_MODEL: ${AI_VISION_MODEL:-}
+      AI_THINKING_ENABLED: ${AI_THINKING_ENABLED:-true}
+      AI_REASONING_EFFORT: ${AI_REASONING_EFFORT:-low}
       AI_MINUTE_REQUEST_LIMIT: ${AI_MINUTE_REQUEST_LIMIT:-12}
       AI_DAILY_REQUEST_LIMIT: ${AI_DAILY_REQUEST_LIMIT:-100}
       AI_MAX_INPUT_CHARS: ${AI_MAX_INPUT_CHARS:-2000}
@@ -338,11 +341,54 @@ services:
       AI_INPUT_COST_PER_MILLION: ${AI_INPUT_COST_PER_MILLION:-0}
       AI_OUTPUT_COST_PER_MILLION: ${AI_OUTPUT_COST_PER_MILLION:-0}
       AI_BLOCKED_TERMS: ${AI_BLOCKED_TERMS:-}
-      AI_MCP_ENABLED: ${AI_MCP_ENABLED:-false}
-      AI_MCP_BASE_URL: ${AI_MCP_BASE_URL:-}
+      AI_ALLOWED_IMAGE_HOSTS: ${AI_ALLOWED_IMAGE_HOSTS:-media-service,minio,101.96.228.71,eliaukcloud.cn}
+      AI_IMAGE_MAX_BYTES: ${AI_IMAGE_MAX_BYTES:-8388608}
+      AI_DEEPSEEK_PRICING_ENABLED: ${AI_DEEPSEEK_PRICING_ENABLED:-true}
+      AI_DEEPSEEK_CACHE_HIT_OFFPEAK: ${AI_DEEPSEEK_CACHE_HIT_OFFPEAK:-0.007}
+      AI_DEEPSEEK_CACHE_MISS_OFFPEAK: ${AI_DEEPSEEK_CACHE_MISS_OFFPEAK:-0.22}
+      AI_DEEPSEEK_OUTPUT_OFFPEAK: ${AI_DEEPSEEK_OUTPUT_OFFPEAK:-0.66}
+      AI_DEEPSEEK_PEAK_MULTIPLIER: ${AI_DEEPSEEK_PEAK_MULTIPLIER:-2}
+      AI_MCP_ENABLED: ${AI_MCP_ENABLED:-true}
+      AI_MCP_BASE_URL: ${AI_MCP_BASE_URL:-http://taibu-mcp:3001/mcp}
       AI_MCP_TIMEOUT_SECONDS: ${AI_MCP_TIMEOUT_SECONDS:-10}
     volumes:
       - ./.docker/etc/ai:/app/etc:ro
+    depends_on:
+      taibu-mcp:
+        condition: service_healthy
+
+  taibu-mcp:
+    container_name: askxuan-taibu-mcp
+    image: askxuan/taibu-mcp:local
+    build:
+      context: ../ai-module-skills/taibu
+      dockerfile: packages/mcp-server/Dockerfile
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 0.75
+    environment:
+      PORT: "3001"
+      MCP_HOST: "0.0.0.0"
+      MCP_ALLOWED_HOSTS: "taibu-mcp:3001,askxuan-taibu-mcp:3001"
+      MCP_RATE_LIMIT_PER_MINUTE: "120"
+      MCP_TRUST_PROXY: "false"
+      MCP_REQUEST_LOG: "false"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    networks:
+      - askxuan-net
 
   community-service:
     <<: *backend-common

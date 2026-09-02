@@ -31,3 +31,17 @@ func TestMCPClientDisabledDoesNotCall(t *testing.T) {
 		t.Fatalf("disabled MCP should be a no-op: %q %v", result, err)
 	}
 }
+
+func TestMCPClientParsesStandardSSEEnvelope(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":\"1\",\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"塔罗结果\"}]}}\n\n"))
+	}))
+	defer server.Close()
+
+	client := NewMCPClient(true, server.URL, 2)
+	result, err := client.Call(context.Background(), `{"enabled":true,"server":"taibu","tool":"tarot"}`, `{}`)
+	if err != nil || result != "塔罗结果" {
+		t.Fatalf("unexpected SSE MCP result: %q %v", result, err)
+	}
+}

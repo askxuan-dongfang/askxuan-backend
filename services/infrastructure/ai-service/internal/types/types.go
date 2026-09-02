@@ -38,22 +38,25 @@ type IdResp struct {
 
 // AISession 对话会话
 type AISession struct {
-	Id        int64  `json:"id"`
-	SessionNo string `json:"sessionNo"`
-	UserId    string `json:"userId"`
-	SkillCode string `json:"skillCode"`
-	Title     string `json:"title"`
-	Status    string `json:"status"` // active/closed
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
+	Id            int64  `json:"id"`
+	SessionNo     string `json:"sessionNo"`
+	UserId        string `json:"userId"`
+	SkillCode     string `json:"skillCode"`
+	SelectionMode string `json:"selectionMode"`
+	SkillVersion  string `json:"skillVersion"`
+	Title         string `json:"title"`
+	Status        string `json:"status"` // active/closed
+	CreatedAt     string `json:"createdAt"`
+	UpdatedAt     string `json:"updatedAt"`
 }
 
 // SessionCreateReq 创建会话请求
 type SessionCreateReq struct {
-	UserId    string                 `json:"userId,optional"`
-	SkillCode string                 `json:"skillCode,optional"`
-	Question  string                 `json:"question,optional"`
-	Inputs    map[string]interface{} `json:"inputs,optional"`
+	UserId      string                 `json:"userId,optional"`
+	SkillCode   string                 `json:"skillCode,optional"`
+	Question    string                 `json:"question,optional"`
+	Inputs      map[string]interface{} `json:"inputs,optional"`
+	Attachments []AIImageAttachment    `json:"attachments,optional"`
 }
 
 // SessionCreateResp 创建会话响应
@@ -94,6 +97,8 @@ type AIMessage struct {
 	Role             string                 `json:"role"` // user/assistant
 	Content          string                 `json:"content"`
 	Inputs           map[string]interface{} `json:"inputs,omitempty"`
+	Attachments      []AIImageAttachment    `json:"attachments,omitempty"`
+	RunId            int64                  `json:"runId"`
 	Tokens           int                    `json:"tokens"`
 	PromptTokens     int                    `json:"promptTokens"`
 	CompletionTokens int                    `json:"completionTokens"`
@@ -102,6 +107,7 @@ type AIMessage struct {
 	CostMicros       int64                  `json:"costMicros"`
 	FinishReason     string                 `json:"finishReason"`
 	Status           string                 `json:"status"`
+	Stage            string                 `json:"stage"`
 	ErrorMessage     string                 `json:"errorMessage"`
 	Retryable        bool                   `json:"retryable"`
 	CreatedAt        string                 `json:"createdAt"`
@@ -137,10 +143,11 @@ type SessionDeleteReq struct {
 
 // MessageSendReq 发送问事消息请求
 type MessageSendReq struct {
-	Id      int64                  `path:"id"` // 会话 ID
-	UserId  string                 `json:"userId,optional"`
-	Content string                 `json:"content"`
-	Inputs  map[string]interface{} `json:"inputs,optional"`
+	Id          int64                  `path:"id"` // 会话 ID
+	UserId      string                 `json:"userId,optional"`
+	Content     string                 `json:"content"`
+	Inputs      map[string]interface{} `json:"inputs,optional"`
+	Attachments []AIImageAttachment    `json:"attachments,optional"`
 }
 
 // MessageSendResp 发送消息响应（异步处理，返回受理状态）
@@ -173,4 +180,43 @@ type UsageSummaryResp struct {
 	DailyLimit      int   `json:"dailyLimit"`
 	DailyTokens     int64 `json:"dailyTokens"`
 	DailyCostMicros int64 `json:"dailyCostMicros"`
+}
+
+type AIImageAttachment struct {
+	MediaId     int64  `json:"mediaId"`
+	URL         string `json:"url"`
+	ContentType string `json:"contentType"`
+	Width       int    `json:"width,omitempty"`
+	Height      int    `json:"height,omitempty"`
+}
+
+type MessageTraceReq struct {
+	Id        int64  `path:"id"`
+	MessageId int64  `path:"messageId"`
+	UserId    string `form:"userId,optional"`
+}
+
+type AIToolTrace struct {
+	Id            int64                  `json:"id"`
+	Server        string                 `json:"server"`
+	Tool          string                 `json:"tool"`
+	Arguments     map[string]interface{} `json:"arguments"`
+	ResultSummary string                 `json:"resultSummary"`
+	Status        string                 `json:"status"`
+	LatencyMs     int                    `json:"latencyMs"`
+	ErrorMessage  string                 `json:"errorMessage"`
+}
+
+type MessageTraceResp struct {
+	RunId           int64         `json:"runId"`
+	RunNo           string        `json:"runNo"`
+	SkillCode       string        `json:"skillCode"`
+	SkillVersion    string        `json:"skillVersion"`
+	SelectionMode   string        `json:"selectionMode"`
+	Status          string        `json:"status"`
+	Stage           string        `json:"stage"`
+	Provider        string        `json:"provider"`
+	Model           string        `json:"model"`
+	ReasoningTokens int           `json:"reasoningTokens"`
+	Tools           []AIToolTrace `json:"tools"`
 }

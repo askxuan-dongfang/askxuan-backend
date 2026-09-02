@@ -23,6 +23,8 @@ type AIMessage struct {
 	Role             string `db:"role"`
 	Content          string `db:"content"`
 	InputJSON        string `db:"input_json"`
+	AttachmentsJSON  string `db:"attachments_json"`
+	RunId            int64  `db:"run_id"`
 	Tokens           int    `db:"tokens"`
 	PromptTokens     int    `db:"prompt_tokens"`
 	CompletionTokens int    `db:"completion_tokens"`
@@ -31,6 +33,7 @@ type AIMessage struct {
 	CostMicros       int64  `db:"cost_micros"`
 	FinishReason     string `db:"finish_reason"`
 	Status           string `db:"status"`
+	Stage            string `db:"stage"`
 	ErrorMessage     string `db:"error_message"`
 	RetryCount       int    `db:"retry_count"`
 	CreatedAt        string `db:"create_time"`

@@ -23,6 +23,14 @@ type MCPClient struct {
 	client  *http.Client
 }
 
+func ParseToolConfig(configJSON string) (ToolConfig, error) {
+	var config ToolConfig
+	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
+		return config, fmt.Errorf("decode MCP tool config: %w", err)
+	}
+	return config, nil
+}
+
 func NewMCPClient(enabled bool, baseURL string, timeoutSeconds int) *MCPClient {
 	if timeoutSeconds <= 0 {
 		timeoutSeconds = 10
@@ -36,9 +44,9 @@ func NewMCPClient(enabled bool, baseURL string, timeoutSeconds int) *MCPClient {
 
 // Call executes only a server-controlled, per-skill allowlisted tool.
 func (c *MCPClient) Call(ctx context.Context, configJSON, argumentsJSON string) (string, error) {
-	var config ToolConfig
-	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
-		return "", fmt.Errorf("decode MCP tool config: %w", err)
+	config, err := ParseToolConfig(configJSON)
+	if err != nil {
+		return "", err
 	}
 	if !c.enabled || !config.Enabled {
 		return "", nil
@@ -80,7 +88,7 @@ func (c *MCPClient) Call(ctx context.Context, configJSON, argumentsJSON string) 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return "", fmt.Errorf("MCP returned %d: %s", response.StatusCode, strings.TrimSpace(string(data)))
 	}
-	if strings.HasPrefix(strings.TrimSpace(string(data)), "data:") {
+	if strings.Contains(strings.ToLower(response.Header.Get("Content-Type")), "text/event-stream") {
 		data = firstSSEData(data)
 	}
 	var decoded struct {

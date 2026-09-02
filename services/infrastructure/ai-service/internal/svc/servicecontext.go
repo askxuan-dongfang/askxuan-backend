@@ -19,16 +19,18 @@ type ServiceContext struct {
 	SkillModel        model.SkillModel
 	ConversationModel model.ConversationModel
 	UsageModel        model.UsageModel
+	RunModel          model.RunModel
 	Provider          provider.Provider
 	Guard             *agent.Guard
 	MCP               *agent.MCPClient
+	ImageLoader       *agent.ImageLoader
 	AIConfig          config.AIConf
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	db := sqlx.NewMysql(c.MySQL.DataSource)
 	runtimeAI := c.AI.Runtime()
-	providerConfig := provider.Config{Provider: runtimeAI.Provider, BaseURL: runtimeAI.BaseURL, APIKey: runtimeAI.APIKey, Model: runtimeAI.Model}
+	providerConfig := provider.Config{Provider: runtimeAI.Provider, BaseURL: runtimeAI.BaseURL, APIKey: runtimeAI.APIKey, Model: runtimeAI.Model, VisionModel: runtimeAI.VisionModel}
 	aiProvider, err := provider.New(providerConfig)
 	if err != nil {
 		panic(err)
@@ -43,9 +45,11 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		SkillModel:        model.NewSkillModel(db),
 		ConversationModel: conversationModel,
 		UsageModel:        model.NewUsageModel(db),
+		RunModel:          model.NewRunModel(db),
 		Provider:          aiProvider,
 		Guard:             agent.NewGuard(runtimeAI.MaxInputChars, runtimeAI.BlockedTerms),
 		MCP:               agent.NewMCPClient(runtimeAI.MCP.Enabled, runtimeAI.MCP.BaseURL, runtimeAI.MCP.Timeout),
+		ImageLoader:       agent.NewImageLoader(runtimeAI.AllowedImageHosts, runtimeAI.ImageMaxBytes),
 		AIConfig:          runtimeAI,
 	}
 }

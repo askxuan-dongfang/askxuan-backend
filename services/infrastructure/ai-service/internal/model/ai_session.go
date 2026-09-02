@@ -15,25 +15,27 @@ const (
 )
 
 type AISession struct {
-	Id        int64  `db:"id"`
-	SessionNo string `db:"session_no"`
-	UserId    string `db:"user_id"`
-	SkillCode string `db:"skill_code"`
-	Title     string `db:"title"`
-	Status    string `db:"status"`
-	CreatedAt string `db:"create_time"`
-	UpdatedAt string `db:"update_time"`
+	Id            int64  `db:"id"`
+	SessionNo     string `db:"session_no"`
+	UserId        string `db:"user_id"`
+	SkillCode     string `db:"skill_code"`
+	SelectionMode string `db:"selection_mode"`
+	SkillVersion  string `db:"skill_version"`
+	Title         string `db:"title"`
+	Status        string `db:"status"`
+	CreatedAt     string `db:"create_time"`
+	UpdatedAt     string `db:"update_time"`
 }
 
 type ConversationModel interface {
-	CreateSession(ctx context.Context, userId, skillCode, question, inputJSON string) (*AISession, int64, error)
+	CreateSession(ctx context.Context, userId, skillCode, selectionMode, skillVersion, question, inputJSON, attachmentsJSON string) (*AISession, int64, error)
 	ListSessions(ctx context.Context, userId, status string, page, size int) ([]*AISession, int64, error)
 	FindSession(ctx context.Context, id int64) (*AISession, error)
 	CloseSession(ctx context.Context, id int64, userId string) (bool, error)
 	ListMessages(ctx context.Context, sessionId int64, page, size int) ([]*AIMessage, int64, error)
 	ListAllMessages(ctx context.Context, sessionId int64) ([]*AIMessage, error)
 	FindMessageForUser(ctx context.Context, sessionId, messageId int64, userId string) (*AIMessage, error)
-	CreateTurn(ctx context.Context, sessionId int64, userId, content, inputJSON string) (int64, error)
+	CreateTurn(ctx context.Context, sessionId int64, userId, content, inputJSON, attachmentsJSON string) (int64, error)
 	UpdateMessageContent(ctx context.Context, id int64, content string) error
 	CompleteMessage(ctx context.Context, id int64, meta CompletionMeta) error
 	FailMessage(ctx context.Context, id int64, message string) error
@@ -44,15 +46,15 @@ type conversationModel struct{ conn sqlx.SqlConn }
 
 func NewConversationModel(conn sqlx.SqlConn) ConversationModel { return &conversationModel{conn: conn} }
 
-const sessionRows = "id,session_no,user_id,skill_code,title,status,create_time,update_time"
-const messageRows = "id,session_id,role,content,COALESCE(CAST(input_json AS CHAR),'{}') input_json,tokens,prompt_tokens,completion_tokens,provider,model,cost_micros,finish_reason,status,error_message,retry_count,create_time"
-const joinedMessageRows = "m.id,m.session_id,m.role,m.content,COALESCE(CAST(m.input_json AS CHAR),'{}') input_json,m.tokens,m.prompt_tokens,m.completion_tokens,m.provider,m.model,m.cost_micros,m.finish_reason,m.status,m.error_message,m.retry_count,m.create_time"
+const sessionRows = "id,session_no,user_id,skill_code,selection_mode,skill_version,title,status,create_time,update_time"
+const messageRows = "id,session_id,role,content,COALESCE(CAST(input_json AS CHAR),'{}') input_json,COALESCE(CAST(attachments_json AS CHAR),'[]') attachments_json,run_id,tokens,prompt_tokens,completion_tokens,provider,model,cost_micros,finish_reason,status,stage,error_message,retry_count,create_time"
+const joinedMessageRows = "m.id,m.session_id,m.role,m.content,COALESCE(CAST(m.input_json AS CHAR),'{}') input_json,COALESCE(CAST(m.attachments_json AS CHAR),'[]') attachments_json,m.run_id,m.tokens,m.prompt_tokens,m.completion_tokens,m.provider,m.model,m.cost_micros,m.finish_reason,m.status,m.stage,m.error_message,m.retry_count,m.create_time"
 
-func (m *conversationModel) CreateSession(ctx context.Context, userId, skillCode, question, inputJSON string) (session *AISession, pendingId int64, err error) {
+func (m *conversationModel) CreateSession(ctx context.Context, userId, skillCode, selectionMode, skillVersion, question, inputJSON, attachmentsJSON string) (session *AISession, pendingId int64, err error) {
 	err = m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
 		title := conversationTitle(question)
 		no := fmt.Sprintf("AI%d%06d", time.Now().UnixMilli(), time.Now().Nanosecond()%1000000)
-		res, e := tx.ExecCtx(ctx, "INSERT INTO ai_session(session_no,user_id,skill_code,title,status) VALUES(?,?,?,?,?)", no, userId, skillCode, title, SessionStatusActive)
+		res, e := tx.ExecCtx(ctx, "INSERT INTO ai_session(session_no,user_id,skill_code,selection_mode,skill_version,title,status) VALUES(?,?,?,?,?,?,?)", no, userId, skillCode, selectionMode, skillVersion, title, SessionStatusActive)
 		if e != nil {
 			return e
 		}
@@ -60,14 +62,17 @@ func (m *conversationModel) CreateSession(ctx context.Context, userId, skillCode
 		if e != nil {
 			return e
 		}
-		session = &AISession{Id: id, SessionNo: no, UserId: userId, SkillCode: skillCode, Title: title, Status: SessionStatusActive}
+		session = &AISession{Id: id, SessionNo: no, UserId: userId, SkillCode: skillCode, SelectionMode: selectionMode, SkillVersion: skillVersion, Title: title, Status: SessionStatusActive}
 		if strings.TrimSpace(question) == "" {
 			return nil
 		}
 		if inputJSON == "" {
 			inputJSON = "{}"
 		}
-		if _, e = tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,input_json,status) VALUES(?,?,?,CAST(? AS JSON),?)", id, RoleUser, strings.TrimSpace(question), inputJSON, MessageStatusCompleted); e != nil {
+		if attachmentsJSON == "" {
+			attachmentsJSON = "[]"
+		}
+		if _, e = tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,input_json,attachments_json,status) VALUES(?,?,?,CAST(? AS JSON),CAST(? AS JSON),?)", id, RoleUser, strings.TrimSpace(question), inputJSON, attachmentsJSON, MessageStatusCompleted); e != nil {
 			return e
 		}
 		pending, e := tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,status) VALUES(?,?,?,?)", id, RoleAssistant, "", MessageStatusPending)
@@ -134,7 +139,7 @@ func (m *conversationModel) FindMessageForUser(ctx context.Context, sessionId, m
 	err := m.conn.QueryRowCtx(ctx, &message, "SELECT "+joinedMessageRows+" FROM ai_message m JOIN ai_session s ON s.id=m.session_id WHERE m.id=? AND m.session_id=? AND s.user_id=?", messageId, sessionId, userId)
 	return &message, err
 }
-func (m *conversationModel) CreateTurn(ctx context.Context, sessionId int64, userId, content, inputJSON string) (pendingId int64, err error) {
+func (m *conversationModel) CreateTurn(ctx context.Context, sessionId int64, userId, content, inputJSON, attachmentsJSON string) (pendingId int64, err error) {
 	err = m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
 		var s AISession
 		if e := tx.QueryRowCtx(ctx, &s, "SELECT "+sessionRows+" FROM ai_session WHERE id=? FOR UPDATE", sessionId); e != nil {
@@ -149,7 +154,10 @@ func (m *conversationModel) CreateTurn(ctx context.Context, sessionId int64, use
 		if inputJSON == "" {
 			inputJSON = "{}"
 		}
-		if _, e := tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,input_json,status) VALUES(?,?,?,CAST(? AS JSON),?)", sessionId, RoleUser, strings.TrimSpace(content), inputJSON, MessageStatusCompleted); e != nil {
+		if attachmentsJSON == "" {
+			attachmentsJSON = "[]"
+		}
+		if _, e := tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,input_json,attachments_json,status) VALUES(?,?,?,CAST(? AS JSON),CAST(? AS JSON),?)", sessionId, RoleUser, strings.TrimSpace(content), inputJSON, attachmentsJSON, MessageStatusCompleted); e != nil {
 			return e
 		}
 		res, e := tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,status) VALUES(?,?,?,?)", sessionId, RoleAssistant, "", MessageStatusPending)
@@ -171,7 +179,7 @@ func (m *conversationModel) UpdateMessageContent(ctx context.Context, id int64, 
 }
 func (m *conversationModel) CompleteMessage(ctx context.Context, id int64, meta CompletionMeta) error {
 	totalTokens := meta.PromptTokens + meta.CompletionTokens
-	_, err := m.conn.ExecCtx(ctx, "UPDATE ai_message SET content=?,tokens=?,prompt_tokens=?,completion_tokens=?,provider=?,model=?,cost_micros=?,finish_reason=?,status=?,error_message='' WHERE id=? AND role=?", meta.Content, totalTokens, meta.PromptTokens, meta.CompletionTokens, meta.Provider, meta.Model, meta.CostMicros, meta.FinishReason, MessageStatusCompleted, id, RoleAssistant)
+	_, err := m.conn.ExecCtx(ctx, "UPDATE ai_message SET content=?,tokens=?,prompt_tokens=?,completion_tokens=?,provider=?,model=?,cost_micros=?,finish_reason=?,status=?,stage='completed',error_message='' WHERE id=? AND role=?", meta.Content, totalTokens, meta.PromptTokens, meta.CompletionTokens, meta.Provider, meta.Model, meta.CostMicros, meta.FinishReason, MessageStatusCompleted, id, RoleAssistant)
 	return err
 }
 func (m *conversationModel) FailMessage(ctx context.Context, id int64, message string) error {
@@ -179,11 +187,11 @@ func (m *conversationModel) FailMessage(ctx context.Context, id int64, message s
 	if len(r) > 255 {
 		message = string(r[:255])
 	}
-	_, err := m.conn.ExecCtx(ctx, "UPDATE ai_message SET status=?,error_message=? WHERE id=? AND role=?", MessageStatusFailed, message, id, RoleAssistant)
+	_, err := m.conn.ExecCtx(ctx, "UPDATE ai_message SET status=?,stage='failed',error_message=? WHERE id=? AND role=?", MessageStatusFailed, message, id, RoleAssistant)
 	return err
 }
 func (m *conversationModel) PrepareRetry(ctx context.Context, sessionId, messageId int64, userId string) (bool, error) {
-	res, err := m.conn.ExecCtx(ctx, "UPDATE ai_message m JOIN ai_session s ON s.id=m.session_id SET m.status=?,m.error_message='',m.retry_count=m.retry_count+1 WHERE m.id=? AND m.session_id=? AND m.role=? AND m.status=? AND s.user_id=?", MessageStatusPending, messageId, sessionId, RoleAssistant, MessageStatusFailed, userId)
+	res, err := m.conn.ExecCtx(ctx, "UPDATE ai_message m JOIN ai_session s ON s.id=m.session_id SET m.status=?,m.stage='',m.run_id=0,m.error_message='',m.retry_count=m.retry_count+1 WHERE m.id=? AND m.session_id=? AND m.role=? AND m.status=? AND s.user_id=?", MessageStatusPending, messageId, sessionId, RoleAssistant, MessageStatusFailed, userId)
 	if err != nil {
 		return false, err
 	}

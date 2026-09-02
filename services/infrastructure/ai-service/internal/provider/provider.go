@@ -8,19 +8,26 @@ import (
 )
 
 type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role          string   `json:"role"`
+	Content       string   `json:"content"`
+	ImageDataURLs []string `json:"-"`
 }
 type Request struct {
-	SystemPrompt string
-	Messages     []Message
-	MaxTokens    int
+	SystemPrompt    string
+	Messages        []Message
+	MaxTokens       int
+	ThinkingEnabled bool
+	ReasoningEffort string
 }
 type Response struct {
-	Content          string
-	PromptTokens     int
-	CompletionTokens int
-	FinishReason     string
+	Content               string
+	PromptTokens          int
+	CompletionTokens      int
+	PromptCacheHitTokens  int
+	PromptCacheMissTokens int
+	ReasoningTokens       int
+	FinishReason          string
+	Model                 string
 }
 
 func (r Response) TotalTokens() int { return r.PromptTokens + r.CompletionTokens }
@@ -28,11 +35,17 @@ func (r Response) TotalTokens() int { return r.PromptTokens + r.CompletionTokens
 type Provider interface {
 	Name() string
 	Model() string
+	ModelFor(req Request) string
 	Complete(ctx context.Context, req Request) (*Response, error)
-	Stream(ctx context.Context, req Request, onDelta func(string) error) (*Response, error)
+	Stream(ctx context.Context, req Request, onDelta func(StreamDelta) error) (*Response, error)
 }
 
-type Config struct{ Provider, BaseURL, APIKey, Model string }
+type StreamDelta struct {
+	Content   string
+	Reasoning bool
+}
+
+type Config struct{ Provider, BaseURL, APIKey, Model, VisionModel string }
 
 func ConfigFromEnvironment(fallback Config) Config {
 	if v := os.Getenv("AI_PROVIDER"); v != "" {
@@ -46,6 +59,9 @@ func ConfigFromEnvironment(fallback Config) Config {
 	}
 	if v := os.Getenv("AI_MODEL"); v != "" {
 		fallback.Model = v
+	}
+	if v := os.Getenv("AI_VISION_MODEL"); v != "" {
+		fallback.VisionModel = v
 	}
 	if fallback.Provider == "" {
 		fallback.Provider = "mock"
@@ -61,7 +77,7 @@ func New(cfg Config) (Provider, error) {
 		if cfg.BaseURL == "" || cfg.APIKey == "" || cfg.Model == "" {
 			return nil, fmt.Errorf("openai_compatible requires AI_BASE_URL, AI_API_KEY and AI_MODEL")
 		}
-		return NewOpenAICompatible(cfg.BaseURL, cfg.APIKey, cfg.Model), nil
+		return NewOpenAICompatible(cfg.BaseURL, cfg.APIKey, cfg.Model, cfg.VisionModel), nil
 	default:
 		return nil, fmt.Errorf("unsupported AI_PROVIDER %q", cfg.Provider)
 	}
@@ -69,8 +85,9 @@ func New(cfg Config) (Provider, error) {
 
 type Mock struct{}
 
-func (Mock) Name() string  { return "mock" }
-func (Mock) Model() string { return "mock" }
+func (Mock) Name() string            { return "mock" }
+func (Mock) Model() string           { return "mock" }
+func (Mock) ModelFor(Request) string { return "mock" }
 func (Mock) Complete(_ context.Context, req Request) (*Response, error) {
 	question := "你的问题"
 	for i := len(req.Messages) - 1; i >= 0; i-- {
@@ -80,15 +97,15 @@ func (Mock) Complete(_ context.Context, req Request) (*Response, error) {
 		}
 	}
 	content := "[本地开发模拟] 已收到：" + question + "。请结合实际情况理性判断；生产环境配置 openai_compatible Provider 后会返回模型解读。"
-	return &Response{Content: content, FinishReason: "stop"}, nil
+	return &Response{Content: content, FinishReason: "stop", Model: "mock"}, nil
 }
-func (m Mock) Stream(ctx context.Context, req Request, onDelta func(string) error) (*Response, error) {
+func (m Mock) Stream(ctx context.Context, req Request, onDelta func(StreamDelta) error) (*Response, error) {
 	resp, err := m.Complete(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 	for _, r := range []rune(resp.Content) {
-		if err := onDelta(string(r)); err != nil {
+		if err := onDelta(StreamDelta{Content: string(r)}); err != nil {
 			return nil, err
 		}
 	}

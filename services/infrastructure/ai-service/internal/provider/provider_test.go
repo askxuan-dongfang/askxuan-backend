@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,11 +21,26 @@ func TestOpenAICompatible(t *testing.T) {
 		if r.Header.Get("Authorization") != "Bearer key" {
 			t.Error("missing authorization")
 		}
+		var payload map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload["model"] != "vision" {
+			t.Errorf("model=%v, want vision", payload["model"])
+		}
+		thinking, _ := payload["thinking"].(map[string]interface{})
+		if thinking["type"] != "enabled" || payload["reasoning_effort"] != "low" {
+			t.Errorf("thinking payload=%v", payload)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":"回答"}}],"usage":{"prompt_tokens":7,"completion_tokens":5}}`))
 	}))
 	defer server.Close()
-	resp, err := NewOpenAICompatible(server.URL, "key", "model").Complete(context.Background(), Request{Messages: []Message{{Role: "user", Content: "问题"}}})
+	resp, err := NewOpenAICompatible(server.URL, "key", "model", "vision").Complete(context.Background(), Request{
+		ThinkingEnabled: true,
+		ReasoningEffort: "low",
+		Messages:        []Message{{Role: "user", Content: "问题", ImageDataURLs: []string{"data:image/png;base64,eA=="}}},
+	})
 	if err != nil || resp.Content != "回答" || resp.TotalTokens() != 12 {
 		t.Fatalf("unexpected response: %#v %v", resp, err)
 	}
@@ -39,8 +55,8 @@ func TestOpenAICompatibleStream(t *testing.T) {
 	}))
 	defer server.Close()
 	var streamed strings.Builder
-	resp, err := NewOpenAICompatible(server.URL, "key", "model").Stream(context.Background(), Request{}, func(delta string) error {
-		streamed.WriteString(delta)
+	resp, err := NewOpenAICompatible(server.URL, "key", "model", "").Stream(context.Background(), Request{}, func(delta StreamDelta) error {
+		streamed.WriteString(delta.Content)
 		return nil
 	})
 	if err != nil || streamed.String() != "答案" || resp.TotalTokens() != 5 || resp.FinishReason != "stop" {

@@ -25,6 +25,9 @@ AI:
   BaseURL: ""
   APIKey: ""
   Model: ""
+  VisionModel: ""
+  ThinkingEnabled: true
+  ReasoningEffort: low
   MinuteRequestLimit: 12
   DailyRequestLimit: 100
   MaxInputChars: 2000
@@ -33,6 +36,14 @@ AI:
   InputCostPerMillion: 0
   OutputCostPerMillion: 0
   BlockedTerms: []
+  AllowedImageHosts: []
+  ImageMaxBytes: 8388608
+  DeepSeekPricing:
+    Enabled: true
+    CacheHitOffPeakPerMillion: 0.007
+    CacheMissOffPeakPerMillion: 0.22
+    OutputOffPeakPerMillion: 0.66
+    PeakMultiplier: 2
   MCP:
     Enabled: false
     BaseURL: ""

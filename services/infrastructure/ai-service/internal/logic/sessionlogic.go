@@ -28,8 +28,14 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 	if req.UserId == "" {
 		return nil, common.ErrParam
 	}
-	if req.SkillCode == "" {
-		req.SkillCode = model.SkillCodeGeneral
+	selectionMode := "explicit"
+	if req.SkillCode == "" || req.SkillCode == "auto" {
+		skills, listErr := l.svcCtx.SkillModel.List(l.ctx, model.SkillStatusEnabled)
+		if listErr != nil {
+			return nil, common.ErrSystem
+		}
+		req.SkillCode = agent.RouteSkill(req.Question, req.Inputs, skills)
+		selectionMode = "auto"
 	}
 	skill, err := l.svcCtx.SkillModel.FindByCode(l.ctx, req.SkillCode)
 	if err != nil {
@@ -41,7 +47,13 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 	if skill.Status != model.SkillStatusEnabled {
 		return nil, common.ErrParamInvalid
 	}
-	inputJSON, err := l.svcCtx.Guard.Validate(skill.InputSchema, req.Question, req.Inputs)
+	schemaJSON := skill.InputSchema
+	if selectionMode == "auto" && len(req.Inputs) == 0 {
+		// Auto-routed conversations may begin before a complete profile exists.
+		// The reviewed skill prompt asks for the missing fields before any tool runs.
+		schemaJSON = `{"fields":[]}`
+	}
+	inputJSON, err := l.svcCtx.Guard.Validate(schemaJSON, req.Question, req.Inputs)
 	if err != nil {
 		if errors.Is(err, agent.ErrUnsafeContent) || errors.Is(err, agent.ErrInvalidInputs) || errors.Is(err, agent.ErrInputTooLong) {
 			return nil, common.ErrParamInvalid
@@ -51,6 +63,13 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 	if strings.TrimSpace(req.Question) == "" && len(req.Inputs) > 0 {
 		req.Question = "请根据所填资料进行分析"
 	}
+	attachmentsJSON, err := encodeAttachments(req.Attachments)
+	if err != nil {
+		return nil, common.ErrParamInvalid
+	}
+	if strings.TrimSpace(req.Question) == "" && len(req.Attachments) > 0 {
+		req.Question = "请分析我上传的图片"
+	}
 	if strings.TrimSpace(req.Question) != "" {
 		if err := l.svcCtx.UsageModel.Acquire(l.ctx, req.UserId, l.svcCtx.AIConfig.MinuteRequestLimit, l.svcCtx.AIConfig.DailyRequestLimit); err != nil {
 			if errors.Is(err, model.ErrQuotaExceeded) {
@@ -59,7 +78,7 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 			return nil, common.ErrSystem
 		}
 	}
-	session, pendingId, err := l.svcCtx.ConversationModel.CreateSession(l.ctx, req.UserId, req.SkillCode, req.Question, inputJSON)
+	session, pendingId, err := l.svcCtx.ConversationModel.CreateSession(l.ctx, req.UserId, req.SkillCode, selectionMode, skill.Version, req.Question, inputJSON, attachmentsJSON)
 	if err != nil {
 		l.Errorf("创建AI会话失败: %v", err)
 		return nil, common.ErrSystem
@@ -153,18 +172,33 @@ func (l *SessionDeleteLogic) Delete(req *types.SessionDeleteReq) (*types.IdResp,
 }
 
 func toTypesSession(s model.AISession) types.AISession {
-	return types.AISession{Id: s.Id, SessionNo: s.SessionNo, UserId: s.UserId, SkillCode: s.SkillCode, Title: s.Title, Status: s.Status, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt}
+	return types.AISession{Id: s.Id, SessionNo: s.SessionNo, UserId: s.UserId, SkillCode: s.SkillCode, SelectionMode: s.SelectionMode, SkillVersion: s.SkillVersion, Title: s.Title, Status: s.Status, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt}
 }
 func toTypesMessage(m model.AIMessage) types.AIMessage {
 	inputs := map[string]interface{}{}
 	_ = json.Unmarshal([]byte(m.InputJSON), &inputs)
+	attachments := []types.AIImageAttachment{}
+	_ = json.Unmarshal([]byte(m.AttachmentsJSON), &attachments)
 	return types.AIMessage{
-		Id: m.Id, SessionId: m.SessionId, Role: m.Role, Content: m.Content, Inputs: inputs,
+		Id: m.Id, SessionId: m.SessionId, Role: m.Role, Content: m.Content, Inputs: inputs, Attachments: attachments, RunId: m.RunId, Stage: m.Stage,
 		Tokens: m.Tokens, PromptTokens: m.PromptTokens, CompletionTokens: m.CompletionTokens,
 		Provider: m.Provider, Model: m.Model, CostMicros: m.CostMicros, FinishReason: m.FinishReason,
 		Status: m.Status, ErrorMessage: m.ErrorMessage,
 		Retryable: m.Role == model.RoleAssistant && m.Status == model.MessageStatusFailed, CreatedAt: m.CreatedAt,
 	}
+}
+
+func encodeAttachments(attachments []types.AIImageAttachment) (string, error) {
+	if len(attachments) > 3 {
+		return "", agent.ErrInvalidInputs
+	}
+	for _, attachment := range attachments {
+		if strings.TrimSpace(attachment.URL) == "" || !strings.HasPrefix(strings.ToLower(strings.TrimSpace(attachment.ContentType)), "image/") {
+			return "", agent.ErrInvalidInputs
+		}
+	}
+	encoded, err := json.Marshal(attachments)
+	return string(encoded), err
 }
 func normalizePage(page int) int {
 	if page < 1 {

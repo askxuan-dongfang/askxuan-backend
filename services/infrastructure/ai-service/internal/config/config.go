@@ -25,6 +25,9 @@ type AIConf struct {
 	BaseURL              string
 	APIKey               string `json:",optional"`
 	Model                string
+	VisionModel          string
+	ThinkingEnabled      bool
+	ReasoningEffort      string
 	MinuteRequestLimit   int
 	DailyRequestLimit    int
 	MaxInputChars        int
@@ -33,7 +36,18 @@ type AIConf struct {
 	InputCostPerMillion  float64
 	OutputCostPerMillion float64
 	BlockedTerms         []string `json:",optional"`
+	AllowedImageHosts    []string `json:",optional"`
+	ImageMaxBytes        int
+	DeepSeekPricing      DeepSeekPricingConf
 	MCP                  MCPConf
+}
+
+type DeepSeekPricingConf struct {
+	Enabled                    bool
+	CacheHitOffPeakPerMillion  float64
+	CacheMissOffPeakPerMillion float64
+	OutputOffPeakPerMillion    float64
+	PeakMultiplier             float64
 }
 
 type MCPConf struct {
@@ -47,6 +61,9 @@ func (c AIConf) Runtime() AIConf {
 	c.BaseURL = envString("AI_BASE_URL", c.BaseURL)
 	c.APIKey = envString("AI_API_KEY", c.APIKey)
 	c.Model = envString("AI_MODEL", c.Model)
+	c.VisionModel = envString("AI_VISION_MODEL", c.VisionModel)
+	c.ThinkingEnabled = envBool("AI_THINKING_ENABLED", c.ThinkingEnabled)
+	c.ReasoningEffort = envString("AI_REASONING_EFFORT", c.ReasoningEffort)
 	c.MinuteRequestLimit = envInt("AI_MINUTE_REQUEST_LIMIT", c.MinuteRequestLimit, 12)
 	c.DailyRequestLimit = envInt("AI_DAILY_REQUEST_LIMIT", c.DailyRequestLimit, 100)
 	c.MaxInputChars = envInt("AI_MAX_INPUT_CHARS", c.MaxInputChars, 2000)
@@ -57,6 +74,15 @@ func (c AIConf) Runtime() AIConf {
 	if raw := strings.TrimSpace(os.Getenv("AI_BLOCKED_TERMS")); raw != "" {
 		c.BlockedTerms = splitTerms(raw)
 	}
+	if raw := strings.TrimSpace(os.Getenv("AI_ALLOWED_IMAGE_HOSTS")); raw != "" {
+		c.AllowedImageHosts = splitTerms(raw)
+	}
+	c.ImageMaxBytes = envInt("AI_IMAGE_MAX_BYTES", c.ImageMaxBytes, 8<<20)
+	c.DeepSeekPricing.Enabled = envBool("AI_DEEPSEEK_PRICING_ENABLED", c.DeepSeekPricing.Enabled)
+	c.DeepSeekPricing.CacheHitOffPeakPerMillion = envFloat("AI_DEEPSEEK_CACHE_HIT_OFFPEAK", c.DeepSeekPricing.CacheHitOffPeakPerMillion)
+	c.DeepSeekPricing.CacheMissOffPeakPerMillion = envFloat("AI_DEEPSEEK_CACHE_MISS_OFFPEAK", c.DeepSeekPricing.CacheMissOffPeakPerMillion)
+	c.DeepSeekPricing.OutputOffPeakPerMillion = envFloat("AI_DEEPSEEK_OUTPUT_OFFPEAK", c.DeepSeekPricing.OutputOffPeakPerMillion)
+	c.DeepSeekPricing.PeakMultiplier = envFloat("AI_DEEPSEEK_PEAK_MULTIPLIER", c.DeepSeekPricing.PeakMultiplier)
 	c.MCP.Enabled = envBool("AI_MCP_ENABLED", c.MCP.Enabled)
 	c.MCP.BaseURL = envString("AI_MCP_BASE_URL", c.MCP.BaseURL)
 	c.MCP.Timeout = envInt("AI_MCP_TIMEOUT_SECONDS", c.MCP.Timeout, 10)

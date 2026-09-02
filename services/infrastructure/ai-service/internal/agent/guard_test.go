@@ -38,3 +38,13 @@ func TestGuardRejectsUnsafeProviderOutput(t *testing.T) {
 		t.Fatalf("unsafe provider output accepted: %v", err)
 	}
 }
+
+func TestGuardRejectsMalformedTemporalFields(t *testing.T) {
+	guard := NewGuard(100, nil)
+	for _, tc := range []struct{ fieldType, value string }{{"date", "2026-99-01"}, {"time", "26:90"}, {"datetime", "tomorrow"}} {
+		schema := `{"fields":[{"key":"value","type":"` + tc.fieldType + `","required":true}]}`
+		if _, err := guard.Validate(schema, "请分析", map[string]interface{}{"value": tc.value}); !errors.Is(err, ErrInvalidInputs) {
+			t.Fatalf("malformed %s accepted: %v", tc.fieldType, err)
+		}
+	}
+}

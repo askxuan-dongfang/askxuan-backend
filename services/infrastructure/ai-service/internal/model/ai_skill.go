@@ -12,23 +12,24 @@ const (
 )
 
 type AISkill struct {
-	Id             int64  `db:"id"`
-	Code           string `db:"code"`
-	Category       string `db:"category"`
-	Name           string `db:"name"`
-	Version        string `db:"version"`
-	Description    string `db:"description"`
-	Icon           string `db:"icon"`
-	SourceType     string `db:"source_type"`
-	SourceRef      string `db:"source_ref"`
-	PromptTemplate string `db:"prompt_template"`
-	InputSchema    string `db:"input_schema"`
-	Capabilities   string `db:"capabilities"`
-	ToolConfig     string `db:"tool_config"`
-	RiskLevel      string `db:"risk_level"`
-	SortOrder      int    `db:"sort_order"`
-	Status         string `db:"status"`
-	CreatedAt      string `db:"create_time"`
+	Id              int64  `db:"id"`
+	Code            string `db:"code"`
+	Category        string `db:"category"`
+	Name            string `db:"name"`
+	Version         string `db:"version"`
+	Description     string `db:"description"`
+	Icon            string `db:"icon"`
+	SourceType      string `db:"source_type"`
+	SourceRef       string `db:"source_ref"`
+	PromptTemplate  string `db:"prompt_template"`
+	InputSchema     string `db:"input_schema"`
+	RoutingKeywords string `db:"routing_keywords"`
+	Capabilities    string `db:"capabilities"`
+	ToolConfig      string `db:"tool_config"`
+	RiskLevel       string `db:"risk_level"`
+	SortOrder       int    `db:"sort_order"`
+	Status          string `db:"status"`
+	CreatedAt       string `db:"create_time"`
 }
 
 type SkillModel interface {
@@ -41,6 +42,7 @@ func NewSkillModel(conn sqlx.SqlConn) SkillModel { return &skillModel{conn: conn
 
 const skillRows = "id,code,category,name,version,description,icon,source_type,source_ref,prompt_template," +
 	"COALESCE(CAST(input_schema AS CHAR),'{\"fields\":[]}') input_schema," +
+	"COALESCE(CAST(routing_keywords AS CHAR),'[]') routing_keywords," +
 	"COALESCE(CAST(capabilities AS CHAR),'[]') capabilities," +
 	"COALESCE(CAST(tool_config AS CHAR),'{\"enabled\":false}') tool_config,risk_level,sort_order,status,create_time"
 
