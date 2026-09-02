@@ -1,15 +1,24 @@
 package types
 
+import "encoding/json"
+
 // AISkill AI 问事技能
 type AISkill struct {
-	Id             int64  `json:"id"`
-	Code           string `json:"code"` // general/bazi/marriage/tarot/fengshui/qimen/ziwei/liuyao
-	Name           string `json:"name"`
-	Description    string `json:"description"`
-	Icon           string `json:"icon"`
-	PromptTemplate string `json:"promptTemplate"` // 提示词模板（管理台维护）
-	Status         string `json:"status"`         // enabled/disabled
-	CreatedAt      string `json:"createdAt"`
+	Id           int64           `json:"id"`
+	Code         string          `json:"code"`
+	Category     string          `json:"category"`
+	Name         string          `json:"name"`
+	Version      string          `json:"version"`
+	Description  string          `json:"description"`
+	Icon         string          `json:"icon"`
+	SourceType   string          `json:"sourceType"`
+	SourceRef    string          `json:"sourceRef"`
+	InputSchema  json.RawMessage `json:"inputSchema"`
+	Capabilities json.RawMessage `json:"capabilities"`
+	RiskLevel    string          `json:"riskLevel"`
+	SortOrder    int             `json:"sortOrder"`
+	Status       string          `json:"status"`
+	CreatedAt    string          `json:"createdAt"`
 }
 
 // SkillListReq 技能列表请求
@@ -41,9 +50,10 @@ type AISession struct {
 
 // SessionCreateReq 创建会话请求
 type SessionCreateReq struct {
-	UserId    string `json:"userId"`
-	SkillCode string `json:"skillCode,optional"`
-	Question  string `json:"question,optional"`
+	UserId    string                 `json:"userId,optional"`
+	SkillCode string                 `json:"skillCode,optional"`
+	Question  string                 `json:"question,optional"`
+	Inputs    map[string]interface{} `json:"inputs,optional"`
 }
 
 // SessionCreateResp 创建会话响应
@@ -52,11 +62,12 @@ type SessionCreateResp struct {
 	SessionNo string `json:"sessionNo"`
 	SkillCode string `json:"skillCode"`
 	Status    string `json:"status"`
+	MessageId int64  `json:"messageId"`
 }
 
 // SessionListReq 会话列表请求
 type SessionListReq struct {
-	UserId string `form:"userId"`
+	UserId string `form:"userId,optional"`
 	Status string `form:"status,optional"`
 	Page   int    `form:"page,default=1"`
 	Size   int    `form:"size,default=20"`
@@ -78,15 +89,22 @@ type SessionDetailReq struct {
 
 // AIMessage 对话消息
 type AIMessage struct {
-	Id           int64  `json:"id"`
-	SessionId    int64  `json:"sessionId"`
-	Role         string `json:"role"` // user/assistant
-	Content      string `json:"content"`
-	Tokens       int    `json:"tokens"`
-	Status       string `json:"status"`
-	ErrorMessage string `json:"errorMessage"`
-	Retryable    bool   `json:"retryable"`
-	CreatedAt    string `json:"createdAt"`
+	Id               int64                  `json:"id"`
+	SessionId        int64                  `json:"sessionId"`
+	Role             string                 `json:"role"` // user/assistant
+	Content          string                 `json:"content"`
+	Inputs           map[string]interface{} `json:"inputs,omitempty"`
+	Tokens           int                    `json:"tokens"`
+	PromptTokens     int                    `json:"promptTokens"`
+	CompletionTokens int                    `json:"completionTokens"`
+	Provider         string                 `json:"provider"`
+	Model            string                 `json:"model"`
+	CostMicros       int64                  `json:"costMicros"`
+	FinishReason     string                 `json:"finishReason"`
+	Status           string                 `json:"status"`
+	ErrorMessage     string                 `json:"errorMessage"`
+	Retryable        bool                   `json:"retryable"`
+	CreatedAt        string                 `json:"createdAt"`
 }
 
 // SessionDetailResp 会话详情响应（含消息列表）
@@ -119,9 +137,10 @@ type SessionDeleteReq struct {
 
 // MessageSendReq 发送问事消息请求
 type MessageSendReq struct {
-	Id      int64  `path:"id"` // 会话 ID
-	UserId  string `json:"userId"`
-	Content string `json:"content"`
+	Id      int64                  `path:"id"` // 会话 ID
+	UserId  string                 `json:"userId,optional"`
+	Content string                 `json:"content"`
+	Inputs  map[string]interface{} `json:"inputs,optional"`
 }
 
 // MessageSendResp 发送消息响应（异步处理，返回受理状态）
@@ -135,4 +154,23 @@ type MessageRetryReq struct {
 	Id        int64  `path:"id"`
 	MessageId int64  `path:"messageId"`
 	UserId    string `json:"userId,optional"`
+}
+
+type MessageStreamReq struct {
+	Id        int64  `path:"id"`
+	MessageId int64  `path:"messageId"`
+	UserId    string `form:"userId,optional"`
+}
+
+type UsageSummaryReq struct {
+	UserId string `form:"userId,optional"`
+}
+
+type UsageSummaryResp struct {
+	MinuteRequests  int   `json:"minuteRequests"`
+	MinuteLimit     int   `json:"minuteLimit"`
+	DailyRequests   int   `json:"dailyRequests"`
+	DailyLimit      int   `json:"dailyLimit"`
+	DailyTokens     int64 `json:"dailyTokens"`
+	DailyCostMicros int64 `json:"dailyCostMicros"`
 }

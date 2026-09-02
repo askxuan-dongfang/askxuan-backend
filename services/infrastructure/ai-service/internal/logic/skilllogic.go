@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/svc"
@@ -22,7 +23,7 @@ func NewSkillListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SkillLi
 	return &SkillListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
 }
 
-// SkillList 返回 7 个 AI 问事技能列表
+// SkillList 返回平台启用的动态智能体技能目录。
 func (l *SkillListLogic) SkillList(req *types.SkillListReq) (*types.SkillListResp, error) {
 	skills, err := l.svcCtx.SkillModel.List(l.ctx, req.Status)
 	if err != nil {
@@ -37,14 +38,19 @@ func (l *SkillListLogic) SkillList(req *types.SkillListReq) (*types.SkillListRes
 }
 
 func toTypesSkill(skill model.AISkill) types.AISkill {
+	inputSchema := json.RawMessage(skill.InputSchema)
+	if !json.Valid(inputSchema) {
+		inputSchema = json.RawMessage(`{"fields":[]}`)
+	}
+	capabilities := json.RawMessage(skill.Capabilities)
+	if !json.Valid(capabilities) {
+		capabilities = json.RawMessage(`[]`)
+	}
 	return types.AISkill{
-		Id:             skill.Id,
-		Code:           skill.Code,
-		Name:           skill.Name,
-		Description:    skill.Description,
-		Icon:           skill.Icon,
-		PromptTemplate: skill.PromptTemplate,
-		Status:         skill.Status,
-		CreatedAt:      skill.CreatedAt,
+		Id: skill.Id, Code: skill.Code, Category: skill.Category, Name: skill.Name,
+		Version: skill.Version, Description: skill.Description, Icon: skill.Icon,
+		SourceType: skill.SourceType, SourceRef: skill.SourceRef, InputSchema: inputSchema,
+		Capabilities: capabilities, RiskLevel: skill.RiskLevel, SortOrder: skill.SortOrder,
+		Status: skill.Status, CreatedAt: skill.CreatedAt,
 	}
 }

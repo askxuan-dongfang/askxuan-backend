@@ -18,7 +18,7 @@ func TestResolveUserID(t *testing.T) {
 		{name: "trusted header", header: "1001", want: "1001"},
 		{name: "matching fallback", header: "1001", requested: "1001", want: "1001"},
 		{name: "header mismatch", header: "1001", requested: "1002", wantErr: common.ErrForbidden},
-		{name: "direct compatibility", requested: "1001", want: "1001"},
+		{name: "direct request cannot supply identity", requested: "1001", wantErr: common.ErrForbidden},
 		{name: "missing identity", wantErr: common.ErrForbidden},
 	}
 	for _, tt := range tests {

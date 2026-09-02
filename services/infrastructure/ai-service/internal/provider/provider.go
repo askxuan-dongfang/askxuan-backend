@@ -14,15 +14,22 @@ type Message struct {
 type Request struct {
 	SystemPrompt string
 	Messages     []Message
+	MaxTokens    int
 }
 type Response struct {
-	Content string
-	Tokens  int
+	Content          string
+	PromptTokens     int
+	CompletionTokens int
+	FinishReason     string
 }
+
+func (r Response) TotalTokens() int { return r.PromptTokens + r.CompletionTokens }
 
 type Provider interface {
 	Name() string
+	Model() string
 	Complete(ctx context.Context, req Request) (*Response, error)
+	Stream(ctx context.Context, req Request, onDelta func(string) error) (*Response, error)
 }
 
 type Config struct{ Provider, BaseURL, APIKey, Model string }
@@ -62,7 +69,8 @@ func New(cfg Config) (Provider, error) {
 
 type Mock struct{}
 
-func (Mock) Name() string { return "mock" }
+func (Mock) Name() string  { return "mock" }
+func (Mock) Model() string { return "mock" }
 func (Mock) Complete(_ context.Context, req Request) (*Response, error) {
 	question := "你的问题"
 	for i := len(req.Messages) - 1; i >= 0; i-- {
@@ -71,5 +79,18 @@ func (Mock) Complete(_ context.Context, req Request) (*Response, error) {
 			break
 		}
 	}
-	return &Response{Content: "[本地开发模拟] 已收到：" + question + "。请结合实际情况理性判断；生产环境配置 openai_compatible Provider 后会返回模型解读。"}, nil
+	content := "[本地开发模拟] 已收到：" + question + "。请结合实际情况理性判断；生产环境配置 openai_compatible Provider 后会返回模型解读。"
+	return &Response{Content: content, FinishReason: "stop"}, nil
+}
+func (m Mock) Stream(ctx context.Context, req Request, onDelta func(string) error) (*Response, error) {
+	resp, err := m.Complete(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range []rune(resp.Content) {
+		if err := onDelta(string(r)); err != nil {
+			return nil, err
+		}
+	}
+	return resp, nil
 }

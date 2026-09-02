@@ -24,3 +24,15 @@ AI:
   BaseURL: ""
   APIKey: ""
   Model: ""
+  MinuteRequestLimit: 12
+  DailyRequestLimit: 100
+  MaxInputChars: 2000
+  MaxHistoryMessages: 30
+  MaxOutputTokens: 2048
+  InputCostPerMillion: 0
+  OutputCostPerMillion: 0
+  BlockedTerms: []
+  MCP:
+    Enabled: false
+    BaseURL: ""
+    Timeout: 10

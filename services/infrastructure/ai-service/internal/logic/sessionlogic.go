@@ -2,8 +2,11 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 
+	"github.com/askxuan/ai-service/internal/agent"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/types"
@@ -38,7 +41,25 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 	if skill.Status != model.SkillStatusEnabled {
 		return nil, common.ErrParamInvalid
 	}
-	session, pendingId, err := l.svcCtx.ConversationModel.CreateSession(l.ctx, req.UserId, req.SkillCode, req.Question)
+	inputJSON, err := l.svcCtx.Guard.Validate(skill.InputSchema, req.Question, req.Inputs)
+	if err != nil {
+		if errors.Is(err, agent.ErrUnsafeContent) || errors.Is(err, agent.ErrInvalidInputs) || errors.Is(err, agent.ErrInputTooLong) {
+			return nil, common.ErrParamInvalid
+		}
+		return nil, common.ErrSystem
+	}
+	if strings.TrimSpace(req.Question) == "" && len(req.Inputs) > 0 {
+		req.Question = "请根据所填资料进行分析"
+	}
+	if strings.TrimSpace(req.Question) != "" {
+		if err := l.svcCtx.UsageModel.Acquire(l.ctx, req.UserId, l.svcCtx.AIConfig.MinuteRequestLimit, l.svcCtx.AIConfig.DailyRequestLimit); err != nil {
+			if errors.Is(err, model.ErrQuotaExceeded) {
+				return nil, common.ErrTooManyRequest
+			}
+			return nil, common.ErrSystem
+		}
+	}
+	session, pendingId, err := l.svcCtx.ConversationModel.CreateSession(l.ctx, req.UserId, req.SkillCode, req.Question, inputJSON)
 	if err != nil {
 		l.Errorf("创建AI会话失败: %v", err)
 		return nil, common.ErrSystem
@@ -46,7 +67,7 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 	if pendingId > 0 {
 		processAsync(l.svcCtx, session.Id, pendingId)
 	}
-	return &types.SessionCreateResp{Id: session.Id, SessionNo: session.SessionNo, SkillCode: session.SkillCode, Status: session.Status}, nil
+	return &types.SessionCreateResp{Id: session.Id, SessionNo: session.SessionNo, SkillCode: session.SkillCode, Status: session.Status, MessageId: pendingId}, nil
 }
 
 type SessionListLogic struct {
@@ -135,7 +156,15 @@ func toTypesSession(s model.AISession) types.AISession {
 	return types.AISession{Id: s.Id, SessionNo: s.SessionNo, UserId: s.UserId, SkillCode: s.SkillCode, Title: s.Title, Status: s.Status, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt}
 }
 func toTypesMessage(m model.AIMessage) types.AIMessage {
-	return types.AIMessage{Id: m.Id, SessionId: m.SessionId, Role: m.Role, Content: m.Content, Tokens: m.Tokens, Status: m.Status, ErrorMessage: m.ErrorMessage, Retryable: m.Role == model.RoleAssistant && m.Status == model.MessageStatusFailed, CreatedAt: m.CreatedAt}
+	inputs := map[string]interface{}{}
+	_ = json.Unmarshal([]byte(m.InputJSON), &inputs)
+	return types.AIMessage{
+		Id: m.Id, SessionId: m.SessionId, Role: m.Role, Content: m.Content, Inputs: inputs,
+		Tokens: m.Tokens, PromptTokens: m.PromptTokens, CompletionTokens: m.CompletionTokens,
+		Provider: m.Provider, Model: m.Model, CostMicros: m.CostMicros, FinishReason: m.FinishReason,
+		Status: m.Status, ErrorMessage: m.ErrorMessage,
+		Retryable: m.Role == model.RoleAssistant && m.Status == model.MessageStatusFailed, CreatedAt: m.CreatedAt,
+	}
 }
 func normalizePage(page int) int {
 	if page < 1 {

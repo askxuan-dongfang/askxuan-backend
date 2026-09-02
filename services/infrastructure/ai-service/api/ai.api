@@ -10,12 +10,19 @@ info (
 type (
     AISkill {
         Id             int64  `json:"id"`
-        Code           string `json:"code"`           // bazi/marriage/tarot/fengshui/qimen/ziwei/liuyao
+        Code           string `json:"code"`
+        Category       string `json:"category"`
         Name           string `json:"name"`
+        Version        string `json:"version"`
         Description    string `json:"description"`
         Icon           string `json:"icon"`
-        PromptTemplate string `json:"promptTemplate"`
-        Status         string `json:"status"`         // enabled/disabled
+        SourceType     string `json:"sourceType"`
+        SourceRef      string `json:"sourceRef"`
+        InputSchema    map[string]interface{} `json:"inputSchema"`
+        Capabilities   []string `json:"capabilities"`
+        RiskLevel      string `json:"riskLevel"`
+        SortOrder      int `json:"sortOrder"`
+        Status         string `json:"status"`
         CreatedAt      string `json:"createdAt"`
     }
 
@@ -39,9 +46,10 @@ type (
     }
 
     SessionCreateReq {
-        UserId    string `json:"userId"`
+        UserId    string `json:"userId,optional"`
         SkillCode string `json:"skillCode,optional"`
         Question  string `json:"question,optional"`
+        Inputs    map[string]interface{} `json:"inputs,optional"`
     }
 
     SessionCreateResp {
@@ -49,10 +57,11 @@ type (
         SessionNo string `json:"sessionNo"`
         SkillCode string `json:"skillCode"`
         Status    string `json:"status"`
+        MessageId int64 `json:"messageId"`
     }
 
     SessionListReq {
-        UserId string `form:"userId"`
+        UserId string `form:"userId,optional"`
         Status string `form:"status,optional"`
         Page   int    `form:"page,default=1"`
         Size   int    `form:"size,default=20"`
@@ -75,7 +84,14 @@ type (
         SessionId int64  `json:"sessionId"`
         Role      string `json:"role"` // user/assistant
         Content   string `json:"content"`
+        Inputs map[string]interface{} `json:"inputs,optional"`
         Tokens    int    `json:"tokens"`
+        PromptTokens int `json:"promptTokens"`
+        CompletionTokens int `json:"completionTokens"`
+        Provider string `json:"provider"`
+        Model string `json:"model"`
+        CostMicros int64 `json:"costMicros"`
+        FinishReason string `json:"finishReason"`
         Status    string `json:"status"` // pending/completed/failed
         ErrorMessage string `json:"errorMessage"`
         Retryable bool `json:"retryable"`
@@ -112,8 +128,9 @@ type (
 
     MessageSendReq {
         Id      int64  `path:"id"` // 会话 ID
-        UserId  string `json:"userId"`
+        UserId  string `json:"userId,optional"`
         Content string `json:"content"`
+        Inputs map[string]interface{} `json:"inputs,optional"`
     }
 
     MessageSendResp {
@@ -126,6 +143,25 @@ type (
         Id int64 `path:"id"`
         MessageId int64 `path:"messageId"`
         UserId string `json:"userId,optional"`
+    }
+
+    MessageStreamReq {
+        Id int64 `path:"id"`
+        MessageId int64 `path:"messageId"`
+        UserId string `form:"userId,optional"`
+    }
+
+    UsageSummaryReq {
+        UserId string `form:"userId,optional"`
+    }
+
+    UsageSummaryResp {
+        MinuteRequests int `json:"minuteRequests"`
+        MinuteLimit int `json:"minuteLimit"`
+        DailyRequests int `json:"dailyRequests"`
+        DailyLimit int `json:"dailyLimit"`
+        DailyTokens int64 `json:"dailyTokens"`
+        DailyCostMicros int64 `json:"dailyCostMicros"`
     }
 )
 
@@ -154,6 +190,12 @@ service ai-service {
 
     @handler messageRetry
     post /sessions/:id/messages/:messageId/retry (MessageRetryReq) returns (MessageSendResp)
+
+    @handler messageStream
+    get /sessions/:id/messages/:messageId/stream (MessageStreamReq)
+
+    @handler usageSummary
+    get /usage (UsageSummaryReq) returns (UsageSummaryResp)
 
     @handler sessionDelete
     delete /sessions/:id (SessionDeleteReq) returns (IdResp)

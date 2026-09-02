@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/askxuan/ai-service/internal/logic"
 	"github.com/askxuan/ai-service/internal/svc"
@@ -25,6 +28,8 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id/messages", Handler: messageListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions/:id/messages", Handler: messageSendHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions/:id/messages/:messageId/retry", Handler: messageRetryHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id/messages/:messageId/stream", Handler: messageStreamHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/ai/usage", Handler: usageSummaryHandler(svcCtx)},
 		{Method: http.MethodDelete, Path: "/api/v1/ai/sessions/:id", Handler: sessionDeleteHandler(svcCtx)},
 	})
 }
@@ -167,18 +172,104 @@ func messageRetryHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	}
 }
 
+func usageSummaryHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.UsageSummaryReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		userID, err := resolveUserID(r, req.UserId)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		req.UserId = userID
+		resp, err := logic.NewUsageSummaryLogic(r.Context(), svcCtx).Summary(&req)
+		respond(w, resp, err)
+	}
+}
+
+func messageStreamHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MessageStreamReq
+		if err := httpx.Parse(r, &req); err != nil || req.Id == 0 || req.MessageId == 0 {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		userID, err := resolveUserID(r, req.UserId)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			common.JsonError(w, common.ErrSystem)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("X-Accel-Buffering", "no")
+
+		lastContent := ""
+		ticker := time.NewTicker(180 * time.Millisecond)
+		defer ticker.Stop()
+		timeout := time.NewTimer(70 * time.Second)
+		defer timeout.Stop()
+		for {
+			message, err := svcCtx.ConversationModel.FindMessageForUser(r.Context(), req.Id, req.MessageId, userID)
+			if err != nil {
+				writeSSE(w, flusher, "error", map[string]interface{}{"message": "消息不存在或无权访问"})
+				return
+			}
+			if message.Content != lastContent {
+				delta := message.Content
+				if len(message.Content) >= len(lastContent) && message.Content[:len(lastContent)] == lastContent {
+					delta = message.Content[len(lastContent):]
+				}
+				writeSSE(w, flusher, "delta", map[string]interface{}{"messageId": message.Id, "content": delta, "snapshot": message.Content})
+				lastContent = message.Content
+			}
+			switch message.Status {
+			case "completed":
+				writeSSE(w, flusher, "done", map[string]interface{}{
+					"messageId": message.Id, "content": message.Content, "status": message.Status,
+					"promptTokens": message.PromptTokens, "completionTokens": message.CompletionTokens,
+					"provider": message.Provider, "model": message.Model, "costMicros": message.CostMicros,
+				})
+				return
+			case "failed":
+				writeSSE(w, flusher, "error", map[string]interface{}{"messageId": message.Id, "message": message.ErrorMessage, "retryable": true})
+				return
+			}
+			select {
+			case <-r.Context().Done():
+				return
+			case <-timeout.C:
+				writeSSE(w, flusher, "timeout", map[string]interface{}{"messageId": message.Id, "status": message.Status})
+				return
+			case <-ticker.C:
+			}
+		}
+	}
+}
+
+func writeSSE(w http.ResponseWriter, flusher http.Flusher, event string, payload interface{}) {
+	data, _ := json.Marshal(payload)
+	_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, data)
+	flusher.Flush()
+}
+
 func resolveUserID(r *http.Request, requested string) (string, error) {
 	trusted := r.Header.Get("X-User-Id")
-	if trusted != "" {
-		if requested != "" && requested != trusted {
-			return "", common.ErrForbidden
-		}
-		return trusted, nil
-	}
-	if requested == "" {
+	if trusted == "" {
 		return "", common.ErrForbidden
 	}
-	return requested, nil
+	if requested != "" && requested != trusted {
+		return "", common.ErrForbidden
+	}
+	return trusted, nil
 }
 
 func respond(w http.ResponseWriter, resp interface{}, err error) {
