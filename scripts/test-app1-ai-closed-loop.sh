@@ -3,6 +3,7 @@ set -euo pipefail
 trap 'printf "[FAIL] AI acceptance stopped at line %s\n" "$LINENO" >&2' ERR
 
 BASE_URL="${BASE_URL:-http://127.0.0.1:8080/api/v1}"
+EXPECTED_PROVIDER="${EXPECTED_PROVIDER:-mock}"
 
 pass() { printf '[PASS] %s\n' "$1"; }
 
@@ -33,8 +34,12 @@ message_id="$(jq -r '.data.messageId // empty' <<<"$session")"
 
 stream="$(curl -fsSN --max-time 75 "$BASE_URL/ai/sessions/$session_id/messages/$message_id/stream" -H "$auth")"
 grep -q '^event: done' <<<"$stream"
-grep -q '\[本地开发模拟\]' <<<"$stream"
-grep -q '"provider":"mock"' <<<"$stream"
+grep -q "\"provider\":\"$EXPECTED_PROVIDER\"" <<<"$stream"
+if [[ "$EXPECTED_PROVIDER" == "mock" ]]; then
+  grep -q '\[本地开发模拟\]' <<<"$stream"
+else
+  ! grep -q '\[本地开发模拟\]' <<<"$stream"
+fi
 pass 'SSE streams the assistant response and final provider metadata'
 
 poll_completed() {
