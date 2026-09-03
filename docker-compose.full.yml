@@ -428,5 +428,8 @@ services:
     environment:
       LIVE_ENABLED: "false"
       LIVE_PROVIDER: disabled
+      MEDIA_MINIO_PRESIGN_ENDPOINT: ${MEDIA_MINIO_PRESIGN_ENDPOINT:-localhost:9000}
+      MEDIA_MINIO_PRESIGN_USE_SSL: ${MEDIA_MINIO_PRESIGN_USE_SSL:-false}
+      MEDIA_MINIO_PUBLIC_BASE_URL: ${MEDIA_MINIO_PUBLIC_BASE_URL:-http://localhost:9000/askxuan-media}
     volumes:
       - ./.docker/etc/media:/app/etc:ro

@@ -33,6 +33,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	if value := os.Getenv("MEDIA_CALLBACK_TOKEN"); value != "" {
 		c.Media.CallbackToken = value
 	}
+	c.MinIO = c.MinIO.Runtime()
 	mediaProvider, err := provider.NewMinIOProvider(c.MinIO)
 	if err != nil {
 		panic(err)

@@ -35,7 +35,7 @@ func NewMinIOProvider(c config.MinIOConf) (*MinIOProvider, error) {
 		presignEndpoint = c.Endpoint
 	}
 	presignClient, err := minio.New(presignEndpoint, &minio.Options{
-		Creds: credentials.NewStaticV4(c.AccessKey, c.SecretKey, ""), Secure: c.UseSSL, Region: region,
+		Creds: credentials.NewStaticV4(c.AccessKey, c.SecretKey, ""), Secure: c.PresignUseSSL, Region: region,
 	})
 	if err != nil {
 		return nil, err

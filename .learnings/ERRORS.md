@@ -354,3 +354,18 @@ The restricted workspace sandbox blocked Go `httptest` from opening a loopback l
 Rerun the unchanged full workspace suite with approved non-sandbox execution. All modules passed.
 
 ---
+
+## [ERR-20260902-001] ecs-mysql-password-not-exported
+
+**Logged**: 2026-09-02T21:37:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+The ECS MySQL container does not expose `MYSQL_ROOT_PASSWORD` to `docker exec`, so an environment-based backup command failed before migration.
+
+### Resolution
+Use the credential source already used by the repository migration script, verify the backup before migration, and never print the credential value.
+
+---

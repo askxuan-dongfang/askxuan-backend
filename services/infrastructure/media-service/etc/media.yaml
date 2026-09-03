@@ -8,6 +8,7 @@ MySQL:
 MinIO:
   Endpoint: localhost:9000
   PresignEndpoint: localhost:9000
+  PresignUseSSL: false
   Region: us-east-1
   AccessKey: minioadmin
   SecretKey: minioadmin
