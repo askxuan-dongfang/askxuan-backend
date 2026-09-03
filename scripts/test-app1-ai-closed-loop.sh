@@ -18,7 +18,12 @@ skills="$(curl -fsS "$BASE_URL/ai/skills" -H "$auth")"
 [[ "$(jq '.data.list | length' <<<"$skills")" -ge 8 ]]
 [[ "$(jq '[.data.list[] | select(.code == "bazi")][0].inputSchema.fields | length' <<<"$skills")" -ge 5 ]]
 [[ "$(jq -r '[.data.list[] | select(.code == "bazi")][0].inputSchema.fields[0].label' <<<"$skills")" == "出生日期" ]]
+[[ "$(jq -r '[.data.list[] | select(.code == "marriage")][0].inputSchema.fields[0].label' <<<"$skills")" == "测算方式" ]]
 [[ "$(jq -r '[.data.list[] | select(.code == "tarot")][0].inputSchema.fields[0].options[0].label' <<<"$skills")" == "单牌" ]]
+[[ "$(jq -r '[.data.list[] | select(.code == "fengshui")][0].inputSchema.fields[0].label' <<<"$skills")" == "场景" ]]
+[[ "$(jq -r '[.data.list[] | select(.code == "qimen")][0].inputSchema.fields[0].label' <<<"$skills")" == "起局时间" ]]
+[[ "$(jq -r '[.data.list[] | select(.code == "ziwei")][0].inputSchema.fields[0].label' <<<"$skills")" == "出生日期" ]]
+[[ "$(jq -r '[.data.list[] | select(.code == "liuyao")][0].inputSchema.fields[0].label' <<<"$skills")" == "起卦方式" ]]
 [[ "$(jq '[.data.list[] | has("promptTemplate") or has("toolConfig")] | any' <<<"$skills")" == "false" ]]
 pass 'dynamic skills expose UTF-8 schemas without private prompts or tool config'
 

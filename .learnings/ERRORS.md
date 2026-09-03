@@ -411,3 +411,17 @@ AI skill names were valid UTF-8, but Chinese labels nested in `input_schema` JSO
 Declare `SET NAMES utf8mb4` in both AI migrations, execute deployment migrations with `--default-character-set=utf8mb4`, and assert representative nested labels in the ECS AI acceptance script.
 
 ---
+## [ERR-20260903-005] dotenv-dsn-shell-quoting
+
+**Logged**: 2026-09-03T20:35:00+08:00
+**Priority**: medium
+**Status**: resolved
+**Area**: infra
+
+### Summary
+A generated MySQL DSN containing parentheses and ampersands was valid for Docker Compose dotenv parsing but invalid when maintenance scripts sourced the same file as shell syntax.
+
+### Resolution
+Quote DSN values containing shell metacharacters in the runtime secrets file and run `bash -n` after atomic secret-file updates.
+
+---

@@ -75,6 +75,7 @@ UPDATE askxuan_ai.ai_skill SET version='2.0.0',source_type='reviewed_skill',sour
 
 UPDATE askxuan_ai.ai_skill SET version='2.0.0',source_type='reviewed_skill',source_ref='ai-module-skills/yinyuan-skills@b091c88',
  prompt_template='你是传统婚恋文化与关系咨询助手。可结合用户自愿提供的出生资料讨论生肖、五行和命理文化，但必须把结果表述为观察视角，不得宣称正缘、婚期或关系结局必然发生。优先理解双方沟通、边界、价值观和现实条件；避免操纵、跟踪、迷信依赖和情感恐吓。输出包含文化解读、关系风险、可沟通的问题和现实行动建议。',
+ input_schema=JSON_OBJECT('fields',JSON_ARRAY(JSON_OBJECT('key','mode','label','测算方式','type','select','required',TRUE,'options',JSON_ARRAY(JSON_OBJECT('value','personal','label','个人姻缘'),JSON_OBJECT('value','matching','label','双方合盘'))),JSON_OBJECT('key','birthDate','label','你的出生日期','type','date','required',FALSE),JSON_OBJECT('key','partnerBirthDate','label','对方出生日期','type','date','required',FALSE))),
  routing_keywords=JSON_ARRAY('姻缘','感情','恋爱','婚姻','合婚','桃花','正缘','夫妻'),capabilities=JSON_ARRAY('chat','stream','structured_input','auto_route','reasoning_status'),tool_config=JSON_OBJECT('enabled',FALSE),risk_level='medium'
  WHERE code='marriage';
 
@@ -85,16 +86,19 @@ UPDATE askxuan_ai.ai_skill SET version='2.0.0',source_type='reviewed_skill',sour
 
 UPDATE askxuan_ai.ai_skill SET version='2.0.0',source_type='reviewed_skill',source_ref='ai-module-skills/fengshui.skill@dc6ffb4',
  prompt_template='你是传统堪舆文化与空间使用顾问。先区分户型、采光、通风、动线、噪声、消防等可验证因素，再说明八宅、形势或玄空等传统解释属于文化参考。图片不足以判断尺度、方位和结构时必须询问，不夸大煞气，不建议危险改造或高价摆件。输出包含观察、现实优化、传统视角和限制说明。',
+ input_schema=JSON_OBJECT('fields',JSON_ARRAY(JSON_OBJECT('key','scene','label','场景','type','select','required',TRUE,'options',JSON_ARRAY(JSON_OBJECT('value','home','label','住宅'),JSON_OBJECT('value','office','label','办公'),JSON_OBJECT('value','shop','label','商铺'))),JSON_OBJECT('key','location','label','地点','type','text','required',FALSE),JSON_OBJECT('key','orientation','label','朝向','type','text','required',FALSE))),
  routing_keywords=JSON_ARRAY('风水','户型','朝向','方位','布局','看房','看宅','办公位'),capabilities=JSON_ARRAY('chat','stream','structured_input','auto_route','reasoning_status','vision'),tool_config=JSON_OBJECT('enabled',FALSE),risk_level='medium'
  WHERE code='fengshui';
 
 UPDATE askxuan_ai.ai_skill SET version='2.0.0',source_type='reviewed_skill',source_ref='ai-module-skills/Numerologist_skills/qimen-dunjia@ea28c3f',
  prompt_template='你是时家转盘奇门遁甲文化研究助手。排盘必须使用受控工具，明确起局时间、时区和所问事项；不得自行编造局数、九宫、九星、八门或八神。依据工具盘面说明用神、门星神组合、时机与方位，但只提供决策观察框架，不保证结果。输出包含盘面依据、优势、风险、行动窗口和现实核验条件。',
+ input_schema=JSON_OBJECT('fields',JSON_ARRAY(JSON_OBJECT('key','eventTime','label','起局时间','type','datetime','required',TRUE),JSON_OBJECT('key','location','label','所在地','type','text','required',TRUE))),
  routing_keywords=JSON_ARRAY('奇门','遁甲','起局','九宫','八门','九星','择时','方位'),capabilities=JSON_ARRAY('chat','stream','structured_input','mcp','auto_route','reasoning_status'),tool_config=JSON_OBJECT('enabled',TRUE,'server','taibu','tool','qimen'),risk_level='medium'
  WHERE code='qimen';
 
 UPDATE askxuan_ai.ai_skill SET version='2.0.0',source_type='reviewed_skill',source_ref='ai-module-skills/Numerologist_skills/ziwei-doushu@ea28c3f',
  prompt_template='你是紫微斗数文化研究助手。命盘必须使用受控工具计算，不得自行猜测命宫、主星、四化、宫位或大限。先核对出生年月日时、历法和性别，再按命盘结构、十二宫重点、阶段主题和现实行动建议解读。不同流派口径有差异时主动说明；不得用命盘制造恐惧、歧视或确定命运。',
+ input_schema=JSON_OBJECT('fields',JSON_ARRAY(JSON_OBJECT('key','birthDate','label','出生日期','type','date','required',TRUE),JSON_OBJECT('key','birthTime','label','出生时间','type','time','required',TRUE),JSON_OBJECT('key','calendarType','label','历法','type','select','required',TRUE,'options',JSON_ARRAY(JSON_OBJECT('value','solar','label','公历'),JSON_OBJECT('value','lunar','label','农历'))),JSON_OBJECT('key','gender','label','性别','type','select','required',TRUE,'options',JSON_ARRAY(JSON_OBJECT('value','male','label','男'),JSON_OBJECT('value','female','label','女'))),JSON_OBJECT('key','birthplace','label','出生地','type','text','required',TRUE,'placeholder','省 / 市 / 区县'))),
  routing_keywords=JSON_ARRAY('紫微','斗数','十二宫','命宫','主星','四化','大限'),capabilities=JSON_ARRAY('chat','stream','structured_input','mcp','auto_route','reasoning_status'),tool_config=JSON_OBJECT('enabled',TRUE,'server','taibu','tool','ziwei'),risk_level='medium'
  WHERE code='ziwei';
 
