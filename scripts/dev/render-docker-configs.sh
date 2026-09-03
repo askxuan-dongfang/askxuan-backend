@@ -34,6 +34,12 @@ render_service() {
     s/ListenOn: 127\.0\.0\.1:9089/ListenOn: 0.0.0.0:9089/g;
     s/ListenOn: 127\.0\.0\.1:9090/ListenOn: 0.0.0.0:9090/g;
   ' "${dst}"/*.yaml
+
+  if [[ -n "${APP_DB_PASSWORD:-}" ]]; then
+    APP_DB_PASSWORD="${APP_DB_PASSWORD}" perl -pi -e '
+      s/(_user:)[^@]+(\@tcp\(mysql:3306\))/$1$ENV{APP_DB_PASSWORD}$2/g;
+    ' "${dst}"/*.yaml
+  fi
 }
 
 render_service gateway  "${ROOT}/services/platform/gateway-service/etc"
