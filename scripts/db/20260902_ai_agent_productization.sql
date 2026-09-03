@@ -1,4 +1,5 @@
 -- AI 专用智能体产品化：动态技能、结构化输入、流式状态、用户额度与成本账。
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 SET @schema_name = 'askxuan_ai';
 
 SET @sql = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=@schema_name AND table_name='ai_skill' AND column_name='category'), 'SELECT 1', "ALTER TABLE askxuan_ai.ai_skill ADD COLUMN category VARCHAR(32) NOT NULL DEFAULT 'divination' AFTER code");

@@ -17,8 +17,10 @@ skills="$(curl -fsS "$BASE_URL/ai/skills" -H "$auth")"
 [[ "$(jq -r '.code' <<<"$skills")" == "0" ]]
 [[ "$(jq '.data.list | length' <<<"$skills")" -ge 8 ]]
 [[ "$(jq '[.data.list[] | select(.code == "bazi")][0].inputSchema.fields | length' <<<"$skills")" -ge 5 ]]
+[[ "$(jq -r '[.data.list[] | select(.code == "bazi")][0].inputSchema.fields[0].label' <<<"$skills")" == "出生日期" ]]
+[[ "$(jq -r '[.data.list[] | select(.code == "tarot")][0].inputSchema.fields[0].options[0].label' <<<"$skills")" == "单牌" ]]
 [[ "$(jq '[.data.list[] | has("promptTemplate") or has("toolConfig")] | any' <<<"$skills")" == "false" ]]
-pass 'dynamic skills expose schemas without private prompts or tool config'
+pass 'dynamic skills expose UTF-8 schemas without private prompts or tool config'
 
 usage_before="$(curl -fsS "$BASE_URL/ai/usage" -H "$auth")"
 daily_before="$(jq -r '.data.dailyRequests' <<<"$usage_before")"

@@ -397,3 +397,17 @@ Recreating media-service exposed that its repository YAML still contained develo
 Support `MEDIA_MYSQL_DATASOURCE` and runtime MinIO credential overrides, inject them through Compose, and keep production values only in the restricted ECS secrets file.
 
 ---
+## [ERR-20260903-004] ai-skill-json-mojibake
+
+**Logged**: 2026-09-03T20:30:00+08:00
+**Priority**: high
+**Status**: resolved
+**Area**: database
+
+### Summary
+AI skill names were valid UTF-8, but Chinese labels nested in `input_schema` JSON were written as mojibake because the migration connection did not declare `utf8mb4`.
+
+### Resolution
+Declare `SET NAMES utf8mb4` in both AI migrations, execute deployment migrations with `--default-character-set=utf8mb4`, and assert representative nested labels in the ECS AI acceptance script.
+
+---

@@ -1,4 +1,5 @@
 -- AI 问事完整智能体运行时：版本化技能、自动路由、可审计工具轨迹和多模态附件。
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 SET @schema_name = 'askxuan_ai';
 
 SET @sql = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=@schema_name AND table_name='ai_skill' AND column_name='routing_keywords'), 'SELECT 1', "ALTER TABLE askxuan_ai.ai_skill ADD COLUMN routing_keywords JSON NULL AFTER input_schema");
