@@ -355,7 +355,7 @@ Rerun the unchanged full workspace suite with approved non-sandbox execution. Al
 
 ---
 
-## [ERR-20260902-001] ecs-mysql-password-not-exported
+## [ERR-20260902-001] ecs-mysql-password-drift
 
 **Logged**: 2026-09-02T21:37:00+08:00
 **Priority**: low
@@ -363,9 +363,23 @@ Rerun the unchanged full workspace suite with approved non-sandbox execution. Al
 **Area**: infra
 
 ### Summary
-The ECS MySQL container does not expose `MYSQL_ROOT_PASSWORD` to `docker exec`, so an environment-based backup command failed before migration.
+The ECS MySQL container's baked-in `MYSQL_ROOT_PASSWORD` and an old migration fallback no longer matched the running database, so backup attempts failed before migration.
 
 ### Resolution
-Use the credential source already used by the repository migration script, verify the backup before migration, and never print the credential value.
+Source the current host runtime secret, pass it transiently as `MYSQL_PWD`, verify the backup before migration, and never print the credential value.
+
+---
+## [ERR-20260903-002] ecs-compose-project-directory
+
+**Logged**: 2026-09-03T09:20:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Running the ECS override Compose file from `/opt/askxuan/runtime` resolved relative bind mounts against that directory and mounted an empty AI configuration path.
+
+### Resolution
+Always pass `--project-directory /opt/askxuan/backend` when using the runtime override file so repository-relative build contexts and volume mounts resolve consistently.
 
 ---

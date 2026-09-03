@@ -186,8 +186,8 @@ type AIImageAttachment struct {
 	MediaId     int64  `json:"mediaId"`
 	URL         string `json:"url"`
 	ContentType string `json:"contentType"`
-	Width       int    `json:"width,omitempty"`
-	Height      int    `json:"height,omitempty"`
+	Width       int    `json:"width,optional"`
+	Height      int    `json:"height,optional"`
 }
 
 type MessageTraceReq struct {

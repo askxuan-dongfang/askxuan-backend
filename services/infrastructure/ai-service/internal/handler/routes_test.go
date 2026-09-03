@@ -1,11 +1,36 @@
 package handler
 
 import (
+	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/askxuan/ai-service/internal/types"
 	"github.com/askxuan/common"
+	"github.com/zeromicro/go-zero/rest/httpx"
 )
+
+func TestSessionCreateRequestParsesOptionalImageDimensions(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/ai/sessions", strings.NewReader(`{
+		"skillCode":"general",
+		"question":"请说明图片内容",
+		"attachments":[{
+			"mediaId":9,
+			"url":"https://eliaukcloud.cn/askxuan-media/ai/test.png",
+			"contentType":"image/png"
+		}]
+	}`))
+	req.Header.Set("Content-Type", "application/json")
+
+	var parsed types.SessionCreateReq
+	if err := httpx.Parse(req, &parsed); err != nil {
+		t.Fatalf("parse session create request: %v", err)
+	}
+	if len(parsed.Attachments) != 1 || parsed.Attachments[0].MediaId != 9 {
+		t.Fatalf("unexpected attachments: %#v", parsed.Attachments)
+	}
+}
 
 func TestResolveUserID(t *testing.T) {
 	tests := []struct {
