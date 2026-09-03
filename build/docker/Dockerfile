@@ -10,6 +10,7 @@ FROM alpine:3.19 AS runtime-base
 ENV TZ=Asia/Shanghai
 
 RUN set -eux; \
+    sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/alpine|g' /etc/apk/repositories; \
     for attempt in 1 2 3; do \
       apk add --no-cache ca-certificates tzdata && break; \
       if [ "$attempt" -eq 3 ]; then exit 1; fi; \
