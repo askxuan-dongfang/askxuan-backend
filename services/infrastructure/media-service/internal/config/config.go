@@ -30,6 +30,12 @@ type MinIOConf struct {
 }
 
 func (c MinIOConf) Runtime() MinIOConf {
+	if value := firstEnv("MEDIA_MINIO_ACCESS_KEY", "MINIO_ACCESS_KEY"); value != "" {
+		c.AccessKey = value
+	}
+	if value := firstEnv("MEDIA_MINIO_SECRET_KEY", "MINIO_SECRET_KEY"); value != "" {
+		c.SecretKey = value
+	}
 	if value := strings.TrimSpace(os.Getenv("MEDIA_MINIO_PRESIGN_ENDPOINT")); value != "" {
 		c.PresignEndpoint = value
 	}
@@ -42,6 +48,15 @@ func (c MinIOConf) Runtime() MinIOConf {
 		c.PublicBaseURL = value
 	}
 	return c
+}
+
+func firstEnv(names ...string) string {
+	for _, name := range names {
+		if value := strings.TrimSpace(os.Getenv(name)); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 type MediaConf struct {
