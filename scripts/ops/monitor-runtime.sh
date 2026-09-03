@@ -34,7 +34,7 @@ query_outbox() {
   database="${dsn#*/}"
   database="${database%%\?*}"
   docker exec -e MYSQL_PWD="$password" askxuan-mysql mysql -h127.0.0.1 -N -u"$user" "$database" -e \
-    "SELECT COUNT(*),SUM(status='dead'),COALESCE(TIMESTAMPDIFF(SECOND,MIN(CASE WHEN status IN ('pending','processing') THEN created_at END),NOW()),0) FROM event_outbox WHERE status IN ('pending','processing','dead')" 2>/dev/null
+    "SELECT COUNT(*),COALESCE(SUM(status='dead'),0),COALESCE(TIMESTAMPDIFF(SECOND,MIN(CASE WHEN status IN ('pending','processing') THEN created_at END),NOW()),0) FROM event_outbox WHERE status IN ('pending','processing','dead')" 2>/dev/null
 }
 
 outbox_rows=""
