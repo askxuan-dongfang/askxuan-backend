@@ -1646,6 +1646,39 @@ CREATE TABLE IF NOT EXISTS `askxuan_booking`.`event_outbox` (
 CREATE TABLE IF NOT EXISTS `askxuan_payment`.`event_outbox` LIKE `askxuan_booking`.`event_outbox`;
 CREATE TABLE IF NOT EXISTS `askxuan_diy`.`event_outbox` LIKE `askxuan_booking`.`event_outbox`;
 
+-- 初始化库中的演示历史事实仅登记为已发送基线，防止服务首次启动时重放旧通知。
+INSERT IGNORE INTO `askxuan_booking`.`event_outbox`
+  (`event_key`,`aggregate_type`,`aggregate_id`,`event_type`,`exchange_name`,`routing_key`,`payload`,`status`,`retry_count`,`next_retry_at`,`created_at`,`updated_at`,`sent_at`)
+SELECT CONCAT('booking:',l.booking_id,':',IF(l.to_status='pending','created',l.to_status)),
+       'booking',l.booking_id,CONCAT('booking.',IF(l.to_status='pending','created',l.to_status)),
+       'booking.events','',JSON_OBJECT('baseline',TRUE),'sent',0,l.create_time,l.create_time,l.create_time,l.create_time
+FROM `askxuan_booking`.`booking_status_log` l
+WHERE l.to_status<>'pending_payment';
+INSERT IGNORE INTO `askxuan_booking`.`event_outbox`
+  (`event_key`,`aggregate_type`,`aggregate_id`,`event_type`,`exchange_name`,`routing_key`,`payload`,`status`,`retry_count`,`next_retry_at`,`created_at`,`updated_at`,`sent_at`)
+SELECT CONCAT('consultation:',c.order_no,':paid'),'consultation',c.order_no,'consultation.paid',
+       'consultation.events','',JSON_OBJECT('baseline',TRUE),'sent',0,c.valid_from,c.valid_from,c.valid_from,c.valid_from
+FROM `askxuan_booking`.`consultation_order` c
+WHERE c.payment_status='success' AND c.valid_from IS NOT NULL;
+INSERT IGNORE INTO `askxuan_payment`.`event_outbox`
+  (`event_key`,`aggregate_type`,`aggregate_id`,`event_type`,`exchange_name`,`routing_key`,`payload`,`status`,`retry_count`,`next_retry_at`,`created_at`,`updated_at`,`sent_at`)
+SELECT CONCAT('payment:',p.payment_no,':',p.status),'payment',p.payment_no,CONCAT('payment.',p.status),
+       'payment.events','',JSON_OBJECT('baseline',TRUE),'sent',0,p.update_time,p.create_time,p.update_time,p.update_time
+FROM `askxuan_payment`.`payment` p
+WHERE p.status IN ('success','failed','refunded');
+INSERT IGNORE INTO `askxuan_diy`.`event_outbox`
+  (`event_key`,`aggregate_type`,`aggregate_id`,`event_type`,`exchange_name`,`routing_key`,`payload`,`status`,`retry_count`,`next_retry_at`,`created_at`,`updated_at`,`sent_at`)
+SELECT CONCAT('diy:blessing:',t.task_no,':dispatch'),'diy_blessing',t.task_no,'blessing.dispatch',
+       'blessing.events','',JSON_OBJECT('baseline',TRUE),'sent',0,t.create_time,t.create_time,t.update_time,t.update_time
+FROM `askxuan_diy`.`blessing_task` t
+WHERE t.status='dispatched';
+INSERT IGNORE INTO `askxuan_diy`.`event_outbox`
+  (`event_key`,`aggregate_type`,`aggregate_id`,`event_type`,`exchange_name`,`routing_key`,`payload`,`status`,`retry_count`,`next_retry_at`,`created_at`,`updated_at`,`sent_at`)
+SELECT CONCAT('diy:order:',o.order_no,':shipped'),'diy_order',o.order_no,'order.shipped',
+       'order.events','',JSON_OBJECT('baseline',TRUE),'sent',0,o.update_time,o.create_time,o.update_time,o.update_time
+FROM `askxuan_diy`.`diy_order` o
+WHERE o.status='shipped';
+
 -- ============================================================
 -- 十二、评价域 askxuan_review（review/review_reply/review_report）
 -- ============================================================
