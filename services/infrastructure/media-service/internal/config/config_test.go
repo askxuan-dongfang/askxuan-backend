@@ -2,6 +2,21 @@ package config
 
 import "testing"
 
+func TestConfigRuntimeAppliesDatabaseAndMinIOOverrides(t *testing.T) {
+	t.Setenv("MEDIA_MYSQL_DATASOURCE", "media_user:secret@tcp(mysql:3306)/askxuan_media")
+	t.Setenv("MEDIA_MINIO_ACCESS_KEY", "runtime-access")
+
+	var input Config
+	input.MySQL.DataSource = "development-dsn"
+	got := input.Runtime()
+	if got.MySQL.DataSource != "media_user:secret@tcp(mysql:3306)/askxuan_media" {
+		t.Fatalf("database override not applied")
+	}
+	if got.MinIO.AccessKey != "runtime-access" {
+		t.Fatalf("MinIO overrides not applied")
+	}
+}
+
 func TestMinIOConfRuntimeSeparatesInternalAndPresignTLS(t *testing.T) {
 	t.Setenv("MINIO_ACCESS_KEY", "runtime-access")
 	t.Setenv("MINIO_SECRET_KEY", "runtime-secret")

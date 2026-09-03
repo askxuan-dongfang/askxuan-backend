@@ -383,3 +383,17 @@ Running the ECS override Compose file from `/opt/askxuan/runtime` resolved relat
 Always pass `--project-directory /opt/askxuan/backend` when using the runtime override file so repository-relative build contexts and volume mounts resolve consistently.
 
 ---
+## [ERR-20260903-003] media-runtime-credential-drift
+
+**Logged**: 2026-09-03T20:10:00+08:00
+**Priority**: medium
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Recreating media-service exposed that its repository YAML still contained development MySQL and MinIO credentials while ECS used rotated runtime credentials.
+
+### Resolution
+Support `MEDIA_MYSQL_DATASOURCE` and runtime MinIO credential overrides, inject them through Compose, and keep production values only in the restricted ECS secrets file.
+
+---

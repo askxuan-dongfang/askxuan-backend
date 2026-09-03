@@ -22,6 +22,7 @@ type ServiceContext struct {
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
+	c = c.Runtime()
 	if value := os.Getenv("LIVE_ENABLED"); value != "" {
 		if enabled, err := strconv.ParseBool(value); err == nil {
 			c.Live.Enabled = enabled
@@ -33,7 +34,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	if value := os.Getenv("MEDIA_CALLBACK_TOKEN"); value != "" {
 		c.Media.CallbackToken = value
 	}
-	c.MinIO = c.MinIO.Runtime()
 	mediaProvider, err := provider.NewMinIOProvider(c.MinIO)
 	if err != nil {
 		panic(err)

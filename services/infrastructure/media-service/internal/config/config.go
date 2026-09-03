@@ -68,3 +68,11 @@ type LiveConf struct {
 	Enabled  bool
 	Provider string
 }
+
+func (c Config) Runtime() Config {
+	if value := strings.TrimSpace(os.Getenv("MEDIA_MYSQL_DATASOURCE")); value != "" {
+		c.MySQL.DataSource = value
+	}
+	c.MinIO = c.MinIO.Runtime()
+	return c
+}
