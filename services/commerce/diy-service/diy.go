@@ -42,6 +42,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	startConsumer(ctx, svcCtx)
+	mq.StartOutbox(ctx, svcCtx.DB, svcCtx.MqProducer)
 
 	// 优雅退出
 	go func() {

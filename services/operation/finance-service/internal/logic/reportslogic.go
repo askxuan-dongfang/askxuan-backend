@@ -27,17 +27,15 @@ func NewReportsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ReportsLo
 
 // Reports 财务报表，支持按时间范围 + 类型筛选
 func (l *ReportsLogic) Reports(req *types.ReportReq) (*types.ReportResp, error) {
-	settlementSums := model.SumSettlementBySettleType(req.StartTime, req.EndTime)
-	totalSettlement := 0.0
-	for _, v := range settlementSums {
-		totalSettlement += v
+	report, err := model.QueryFinancialReport(l.ctx, req.StartTime, req.EndTime)
+	if err != nil {
+		l.Errorf("查询权威财务报表失败: %v", err)
+		return nil, err
 	}
-	financeSums := model.SumByType(req.StartTime, req.EndTime)
-	totalIncome := financeSums["income"]
 	return &types.ReportResp{
-		TotalIncome:     totalIncome,
-		TotalSettlement: totalSettlement,
-		TotalWithdrawal: 0,
-		OrderCount:      0,
+		TotalIncome:     report.GrossIncome - report.RefundAmount,
+		TotalSettlement: report.SettlementNet,
+		TotalWithdrawal: report.WithdrawalPaid,
+		OrderCount:      report.OrderCount,
 	}, nil
 }

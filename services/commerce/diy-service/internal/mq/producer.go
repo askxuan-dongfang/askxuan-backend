@@ -7,7 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/askxuan/common/mqoutbox"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 // 事件交换机
@@ -41,15 +43,16 @@ type Producer struct {
 	user     string
 	password string
 	vhost    string
+	db       sqlx.SqlConn
 
 	mu   sync.Mutex
 	conn *amqp.Connection
 	ch   *amqp.Channel
 }
 
-func NewProducer(host string, port int, user, password, vhost string) *Producer {
+func NewProducer(db sqlx.SqlConn, host string, port int, user, password, vhost string) *Producer {
 	return &Producer{
-		host: host, port: port, user: user, password: password, vhost: vhost,
+		host: host, port: port, user: user, password: password, vhost: vhost, db: db,
 	}
 }
 
@@ -79,19 +82,32 @@ func (p *Producer) ensureChannel() error {
 	return nil
 }
 
+func (p *Producer) PublishEnvelope(ctx context.Context, exchange, routingKey, eventType, messageID string, payload []byte) error {
+	if err := p.ensureChannel(); err != nil {
+		return err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if err := p.ch.ExchangeDeclare(exchange, "fanout", true, false, false, false, nil); err != nil {
+		return err
+	}
+	return p.ch.PublishWithContext(ctx, exchange, routingKey, false, false, amqp.Publishing{
+		ContentType: "application/json", DeliveryMode: amqp.Persistent, Type: eventType,
+		MessageId: messageID, Body: payload, Timestamp: time.Now(),
+	})
+}
+
 // PublishOrderShipped 发布订单发货事件（供 logistics-service 消费）
 func (p *Producer) PublishOrderShipped(ctx context.Context, evt OrderShippedNotify) error {
 	if evt.Time == "" {
 		evt.Time = time.Now().Format("2006-01-02 15:04:05")
 	}
-	body, _ := json.Marshal(evt)
-	if err := p.ensureChannel(); err != nil {
-		return nil
+	body, err := json.Marshal(evt)
+	if err != nil {
+		return err
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.ch.PublishWithContext(ctx, ExchangeOrderEvents, "", false, false,
-		amqp.Publishing{ContentType: "application/json", Body: body, DeliveryMode: amqp.Persistent, Timestamp: time.Now()})
+	return mqoutbox.Enqueue(ctx, p.db, "diy:order:"+evt.OrderId+":"+evt.Action,
+		"diy_order", evt.OrderId, "order."+evt.Action, ExchangeOrderEvents, "", string(body))
 }
 
 // PublishBlessingDispatch 发布加持派单事件
@@ -99,14 +115,12 @@ func (p *Producer) PublishBlessingDispatch(ctx context.Context, evt BlessingDisp
 	if evt.Time == "" {
 		evt.Time = time.Now().Format("2006-01-02 15:04:05")
 	}
-	body, _ := json.Marshal(evt)
-	if err := p.ensureChannel(); err != nil {
-		return nil
+	body, err := json.Marshal(evt)
+	if err != nil {
+		return err
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.ch.PublishWithContext(ctx, ExchangeBlessingEvents, "", false, false,
-		amqp.Publishing{ContentType: "application/json", Body: body, DeliveryMode: amqp.Persistent, Timestamp: time.Now()})
+	return mqoutbox.Enqueue(ctx, p.db, "diy:blessing:"+evt.TaskNo+":dispatch",
+		"diy_blessing", evt.TaskNo, "blessing.dispatch", ExchangeBlessingEvents, "", string(body))
 }
 
 func (p *Producer) Close() {

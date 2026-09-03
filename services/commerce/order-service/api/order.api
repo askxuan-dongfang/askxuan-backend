@@ -125,6 +125,32 @@ type (
         Size  int         `json:"size"`
     }
 
+    OrderReportReq {
+        StartTime string `form:"startTime,optional"`
+        EndTime string `form:"endTime,optional"`
+    }
+    OrderReportTrendPoint {
+        Date string `json:"date"`
+        Sales float64 `json:"sales"`
+        Orders int `json:"orders"`
+    }
+    OrderReportTopProduct {
+        ProductId int64 `json:"productId"`
+        ProductName string `json:"productName"`
+        Sales float64 `json:"sales"`
+        OrderCount int `json:"orderCount"`
+    }
+    OrderReportResp {
+        TodayOrders int `json:"todayOrders"`
+        TodaySales float64 `json:"todaySales"`
+        PendingShip int `json:"pendingShip"`
+        TotalOrders int `json:"totalOrders"`
+        TotalSales float64 `json:"totalSales"`
+        RefundRate float64 `json:"refundRate"`
+        Trend []OrderReportTrendPoint `json:"trend"`
+        TopProducts []OrderReportTopProduct `json:"topProducts"`
+    }
+
     AdminOrderDetailReq {
         Id int64 `path:"id"`
     }
@@ -191,6 +217,9 @@ service order-service {
     jwt: Auth
 )
 service order-service {
+    @handler orderReport
+    get /report (OrderReportReq) returns (OrderReportResp)
+
     @handler adminOrderList
     get / (AdminOrderListReq) returns (AdminOrderListResp)
 

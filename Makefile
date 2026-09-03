@@ -47,7 +47,7 @@ export GOPROXY ?= https://goproxy.cn,direct
 LOG_DIR := $(CURDIR)/logs
 PID_DIR := $(LOG_DIR)/pids
 
-.PHONY: help tidy build run-all start-all start-core stop-core stop-all db-init db-reset clean \
+.PHONY: help tidy build run-all start-all start-core stop-core stop-all db-init db-reset clean monitor-runtime drill-mq-outbox \
         test test-verbose vet lint fmt docker-build docker-build-all swagger \
         docker-config docker-up docker-down docker-restart docker-ps docker-logs \
         openim-up openim-down stack-preflight stack-up stack-down stack-restart stack-check stack-ps stack-logs \
@@ -60,6 +60,12 @@ PID_DIR := $(LOG_DIR)/pids
 
 help: ## 查看所有命令
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+monitor-runtime: ## 检查网关、RabbitMQ、容器健康与 outbox 积压
+	@bash scripts/ops/monitor-runtime.sh
+
+drill-mq-outbox: ## 演练 RabbitMQ 中断后 outbox 自动恢复（仅测试环境）
+	@DRILL_CONFIRM=YES bash scripts/drills/mq-outbox-recovery.sh
 
 tidy: ## 拉取/整理所有模块依赖
 	@for path in $(SERVICE_PATHS) common; do \

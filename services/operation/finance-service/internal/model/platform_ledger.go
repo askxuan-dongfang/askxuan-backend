@@ -15,6 +15,7 @@ const (
 	LedgerEventPaymentReceipt         = "payment_receipt"
 	LedgerEventBookingSettlement      = "booking_settlement"
 	LedgerEventConsultationSettlement = "consultation_settlement"
+	LedgerEventRefund                 = "refund"
 	LedgerAccountPlatformCash         = "platform_cash"
 	LedgerAccountCustomerFunds        = "customer_funds_held"
 	LedgerAccountCommission           = "platform_commission"
@@ -156,6 +157,47 @@ func RecordPlatformReceipt(ctx context.Context, receipt PaymentReceipt) error {
 		_, err = session.ExecCtx(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description)
 			VALUES(0,?,'income',?)`, receipt.Amount,
 			fmt.Sprintf("平台总账收款:%s:%s:%s", receipt.SourceType, receipt.SourceNo, receipt.PaymentNo))
+		return err
+	})
+}
+
+// RecordPlatformRefund posts a refund once and reverses the platform cash and
+// customer-funds-held entries. The source payment receipt must already exist.
+func RecordPlatformRefund(ctx context.Context, receipt PaymentReceipt) error {
+	if receipt.PaymentNo == "" || receipt.SourceType == "" || receipt.SourceNo == "" || receipt.Amount <= 0 {
+		return fmt.Errorf("平台退款事件字段不完整")
+	}
+	receipt.Amount = money(receipt.Amount)
+	return db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		var original ledgerTransaction
+		if err := session.QueryRowCtx(ctx, &original, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`, receipt.SourceType, receipt.SourceNo, LedgerEventPaymentReceipt); err != nil {
+			return fmt.Errorf("退款对应的平台收款不存在: %w", err)
+		}
+		if original.PaymentNo != receipt.PaymentNo || receipt.Amount > original.TotalAmount {
+			return fmt.Errorf("退款金额或支付单与原收款不一致")
+		}
+		res, err := session.ExecCtx(ctx, `INSERT IGNORE INTO finance_transaction
+			(transaction_no,source_type,source_no,payment_no,event_type,total_amount,status)
+			VALUES(?,?,?,?,?,?,?)`, deterministicNo("RFD", receipt.PaymentNo, 64), receipt.SourceType,
+			receipt.SourceNo, receipt.PaymentNo, LedgerEventRefund, receipt.Amount, "posted")
+		if err != nil {
+			return err
+		}
+		created, _ := res.RowsAffected()
+		if created == 0 {
+			return nil
+		}
+		var refundTx ledgerTransaction
+		if err := session.QueryRowCtx(ctx, &refundTx, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`, receipt.SourceType, receipt.SourceNo, LedgerEventRefund); err != nil {
+			return err
+		}
+		if err := insertLedgerEntry(ctx, session, refundTx.ID, LedgerAccountCustomerFunds, "", "debit", receipt.Amount); err != nil {
+			return err
+		}
+		if err := insertLedgerEntry(ctx, session, refundTx.ID, LedgerAccountPlatformCash, "", "credit", receipt.Amount); err != nil {
+			return err
+		}
+		_, err = session.ExecCtx(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description) VALUES(0,?,'refund',?)`, receipt.Amount, fmt.Sprintf("平台总账退款:%s:%s:%s", receipt.SourceType, receipt.SourceNo, receipt.PaymentNo))
 		return err
 	})
 }

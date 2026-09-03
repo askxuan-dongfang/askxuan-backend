@@ -100,6 +100,12 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	}...))
 
 	// ============ 寺院管理台分组 ============
+	reportRoleCfg := &middleware.AdminAuthConfig{AllowedRoles: []string{"temple_admin", "platform_super"}}
+	server.AddRoute(rest.Route{
+		Method:  http.MethodGet,
+		Path:    "/api/v1/admin/bookings/report",
+		Handler: authCfg.AuthFunc(reportRoleCfg.AdminAuthFunc(adminBookingReportHandler(svcCtx))),
+	})
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodGet,
@@ -171,6 +177,22 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: masterBookingCompleteHandler(svcCtx),
 		},
 	}...))
+}
+
+func adminBookingReportHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminBookingReportReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewAdminBookingReportLogic(r.Context(), svcCtx).Report(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
 }
 
 // ============ C端 Handler ============

@@ -170,6 +170,13 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 					}); err != nil {
 						return fmt.Errorf("支付进入平台总账失败: %w", err)
 					}
+				} else if evt.Action == "refunded" {
+					if err := model.RecordPlatformRefund(ctx, model.PaymentReceipt{
+						PaymentNo: evt.PaymentNo, SourceType: evt.OrderType,
+						SourceNo: evt.OrderNo, Amount: evt.Amount,
+					}); err != nil {
+						return fmt.Errorf("退款冲销平台总账失败: %w", err)
+					}
 				}
 				return nil
 			},

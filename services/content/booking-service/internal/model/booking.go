@@ -86,6 +86,7 @@ type BookingModel interface {
 	FindSlotUsage(ctx context.Context, templeCode, serviceCode, date string) (map[string]int, error)
 	FindPendingPayments(ctx context.Context, limit int) ([]*Booking, error)
 	ExpirePendingPayments(ctx context.Context) (int64, error)
+	Report(ctx context.Context, templeID, start, end string) (BookingReportStats, []*BookingReportTrend, []*BookingReportService, []*BookingReportMaster, error)
 }
 
 type defaultBookingModel struct{ conn sqlx.SqlConn }

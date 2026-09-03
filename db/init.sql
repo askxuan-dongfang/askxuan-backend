@@ -1620,6 +1620,32 @@ CREATE TABLE IF NOT EXISTS `finance_ledger_entry` (
   KEY `idx_account_target` (`account_code`,`target_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台总账借贷分录';
 
+-- MQ 可靠投递表。业务服务写入本域 outbox，relay 异步发送并由补偿扫描重建漏项。
+CREATE TABLE IF NOT EXISTS `askxuan_booking`.`event_outbox` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `event_key` VARCHAR(160) NOT NULL,
+  `aggregate_type` VARCHAR(48) NOT NULL,
+  `aggregate_id` VARCHAR(96) NOT NULL,
+  `event_type` VARCHAR(64) NOT NULL,
+  `exchange_name` VARCHAR(64) NOT NULL,
+  `routing_key` VARCHAR(96) NOT NULL DEFAULT '',
+  `payload` JSON NOT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'pending',
+  `retry_count` INT NOT NULL DEFAULT 0,
+  `next_retry_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `locked_at` DATETIME NULL,
+  `last_error` VARCHAR(500) NOT NULL DEFAULT '',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `sent_at` DATETIME NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_event_key` (`event_key`),
+  KEY `idx_outbox_due` (`status`,`next_retry_at`),
+  KEY `idx_outbox_aggregate` (`aggregate_type`,`aggregate_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预约域事务发件箱';
+CREATE TABLE IF NOT EXISTS `askxuan_payment`.`event_outbox` LIKE `askxuan_booking`.`event_outbox`;
+CREATE TABLE IF NOT EXISTS `askxuan_diy`.`event_outbox` LIKE `askxuan_booking`.`event_outbox`;
+
 -- ============================================================
 -- 十二、评价域 askxuan_review（review/review_reply/review_report）
 -- ============================================================

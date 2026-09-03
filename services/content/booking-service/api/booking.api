@@ -280,6 +280,40 @@ type (
         Size  int       `json:"size"`
     }
 
+    AdminBookingReportReq {
+        TempleId string `form:"templeId"`
+        StartTime string `form:"startTime,optional"`
+        EndTime string `form:"endTime,optional"`
+    }
+    BookingTrendPoint {
+        Date string `json:"date"`
+        Bookings int `json:"bookings"`
+        Revenue float64 `json:"revenue"`
+    }
+    BookingRevenueStats {
+        TotalRevenue float64 `json:"totalRevenue"`
+        BookingCount int `json:"bookingCount"`
+        AvgBookingValue float64 `json:"avgBookingValue"`
+        CompletedCount int `json:"completedCount"`
+    }
+    BookingServiceDist {
+        ServiceName string `json:"serviceName"`
+        Count int `json:"count"`
+        Percentage float64 `json:"percentage"`
+    }
+    BookingMasterRank {
+        MasterCode string `json:"masterCode"`
+        MasterName string `json:"masterName"`
+        BookingCount int `json:"bookingCount"`
+        Revenue float64 `json:"revenue"`
+    }
+    AdminBookingReportResp {
+        BookingTrend []BookingTrendPoint `json:"bookingTrend"`
+        RevenueStats BookingRevenueStats `json:"revenueStats"`
+        ServiceDistribution []BookingServiceDist `json:"serviceDistribution"`
+        MasterRanking []BookingMasterRank `json:"masterRanking"`
+    }
+
     AdminBookingActionReq {
         Id     string `path:"id"`
         Remark string `json:"remark,optional"`
@@ -382,6 +416,9 @@ service booking-service {
     jwt: Auth
 )
 service booking-service {
+    @handler adminBookingReport
+    get /report (AdminBookingReportReq) returns (AdminBookingReportResp)
+
     @handler adminBookingList
     get / (AdminBookingListReq) returns (AdminBookingListResp)
 

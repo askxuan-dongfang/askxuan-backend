@@ -27,12 +27,25 @@ func NewOverviewLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Overview
 
 // Overview 收入总览：总收入/寺院收入/法师收入/商城收入/平台抽成/待审核提现数
 func (l *OverviewLogic) Overview(req *types.OverviewReq) (*types.OverviewResp, error) {
-	settlementSums := model.SumSettlementBySettleType(req.StartTime, req.EndTime)
+	settlementSums, err := model.QuerySettlementNetByType(l.ctx, req.StartTime, req.EndTime)
+	if err != nil {
+		l.Errorf("查询结算净额失败: %v", err)
+		return nil, err
+	}
 	templeIncome := settlementSums[model.SettleTypeTemple]
 	masterIncome := settlementSums[model.SettleTypeMaster]
 	shopIncome := settlementSums[model.SettleTypeShop]
-	totalIncome := templeIncome + masterIncome + shopIncome
-	commissionIncome := model.SumCommissionAmount()
+	financial, err := model.QueryFinancialReport(l.ctx, req.StartTime, req.EndTime)
+	if err != nil {
+		l.Errorf("查询总账收款失败: %v", err)
+		return nil, err
+	}
+	totalIncome := financial.GrossIncome - financial.RefundAmount
+	commissionIncome, err := model.QueryCommission(l.ctx, req.StartTime, req.EndTime)
+	if err != nil {
+		l.Errorf("查询平台抽成失败: %v", err)
+		return nil, err
+	}
 	pendingWithdraw := int(model.CountWithdrawalByStatus(model.WithdrawalPending))
 	return &types.OverviewResp{
 		TotalIncome:      totalIncome,

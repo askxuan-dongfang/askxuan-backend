@@ -7,7 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/askxuan/common/mqoutbox"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 // 预约事件交换机约定
@@ -56,6 +58,7 @@ type Producer struct {
 	user     string
 	password string
 	vhost    string
+	db       sqlx.SqlConn
 
 	mu   sync.Mutex
 	conn *amqp.Connection
@@ -63,9 +66,9 @@ type Producer struct {
 }
 
 // NewProducer 构造生产者（不立即连接，避免 RabbitMQ 未启动时阻塞服务启动）
-func NewProducer(host string, port int, user, password, vhost string) *Producer {
+func NewProducer(db sqlx.SqlConn, host string, port int, user, password, vhost string) *Producer {
 	return &Producer{
-		host: host, port: port, user: user, password: password, vhost: vhost,
+		host: host, port: port, user: user, password: password, vhost: vhost, db: db,
 	}
 }
 
@@ -110,42 +113,40 @@ func (p *Producer) PublishConsultation(ctx context.Context, evt ConsultationNoti
 	if evt.Time == "" {
 		evt.Time = time.Now().Format("2006-01-02 15:04:05")
 	}
-	body, _ := json.Marshal(evt)
-	if err := p.ensureChannel(); err != nil {
-		return nil
+	body, err := json.Marshal(evt)
+	if err != nil {
+		return err
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.ch.PublishWithContext(ctx, ExchangeConsultationEvents, "", false, false,
-		amqp.Publishing{ContentType: "application/json", Body: body, DeliveryMode: amqp.Persistent, Timestamp: time.Now()})
+	return mqoutbox.Enqueue(ctx, p.db, "consultation:"+evt.ConsultationId+":"+evt.Action,
+		"consultation", evt.ConsultationId, "consultation."+evt.Action, ExchangeConsultationEvents, "", string(body))
 }
 
-// Publish 发布预约事件
-// 即使 RabbitMQ 不可用也不返回错误，避免影响主流程（仅记录失败）
-func (p *Producer) Publish(ctx context.Context, evt BookingNotify) error {
-	body, _ := json.Marshal(evt)
-	if evt.Time == "" {
-		evt.Time = time.Now().Format("2006-01-02 15:04:05")
-		body, _ = json.Marshal(evt)
-	}
+func (p *Producer) PublishEnvelope(ctx context.Context, exchange, routingKey, eventType, messageID string, payload []byte) error {
 	if err := p.ensureChannel(); err != nil {
-		// 连接失败，记录后返回 nil，不阻断主流程
-		return nil
+		return err
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	err := p.ch.PublishWithContext(ctx,
-		ExchangeBookingEvents, // exchange
-		"",                    // routing key（fanout 无需）
-		false, false,
-		amqp.Publishing{
-			ContentType:  "application/json",
-			Body:         body,
-			DeliveryMode: amqp.Persistent, // 持久化
-			Timestamp:    time.Now(),
-		},
-	)
-	return err
+	if err := p.ch.ExchangeDeclare(exchange, "fanout", true, false, false, false, nil); err != nil {
+		return err
+	}
+	return p.ch.PublishWithContext(ctx, exchange, routingKey, false, false, amqp.Publishing{
+		ContentType: "application/json", DeliveryMode: amqp.Persistent, Type: eventType,
+		MessageId: messageID, Body: payload, Timestamp: time.Now(),
+	})
+}
+
+// Publish 将预约事件持久化到 outbox，由 relay 异步发布。
+func (p *Producer) Publish(ctx context.Context, evt BookingNotify) error {
+	if evt.Time == "" {
+		evt.Time = time.Now().Format("2006-01-02 15:04:05")
+	}
+	body, err := json.Marshal(evt)
+	if err != nil {
+		return err
+	}
+	return mqoutbox.Enqueue(ctx, p.db, "booking:"+evt.BookingId+":"+evt.Action,
+		"booking", evt.BookingId, "booking."+evt.Action, ExchangeBookingEvents, "", string(body))
 }
 
 // Close 关闭生产者

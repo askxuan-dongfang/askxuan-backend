@@ -37,20 +37,25 @@ func NewOrderReportLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Order
 	return &OrderReportLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
 }
 
-func (l *OrderReportLogic) Report() (*types.OrderReportResp, error) {
-	stats, err := l.svcCtx.ShopOrderModel.GetReportStats(l.ctx)
+func (l *OrderReportLogic) Report(req *types.OrderReportReq) (*types.OrderReportResp, error) {
+	stats, err := l.svcCtx.ShopOrderModel.GetReportStats(l.ctx, req.StartTime, req.EndTime)
 	if err != nil {
 		l.Errorf("查询商城报表统计失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	trendRows, err := l.svcCtx.ShopOrderModel.GetReportTrend(l.ctx, 7)
+	trendRows, err := l.svcCtx.ShopOrderModel.GetReportTrend(l.ctx, req.StartTime, req.EndTime)
 	if err != nil {
 		l.Errorf("查询商城趋势失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	topRows, err := l.svcCtx.ShopOrderModel.GetReportTopProducts(l.ctx, 5)
+	topRows, err := l.svcCtx.ShopOrderModel.GetReportTopProducts(l.ctx, req.StartTime, req.EndTime, 10)
 	if err != nil {
 		l.Errorf("查询热销商品失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	refundRate, err := l.svcCtx.ShopOrderModel.GetReportReturnRate(l.ctx, req.StartTime, req.EndTime)
+	if err != nil {
+		l.Errorf("查询商城退货率失败: %v", err)
 		return nil, common.ErrSystem
 	}
 	resp := &types.OrderReportResp{
@@ -61,6 +66,7 @@ func (l *OrderReportLogic) Report() (*types.OrderReportResp, error) {
 		TotalSales:  stats.TotalSales,
 		Trend:       make([]types.OrderReportTrendPoint, 0, len(trendRows)),
 		TopProducts: make([]types.OrderReportTopProduct, 0, len(topRows)),
+		RefundRate:  refundRate,
 	}
 	for _, r := range trendRows {
 		resp.Trend = append(resp.Trend, types.OrderReportTrendPoint{Date: r.Date, Sales: r.Sales, Orders: r.Orders})

@@ -169,11 +169,17 @@ type OrderReportTopProduct struct {
 
 // OrderReportResp 商城经营报表（真实聚合）
 type OrderReportResp struct {
-	TodayOrders  int                     `json:"todayOrders"`
-	TodaySales   float64                 `json:"todaySales"`
-	PendingShip  int                     `json:"pendingShip"`
-	TotalOrders  int                     `json:"totalOrders"`
-	TotalSales   float64                 `json:"totalSales"`
-	Trend        []OrderReportTrendPoint `json:"trend"`
-	TopProducts  []OrderReportTopProduct `json:"topProducts"`
+	TodayOrders int                     `json:"todayOrders"`
+	TodaySales  float64                 `json:"todaySales"`
+	PendingShip int                     `json:"pendingShip"`
+	TotalOrders int                     `json:"totalOrders"`
+	TotalSales  float64                 `json:"totalSales"`
+	Trend       []OrderReportTrendPoint `json:"trend"`
+	TopProducts []OrderReportTopProduct `json:"topProducts"`
+	RefundRate  float64                 `json:"refundRate"`
+}
+
+type OrderReportReq struct {
+	StartTime string `form:"startTime,optional"`
+	EndTime   string `form:"endTime,optional"`
 }

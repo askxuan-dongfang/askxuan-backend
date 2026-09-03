@@ -13,13 +13,14 @@ type ctxKey string
 
 // 预定义 context key
 const (
-	CtxKeyUserID   ctxKey = "userId"
-	CtxKeyMobile   ctxKey = "mobile"
-	CtxKeyUserType ctxKey = "userType"
-	CtxKeyRoles    ctxKey = "roles"
-	CtxKeyClientID ctxKey = "clientId"
-	CtxKeyTempleID ctxKey = "templeId"
-	CtxKeyMasterID ctxKey = "masterId"
+	CtxKeyUserID     ctxKey = "userId"
+	CtxKeyMobile     ctxKey = "mobile"
+	CtxKeyUserType   ctxKey = "userType"
+	CtxKeyRoles      ctxKey = "roles"
+	CtxKeyClientID   ctxKey = "clientId"
+	CtxKeyTempleID   ctxKey = "templeId"
+	CtxKeyTempleCode ctxKey = "templeCode"
+	CtxKeyMasterID   ctxKey = "masterId"
 )
 
 // AuthConfig 鉴权中间件配置
@@ -93,6 +94,7 @@ func (c *AuthConfig) doAuth(_ http.ResponseWriter, r *http.Request) error {
 	ctx = context.WithValue(ctx, CtxKeyRoles, claims.Roles)
 	ctx = context.WithValue(ctx, CtxKeyClientID, claims.ClientID)
 	ctx = context.WithValue(ctx, CtxKeyTempleID, claims.TempleID)
+	ctx = context.WithValue(ctx, CtxKeyTempleCode, claims.TempleCode)
 	ctx = context.WithValue(ctx, CtxKeyMasterID, claims.MasterID)
 	*r = *r.WithContext(ctx)
 	return nil
@@ -136,6 +138,14 @@ func TempleIDFromCtx(ctx context.Context) int64 {
 		return v
 	}
 	return 0
+}
+
+// TempleCodeFromCtx 从 context 取出寺院业务编码。
+func TempleCodeFromCtx(ctx context.Context) string {
+	if v, ok := ctx.Value(CtxKeyTempleCode).(string); ok {
+		return v
+	}
+	return ""
 }
 
 // MasterIDFromCtx 从 context 取出 masterId

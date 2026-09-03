@@ -60,7 +60,12 @@ func orderCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 func orderReportHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		resp, err := logic.NewOrderReportLogic(r.Context(), svcCtx).Report()
+		var req types.OrderReportReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewOrderReportLogic(r.Context(), svcCtx).Report(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

@@ -82,6 +82,40 @@ type AvailabilityResp struct {
 	ServiceFee  float64         `json:"serviceFee"`
 	Slots       []AvailableSlot `json:"slots"`
 }
+
+type AdminBookingReportReq struct {
+	TempleId  string `form:"templeId"`
+	StartTime string `form:"startTime,optional"`
+	EndTime   string `form:"endTime,optional"`
+}
+type BookingTrendPoint struct {
+	Date     string  `json:"date"`
+	Bookings int     `json:"bookings"`
+	Revenue  float64 `json:"revenue"`
+}
+type BookingRevenueStats struct {
+	TotalRevenue    float64 `json:"totalRevenue"`
+	BookingCount    int     `json:"bookingCount"`
+	AvgBookingValue float64 `json:"avgBookingValue"`
+	CompletedCount  int     `json:"completedCount"`
+}
+type BookingServiceDist struct {
+	ServiceName string  `json:"serviceName"`
+	Count       int     `json:"count"`
+	Percentage  float64 `json:"percentage"`
+}
+type BookingMasterRank struct {
+	MasterCode   string  `json:"masterCode"`
+	MasterName   string  `json:"masterName"`
+	BookingCount int     `json:"bookingCount"`
+	Revenue      float64 `json:"revenue"`
+}
+type AdminBookingReportResp struct {
+	BookingTrend        []BookingTrendPoint  `json:"bookingTrend"`
+	RevenueStats        BookingRevenueStats  `json:"revenueStats"`
+	ServiceDistribution []BookingServiceDist `json:"serviceDistribution"`
+	MasterRanking       []BookingMasterRank  `json:"masterRanking"`
+}
 type PayReq struct {
 	Id string `path:"id"`
 }
@@ -190,9 +224,10 @@ type ConsultationListResp struct {
 type ConsultationDetailReq struct {
 	Id string `path:"id"`
 }
+
 // DirectBookingReq 大师直约请求（先付费咨询后预约服务）
 type DirectBookingReq struct {
-	MasterCode  string `path:"id"`              // 路径参数：法师编码
+	MasterCode  string `path:"id"` // 路径参数：法师编码
 	ServiceCode string `json:"serviceCode"`
 	BookingDate string `json:"bookingDate"` // YYYY-MM-DD
 	RequestId   string `json:"requestId"`   // 客户端幂等请求号

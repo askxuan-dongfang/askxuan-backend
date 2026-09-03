@@ -37,7 +37,7 @@ type ServiceContext struct {
 func NewServiceContext(c config.Config) *ServiceContext {
 	db := sqlx.NewMysql(c.MySQL.DataSource)
 	// RabbitMQ 生产者采用懒连接，RabbitMQ 未启动时也不影响服务启动
-	producer := mq.NewProducer(
+	producer := mq.NewProducer(db,
 		c.RabbitMQ.Host, c.RabbitMQ.Port,
 		c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost,
 	)

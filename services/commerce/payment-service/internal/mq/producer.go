@@ -7,7 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/askxuan/common/mqoutbox"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 const (
@@ -44,15 +46,16 @@ type Producer struct {
 	user     string
 	password string
 	vhost    string
+	db       sqlx.SqlConn
 
 	mu   sync.Mutex
 	conn *amqp.Connection
 	ch   *amqp.Channel
 }
 
-func NewProducer(host string, port int, user, password, vhost string) *Producer {
+func NewProducer(db sqlx.SqlConn, host string, port int, user, password, vhost string) *Producer {
 	return &Producer{
-		host: host, port: port, user: user, password: password, vhost: vhost,
+		host: host, port: port, user: user, password: password, vhost: vhost, db: db,
 	}
 }
 
@@ -85,14 +88,27 @@ func (p *Producer) Publish(ctx context.Context, evt PaymentNotify) error {
 	if evt.Time == "" {
 		evt.Time = time.Now().Format("2006-01-02 15:04:05")
 	}
-	body, _ := json.Marshal(evt)
+	body, err := json.Marshal(evt)
+	if err != nil {
+		return err
+	}
+	return mqoutbox.Enqueue(ctx, p.db, "payment:"+evt.PaymentNo+":"+evt.Action,
+		"payment", evt.PaymentNo, "payment."+evt.Action, ExchangePaymentEvents, "", string(body))
+}
+
+func (p *Producer) PublishEnvelope(ctx context.Context, exchange, routingKey, eventType, messageID string, payload []byte) error {
 	if err := p.ensureChannel(); err != nil {
 		return err
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.ch.PublishWithContext(ctx, ExchangePaymentEvents, "", false, false,
-		amqp.Publishing{ContentType: "application/json", Body: body, DeliveryMode: amqp.Persistent, Timestamp: time.Now()})
+	if err := p.ch.ExchangeDeclare(exchange, "fanout", true, false, false, false, nil); err != nil {
+		return err
+	}
+	return p.ch.PublishWithContext(ctx, exchange, routingKey, false, false, amqp.Publishing{
+		ContentType: "application/json", DeliveryMode: amqp.Persistent, Type: eventType,
+		MessageId: messageID, Body: payload, Timestamp: time.Now(),
+	})
 }
 
 // PublishRefundCompleted 发布退款完成事件到 payment.events exchange。
@@ -102,20 +118,12 @@ func (p *Producer) PublishRefundCompleted(ctx context.Context, evt RefundComplet
 	if evt.Time == "" {
 		evt.Time = time.Now().Format("2006-01-02 15:04:05")
 	}
-	body, _ := json.Marshal(evt)
-	if err := p.ensureChannel(); err != nil {
+	body, err := json.Marshal(evt)
+	if err != nil {
 		return err
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.ch.PublishWithContext(ctx, ExchangePaymentEvents, "", false, false,
-		amqp.Publishing{
-			ContentType:  "application/json",
-			Body:         body,
-			DeliveryMode: amqp.Persistent,
-			Type:         "refund.completed",
-			Timestamp:    time.Now(),
-		})
+	return mqoutbox.Enqueue(ctx, p.db, "refund:"+evt.RefundNo+":"+evt.Status,
+		"refund", evt.RefundNo, "refund.completed", ExchangePaymentEvents, "", string(body))
 }
 
 func (p *Producer) Close() {

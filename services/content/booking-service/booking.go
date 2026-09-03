@@ -34,6 +34,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	startPaymentSync(ctx, svcCtx)
+	mq.StartOutbox(ctx, svcCtx.DB, svcCtx.MqProducer)
 
 	fmt.Printf("启动 booking-service，监听 %s:%d\n", c.Host, c.Port)
 	server.Start()

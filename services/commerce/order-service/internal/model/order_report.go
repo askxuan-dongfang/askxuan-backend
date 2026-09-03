@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // OrderReportRow 日报聚合行
@@ -30,49 +31,86 @@ type ReportStats struct {
 }
 
 // GetReportStats 今日/待发货/累计统计
-func (m *defaultShopOrderModel) GetReportStats(ctx context.Context) (*ReportStats, error) {
+func (m *defaultShopOrderModel) GetReportStats(ctx context.Context, start, end string) (*ReportStats, error) {
 	var s ReportStats
+	where, args := paidOrderReportWhere("create_time", "status", start, end)
 	query := fmt.Sprintf(`SELECT
-		COALESCE(SUM(CASE WHEN DATE(create_time)=CURDATE() AND status<>'cancelled' THEN 1 ELSE 0 END),0) AS today_orders,
-		COALESCE(SUM(CASE WHEN DATE(create_time)=CURDATE() AND status<>'cancelled' THEN pay_amount ELSE 0 END),0) AS today_sales,
+		COALESCE(SUM(CASE WHEN DATE(create_time)=CURDATE() THEN 1 ELSE 0 END),0) AS today_orders,
+		COALESCE(SUM(CASE WHEN DATE(create_time)=CURDATE() THEN pay_amount ELSE 0 END),0) AS today_sales,
 		COALESCE(SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END),0) AS pending_ship,
-		COALESCE(SUM(CASE WHEN status<>'cancelled' THEN 1 ELSE 0 END),0) AS total_orders,
-		COALESCE(SUM(CASE WHEN status<>'cancelled' THEN pay_amount ELSE 0 END),0) AS total_sales
-		FROM %s`, shopOrderTable)
-	if err := m.conn.QueryRowCtx(ctx, &s, query); err != nil {
+		COUNT(*) AS total_orders,
+		COALESCE(SUM(pay_amount),0) AS total_sales
+		FROM %s WHERE %s`, shopOrderTable, where)
+	if err := m.conn.QueryRowCtx(ctx, &s, query, args...); err != nil {
 		return nil, err
 	}
 	return &s, nil
 }
 
 // GetReportTrend 近 7 天销售趋势
-func (m *defaultShopOrderModel) GetReportTrend(ctx context.Context, days int) ([]*OrderReportRow, error) {
+func (m *defaultShopOrderModel) GetReportTrend(ctx context.Context, start, end string) ([]*OrderReportRow, error) {
 	rows := make([]*OrderReportRow, 0)
+	where, args := paidOrderReportWhere("create_time", "status", start, end)
 	query := fmt.Sprintf(`SELECT DATE_FORMAT(create_time,'%%Y-%%m-%%d') AS date,
 		COALESCE(SUM(pay_amount),0) AS sales, COUNT(*) AS orders
 		FROM %s
-		WHERE status<>'cancelled' AND create_time >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+		WHERE %s
 		GROUP BY DATE_FORMAT(create_time,'%%Y-%%m-%%d')
-		ORDER BY date ASC`, shopOrderTable)
-	if err := m.conn.QueryRowsCtx(ctx, &rows, query, days-1); err != nil {
+		ORDER BY date ASC`, shopOrderTable, where)
+	if err := m.conn.QueryRowsCtx(ctx, &rows, query, args...); err != nil {
 		return nil, err
 	}
 	return rows, nil
 }
 
 // GetReportTopProducts 热销商品 Top5
-func (m *defaultShopOrderModel) GetReportTopProducts(ctx context.Context, limit int) ([]*OrderTopProduct, error) {
+func (m *defaultShopOrderModel) GetReportTopProducts(ctx context.Context, start, end string, limit int) ([]*OrderTopProduct, error) {
 	rows := make([]*OrderTopProduct, 0)
+	where, args := paidOrderReportWhere("o.create_time", "o.status", start, end)
 	query := fmt.Sprintf(`SELECT i.product_id, MAX(i.product_name) AS product_name,
 		COALESCE(SUM(i.price*i.quantity),0) AS sales,
 		COUNT(DISTINCT i.order_id) AS order_count
 		FROM shop_order_item i
-		JOIN %s o ON o.id = i.order_id AND o.status<>'cancelled'
+		JOIN %s o ON o.id = i.order_id
+		WHERE %s
 		GROUP BY i.product_id
 		ORDER BY sales DESC
-		LIMIT ?`, shopOrderTable)
-	if err := m.conn.QueryRowsCtx(ctx, &rows, query, limit); err != nil {
+		LIMIT ?`, shopOrderTable, where)
+	args = append(args, limit)
+	if err := m.conn.QueryRowsCtx(ctx, &rows, query, args...); err != nil {
 		return nil, err
 	}
 	return rows, nil
+}
+
+func (m *defaultShopOrderModel) GetReportReturnRate(ctx context.Context, start, end string) (float64, error) {
+	where, args := paidOrderReportWhere("o.create_time", "o.status", start, end)
+	var row struct {
+		Orders  int `db:"orders"`
+		Returns int `db:"returns"`
+	}
+	query := fmt.Sprintf(`SELECT COUNT(DISTINCT o.id) orders,
+		COUNT(DISTINCT CASE WHEN r.status<>'rejected' THEN r.order_id END) returns
+		FROM %s o LEFT JOIN return_order r ON r.order_id=o.id WHERE %s`, shopOrderTable, where)
+	if err := m.conn.QueryRowCtx(ctx, &row, query, args...); err != nil {
+		return 0, err
+	}
+	if row.Orders == 0 {
+		return 0, nil
+	}
+	return float64(row.Returns) / float64(row.Orders), nil
+}
+
+func paidOrderReportWhere(timeColumn, statusColumn, start, end string) (string, []interface{}) {
+	clauses := []string{statusColumn + " IN ('paid','shipped','completed','in_return')"}
+	args := []interface{}{}
+	if start = strings.TrimSpace(start); start != "" {
+		clauses = append(clauses, timeColumn+">=?")
+		args = append(args, start+" 00:00:00")
+	}
+	if end = strings.TrimSpace(end); end != "" {
+		clauses = append(clauses, timeColumn+"<DATE_ADD(?,INTERVAL 1 DAY)")
+		args = append(args, end+" 00:00:00")
+	}
+	return strings.Join(clauses, " AND "), args
 }
