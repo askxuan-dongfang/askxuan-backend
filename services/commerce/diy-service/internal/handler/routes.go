@@ -28,6 +28,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPost, Path: "/api/v1/diy/designs/:id/order", Handler: diyDesignOrderCreateHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/materials", Handler: materialListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/blessing-services", Handler: blessingServiceListHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/diy/orders/availability", Handler: diyOrderAvailabilityHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/diy/orders", Handler: diyOrderCreateHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/orders", Handler: diyOrderListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/orders/:id", Handler: diyOrderDetailHandler(svcCtx)},
@@ -190,6 +191,22 @@ func diyOrderCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewDiyOrderCreateLogic(r.Context(), svcCtx).Create(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func diyOrderAvailabilityHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.DiyOrderAvailabilityReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewDiyOrderAvailabilityLogic(r.Context(), svcCtx).Check(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

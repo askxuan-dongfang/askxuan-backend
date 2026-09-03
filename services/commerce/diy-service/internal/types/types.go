@@ -190,6 +190,28 @@ type DiyOrderCreateReq struct {
 	AddressId        int64          `json:"addressId"`
 }
 
+type DiyOrderAvailabilityReq struct {
+	DesignId int64          `json:"designId,optional"`
+	Items    []DiyOrderItem `json:"items,optional"`
+}
+
+type DiyOrderAvailabilityIssue struct {
+	MaterialId   int64  `json:"materialId"`
+	MaterialName string `json:"materialName"`
+	Spec         string `json:"spec"`
+	Quantity     int    `json:"quantity"`
+	Reason       string `json:"reason"`
+	Message      string `json:"message"`
+}
+
+type DiyOrderAvailabilityResp struct {
+	Orderable           bool                        `json:"orderable"`
+	MaterialFee         float64                     `json:"materialFee"`
+	OriginalMaterialFee float64                     `json:"originalMaterialFee"`
+	PriceChanged        bool                        `json:"priceChanged"`
+	Issues              []DiyOrderAvailabilityIssue `json:"issues"`
+}
+
 type DiyDesignOrderCreateReq struct {
 	Id               int64  `path:"id"`
 	UserId           string `json:"userId"`

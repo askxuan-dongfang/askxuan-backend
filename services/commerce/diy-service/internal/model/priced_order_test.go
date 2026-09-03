@@ -61,6 +61,63 @@ func TestCreatePricedOrderIgnoresSnapshotPrice(t *testing.T) {
 	}
 }
 
+func TestCheckPricedOrderItemsReportsUnavailableMaterialWithoutChangingStock(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	conn := sqlx.NewSqlConnFromDB(db)
+
+	mock.ExpectQuery("SELECT id,name,spec,unit_price,stock,status FROM material").WithArgs(int64(15)).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "name", "spec", "unit_price", "stock", "status"}).
+			AddRow(15, "测试檀木珠", "8mm", 0.01, 198, MaterialStatusOffShelf),
+	)
+
+	result, err := CheckPricedOrderItems(context.Background(), conn, []PricedOrderItemInput{
+		{MaterialId: 15, Spec: "8mm", Quantity: 2, SnapshotUnitPrice: 0.01},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Orderable || len(result.Issues) != 1 || result.Issues[0].Reason != "off_shelf" {
+		t.Fatalf("unexpected availability: %#v", result)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCheckPricedOrderItemsUsesLiveSkuPrice(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	conn := sqlx.NewSqlConnFromDB(db)
+
+	mock.ExpectQuery("SELECT id,name,spec,unit_price,stock,status FROM material").WithArgs(int64(1)).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "name", "spec", "unit_price", "stock", "status"}).
+			AddRow(1, "紫檀", "10mm", 28.0, 10, MaterialStatusOnShelf),
+	)
+	mock.ExpectQuery("SELECT id,material_id,spec,price,stock FROM material_sku").WithArgs(int64(1), "10mm").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "material_id", "spec", "price", "stock"}).AddRow(7, 1, "10mm", 30.0, 8),
+	)
+
+	result, err := CheckPricedOrderItems(context.Background(), conn, []PricedOrderItemInput{
+		{MaterialId: 1, Spec: "10mm", Quantity: 2, SnapshotUnitPrice: 1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Orderable || result.MaterialFee != 60 || result.OriginalMaterialFee != 2 || !result.PriceChanged {
+		t.Fatalf("unexpected availability pricing: %#v", result)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCreatePricedOrderRollsBackWhenItemInsertFails(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {

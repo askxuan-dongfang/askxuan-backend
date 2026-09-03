@@ -183,6 +183,28 @@ type (
         AddressId       int64          `json:"addressId"`
     }
 
+    DiyOrderAvailabilityReq {
+        DesignId int64          `json:"designId,optional"`
+        Items    []DiyOrderItem `json:"items,optional"`
+    }
+
+    DiyOrderAvailabilityIssue {
+        MaterialId   int64  `json:"materialId"`
+        MaterialName string `json:"materialName"`
+        Spec         string `json:"spec"`
+        Quantity     int    `json:"quantity"`
+        Reason       string `json:"reason"`
+        Message      string `json:"message"`
+    }
+
+    DiyOrderAvailabilityResp {
+        Orderable           bool                        `json:"orderable"`
+        MaterialFee         float64                     `json:"materialFee"`
+        OriginalMaterialFee float64                     `json:"originalMaterialFee"`
+        PriceChanged        bool                        `json:"priceChanged"`
+        Issues              []DiyOrderAvailabilityIssue `json:"issues"`
+    }
+
     DiyDesignOrderCreateReq {
         Id               int64  `path:"id"`
         UserId           string `json:"userId"`
@@ -409,6 +431,9 @@ service diy-service {
 
     @handler diyOrderCreate
     post /orders (DiyOrderCreateReq) returns (DiyOrderCreateResp)
+
+    @handler diyOrderAvailability
+    post /orders/availability (DiyOrderAvailabilityReq) returns (DiyOrderAvailabilityResp)
 
     @handler diyOrderList
     get /orders (DiyOrderListReq) returns (DiyOrderListResp)

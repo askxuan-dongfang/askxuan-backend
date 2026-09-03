@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/diy-service/internal/model"
@@ -19,6 +20,52 @@ type DiyOrderCreateLogic struct {
 	logx.Logger
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
+}
+
+type DiyOrderAvailabilityLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewDiyOrderAvailabilityLogic(ctx context.Context, svcCtx *svc.ServiceContext) *DiyOrderAvailabilityLogic {
+	return &DiyOrderAvailabilityLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *DiyOrderAvailabilityLogic) Check(req *types.DiyOrderAvailabilityReq) (*types.DiyOrderAvailabilityResp, error) {
+	items := req.Items
+	if len(items) == 0 {
+		if req.DesignId <= 0 {
+			return nil, common.ErrParam
+		}
+		design, err := l.svcCtx.DiyDesignModel.FindOne(l.ctx, req.DesignId)
+		if err != nil {
+			if errors.Is(err, sqlx.ErrNotFound) {
+				return nil, ErrDesignNotFound
+			}
+			return nil, common.ErrSystem
+		}
+		items, err = parseDesignOrderItems(design.DesignData)
+		if err != nil || len(items) == 0 {
+			return nil, common.ErrParam
+		}
+	}
+	availability, err := model.CheckPricedOrderItems(l.ctx, l.svcCtx.DB, toPricedInputs(items))
+	if err != nil {
+		return nil, mapPricingError(err)
+	}
+	resp := &types.DiyOrderAvailabilityResp{
+		Orderable: availability.Orderable, MaterialFee: availability.MaterialFee,
+		OriginalMaterialFee: availability.OriginalMaterialFee, PriceChanged: availability.PriceChanged,
+		Issues: make([]types.DiyOrderAvailabilityIssue, 0, len(availability.Issues)),
+	}
+	for _, issue := range availability.Issues {
+		resp.Issues = append(resp.Issues, types.DiyOrderAvailabilityIssue{
+			MaterialId: issue.MaterialId, MaterialName: issue.MaterialName, Spec: issue.Spec,
+			Quantity: issue.Quantity, Reason: issue.Reason, Message: availabilityIssueMessage(issue),
+		})
+	}
+	return resp, nil
 }
 
 func NewDiyOrderCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *DiyOrderCreateLogic {
@@ -112,6 +159,10 @@ func toPricedInputs(items []types.DiyOrderItem) []model.PricedOrderItemInput {
 func mapPricingError(err error) error {
 	switch {
 	case errors.Is(err, model.ErrOrderMaterialUnavailable):
+		var unavailable *model.OrderMaterialUnavailableError
+		if errors.As(err, &unavailable) && unavailable.MaterialName != "" {
+			return common.NewBizError(40907, fmt.Sprintf("材料「%s」已下架或规格 %s 不可用，请重新选择", unavailable.MaterialName, unavailable.Spec))
+		}
 		return common.NewBizError(40907, "材料已下架或规格不可用，请重新选择")
 	case errors.Is(err, model.ErrOrderStockInsufficient):
 		return common.ErrStockInsufficient
@@ -121,6 +172,19 @@ func mapPricingError(err error) error {
 		return common.ErrParamInvalid
 	default:
 		return common.ErrSystem
+	}
+}
+
+func availabilityIssueMessage(issue model.PricedOrderAvailabilityIssue) string {
+	switch issue.Reason {
+	case "stock_insufficient":
+		return fmt.Sprintf("%s %s 库存不足", issue.MaterialName, issue.Spec)
+	case "spec_unavailable":
+		return fmt.Sprintf("%s 的 %s 规格已不可用", issue.MaterialName, issue.Spec)
+	case "off_shelf":
+		return fmt.Sprintf("%s 已下架", issue.MaterialName)
+	default:
+		return fmt.Sprintf("%s 已不可用", issue.MaterialName)
 	}
 }
 
