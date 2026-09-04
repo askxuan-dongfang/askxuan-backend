@@ -188,6 +188,30 @@ func (l *AdminBookingStatusLogLogic) AdminBookingStatusLog(req *types.StatusLogR
 	return &types.StatusLogResp{List: out}, nil
 }
 
+// AdminReviewDetailLogic 查询预约评价，供寺院管理台详情页展示及回复前确认。
+type AdminReviewDetailLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewAdminReviewDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminReviewDetailLogic {
+	return &AdminReviewDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+}
+
+func (l *AdminReviewDetailLogic) AdminReviewDetail(req *types.ReviewDetailReq) (*types.BookingReview, error) {
+	r, err := l.svcCtx.ReviewModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrReviewNotFound
+		}
+		l.Errorf("管理台查询预约评价失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	resp := types.BookingReview(*r)
+	return &resp, nil
+}
+
 // AdminReviewReplyLogic 法师回复评价
 type AdminReviewReplyLogic struct {
 	logx.Logger

@@ -143,6 +143,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: adminBookingStatusLogHandler(svcCtx),
 		},
 		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/admin/bookings/:id/review",
+			Handler: adminReviewDetailHandler(svcCtx),
+		},
+		{
 			Method:  http.MethodPut,
 			Path:    "/api/v1/admin/bookings/:id/review/reply",
 			Handler: adminReviewReplyHandler(svcCtx),
@@ -589,6 +594,23 @@ func adminBookingStatusLogHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		l := logic.NewAdminBookingStatusLogLogic(r.Context(), svcCtx)
 		resp, err := l.AdminBookingStatusLog(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func adminReviewDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ReviewDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		l := logic.NewAdminReviewDetailLogic(r.Context(), svcCtx)
+		resp, err := l.AdminReviewDetail(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

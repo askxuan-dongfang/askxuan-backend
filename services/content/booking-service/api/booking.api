@@ -440,6 +440,9 @@ service booking-service {
     @handler adminBookingStatusLog
     get /:id/status-log (StatusLogReq) returns (StatusLogResp)
 
+    @handler adminReviewDetail
+    get /:id/review (ReviewDetailReq) returns (BookingReview)
+
     @handler adminReviewReply
     put /:id/review/reply (ReviewReplyReq) returns (BookingReview)
 }
