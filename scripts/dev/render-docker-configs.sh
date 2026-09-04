@@ -40,6 +40,12 @@ render_service() {
       s/(_user:)[^@]+(\@tcp\(mysql:3306\))/$1$ENV{APP_DB_PASSWORD}$2/g;
     ' "${dst}"/*.yaml
   fi
+
+  if [[ -n "${OPENIM_SECRET:-}" ]] && grep -q 'AdminUserID:' "${dst}"/*.yaml; then
+    OPENIM_SECRET="${OPENIM_SECRET}" perl -pi -e '
+      s/^(\s+Secret:\s*)"[^"]*"/$1"$ENV{OPENIM_SECRET}"/;
+    ' "${dst}"/*.yaml
+  fi
 }
 
 render_service gateway  "${ROOT}/services/platform/gateway-service/etc"

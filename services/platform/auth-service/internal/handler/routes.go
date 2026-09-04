@@ -150,15 +150,8 @@ func imTokenHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		var req types.IMTokenReq
 		_ = httpx.Parse(r, &req)
 		userID := r.Header.Get("X-User-Id")
-		userType := r.Header.Get("X-User-Type")
 		masterID := r.Header.Get("X-Master-Id")
-
-		openimUserID := ""
-		if userType == "master" && masterID != "" {
-			openimUserID = "m_" + masterID
-		} else if userID != "" {
-			openimUserID = "u_" + userID
-		}
+		openimUserID := resolveOpenIMUserID(userID, masterID)
 
 		l := logic.NewImTokenLogic(r.Context(), svcCtx, openimUserID)
 		resp, err := l.ImToken(&req)
@@ -168,6 +161,16 @@ func imTokenHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.Ok(w, resp)
 		}
 	}
+}
+
+func resolveOpenIMUserID(userID, masterID string) string {
+	if masterID != "" {
+		return "m_" + masterID
+	}
+	if userID != "" {
+		return "u_" + userID
+	}
+	return ""
 }
 
 func adminLoginHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
