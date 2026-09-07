@@ -84,14 +84,8 @@ func processCallback(ctx context.Context, svcCtx *svc.ServiceContext, logger log
 		return &types.CallbackResp{Code: "SUCCESS", Msg: "OK"}, nil
 	}
 
-	// Redis 回调去重（防止网关重试）
-	if payload.TradeNo != "" {
-		dedupKey := "pay:callback:" + expectedChannel + ":" + payload.TradeNo
-		ok, _ := svcCtx.Redis.SetnxEx(dedupKey, "1", 604800) // 7天
-		if !ok {
-			return &types.CallbackResp{Code: "SUCCESS", Msg: "OK"}, nil // 已处理过的回调
-		}
-	}
+	// PaymentModel serializes status transitions and points in one transaction.
+	// Do not reserve Redis dedup keys before commit: a failed transaction must remain retryable.
 
 	if p.Channel != expectedChannel {
 		return nil, common.NewBizError(common.ErrParam.Code, "支付渠道与回调不匹配")

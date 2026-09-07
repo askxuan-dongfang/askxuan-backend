@@ -1,0 +1,59 @@
+-- 积分由 payment-service 管理；独立商品、库存、订单，不进入现金商城报表。
+-- 可重复执行；只对迁移后成功的支付发积分，不回填历史消费。
+CREATE TABLE IF NOT EXISTS askxuan_payment.points_account (
+ user_id VARCHAR(64) NOT NULL PRIMARY KEY,
+ balance BIGINT NOT NULL DEFAULT 0,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS askxuan_payment.points_ledger (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ user_id VARCHAR(64) NOT NULL,
+ event_key VARCHAR(160) NOT NULL,
+ kind VARCHAR(32) NOT NULL,
+ delta BIGINT NOT NULL,
+ balance_after BIGINT NOT NULL,
+ reference_no VARCHAR(96) NOT NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE KEY uk_event(event_key), KEY idx_user(user_id,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS askxuan_payment.points_payment_award (
+ payment_id BIGINT NOT NULL PRIMARY KEY,
+ user_id VARCHAR(64) NOT NULL,
+ awarded BIGINT NOT NULL,
+ reversed BIGINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS askxuan_payment.points_product (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(120) NOT NULL,
+ category VARCHAR(80) NOT NULL DEFAULT '',
+ description TEXT NOT NULL,
+ image VARCHAR(1000) NOT NULL DEFAULT '',
+ points_price BIGINT NOT NULL,
+ stock BIGINT NOT NULL DEFAULT 0,
+ status VARCHAR(16) NOT NULL DEFAULT 'draft',
+ version BIGINT NOT NULL DEFAULT 1,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ KEY idx_status(status,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS askxuan_payment.points_order (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ order_no VARCHAR(64) NOT NULL,
+ user_id VARCHAR(64) NOT NULL,
+ request_key VARCHAR(80) NOT NULL,
+ product_id BIGINT NOT NULL,
+ product_name VARCHAR(120) NOT NULL,
+ product_image VARCHAR(1000) NOT NULL DEFAULT '',
+ quantity INT NOT NULL,
+ points_total BIGINT NOT NULL,
+ receiver VARCHAR(80) NOT NULL,
+ mobile VARCHAR(32) NOT NULL,
+ address VARCHAR(500) NOT NULL,
+ status VARCHAR(16) NOT NULL DEFAULT 'pending',
+ carrier VARCHAR(80) NOT NULL DEFAULT '',
+ tracking_no VARCHAR(100) NOT NULL DEFAULT '',
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE KEY uk_order(order_no), UNIQUE KEY uk_request(user_id,request_key),
+ KEY idx_user(user_id,id), KEY idx_status(status,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

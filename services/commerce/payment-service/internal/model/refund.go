@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/askxuan/payment-service/internal/points"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -78,8 +79,33 @@ func (m *defaultRefundModel) FindOne(ctx context.Context, id int64) (*Refund, er
 
 // UpdateStatus 更新退款状态
 func (m *defaultRefundModel) UpdateStatus(ctx context.Context, id int64, status string) (*Refund, error) {
-	query := `UPDATE ` + refundTable + ` SET status = ? WHERE id = ?`
-	_, err := m.conn.ExecCtx(ctx, query, status, id)
+	err := m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		var paymentID int64
+		if err := tx.QueryRowCtx(ctx, &paymentID, `SELECT payment_id FROM refund WHERE id=?`, id); err != nil {
+			return err
+		}
+		var paymentStatus string
+		if err := tx.QueryRowCtx(ctx, &paymentStatus, `SELECT status FROM payment WHERE id=? FOR UPDATE`, paymentID); err != nil {
+			return err
+		}
+		var old string
+		if err := tx.QueryRowCtx(ctx, &old, `SELECT status FROM refund WHERE id=? FOR UPDATE`, id); err != nil {
+			return err
+		}
+		if old == status {
+			return nil
+		}
+		if old == RefundStatusSuccess {
+			return fmt.Errorf("refund already succeeded")
+		}
+		if _, err := tx.ExecCtx(ctx, `UPDATE refund SET status=? WHERE id=?`, status, id); err != nil {
+			return err
+		}
+		if status == RefundStatusSuccess {
+			return points.Reverse(ctx, tx, paymentID, id)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -33,6 +33,7 @@ var adminRoleRules = []adminRoleRule{
 	{prefix: "/api/v1/admin/temples/", roles: []string{"temple_admin"}},
 	{prefix: "/api/v1/admin/reviews", roles: []string{"temple_admin", "master"}},
 	{prefix: "/api/v1/admin/bookings", roles: []string{"temple_admin"}},
+	{prefix: "/api/v1/admin/points", roles: []string{"shop_admin"}},
 	{prefix: "/api/v1/admin/products", roles: []string{"shop_admin"}},
 	{prefix: "/api/v1/admin/diy", roles: []string{"shop_admin"}},
 	{prefix: "/api/v1/admin/orders", roles: []string{"shop_admin"}},

@@ -7,6 +7,7 @@ import (
 
 	"github.com/askxuan/payment-service/internal/model"
 	"github.com/askxuan/payment-service/internal/mq"
+	"github.com/askxuan/payment-service/internal/points"
 	"github.com/askxuan/payment-service/internal/svc"
 	"github.com/askxuan/payment-service/rpc/payment"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -75,6 +76,9 @@ func (s *PaymentBookingServer) autoPayOrder(ctx context.Context, orderType, orde
 			return err
 		}
 		if _, err := session.ExecCtx(ctx, `UPDATE payment SET status='success',trade_no=? WHERE id=? AND status='pending'`, tradeNo, paymentID); err != nil {
+			return err
+		}
+		if err := points.Award(ctx, session, paymentID); err != nil {
 			return err
 		}
 		_, err = session.ExecCtx(ctx, `INSERT INTO payment_log(payment_id,action,request,response,create_time) VALUES(?,?,?,?,NOW())`, paymentID, "mock_success", idempotencyKey, model.PaymentStatusSuccess)

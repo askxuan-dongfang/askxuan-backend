@@ -16,6 +16,7 @@ import (
 // RegisterHandlers 注册 payment 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
+	registerPoints(server, svcCtx)
 	authCfg := &middleware.AuthConfig{Secret: svcCtx.Config.Auth.AccessSecret}
 
 	// ===== C端路由 =====

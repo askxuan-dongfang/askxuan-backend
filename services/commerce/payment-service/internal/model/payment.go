@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/askxuan/payment-service/internal/points"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -179,18 +180,27 @@ func nullIfEmpty(value string) interface{} {
 
 // UpdateStatus 更新支付状态与第三方交易号（调用方需先校验 CanPaymentTransit）
 func (m *defaultPaymentModel) UpdateStatus(ctx context.Context, id int64, status, tradeNo string) (*Payment, error) {
-	if tradeNo != "" {
-		query := `UPDATE ` + paymentTable + ` SET status = ?, trade_no = ? WHERE id = ?`
-		_, err := m.conn.ExecCtx(ctx, query, status, tradeNo, id)
-		if err != nil {
-			return nil, err
+	err := m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		var old string
+		if err := tx.QueryRowCtx(ctx, &old, `SELECT status FROM payment WHERE id=? FOR UPDATE`, id); err != nil {
+			return err
 		}
-	} else {
-		query := `UPDATE ` + paymentTable + ` SET status = ? WHERE id = ?`
-		_, err := m.conn.ExecCtx(ctx, query, status, id)
-		if err != nil {
-			return nil, err
+		if old == status {
+			return nil
 		}
+		if !CanPaymentTransit(old, status) {
+			return fmt.Errorf("invalid payment transition %s -> %s", old, status)
+		}
+		if _, err := tx.ExecCtx(ctx, `UPDATE payment SET status=?,trade_no=IF(?='',trade_no,?) WHERE id=?`, status, tradeNo, tradeNo, id); err != nil {
+			return err
+		}
+		if status == PaymentStatusSuccess && old == PaymentStatusPending {
+			return points.Award(ctx, tx, id)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return m.FindOne(ctx, id)
 }

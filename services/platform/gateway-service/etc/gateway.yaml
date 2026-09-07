@@ -81,6 +81,12 @@ Upstreams:
   - Prefix: /api/v1/payments
     Target: localhost:8090
     ServiceName: payment.service
+  - Prefix: /api/v1/points
+    Target: localhost:8090
+    ServiceName: payment.service
+  - Prefix: /api/v1/admin/points
+    Target: localhost:8090
+    ServiceName: payment.service
   - Prefix: /api/v1/logistics
     Target: localhost:8095
     ServiceName: logistics.service
