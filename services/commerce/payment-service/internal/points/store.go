@@ -76,13 +76,24 @@ func (s Store) Entries(ctx context.Context, user string, page int) ([]Entry, err
 	err := s.DB.QueryRowsCtx(ctx, &rows, `SELECT id,kind,delta,balance_after,reference_no,created_at FROM points_ledger WHERE user_id=? ORDER BY id DESC LIMIT 20 OFFSET ?`, user, (page-1)*20)
 	return rows, err
 }
-func (s Store) Products(ctx context.Context, admin bool, page int) ([]Product, error) {
+func (s Store) Products(ctx context.Context, admin bool, page int, filters ...string) ([]Product, error) {
 	rows := make([]Product, 0)
-	where := " WHERE status='on_sale'"
-	if admin {
-		where = ""
+	where := " WHERE 1=1"
+	args := []interface{}{}
+	if !admin {
+		where += " AND status='on_sale'"
 	}
-	err := s.DB.QueryRowsCtx(ctx, &rows, `SELECT `+productCols+` FROM points_product`+where+` ORDER BY id DESC LIMIT 20 OFFSET ?`, (page-1)*20)
+	if len(filters) > 0 && strings.TrimSpace(filters[0]) != "" {
+		where += " AND (name LIKE ? OR category LIKE ?)"
+		q := "%" + strings.TrimSpace(filters[0]) + "%"
+		args = append(args, q, q)
+	}
+	if admin && len(filters) > 1 && filters[1] != "" {
+		where += " AND status=?"
+		args = append(args, filters[1])
+	}
+	args = append(args, (page-1)*20)
+	err := s.DB.QueryRowsCtx(ctx, &rows, `SELECT `+productCols+` FROM points_product`+where+` ORDER BY id DESC LIMIT 20 OFFSET ?`, args...)
 	return rows, err
 }
 func ValidProduct(p Product) bool {
@@ -115,13 +126,25 @@ func (s Store) SaveProduct(ctx context.Context, p Product) (Product, error) {
 	p.Version++
 	return p, nil
 }
-func (s Store) Orders(ctx context.Context, user string, admin bool, page int) ([]Order, error) {
+func (s Store) Orders(ctx context.Context, user string, admin bool, page int, filters ...string) ([]Order, error) {
 	rows := make([]Order, 0)
 	where := " WHERE user_id=?"
 	args := []interface{}{user}
 	if admin {
 		where = ""
 		args = nil
+	}
+	if where == "" {
+		where = " WHERE 1=1"
+	}
+	if len(filters) > 0 && strings.TrimSpace(filters[0]) != "" {
+		where += " AND (order_no LIKE ? OR product_name LIKE ?)"
+		q := "%" + strings.TrimSpace(filters[0]) + "%"
+		args = append(args, q, q)
+	}
+	if len(filters) > 1 && filters[1] != "" {
+		where += " AND status=?"
+		args = append(args, filters[1])
 	}
 	args = append(args, (page-1)*20)
 	err := s.DB.QueryRowsCtx(ctx, &rows, `SELECT `+orderCols+` FROM points_order`+where+` ORDER BY id DESC LIMIT 20 OFFSET ?`, args...)

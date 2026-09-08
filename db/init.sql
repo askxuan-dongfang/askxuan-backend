@@ -2390,3 +2390,22 @@ CREATE TABLE IF NOT EXISTS askxuan_payment.points_order (
  UNIQUE KEY uk_order(order_no), UNIQUE KEY uk_request(user_id,request_key),
  KEY idx_user(user_id,id), KEY idx_status(status,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Commerce return fulfillment
+USE askxuan_order;
+CREATE TABLE IF NOT EXISTS return_fulfillment (
+ return_id BIGINT NOT NULL PRIMARY KEY,
+ previous_status VARCHAR(32) NOT NULL,
+ carrier VARCHAR(80) NOT NULL DEFAULT '',
+ tracking_no VARCHAR(100) NOT NULL DEFAULT '',
+ review_note VARCHAR(500) NOT NULL DEFAULT '',
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+USE askxuan_diy;
+CREATE TABLE IF NOT EXISTS diy_order_fulfillment (
+ order_id BIGINT NOT NULL PRIMARY KEY,
+ express_company VARCHAR(64) NOT NULL,
+ tracking_no VARCHAR(64) NOT NULL,
+ ship_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

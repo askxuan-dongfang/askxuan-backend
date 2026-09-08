@@ -2,7 +2,9 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"github.com/askxuan/common/mqoutbox"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -31,6 +33,12 @@ func (m *creatorEarningModel) RecordPaymentSuccess(ctx context.Context, orderNo,
 			}
 			return err
 		}
+		if order.PaymentStatus == "refunded" || order.PaymentStatus == "refunding" {
+			return nil
+		}
+		if order.Status == DiyStatusCancelled {
+			return enqueueCancelledRefund(ctx, session, order)
+		}
 		if _, err := session.ExecCtx(ctx, `UPDATE diy_order SET payment_status='success',update_time=CURRENT_TIMESTAMP WHERE id=? AND payment_status<>'success'`, order.Id); err != nil {
 			return err
 		}
@@ -42,4 +50,16 @@ func (m *creatorEarningModel) RecordPaymentSuccess(ctx context.Context, orderNo,
 			earningNo(order.Id), order.Id, order.OrderNo, order.DesignId, order.CreatorId, paymentNo, order.MaterialFee, order.CreatorShareRate, earningAmount, CreatorEarningStatusPending)
 		return err
 	})
+}
+
+func enqueueCancelledRefund(ctx context.Context, session sqlx.Session, order DiyOrder) error {
+	body, err := json.Marshal(map[string]interface{}{"orderNo": order.OrderNo, "orderType": "diy_order", "orderId": order.Id, "amount": order.TotalFee, "reason": "定制订单审核未通过，原路退款", "returnNo": "DIY-" + order.OrderNo})
+	if err != nil {
+		return err
+	}
+	if err := mqoutbox.Enqueue(ctx, session, "diy:refund:"+order.OrderNo, "diy_order", order.OrderNo, "refund.request", "order.events", "", string(body)); err != nil {
+		return err
+	}
+	_, err = session.ExecCtx(ctx, `UPDATE diy_order SET payment_status='refunding',update_time=NOW() WHERE id=? AND payment_status<>'refunded'`, order.Id)
+	return err
 }

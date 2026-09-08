@@ -19,6 +19,9 @@ import (
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
 
+	auth := &middleware.AuthConfig{Secret: svcCtx.Config.AuthSecret}
+	customer := &middleware.AdminAuthConfig{AllowedRoles: []string{"customer"}}
+	server.AddRoute(rest.Route{Method: http.MethodPut, Path: "/api/v1/diy/orders/:id/confirm", Handler: auth.AuthFunc(customer.AdminAuthFunc(diyOrderConfirmHandler(svcCtx)))})
 	// ===== C端路由 =====
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/diy/designs", Handler: designListHandler(svcCtx)},

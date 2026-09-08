@@ -214,21 +214,13 @@ func (l *AdminDiyOrderShipLogic) Ship(req *types.AdminDiyOrderShipReq) (*types.D
 		return nil, common.ErrSystem
 	}
 
-	if !model.CanDiyTransit(o.Status, model.DiyStatusShipped) {
-		return nil, common.ErrStatusInvalid
+	if err := model.ShipOrder(l.ctx, l.svcCtx.DB, o.Id, req.ExpressCompany, req.TrackingNo); err != nil {
+		return nil, err
 	}
-
-	updated, err := l.svcCtx.DiyOrderModel.UpdateStatus(l.ctx, req.Id, model.DiyStatusShipped)
+	updated, err := l.svcCtx.DiyOrderModel.FindOne(l.ctx, o.Id)
 	if err != nil {
 		return nil, common.ErrSystem
 	}
-
-	// 发 MQ order.events 通知 logistics-service 创建物流追踪记录
-	_ = l.svcCtx.MqProducer.PublishOrderShipped(l.ctx, mq.OrderShippedNotify{
-		OrderId: o.OrderNo,
-		UserId:  o.UserId,
-		Action:  "shipped",
-	})
 
 	return toTypesDiyOrderDetail(l.ctx, l.svcCtx, updated), nil
 }

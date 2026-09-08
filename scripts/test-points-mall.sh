@@ -22,5 +22,5 @@ POINTS_PORT="${POINTS_PORT##*:}"
 export POINTS_TEST_DSN="root@tcp(127.0.0.1:${POINTS_PORT})/askxuan_payment?charset=utf8mb4&timeout=5s"
 cd "$POINTS_ROOT/services/commerce/payment-service"
 go test ./internal/points -count=1
-go test ./internal/model -run TestMySQLPaymentAndRefundPoints -count=1
+go test ./internal/model -run "TestMySQLPaymentAndRefundPoints|TestMySQLAtomicCommerceRefund" -count=1
 go test ./internal/handler -count=1

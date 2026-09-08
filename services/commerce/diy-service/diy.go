@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"os"
 	"os/signal"
 	"syscall"
@@ -130,6 +131,15 @@ func handlePaymentNotify(ctx context.Context, svcCtx *svc.ServiceContext) func([
 		evt, ok := mq.ParsePaymentNotify(body)
 		if !ok {
 			return nil
+		}
+		if evt.OrderType == "diy_order" && evt.Action == "refunded" {
+			return svcCtx.DB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+				if _, err := tx.ExecCtx(ctx, `UPDATE diy_order SET payment_status='refunded',update_time=NOW() WHERE order_no=? AND status='cancelled'`, evt.OrderNo); err != nil {
+					return err
+				}
+				_, err := tx.ExecCtx(ctx, `UPDATE diy_creator_earning SET status='cancelled' WHERE order_no=? AND status='pending'`, evt.OrderNo)
+				return err
+			})
 		}
 		if evt.Action != "success" || evt.OrderType != "diy_order" {
 			return nil

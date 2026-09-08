@@ -15,26 +15,27 @@ type DiyDesign struct {
 
 // DiyOrder DIY订单
 type DiyOrder struct {
-	Id                  int64          `json:"id"`
-	OrderNo             string         `json:"orderNo"`
-	UserId              string         `json:"userId"`
-	DesignId            int64          `json:"designId"`
-	MaterialFee         float64        `json:"materialFee"`
-	BlessFee            float64        `json:"blessFee"`
-	TotalFee            float64        `json:"totalFee"`
-	Status              string         `json:"status"`
-	PaymentStatus       string         `json:"paymentStatus"`
-	AddressId           int64          `json:"addressId"`
-	Source              string         `json:"source"`
-	CreatorId           string         `json:"creatorId"`
-	CreatorShareRate    float64        `json:"creatorShareRate"`
-	OriginalMaterialFee float64        `json:"originalMaterialFee"`
-	PriceChanged        bool           `json:"priceChanged"`
-	DesignSnapshot      string         `json:"designSnapshot"`
-	PricingSnapshot     string         `json:"pricingSnapshot"`
-	Items               []DiyOrderItem `json:"items"`
-	BlessingTask        BlessingTask   `json:"blessingTask"`
-	CreateTime          string         `json:"createTime"`
+	Logistics           *OrderLogistics `json:"logistics,omitempty"`
+	Id                  int64           `json:"id"`
+	OrderNo             string          `json:"orderNo"`
+	UserId              string          `json:"userId"`
+	DesignId            int64           `json:"designId"`
+	MaterialFee         float64         `json:"materialFee"`
+	BlessFee            float64         `json:"blessFee"`
+	TotalFee            float64         `json:"totalFee"`
+	Status              string          `json:"status"`
+	PaymentStatus       string          `json:"paymentStatus"`
+	AddressId           int64           `json:"addressId"`
+	Source              string          `json:"source"`
+	CreatorId           string          `json:"creatorId"`
+	CreatorShareRate    float64         `json:"creatorShareRate"`
+	OriginalMaterialFee float64         `json:"originalMaterialFee"`
+	PriceChanged        bool            `json:"priceChanged"`
+	DesignSnapshot      string          `json:"designSnapshot"`
+	PricingSnapshot     string          `json:"pricingSnapshot"`
+	Items               []DiyOrderItem  `json:"items"`
+	BlessingTask        BlessingTask    `json:"blessingTask"`
+	CreateTime          string          `json:"createTime"`
 }
 
 // DiyOrderItem DIY订单明细
@@ -395,4 +396,10 @@ type AdminBlessingServiceUpdateReq struct {
 
 type AdminBlessingServiceDeleteReq struct {
 	Id int64 `path:"id"`
+}
+
+type OrderLogistics struct {
+	ExpressCompany string `json:"expressCompany"`
+	TrackingNo     string `json:"trackingNo"`
+	ShipTime       string `json:"shipTime"`
 }

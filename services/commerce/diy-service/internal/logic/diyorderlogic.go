@@ -255,7 +255,11 @@ func (l *DiyOrderListLogic) List(req *types.DiyOrderListReq) (*types.DiyOrderLis
 	}
 	resp := &types.DiyOrderListResp{Total: total, Page: req.Page, Size: req.Size}
 	for _, o := range list {
-		resp.List = append(resp.List, toTypesDiyOrder(o, nil, model.BlessingTask{}))
+		item := toTypesDiyOrder(o, nil, model.BlessingTask{})
+		if row := model.ReadOrderLogistics(l.ctx, l.svcCtx.DB, o.Id); row != nil {
+			item.Logistics = &types.OrderLogistics{ExpressCompany: row.ExpressCompany, TrackingNo: row.TrackingNo, ShipTime: row.ShipTime}
+		}
+		resp.List = append(resp.List, item)
 	}
 	return resp, nil
 }

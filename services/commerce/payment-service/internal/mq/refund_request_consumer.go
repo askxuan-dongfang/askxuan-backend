@@ -33,6 +33,7 @@ const (
 // RefundRequestPayload refund.request 消息体。
 // 字段与 order-service 的 BuildRefundRequestPayload 保持一致。
 type RefundRequestPayload struct {
+	OrderNo   string  `json:"orderNo"`
 	ReturnNo  string  `json:"returnNo"`  // 退货单号
 	ReturnId  int64   `json:"returnId"`  // 退货单 ID
 	OrderId   int64   `json:"orderId"`   // 业务订单 ID
@@ -46,6 +47,7 @@ type RefundRequestPayload struct {
 // RefundRequestDeps refund.request handler 的依赖。
 // 通过显式注入 RefundFunc 避免 mq ↔ logic ↔ svc 循环依赖。
 type RefundRequestDeps struct {
+	ResolvePayment func(context.Context, string, string) (string, error)
 	// RefundFunc 执行退款逻辑，返回退款单号。
 	// 通常由 main 包装 logic.NewRefundLogic(ctx, svcCtx).Refund(...) 实现。
 	RefundFunc func(ctx context.Context, paymentNo string, amount float64, reason string) (refundNo string, err error)
@@ -76,6 +78,13 @@ func NewRefundRequestHandler(deps RefundRequestDeps) func([]byte) error {
 		if err := json.Unmarshal(body, &payload); err != nil {
 			logx.Errorf("解析 refund.request 失败，丢弃: %v", err)
 			return nil // 解析失败不可恢复，ACK 丢弃
+		}
+		if payload.OrderNo != "" && deps.ResolvePayment != nil {
+			paymentNo, err := deps.ResolvePayment(ctx, payload.OrderType, payload.OrderNo)
+			if err != nil {
+				return err
+			}
+			payload.PaymentNo = paymentNo
 		}
 		if payload.PaymentNo == "" || payload.Amount <= 0 {
 			logx.Errorf("refund.request 缺少必要字段，丢弃: %+v", payload)
@@ -117,13 +126,6 @@ func NewRefundRequestHandler(deps RefundRequestDeps) func([]byte) error {
 			}
 
 			// 支付单已是 refunded 状态 → 视为幂等成功（done 标记过期后的重复消息）
-			if isAlreadyRefundedErr(err) {
-				logx.Infof("退款状态非法（可能已完成），视为幂等成功: paymentNo=%s err=%v",
-					payload.PaymentNo, err)
-				markRefundDone(deps, doneKey, refundNo)
-				publishRefundCompletedEvent(deps, payload, refundNo, "success")
-				return nil
-			}
 
 			// 其它失败：累加重试计数，超过上限转入死信
 			logx.Errorf("退款失败: paymentNo=%s err=%v", payload.PaymentNo, err)
@@ -185,6 +187,7 @@ func publishRefundCompletedEvent(deps RefundRequestDeps, payload RefundRequestPa
 		return
 	}
 	evt := RefundCompletedEvent{
+		OrderNo: payload.OrderNo, OrderType: payload.OrderType, Action: "refunded",
 		ReturnNo:  payload.ReturnNo,
 		PaymentNo: payload.PaymentNo,
 		RefundNo:  refundNo,

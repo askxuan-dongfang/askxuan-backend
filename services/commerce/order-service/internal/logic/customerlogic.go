@@ -200,10 +200,21 @@ func (l *OrderConfirmLogic) Confirm(req *types.OrderConfirmReq) (*types.ShopOrde
 	if o.UserId != strconv.FormatInt(middleware.UserIDFromCtx(l.ctx), 10) {
 		return nil, common.ErrForbidden
 	}
-	if !model.CanOrderTransit(o.Status, model.OrderStatusCompleted) {
+	if o.Status == model.OrderStatusCompleted {
+		return toTypesOrderDetail(l.ctx, l.svcCtx, o), nil
+	}
+	res, err := l.svcCtx.DB.ExecCtx(l.ctx, `UPDATE shop_order SET status='completed',update_time=NOW() WHERE id=? AND status='shipped'`, req.Id)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	if n != 1 {
 		return nil, common.ErrStatusInvalid
 	}
-	updated, err := l.svcCtx.ShopOrderModel.UpdateStatus(l.ctx, req.Id, model.OrderStatusCompleted)
+	updated, err := l.svcCtx.ShopOrderModel.FindOne(l.ctx, req.Id)
 	if err != nil {
 		return nil, common.ErrSystem
 	}
@@ -235,15 +246,10 @@ func (l *OrderReturnLogic) Return(req *types.OrderReturnReq) (*types.OrderReturn
 	if o.UserId != strconv.FormatInt(middleware.UserIDFromCtx(l.ctx), 10) {
 		return nil, common.ErrForbidden
 	}
-	r, err := l.svcCtx.ReturnOrderModel.Insert(l.ctx, &model.ReturnOrder{
-		OrderId:      o.Id,
-		Type:         req.Type,
-		Reason:       req.Reason,
-		RefundAmount: o.PayAmount,
-	})
+	r, err := model.CreateReturn(l.ctx, l.svcCtx.DB, strconv.FormatInt(middleware.UserIDFromCtx(l.ctx), 10), req.Id, req.Type, req.Reason)
 	if err != nil {
 		l.Errorf("创建退换货失败: %v", err)
-		return nil, common.ErrSystem
+		return nil, err
 	}
 	_ = l.svcCtx.MqProducer.Publish(l.ctx, mqOrderNotify(o.OrderNo, o.UserId, "return"))
 	return &types.OrderReturnResp{Id: r.Id, ReturnNo: r.ReturnNo}, nil

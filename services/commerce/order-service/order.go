@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"os"
 	"os/signal"
 	"syscall"
@@ -144,6 +146,28 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 			Exchange: mq.ExchangePaymentEvents,
 			Queue:    mq.QueueOrderRefundCompleted,
 			Handler: mq.NewRefundCompletedHandler(mq.RefundCompletedDeps{
+				FindRefunding: func(ctx context.Context, orderID int64) (*model.ReturnOrder, error) {
+					var r model.ReturnOrder
+					err := svcCtx.DB.QueryRowCtx(ctx, &r, `SELECT id,return_no,order_id,type,reason,status,refund_amount,create_time,update_time FROM return_order WHERE order_id=? AND status='refunding' ORDER BY id DESC LIMIT 1`, orderID)
+					if errors.Is(err, sqlx.ErrNotFound) {
+						return nil, nil
+					}
+					return &r, err
+				},
+				Finalize: func(ctx context.Context, o *model.ShopOrder, r *model.ReturnOrder) error {
+					if o.RequestId != "" {
+						if err := svcCtx.CatalogClient.ReleaseCart(ctx, o.RequestId); err != nil {
+							return err
+						}
+					}
+					return svcCtx.DB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+						if _, err := tx.ExecCtx(ctx, `UPDATE return_order SET status='completed',update_time=NOW() WHERE id=? AND status='refunding'`, r.Id); err != nil {
+							return err
+						}
+						_, err := tx.ExecCtx(ctx, `UPDATE shop_order SET status='cancelled',update_time=NOW() WHERE id=? AND status='in_return'`, o.Id)
+						return err
+					})
+				},
 				ShopOrderModel:   svcCtx.ShopOrderModel,
 				ReturnOrderModel: svcCtx.ReturnOrderModel,
 				Redis:            svcCtx.Redis,

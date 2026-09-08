@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/askxuan/common"
@@ -143,25 +145,30 @@ func (l *AdminOrderShipLogic) Ship(req *types.AdminOrderShipReq) (*types.ShopOrd
 		}
 		return nil, common.ErrSystem
 	}
-	if !model.CanOrderTransit(o.Status, model.OrderStatusShipped) {
-		return nil, common.ErrStatusInvalid
+	if strings.TrimSpace(req.ExpressCompany) == "" || strings.TrimSpace(req.TrackingNo) == "" || len(req.TrackingNo) > 64 || len([]rune(req.ExpressCompany)) > 64 {
+		return nil, common.ErrParam
 	}
-	// 写物流记录
-	_, err = l.svcCtx.ShopOrderLogisticsModel.Insert(l.ctx, &model.ShopOrderLogistics{
-		OrderId:        o.Id,
-		ExpressCompany: req.ExpressCompany,
-		TrackingNo:     req.TrackingNo,
+	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, tx sqlx.Session) error {
+		var status string
+		if err := tx.QueryRowCtx(ctx, &status, `SELECT status FROM shop_order WHERE id=? FOR UPDATE`, o.Id); err != nil {
+			return err
+		}
+		if status != "paid" {
+			return common.ErrStatusInvalid
+		}
+		if _, err := tx.ExecCtx(ctx, `INSERT INTO shop_order_logistics(order_id,express_company,tracking_no,ship_time) VALUES(?,?,?,NOW())`, o.Id, req.ExpressCompany, req.TrackingNo); err != nil {
+			return err
+		}
+		_, err := tx.ExecCtx(ctx, `UPDATE shop_order SET status='shipped',update_time=NOW() WHERE id=?`, o.Id)
+		return err
 	})
 	if err != nil {
-		l.Errorf("写入物流记录失败: %v", err)
-		return nil, common.ErrSystem
+		return nil, err
 	}
-	// 更新订单状态
-	updated, err := l.svcCtx.ShopOrderModel.UpdateStatus(l.ctx, req.Id, model.OrderStatusShipped)
+	updated, err := l.svcCtx.ShopOrderModel.FindOne(l.ctx, o.Id)
 	if err != nil {
 		return nil, common.ErrSystem
 	}
-	// 发货后失效订单状态缓存
 	_, _ = l.svcCtx.Redis.Del("order:status:" + updated.OrderNo)
 	// 发 MQ 通知发货（order.events action=shipped）
 	_ = l.svcCtx.MqProducer.Publish(l.ctx, mqOrderNotify(updated.OrderNo, updated.UserId, "shipped"))
@@ -218,6 +225,17 @@ func (l *AdminReturnDetailLogic) Detail(req *types.AdminReturnDetailReq) (*types
 		return nil, common.ErrSystem
 	}
 	t := toTypesReturn(r)
+	rows, err := model.ReturnDetails(l.ctx, l.svcCtx.DB, r.OrderId)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	for _, row := range rows {
+		if row.Id == r.Id {
+			t.Carrier = row.Carrier
+			t.TrackingNo = row.TrackingNo
+			t.ReviewNote = row.ReviewNote
+		}
+	}
 	return &t, nil
 }
 
@@ -233,26 +251,10 @@ func NewAdminReturnReviewLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 func (l *AdminReturnReviewLogic) Review(req *types.AdminReturnReviewReq) (*types.ReturnOrder, error) {
-	r, err := l.svcCtx.ReturnOrderModel.FindOne(l.ctx, req.Id)
-	if err != nil {
-		if err == sqlx.ErrNotFound {
-			return nil, common.ErrOrderNotFound
-		}
-		return nil, common.ErrSystem
+	if err := model.MoveReturn(l.ctx, l.svcCtx.DB, req.Id, "", req.Action, "", "", req.Reason); err != nil {
+		return nil, err
 	}
-	var targetStatus string
-	switch req.Action {
-	case "approve":
-		targetStatus = model.ReturnStatusApproved
-	case "reject":
-		targetStatus = model.ReturnStatusRejected
-	default:
-		return nil, common.ErrParam
-	}
-	if !model.CanReturnTransit(r.Status, targetStatus) {
-		return nil, common.ErrStatusInvalid
-	}
-	updated, err := l.svcCtx.ReturnOrderModel.UpdateStatus(l.ctx, req.Id, targetStatus)
+	updated, err := l.svcCtx.ReturnOrderModel.FindOne(l.ctx, req.Id)
 	if err != nil {
 		return nil, common.ErrSystem
 	}
@@ -286,10 +288,25 @@ func (l *AdminReturnRefundLogic) Refund(req *types.AdminReturnRefundReq) (*types
 	// 事务：状态流转 refunding + 写入 outbox 消息（保证原子性）
 	// 退款实际由 payment-service 异步处理，order-service 通过 outbox 可靠投递退款请求，
 	// 通过消费 payment.refund.completed 事件将退货单流转到 completed。
-	payload := mq.BuildRefundRequestPayload(r, req.Amount)
+	if math.IsNaN(req.Amount) || math.IsInf(req.Amount, 0) || req.Amount <= 0 || req.Amount > r.RefundAmount {
+		return nil, common.ErrParam
+	}
+	order, err := l.svcCtx.ShopOrderModel.FindOne(l.ctx, r.OrderId)
+	if err != nil {
+		return nil, common.ErrOrderNotFound
+	}
+	payload := mq.BuildRefundRequestPayload(r, req.Amount, order.OrderNo)
 	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, session sqlx.Session) error {
-		if err := l.svcCtx.ReturnOrderModel.UpdateStatusWithSession(ctx, session, req.Id, model.ReturnStatusRefunding); err != nil {
+		res, err := session.ExecCtx(ctx, `UPDATE return_order SET status='refunding',refund_amount=?,update_time=NOW() WHERE id=? AND status='return_received'`, req.Amount, req.Id)
+		if err != nil {
 			return err
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return common.ErrStatusInvalid
 		}
 		if err := model.InsertOutbox(ctx, session, r.ReturnNo, mq.MessageTypeRefundRequest, payload); err != nil {
 			return err

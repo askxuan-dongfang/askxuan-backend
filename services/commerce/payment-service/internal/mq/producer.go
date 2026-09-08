@@ -31,6 +31,9 @@ type PaymentNotify struct {
 // 比 PaymentNotify(action=refunded) 更结构化，包含 returnNo 便于消费端精确关联退货单。
 // 复用 payment.events exchange 发布，order-service 可按需消费。
 type RefundCompletedEvent struct {
+	OrderNo   string  `json:"orderNo"`
+	OrderType string  `json:"orderType"`
+	Action    string  `json:"action"`
 	ReturnNo  string  `json:"returnNo"`         // 退货单号
 	PaymentNo string  `json:"paymentNo"`        // 支付单号
 	RefundNo  string  `json:"refundNo"`         // 退款单号

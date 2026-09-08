@@ -311,6 +311,9 @@ func toTypesDiyOrderDetail(ctx context.Context, svcCtx *svc.ServiceContext, o *m
 		bt = *t
 	}
 	t := toTypesDiyOrder(o, items, bt)
+	if row := model.ReadOrderLogistics(ctx, svcCtx.DB, o.Id); row != nil {
+		t.Logistics = &types.OrderLogistics{ExpressCompany: row.ExpressCompany, TrackingNo: row.TrackingNo, ShipTime: row.ShipTime}
+	}
 	return &t
 }
 
@@ -323,5 +326,8 @@ func toTypesDiyOrderDetailWithTask(ctx context.Context, svcCtx *svc.ServiceConte
 		}
 	}
 	t := toTypesDiyOrder(o, items, bt)
+	if row := model.ReadOrderLogistics(ctx, svcCtx.DB, o.Id); row != nil {
+		t.Logistics = &types.OrderLogistics{ExpressCompany: row.ExpressCompany, TrackingNo: row.TrackingNo, ShipTime: row.ShipTime}
+	}
 	return &t
 }

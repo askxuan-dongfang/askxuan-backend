@@ -82,9 +82,9 @@ func pointsHandler(store points.Store, admin bool, action string) http.HandlerFu
 		case "ledger":
 			data, err = store.Entries(r.Context(), user, page)
 		case "products":
-			data, err = store.Products(r.Context(), admin, page)
+			data, err = store.Products(r.Context(), admin, page, r.URL.Query().Get("keyword"), r.URL.Query().Get("status"))
 		case "orders":
-			data, err = store.Orders(r.Context(), user, admin, page)
+			data, err = store.Orders(r.Context(), user, admin, page, r.URL.Query().Get("keyword"), r.URL.Query().Get("status"))
 		case "report":
 			data, err = store.Report(r.Context())
 		case "save":

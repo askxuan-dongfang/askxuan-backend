@@ -38,3 +38,5 @@ DiyRpc:
       - localhost:2379
     Key: diy.rpc
 
+
+AuthSecret: "askxuan-access-secret-change-in-prod"

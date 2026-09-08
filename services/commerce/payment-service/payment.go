@@ -105,6 +105,13 @@ func startRefundRequestConsumer(ctx context.Context, c config.Config, svcCtx *sv
 			EnableDeadLetter: true,
 			Handler: mq.NewRefundRequestHandler(mq.RefundRequestDeps{
 				RefundFunc: refundFunc,
+				ResolvePayment: func(ctx context.Context, kind, no string) (string, error) {
+					p, err := svcCtx.PaymentModel.FindByOrder(ctx, kind, no)
+					if err != nil {
+						return "", err
+					}
+					return p.PaymentNo, nil
+				},
 				Redis:      svcCtx.Redis,
 				MqProducer: svcCtx.MqProducer,
 			}),

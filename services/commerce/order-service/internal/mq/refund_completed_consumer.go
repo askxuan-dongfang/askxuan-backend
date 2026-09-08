@@ -39,6 +39,8 @@ type RefundCompletedEvent struct {
 // RefundCompletedDeps 退款完成 handler 的依赖。
 // 通过显式注入依赖避免 mq ↔ svc 循环依赖。
 type RefundCompletedDeps struct {
+	FindRefunding    func(context.Context, int64) (*model.ReturnOrder, error)
+	Finalize         func(context.Context, *model.ShopOrder, *model.ReturnOrder) error
 	ShopOrderModel   model.ShopOrderModel
 	ReturnOrderModel model.ReturnOrderModel
 	Redis            *redis.Redis
@@ -47,8 +49,8 @@ type RefundCompletedDeps struct {
 // NewRefundCompletedHandler 返回退款完成事件的 handler。
 //
 // 幂等策略：
-//  1. 用 Redis SETNX 标记 returnNo 已处理（24h TTL），防止同一退款事件重复流转
-//  2. 状态机校验：仅 refunding → completed 合法，已完成的状态变更会被 CanReturnTransit 拒绝
+//  1. 按业务订单定位 refunding 退货单，避免全局分页遗漏。
+//  2. Finalize 使用库存幂等释放与数据库条件更新，事务失败时允许消息重投。
 //
 // 关联退货单的方式：通过 OrderNo 关联到 shop_order，再通过 shop_order.id
 // 关联到 return_order.order_id。一个订单可能有多个退货单，这里只流转最近一笔 refunding 状态的退货单。
@@ -80,21 +82,31 @@ func NewRefundCompletedHandler(deps RefundCompletedDeps) func([]byte) error {
 		o, err := deps.ShopOrderModel.FindByOrderNo(ctx, evt.OrderNo)
 		if err != nil {
 			logx.Errorf("退款完成通知：查找订单失败 orderNo=%s: %v", evt.OrderNo, err)
-			// 不重投，避免消息堆积；后续可由对账任务补偿
-			return nil
+			return err
 		}
 
-		// 查询该订单下 refunding 状态的退货单
-		list, _, err := deps.ReturnOrderModel.FindList(ctx, model.ReturnStatusRefunding, 1, 50)
-		if err != nil {
-			logx.Errorf("退款完成通知：查询退款中退货单失败: %v", err)
-			return nil
-		}
 		var target *model.ReturnOrder
-		for _, r := range list {
-			if r.OrderId == o.Id {
-				target = r
-				break
+		if deps.FindRefunding != nil {
+			target, err = deps.FindRefunding(ctx, o.Id)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Compatibility for callers without a scoped query: scan every page.
+			for page := 1; target == nil; page++ {
+				list, total, err := deps.ReturnOrderModel.FindList(ctx, model.ReturnStatusRefunding, page, 50)
+				if err != nil {
+					return err
+				}
+				for _, r := range list {
+					if r.OrderId == o.Id {
+						target = r
+						break
+					}
+				}
+				if len(list) < 50 || int64(page*50) >= total {
+					break
+				}
 			}
 		}
 		if target == nil {
@@ -102,29 +114,10 @@ func NewRefundCompletedHandler(deps RefundCompletedDeps) func([]byte) error {
 			return nil
 		}
 
-		// 幂等去重：用 return_no 在 Redis 标记，TTL 24h
-		idemKey := "order:refund:completed:" + target.ReturnNo
-		if deps.Redis != nil {
-			ok, _ := deps.Redis.SetnxEx(idemKey, "1", 86400)
-			if !ok {
-				logx.Infof("退款完成通知：退货单 %s 已处理过，跳过", target.ReturnNo)
-				return nil
-			}
+		if deps.Finalize != nil {
+			return deps.Finalize(ctx, o, target)
 		}
-
-		// 状态机校验
-		if !model.CanReturnTransit(target.Status, model.ReturnStatusCompleted) {
-			logx.Infof("退款完成通知：退货单 %s 状态 %s 无法流转到 completed，跳过",
-				target.ReturnNo, target.Status)
-			return nil
-		}
-
 		if _, err := deps.ReturnOrderModel.UpdateStatus(ctx, target.Id, model.ReturnStatusCompleted); err != nil {
-			logx.Errorf("退款完成通知：更新退货单状态失败 returnNo=%s: %v", target.ReturnNo, err)
-			// 状态更新失败则回滚幂等标记，允许下次重试
-			if deps.Redis != nil {
-				_, _ = deps.Redis.Del(idemKey)
-			}
 			return err
 		}
 		logx.Infof("退款完成通知：退货单 %s 已流转到 completed", target.ReturnNo)
@@ -135,9 +128,9 @@ func NewRefundCompletedHandler(deps RefundCompletedDeps) func([]byte) error {
 // BuildRefundRequestPayload 构造写入 outbox 的 refund.request 消息体。
 // 此消息会被 payment-service 消费（或通过 gateway 转发到 payment-service 退款接口）。
 //
-// 注意：paymentNo 当前仍按 callPaymentRefund 的临时构造方式（PAY-{orderId}），
-// 待 payment-service 提供按 orderNo 查询支付单的能力后可移除该字段。
-func BuildRefundRequestPayload(r *model.ReturnOrder, amount float64) string {
+// 生产调用传入真实 orderNo，由 payment-service 查询关联支付单；
+// 不传 orderNo 的旧调用保持兼容。
+func BuildRefundRequestPayload(r *model.ReturnOrder, amount float64, orderNo ...string) string {
 	evt := map[string]interface{}{
 		"returnNo":  r.ReturnNo,
 		"returnId":  r.Id,
@@ -147,6 +140,10 @@ func BuildRefundRequestPayload(r *model.ReturnOrder, amount float64) string {
 		"amount":    amount,
 		"reason":    r.Reason,
 		"time":      time.Now().Format("2006-01-02 15:04:05"),
+	}
+	if len(orderNo) > 0 {
+		evt["orderNo"] = orderNo[0]
+		evt["paymentNo"] = ""
 	}
 	body, _ := json.Marshal(evt)
 	return string(body)

@@ -3,7 +3,6 @@ package logic
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/payment-service/internal/model"
@@ -35,41 +34,12 @@ func (l *RefundLogic) Refund(req *types.RefundReq) (*types.RefundResp, error) {
 		return nil, common.ErrPaymentNotFound
 	}
 
-	if !model.CanPaymentTransit(p.Status, model.PaymentStatusRefunding) {
-		return nil, common.ErrStatusInvalid
-	}
-	if req.Amount > p.Amount {
-		return nil, common.NewBizError(common.ErrParam.Code, "退款金额超过支付金额")
-	}
-
-	// 创建退款单
-	created, err := l.svcCtx.RefundModel.Insert(l.ctx, &model.Refund{
-		PaymentId: p.Id,
-		Amount:    req.Amount,
-		Reason:    req.Reason,
-		Status:    model.RefundStatusProcessing,
-	})
+	created, err := model.AtomicMockRefund(l.ctx, l.svcCtx.DB, p.Id, req.Amount, req.Reason)
 	if err != nil {
-		l.Errorf("创建退款单失败: %v", err)
-		return nil, common.ErrSystem
+		return nil, err
 	}
-	// 写入退款幂等标记（24 小时），同一退款单重复请求时可据此识别
-	_, _ = l.svcCtx.Redis.SetnxEx("pay:refund:idem:"+created.RefundNo, strconv.FormatInt(created.Id, 10), 86400)
-
-	// 支付单状态流转 success → refunding
-	if _, err := l.svcCtx.PaymentModel.UpdateStatus(l.ctx, p.Id, model.PaymentStatusRefunding, ""); err != nil {
-		l.Errorf("更新支付状态失败: %v", err)
-		return nil, common.ErrSystem
-	}
-
-	// MVP mock 第三方退款立即成功
-	if _, err := l.svcCtx.RefundModel.UpdateStatus(l.ctx, created.Id, model.RefundStatusSuccess); err != nil {
-		l.Errorf("更新退款状态失败: %v", err)
-		return nil, common.ErrSystem
-	}
-	refunded, err := l.svcCtx.PaymentModel.UpdateStatus(l.ctx, p.Id, model.PaymentStatusRefunded, "")
+	refunded, err := l.svcCtx.PaymentModel.FindByPaymentNo(l.ctx, p.PaymentNo)
 	if err != nil {
-		l.Errorf("更新支付状态失败: %v", err)
 		return nil, common.ErrSystem
 	}
 

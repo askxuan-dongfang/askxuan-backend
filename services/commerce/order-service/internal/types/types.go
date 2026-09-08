@@ -39,6 +39,9 @@ type ShopOrderLogistics struct {
 
 // ReturnOrder 退换货订单
 type ReturnOrder struct {
+	Carrier      string  `json:"carrier"`
+	TrackingNo   string  `json:"trackingNo"`
+	ReviewNote   string  `json:"reviewNote"`
 	Id           int64   `json:"id"`
 	ReturnNo     string  `json:"returnNo"`
 	OrderId      int64   `json:"orderId"`

@@ -330,6 +330,12 @@ func (m *defaultDiyOrderModel) CancelAndRestock(ctx context.Context, id int64) (
 		if rowsErr != nil || rows != 1 {
 			return ErrDiyOrderStateConflict
 		}
+		if order.PaymentStatus == "success" {
+			if err := enqueueCancelledRefund(ctx, session, order); err != nil {
+				return err
+			}
+			order.PaymentStatus = "refunding"
+		}
 		updated = &order
 		return nil
 	})
