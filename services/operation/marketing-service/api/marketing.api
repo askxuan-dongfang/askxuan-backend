@@ -189,12 +189,12 @@ type (
         Id         int64   `path:"id"`
         Name       string  `json:"name,optional"`
         Type       string  `json:"type,optional"`
-        Value      float64 `json:"value,optional"`
-        MinAmount  float64 `json:"minAmount,optional"`
-        CategoryId string  `json:"categoryId,optional"`
+        Value      *float64 `json:"value,optional"`
+        MinAmount  *float64 `json:"minAmount,optional"`
+        CategoryId *string  `json:"categoryId,optional"`
         StartTime  string  `json:"startTime,optional"`
         EndTime    string  `json:"endTime,optional"`
-        TotalCount int     `json:"totalCount,optional"`
+        TotalCount *int     `json:"totalCount,optional"`
         Status     string  `json:"status,optional"`
     }
 

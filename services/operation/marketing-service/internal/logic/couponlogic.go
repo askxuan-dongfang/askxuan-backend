@@ -229,7 +229,7 @@ func NewAdminCouponUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 
 // Update 更新优惠券，不存在返回 40404
 func (l *AdminCouponUpdateLogic) Update(req *types.CouponUpdateReq) (*types.IdResp, error) {
-	c, ok := model.UpdateCoupon(req.Id, model.Coupon{
+	c, ok := model.UpdateCoupon(req.Id, model.CouponPatch{
 		Name:       req.Name,
 		Type:       req.Type,
 		Value:      req.Value,

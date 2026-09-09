@@ -77,8 +77,20 @@ func InsertCoupon(c Coupon) Coupon {
 	return c
 }
 
-func UpdateCoupon(id int64, c Coupon) (Coupon, bool) {
-	res, err := db.ExecCtx(context.Background(), `UPDATE coupon SET name=COALESCE(NULLIF(?,''),name),type=COALESCE(NULLIF(?,''),type),value=?,min_amount=?,category_id=?,start_time=COALESCE(NULLIF(?,''),start_time),end_time=COALESCE(NULLIF(?,''),end_time),total_count=?,status=COALESCE(NULLIF(?,''),status) WHERE id=?`, c.Name, c.Type, c.Value, c.MinAmount, c.CategoryId, c.StartTime, c.EndTime, c.TotalCount, c.Status, id)
+type CouponPatch struct {
+	Name       string
+	Type       string
+	Value      *float64
+	MinAmount  *float64
+	CategoryId *string
+	StartTime  string
+	EndTime    string
+	TotalCount *int
+	Status     string
+}
+
+func UpdateCoupon(id int64, c CouponPatch) (Coupon, bool) {
+	res, err := db.ExecCtx(context.Background(), `UPDATE coupon SET name=COALESCE(NULLIF(?,''),name),type=COALESCE(NULLIF(?,''),type),value=COALESCE(?,value),min_amount=COALESCE(?,min_amount),category_id=COALESCE(?,category_id),start_time=COALESCE(NULLIF(?,''),start_time),end_time=COALESCE(NULLIF(?,''),end_time),total_count=COALESCE(?,total_count),status=COALESCE(NULLIF(?,''),status) WHERE id=?`, c.Name, c.Type, c.Value, c.MinAmount, c.CategoryId, c.StartTime, c.EndTime, c.TotalCount, c.Status, id)
 	if err != nil {
 		return Coupon{}, false
 	}

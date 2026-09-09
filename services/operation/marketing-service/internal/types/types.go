@@ -209,16 +209,16 @@ type CouponCreateReq struct {
 
 // CouponUpdateReq 更新优惠券
 type CouponUpdateReq struct {
-	Id         int64   `path:"id"`
-	Name       string  `json:"name,optional"`
-	Type       string  `json:"type,optional"`
-	Value      float64 `json:"value,optional"`
-	MinAmount  float64 `json:"minAmount,optional"`
-	CategoryId string  `json:"categoryId,optional"`
-	StartTime  string  `json:"startTime,optional"`
-	EndTime    string  `json:"endTime,optional"`
-	TotalCount int     `json:"totalCount,optional"`
-	Status     string  `json:"status,optional"`
+	Id         int64    `path:"id"`
+	Name       string   `json:"name,optional"`
+	Type       string   `json:"type,optional"`
+	Value      *float64 `json:"value,optional"`
+	MinAmount  *float64 `json:"minAmount,optional"`
+	CategoryId *string  `json:"categoryId,optional"`
+	StartTime  string   `json:"startTime,optional"`
+	EndTime    string   `json:"endTime,optional"`
+	TotalCount *int     `json:"totalCount,optional"`
+	Status     string   `json:"status,optional"`
 }
 
 // CouponReceiveReq 领取优惠券
