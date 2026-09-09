@@ -17,3 +17,6 @@ Telemetry:
 # MySQL 数据源
 MySQL:
   DataSource: "marketing_user:Askxuan2026!@tcp(127.0.0.1:3306)/askxuan_marketing?charset=utf8mb4&parseTime=true&loc=Local"
+
+Auth:
+  AccessSecret: "askxuan-access-secret-change-in-prod"

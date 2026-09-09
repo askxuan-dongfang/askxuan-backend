@@ -18,6 +18,7 @@ import (
 // 平台台：/api/v1/admin/marketing/*（网关层鉴权 + 角色校验）
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
+	registerRewards(server, svcCtx)
 
 	// ===== C 端 =====
 	server.AddRoutes([]rest.Route{

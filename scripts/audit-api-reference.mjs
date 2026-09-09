@@ -30,7 +30,7 @@ const runtimeContracts = new Map();
 const routePattern =
   /Method:\s*http\.Method(Get|Post|Put|Delete|Patch)[\s\S]*?Path:\s*"([^"]+)"/g;
 
-for (const file of walk(join(repositoryRoot, "services"), "routes.go")) {
+for (const file of [...walk(join(repositoryRoot, "services"), "routes.go"), ...walk(join(repositoryRoot, "services"), "rewards.go")]) {
   const source = readFileSync(file, "utf8");
   const blocks = source.includes("rest.WithPrefix(")
     ? [...source.matchAll(/server\.AddRoutes\(([\s\S]*?)\n\t\)/g)].map(

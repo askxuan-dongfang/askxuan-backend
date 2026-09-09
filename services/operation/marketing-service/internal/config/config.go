@@ -11,4 +11,5 @@ type MySQLConf struct {
 type Config struct {
 	rest.RestConf
 	MySQL MySQLConf
+	Auth  struct{ AccessSecret string }
 }
