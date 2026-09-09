@@ -27,6 +27,10 @@ func TestRoleAllowedForAdminPath(t *testing.T) {
 		{name: "shop products", path: "/api/v1/admin/products", role: "shop_admin", allowed: true},
 		{name: "master community", path: "/api/v1/admin/masters/community/posts", role: "master", allowed: true},
 		{name: "temple cannot publish as master", path: "/api/v1/admin/masters/community/posts", role: "temple_admin", allowed: false},
+		{name: "shop cannot configure rewards", path: "/api/v1/admin/marketing/rewards/campaigns", role: "shop_admin", allowed: false},
+		{name: "platform rewards", path: "/api/v1/admin/marketing/rewards/campaigns", role: "platform_super", allowed: true},
+		{name: "shop cannot configure accounts", path: "/api/v1/admin/auth/accounts", role: "shop_admin", allowed: false},
+		{name: "shop logistics preserved", path: "/api/v1/admin/logistics/express", role: "shop_admin", allowed: true},
 		{name: "platform override", path: "/api/v1/admin/products", role: "platform_super", allowed: true},
 	}
 	for _, tt := range tests {
