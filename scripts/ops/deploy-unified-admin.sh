@@ -34,7 +34,7 @@ for mod in sorted(root.glob('services/*/*-service')):
  for mount in c['Mounts']:
   if mount['Type']=='volume':volumes[mount['Name']]={'external':True,'name':mount['Name']}
   definition['volumes'].append({'type':mount['Type'],'source':mount.get('Name') if mount['Type']=='volume' else mount['Source'],'target':mount['Destination'],'read_only':not mount['RW']})
- definition['ports']=[{'target':int(port.split('/')[0]),'published':binding['HostPort'],'host_ip':binding['HostIp'],'protocol':port.split('/')[1]} for port,bindings in (host.get('PortBindings') or {}).items() for binding in (bindings or [])]
+ definition['ports']=[{'target':int(port.split('/')[0]),'published':binding['HostPort'],'host_ip':binding['HostIp'] or '0.0.0.0','protocol':port.split('/')[1]} for port,bindings in (host.get('PortBindings') or {}).items() for binding in (bindings or [])]
  for network,detail in c['NetworkSettings']['Networks'].items():
   networks[network]={'external':True,'name':network}
   definition['networks'][network]={'aliases':list(dict.fromkeys([name]+(detail.get('Aliases') or [])))}
@@ -52,6 +52,18 @@ for path,data in [(Path(candidate)/'compose.release.json',services),(Path(backup
 PY
  touch "$backup/prepared"
 fi
+# Older Docker versions encode an all-interface published port with an empty HostIp.
+# Compose requires either an explicit address or omission; keep the existing binding.
+python3 - "$candidate/compose.release.json" "$backup/compose.rollback.json" <<'PYPORT'
+import json,sys
+from pathlib import Path
+for name in sys.argv[1:]:
+ p=Path(name);data=json.loads(p.read_text())
+ for service in data['services'].values():
+  for port in service.get('ports',[]):
+   if not port.get('host_ip'):port.pop('host_ip',None)
+ p.write_text(json.dumps(data))
+PYPORT
 echo BACKUP_OK
 docker compose -p askxuan -f "$candidate/compose.release.json" config --quiet
 # Build every Go application, with gateway last at activation. The shared compiler cache is retained.
