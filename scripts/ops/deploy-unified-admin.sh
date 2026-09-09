@@ -73,12 +73,16 @@ while IFS=$'\t' read -r service path binary; do
 done < "$candidate/services.tsv"
 # Build all web delivery targets on ECS from the exact uploaded Git archives.
 node_image="${ASKXUAN_NODE_IMAGE:-node:22-bookworm-slim}"
+if ! docker image inspect "$node_image" >/dev/null 2>&1 && docker image inspect askxuan/taibu-mcp:local >/dev/null 2>&1; then
+ # The cached MCP image contains Node 20 (the apps require Node >= 20); use it only as a compiler.
+ node_image=askxuan/taibu-mcp:local
+fi
 if ! docker image inspect "$node_image" >/dev/null 2>&1; then
  docker pull docker.1ms.run/library/node:22-bookworm-slim > "$candidate/node-pull.log" 2>&1
  docker tag docker.1ms.run/library/node:22-bookworm-slim "$node_image"
 fi
 for app in web-h5 web-platform-admin web-shop-admin web-temple-admin; do
- docker run --rm -v "$candidate/frontend:/workspace" -v "$base/runtime/npm-cache:/root/.npm" -w "/workspace/apps/$app" "$node_image" sh -c 'npm ci --registry=https://registry.npmmirror.com && npm run build' > "$candidate/build-$app.log" 2>&1
+ docker run --rm --user 0:0 -v "$candidate/frontend:/workspace" -v "$base/runtime/npm-cache:/root/.npm" -w "/workspace/apps/$app" "$node_image" sh -c 'npm ci --registry=https://registry.npmmirror.com && npm run build' > "$candidate/build-$app.log" 2>&1
  echo "BUILT $app"
 done
 mkdir -p "$public"
