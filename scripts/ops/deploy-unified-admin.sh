@@ -7,7 +7,7 @@ release="${1:?release}"; backend_sha="${2:?backend SHA}"; h5_sha="${3:?H5 SHA}";
 [[ "$release" =~ ^[a-zA-Z0-9-]+$ && "$backend_sha" =~ ^[0-9a-f]{7,40}$ && "$h5_sha" =~ ^[0-9a-f]{7,40}$ && "$frontend_sha" =~ ^[0-9a-f]{7,40}$ ]]
 base=/opt/askxuan
 candidate="$base/runtime/$release"; backup="$base/backups/$release"; public="/var/www/askxuan/releases/$release/public"
-mkdir -p "$candidate/backend" "$candidate/frontend/apps/web-h5" "$backup"
+mkdir -p "$candidate/backend" "$candidate/frontend/apps/web-h5" "$backup" "$base/frontend/apps/web-h5"
 test ! -f "$candidate/DEPLOYED"
 source "$base/runtime/secrets.env"
 tar -xzf "$base/runtime/askxuan-backend-$backend_sha.tar.gz" -C "$candidate/backend"
