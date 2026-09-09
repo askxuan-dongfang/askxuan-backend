@@ -137,6 +137,9 @@ func (c Campaign) phase(now int64) string {
 	if now >= c.EndsAt {
 		return "awaiting_draw"
 	}
+	if c.Kind == "wheel" && c.AwardedCount >= c.PrizeQuantity {
+		return "exhausted"
+	}
 	if c.ParticipantCount >= c.Capacity {
 		return "full"
 	}

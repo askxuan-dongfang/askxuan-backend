@@ -276,6 +276,11 @@ func TestMySQLRewards(t *testing.T) {
 		c.Budget = 50000
 		c = create(c)
 		for i := 0; i < 20; i++ {
+			current, err := s.campaign(ctx, c.ID, true)
+			must(err)
+			if current.Phase == "exhausted" {
+				break
+			}
 			v, e := s.Join(ctx, c.ID, fmt.Sprintf("wheel-%d", i), 10)
 			must(e)
 			v2, e := s.Join(ctx, c.ID, fmt.Sprintf("wheel-%d", i), 10)
@@ -286,6 +291,12 @@ func TestMySQLRewards(t *testing.T) {
 		}
 		d, e := s.Detail(ctx, c.ID, "", false)
 		must(e)
+		if _, err := s.Join(ctx, c.ID, "wheel-after-exhausted", 10); !errors.Is(err, ErrClosed) {
+			t.Fatalf("charged zero-chance entry: %v", err)
+		}
+		if d.Campaign.Phase != "exhausted" {
+			t.Fatal("wheel did not close when prizes exhausted")
+		}
 		if len(d.Winners) != 3 {
 			t.Fatal("wheel stock not conserved")
 		}
