@@ -96,6 +96,8 @@ done
 chmod -R a+rX "/var/www/askxuan/releases/$release"
 # Nothing live is changed before every build succeeds.
 docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -h127.0.0.1 -uroot < "$candidate/backend/scripts/db/20260909_free_rewards.sql"
+docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -h127.0.0.1 -uroot < "$candidate/backend/scripts/db/20260910_points_rewards.sql"
+docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -h127.0.0.1 -uroot < "$candidate/backend/scripts/db/20260910_points_rewards_permissions.sql"
 rollback() {
  trap - ERR
  cp "$backup/marketing.yaml" "$base/backend/.docker/etc/marketing/marketing.yaml"

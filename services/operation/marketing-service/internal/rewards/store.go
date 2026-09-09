@@ -1,4 +1,5 @@
-// Package rewards owns free, platform-funded campaigns independently of monetary and points ledgers.
+// Package rewards owns platform-funded campaigns. Participation debits the existing
+// points ledger in the same MySQL transaction as the participation code.
 package rewards
 
 import (
@@ -21,6 +22,8 @@ var ErrInvalid = errors.New("活动参数不正确，请检查奖品、预算、
 var ErrClosed = errors.New("活动未开始、已截止或名额已满")
 var ErrConflict = errors.New("状态已变化，请刷新；已发布的活动规则不能修改")
 var ErrNotFound = errors.New("记录不存在或无权操作")
+var ErrBalance = errors.New("积分不足，请返回积分页面查看余额")
+var ErrPrice = errors.New("请确认本期参与积分后重试")
 
 type Store struct {
 	DB     *sql.DB
@@ -37,6 +40,7 @@ type Campaign struct {
 	Rules            string `json:"rules"`
 	PrizeValue       int64  `json:"prizeValue"`
 	Budget           int64  `json:"budget"`
+	PointsCost       int64  `json:"pointsCost"`
 	PrizeQuantity    int    `json:"prizeQuantity"`
 	Capacity         int    `json:"capacity"`
 	ParticipantCount int    `json:"participantCount"`
@@ -53,13 +57,14 @@ type Campaign struct {
 	Algorithm        string `json:"algorithm"`
 }
 type Entry struct {
-	ID         int64  `json:"id"`
-	CampaignID int64  `json:"campaignId"`
-	UserID     string `json:"-"`
-	Code       string `json:"code"`
-	Outcome    string `json:"outcome"`
-	CreatedAt  int64  `json:"createdAt"`
-	Title      string `json:"title"`
+	ID          int64  `json:"id"`
+	CampaignID  int64  `json:"campaignId"`
+	UserID      string `json:"-"`
+	Code        string `json:"code"`
+	Outcome     string `json:"outcome"`
+	CreatedAt   int64  `json:"createdAt"`
+	Title       string `json:"title"`
+	PointsSpent int64  `json:"pointsSpent"`
 }
 type Order struct {
 	ID          int64  `json:"id"`
@@ -80,9 +85,10 @@ type Order struct {
 	CompletedAt int64  `json:"completedAt"`
 }
 type Detail struct {
-	Campaign Campaign `json:"campaign"`
-	Mine     *Entry   `json:"mine"`
-	Winners  []Entry  `json:"winners"`
+	Campaign      Campaign `json:"campaign"`
+	Mine          *Entry   `json:"mine"`
+	Winners       []Entry  `json:"winners"`
+	PointsBalance int64    `json:"pointsBalance"`
 }
 type Audit struct {
 	ID         int64  `json:"id"`
@@ -101,20 +107,20 @@ type OrderAction struct {
 	TrackingNo string `json:"trackingNo"`
 }
 
-const campaignCols = `id,title,kind,prize_name,image,description,rules,prize_value,budget,prize_quantity,capacity,participant_count,awarded_count,starts_at,ends_at,status,version,drawn_at,pool_digest,announcement,created_at,published_at`
-const entryCols = `id,campaign_id,user_id,code,outcome,created_at`
+const campaignCols = `id,title,kind,prize_name,image,description,rules,prize_value,budget,prize_quantity,capacity,participant_count,awarded_count,starts_at,ends_at,status,version,drawn_at,pool_digest,announcement,created_at,published_at,points_cost`
+const entryCols = `id,campaign_id,user_id,code,outcome,created_at,points_spent`
 const orderCols = `id,campaign_id,entry_id,user_id,prize_name,code,status,receiver,mobile,address,carrier,tracking_no,created_at,claimed_at,shipped_at,completed_at`
 
 type scanner interface{ Scan(...any) error }
 
 func scanCampaign(r scanner) (c Campaign, err error) {
-	err = r.Scan(&c.ID, &c.Title, &c.Kind, &c.PrizeName, &c.Image, &c.Description, &c.Rules, &c.PrizeValue, &c.Budget, &c.PrizeQuantity, &c.Capacity, &c.ParticipantCount, &c.AwardedCount, &c.StartsAt, &c.EndsAt, &c.Status, &c.Version, &c.DrawnAt, &c.PoolDigest, &c.Announcement, &c.CreatedAt, &c.PublishedAt)
+	err = r.Scan(&c.ID, &c.Title, &c.Kind, &c.PrizeName, &c.Image, &c.Description, &c.Rules, &c.PrizeValue, &c.Budget, &c.PrizeQuantity, &c.Capacity, &c.ParticipantCount, &c.AwardedCount, &c.StartsAt, &c.EndsAt, &c.Status, &c.Version, &c.DrawnAt, &c.PoolDigest, &c.Announcement, &c.CreatedAt, &c.PublishedAt, &c.PointsCost)
 	c.Phase = c.phase(time.Now().Unix())
 	c.Algorithm = "crypto-rand-uniform-v1"
 	return
 }
 func scanEntry(r scanner) (e Entry, err error) {
-	err = r.Scan(&e.ID, &e.CampaignID, &e.UserID, &e.Code, &e.Outcome, &e.CreatedAt)
+	err = r.Scan(&e.ID, &e.CampaignID, &e.UserID, &e.Code, &e.Outcome, &e.CreatedAt, &e.PointsSpent)
 	return
 }
 func scanOrder(r scanner) (o Order, err error) {
@@ -141,6 +147,9 @@ func validText(s string, min, max int) bool {
 	return n >= min && n <= max
 }
 func Validate(c Campaign, now int64) error {
+	if c.PointsCost < 1 || c.PointsCost > 100000000 {
+		return ErrInvalid
+	}
 	if !validText(c.Title, 1, 120) || !validText(c.PrizeName, 1, 120) || !validText(c.Description, 1, 10000) || !validText(c.Rules, 1, 10000) || (c.Kind != "pool" && c.Kind != "wheel") || c.PrizeValue < 1 || c.PrizeValue > 100000000 || c.PrizeQuantity < 1 || c.PrizeQuantity > 1000 || c.Capacity < c.PrizeQuantity || c.Capacity > 100000 || c.Budget < c.PrizeValue*int64(c.PrizeQuantity) || c.Budget > 100000000000 || c.StartsAt < 1 || c.EndsAt <= c.StartsAt || c.EndsAt <= now || c.EndsAt-c.StartsAt > 366*86400 {
 		return ErrInvalid
 	}
@@ -194,7 +203,7 @@ func (s Store) Save(ctx context.Context, c Campaign, actor string) (Campaign, er
 	}
 	e := s.transaction(ctx, func(tx *sql.Tx) error {
 		if c.ID == 0 {
-			r, e := tx.ExecContext(ctx, `INSERT INTO reward_campaign(title,kind,prize_name,image,description,rules,prize_value,budget,prize_quantity,capacity,starts_at,ends_at,announcement,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, c.Title, c.Kind, c.PrizeName, c.Image, c.Description, c.Rules, c.PrizeValue, c.Budget, c.PrizeQuantity, c.Capacity, c.StartsAt, c.EndsAt, "", time.Now().Unix())
+			r, e := tx.ExecContext(ctx, `INSERT INTO reward_campaign(title,kind,prize_name,image,description,rules,prize_value,budget,prize_quantity,capacity,starts_at,ends_at,announcement,created_at,points_cost) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, c.Title, c.Kind, c.PrizeName, c.Image, c.Description, c.Rules, c.PrizeValue, c.Budget, c.PrizeQuantity, c.Capacity, c.StartsAt, c.EndsAt, "", time.Now().Unix(), c.PointsCost)
 			if e != nil {
 				return e
 			}
@@ -210,12 +219,12 @@ func (s Store) Save(ctx context.Context, c Campaign, actor string) (Campaign, er
 			if old.Status != "draft" || c.Version != old.Version {
 				return ErrConflict
 			}
-			_, e = tx.ExecContext(ctx, `UPDATE reward_campaign SET title=?,kind=?,prize_name=?,image=?,description=?,rules=?,prize_value=?,budget=?,prize_quantity=?,capacity=?,starts_at=?,ends_at=?,version=version+1 WHERE id=?`, c.Title, c.Kind, c.PrizeName, c.Image, c.Description, c.Rules, c.PrizeValue, c.Budget, c.PrizeQuantity, c.Capacity, c.StartsAt, c.EndsAt, c.ID)
+			_, e = tx.ExecContext(ctx, `UPDATE reward_campaign SET title=?,kind=?,prize_name=?,image=?,description=?,rules=?,prize_value=?,budget=?,prize_quantity=?,capacity=?,starts_at=?,ends_at=?,points_cost=?,version=version+1 WHERE id=?`, c.Title, c.Kind, c.PrizeName, c.Image, c.Description, c.Rules, c.PrizeValue, c.Budget, c.PrizeQuantity, c.Capacity, c.StartsAt, c.EndsAt, c.PointsCost, c.ID)
 			if e != nil {
 				return e
 			}
 		}
-		return audit(ctx, tx, c.ID, 0, actor, "save_draft", "平台预算独立配置")
+		return audit(ctx, tx, c.ID, 0, actor, "save_draft", fmt.Sprintf("平台预算独立配置；每人每期 %d 积分", c.PointsCost))
 	})
 	if e != nil {
 		return c, e
@@ -271,6 +280,12 @@ func (s Store) Detail(ctx context.Context, id int64, user string, admin bool) (D
 		return d, e
 	}
 	d.Campaign = c
+	if !admin && user != "" {
+		e = tx.QueryRowContext(ctx, "SELECT balance FROM askxuan_payment.points_account WHERE user_id=?", user).Scan(&d.PointsBalance)
+		if e != nil && !errors.Is(e, sql.ErrNoRows) {
+			return d, e
+		}
+	}
 	if user != "" {
 		m, e := scanEntry(tx.QueryRowContext(ctx, "SELECT "+entryCols+" FROM reward_entry WHERE campaign_id=? AND user_id=?", id, user))
 		if e == nil {
@@ -316,7 +331,7 @@ func (s Store) Publish(ctx context.Context, id int64, actor string) error {
 		if e != nil {
 			return e
 		}
-		return audit(ctx, tx, id, 0, actor, "publish", "规则冻结，免费参与")
+		return audit(ctx, tx, id, 0, actor, "publish", fmt.Sprintf("规则冻结，每人每期 %d 积分", c.PointsCost))
 	})
 }
 func (s Store) Cancel(ctx context.Context, id int64, actor, reason string) error {
@@ -352,7 +367,7 @@ func newOrder(ctx context.Context, tx *sql.Tx, c Campaign, e Entry) error {
 	}
 	return audit(ctx, tx, c.ID, oid, "system", "award", e.Code)
 }
-func (s Store) Join(ctx context.Context, id int64, user string) (Entry, error) {
+func (s Store) Join(ctx context.Context, id int64, user string, expectedPoints int64) (Entry, error) {
 	var entry Entry
 	if user == "" || user == "0" {
 		return entry, ErrNotFound
@@ -373,7 +388,29 @@ func (s Store) Join(ctx context.Context, id int64, user string) (Entry, error) {
 		if c.phase(time.Now().Unix()) != "open" {
 			return ErrClosed
 		}
-		entry = Entry{CampaignID: id, UserID: user, Code: fmt.Sprintf("WX%08d-%06d", id, c.ParticipantCount+1), Outcome: "pending", CreatedAt: time.Now().Unix()}
+		if c.PointsCost < 1 || expectedPoints != c.PointsCost {
+			return ErrPrice
+		}
+		entry = Entry{CampaignID: id, UserID: user, Code: fmt.Sprintf("WX%08d-%06d", id, c.ParticipantCount+1), Outcome: "pending", CreatedAt: time.Now().Unix(), PointsSpent: c.PointsCost}
+		// The existing account lock also serializes redemption, payment refunds and
+		// joins to other campaigns. Missing accounts have no spendable points.
+		var balance int64
+		e = tx.QueryRowContext(ctx, "SELECT balance FROM askxuan_payment.points_account WHERE user_id=? FOR UPDATE", user).Scan(&balance)
+		if errors.Is(e, sql.ErrNoRows) {
+			return ErrBalance
+		}
+		if e != nil {
+			return e
+		}
+		if balance < c.PointsCost {
+			return ErrBalance
+		}
+		if _, e = tx.ExecContext(ctx, "UPDATE askxuan_payment.points_account SET balance=balance-? WHERE user_id=?", c.PointsCost, user); e != nil {
+			return e
+		}
+		if _, e = tx.ExecContext(ctx, `INSERT INTO askxuan_payment.points_ledger(user_id,event_key,kind,delta,balance_after,reference_no) VALUES(?,?,?,?,?,?)`, user, fmt.Sprintf("reward:%d:%s", id, user), "reward_"+c.Kind, -c.PointsCost, balance-c.PointsCost, entry.Code); e != nil {
+			return e
+		}
 		if c.Kind == "wheel" {
 			n, e := s.uniform(c.Capacity - c.ParticipantCount)
 			if e != nil {
@@ -384,7 +421,7 @@ func (s Store) Join(ctx context.Context, id int64, user string) (Entry, error) {
 				entry.Outcome = "won"
 			}
 		}
-		r, e := tx.ExecContext(ctx, `INSERT INTO reward_entry(campaign_id,user_id,code,outcome,created_at) VALUES(?,?,?,?,?)`, id, user, entry.Code, entry.Outcome, entry.CreatedAt)
+		r, e := tx.ExecContext(ctx, `INSERT INTO reward_entry(campaign_id,user_id,code,outcome,created_at,points_spent) VALUES(?,?,?,?,?,?)`, id, user, entry.Code, entry.Outcome, entry.CreatedAt, entry.PointsSpent)
 		if e != nil {
 			return e
 		}
@@ -403,7 +440,7 @@ func (s Store) Join(ctx context.Context, id int64, user string) (Entry, error) {
 		if e != nil {
 			return e
 		}
-		return audit(ctx, tx, id, 0, user, "join", entry.Code+":"+entry.Outcome)
+		return audit(ctx, tx, id, 0, user, "join", fmt.Sprintf("%s:%s；扣除 %d 积分", entry.Code, entry.Outcome, entry.PointsSpent))
 	})
 	return entry, err
 }
@@ -468,7 +505,7 @@ func (s Store) Draw(ctx context.Context, id int64) error {
 				}
 			}
 		}
-		announcement := fmt.Sprintf("活动已结束。有效参与 %d 人，实际中奖 %d 人；奖品由平台提供，参与不扣积分。", len(entries), winners)
+		announcement := fmt.Sprintf("活动已结束。有效参与 %d 人，实际中奖 %d 人；每人参与消耗 %d 积分，奖品由平台预算提供。", len(entries), winners, c.PointsCost)
 		if len(entries) == 0 {
 			announcement = "活动已到截止时间，本期无人参与，未发放奖品。"
 		}
@@ -507,7 +544,7 @@ func (s Store) DrawDue(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 func (s Store) Entries(ctx context.Context, user string, page int) ([]Entry, error) {
-	rows, e := s.DB.QueryContext(ctx, `SELECT e.id,e.campaign_id,e.user_id,e.code,e.outcome,e.created_at,c.title FROM reward_entry e JOIN reward_campaign c ON c.id=e.campaign_id WHERE e.user_id=? ORDER BY e.id DESC LIMIT 20 OFFSET ?`, user, (page-1)*20)
+	rows, e := s.DB.QueryContext(ctx, `SELECT e.id,e.campaign_id,e.user_id,e.code,e.outcome,e.created_at,c.title,e.points_spent FROM reward_entry e JOIN reward_campaign c ON c.id=e.campaign_id WHERE e.user_id=? ORDER BY e.id DESC LIMIT 20 OFFSET ?`, user, (page-1)*20)
 	if e != nil {
 		return nil, e
 	}
@@ -515,7 +552,7 @@ func (s Store) Entries(ctx context.Context, user string, page int) ([]Entry, err
 	out := []Entry{}
 	for rows.Next() {
 		var v Entry
-		if e = rows.Scan(&v.ID, &v.CampaignID, &v.UserID, &v.Code, &v.Outcome, &v.CreatedAt, &v.Title); e != nil {
+		if e = rows.Scan(&v.ID, &v.CampaignID, &v.UserID, &v.Code, &v.Outcome, &v.CreatedAt, &v.Title, &v.PointsSpent); e != nil {
 			return nil, e
 		}
 		out = append(out, v)

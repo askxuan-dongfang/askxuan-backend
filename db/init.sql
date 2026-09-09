@@ -2439,14 +2439,14 @@ INSERT IGNORE INTO askxuan_ai.ai_report_product(code,title,subtitle,chapters_jso
 ('tarot','塔罗指引','借助象征与提问，探索内心关注',JSON_ARRAY('问题与牌阵','象征解读边界','当前关注','可能的选择','反思与行动'));
 
 
--- Platform-funded rewards. No points, payment or growth tables are read or written.
+-- Platform-funded prizes with participation charged to the existing points ledger.
 USE askxuan_marketing;
 CREATE TABLE IF NOT EXISTS reward_campaign (
  id BIGINT PRIMARY KEY AUTO_INCREMENT,
  title VARCHAR(120) NOT NULL, kind VARCHAR(16) NOT NULL,
  prize_name VARCHAR(120) NOT NULL, image VARCHAR(1000) NOT NULL DEFAULT '',
  description TEXT NOT NULL, rules TEXT NOT NULL,
- prize_value BIGINT NOT NULL, budget BIGINT NOT NULL,
+ prize_value BIGINT NOT NULL, budget BIGINT NOT NULL, points_cost BIGINT NOT NULL DEFAULT 0,
  prize_quantity INT NOT NULL, capacity INT NOT NULL,
  participant_count INT NOT NULL DEFAULT 0, awarded_count INT NOT NULL DEFAULT 0,
  starts_at BIGINT NOT NULL, ends_at BIGINT NOT NULL,
@@ -2458,7 +2458,7 @@ CREATE TABLE IF NOT EXISTS reward_campaign (
 CREATE TABLE IF NOT EXISTS reward_entry (
  id BIGINT PRIMARY KEY AUTO_INCREMENT, campaign_id BIGINT NOT NULL,
  user_id VARCHAR(64) NOT NULL, code VARCHAR(48) NOT NULL,
- outcome VARCHAR(16) NOT NULL DEFAULT 'pending', created_at BIGINT NOT NULL,
+ outcome VARCHAR(16) NOT NULL DEFAULT 'pending', created_at BIGINT NOT NULL, points_spent BIGINT NOT NULL DEFAULT 0,
  UNIQUE KEY uk_reward_user(campaign_id,user_id), UNIQUE KEY uk_reward_code(code),
  INDEX idx_reward_user(user_id,id),
  FOREIGN KEY(campaign_id) REFERENCES reward_campaign(id)
@@ -2480,3 +2480,7 @@ CREATE TABLE IF NOT EXISTS reward_audit (
  actor VARCHAR(64) NOT NULL, action VARCHAR(32) NOT NULL, detail TEXT NOT NULL, created_at BIGINT NOT NULL,
  INDEX idx_reward_audit_campaign(campaign_id,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Block old free-participation binaries after rollback without changing historical rows.
+DROP TRIGGER IF EXISTS reward_entry_require_points;
+CREATE TRIGGER reward_entry_require_points BEFORE INSERT ON reward_entry FOR EACH ROW SET NEW.points_spent = IF(NEW.points_spent > 0 AND NEW.points_spent = (SELECT points_cost FROM reward_campaign WHERE id=NEW.campaign_id), NEW.points_spent, NULL);

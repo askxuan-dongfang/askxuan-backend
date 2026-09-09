@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"os"
 	"strings"
 	"sync"
@@ -15,14 +15,14 @@ import (
 
 func fixture() Campaign {
 	now := time.Now().Unix()
-	return Campaign{Title: "测试免费好礼", Kind: "pool", PrizeName: "实物礼品", Description: "隔离验收", Rules: "免费参与，平台包邮", PrizeValue: 10000, Budget: 15000, PrizeQuantity: 1, Capacity: 100, StartsAt: now - 10, EndsAt: now + 3600}
+	return Campaign{Title: "测试积分好礼", Kind: "pool", PrizeName: "实物礼品", Description: "隔离验收", Rules: "消耗积分参与，平台包邮", PrizeValue: 10000, Budget: 15000, PointsCost: 10, PrizeQuantity: 1, Capacity: 100, StartsAt: now - 10, EndsAt: now + 3600}
 }
 func TestValidation(t *testing.T) {
 	c := fixture()
 	if e := Validate(c, time.Now().Unix()); e != nil {
 		t.Fatal(e)
 	}
-	for _, mutate := range []func(*Campaign){func(c *Campaign) { c.Budget = 9999 }, func(c *Campaign) { c.PrizeQuantity = 101 }, func(c *Campaign) { c.EndsAt = c.StartsAt }, func(c *Campaign) { c.Image = "javascript:alert(1)" }, func(c *Campaign) { c.Kind = "points" }, func(c *Campaign) { c.Capacity = 100001 }} {
+	for _, mutate := range []func(*Campaign){func(c *Campaign) { c.PointsCost = 0 }, func(c *Campaign) { c.PointsCost = -1 }, func(c *Campaign) { c.PointsCost = 100000001 }, func(c *Campaign) { c.Budget = 9999 }, func(c *Campaign) { c.PrizeQuantity = 101 }, func(c *Campaign) { c.EndsAt = c.StartsAt }, func(c *Campaign) { c.Image = "javascript:alert(1)" }, func(c *Campaign) { c.Kind = "points" }, func(c *Campaign) { c.Capacity = 100001 }} {
 		v := c
 		mutate(&v)
 		if Validate(v, time.Now().Unix()) == nil {
@@ -69,6 +69,31 @@ func TestMySQLRewards(t *testing.T) {
 		t.Fatal(e)
 	}
 	schema = []byte(strings.ReplaceAll(string(schema), "USE askxuan_marketing;", ""))
+	pointsSQL, e := os.ReadFile("../../../../../scripts/db/20260907_points_mall.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = db.Exec("CREATE DATABASE IF NOT EXISTS askxuan_payment"); e != nil {
+		t.Fatal(e)
+	}
+	pointsLines := []string{}
+	for _, line := range strings.Split(string(pointsSQL), "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "--") {
+			pointsLines = append(pointsLines, line)
+		}
+	}
+	for _, q := range strings.Split(strings.Join(pointsLines, "\n"), ";") {
+		if strings.TrimSpace(q) != "" {
+			if _, e = db.Exec(q); e != nil {
+				t.Fatal(e)
+			}
+		}
+	}
+	migration, e := os.ReadFile("../../../../../scripts/db/20260910_points_rewards.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	schema = append(schema, []byte(strings.ReplaceAll(string(migration), "USE askxuan_marketing;", ""))...)
 	for pass := 0; pass < 2; pass++ {
 		for _, q := range strings.Split(string(schema), ";") {
 			if strings.TrimSpace(q) != "" {
@@ -83,6 +108,20 @@ func TestMySQLRewards(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
+	}
+	fund := func(user string, amount int64) {
+		t.Helper()
+		_, e := db.Exec("INSERT INTO askxuan_payment.points_account(user_id,balance) VALUES(?,?) ON DUPLICATE KEY UPDATE balance=VALUES(balance)", user, amount)
+		must(e)
+	}
+	for i := 0; i < 100; i++ {
+		fund(fmt.Sprintf("user-%d", i), 1000)
+	}
+	for i := 0; i < 20; i++ {
+		fund(fmt.Sprintf("wheel-%d", i), 1000)
+	}
+	for _, user := range []string{"underfilled-0", "underfilled-1", "entropy-user", "entropy-1", "entropy-2"} {
+		fund(user, 1000)
 	}
 	create := func(c Campaign) Campaign {
 		t.Helper()
@@ -102,7 +141,7 @@ func TestMySQLRewards(t *testing.T) {
 		errs := make(chan error, 24)
 		for i := 0; i < 24; i++ {
 			wg.Add(1)
-			go func() { defer wg.Done(); v, e := s.Join(ctx, c.ID, "user-0"); out <- v; errs <- e }()
+			go func() { defer wg.Done(); v, e := s.Join(ctx, c.ID, "user-0", 10); out <- v; errs <- e }()
 		}
 		wg.Wait()
 		close(out)
@@ -120,10 +159,10 @@ func TestMySQLRewards(t *testing.T) {
 			}
 		}
 		for i := 1; i < 100; i++ {
-			_, e := s.Join(ctx, c.ID, fmt.Sprintf("user-%d", i))
+			_, e := s.Join(ctx, c.ID, fmt.Sprintf("user-%d", i), 10)
 			must(e)
 		}
-		if _, e := s.Join(ctx, c.ID, "extra"); !errors.Is(e, ErrClosed) {
+		if _, e := s.Join(ctx, c.ID, "extra", 10); !errors.Is(e, ErrClosed) {
 			t.Fatalf("over capacity: %v", e)
 		}
 		if e = s.Draw(ctx, c.ID); !errors.Is(e, ErrClosed) {
@@ -152,12 +191,18 @@ func TestMySQLRewards(t *testing.T) {
 		if len(d.Winners) != 1 || d.Campaign.ParticipantCount != 100 || d.Campaign.Status != "drawn" || len(d.Campaign.PoolDigest) != 64 {
 			t.Fatalf("bad result %+v", d.Campaign)
 		}
-		original, e := s.Join(ctx, c.ID, "user-0")
+		original, e := s.Join(ctx, c.ID, "user-0", 10)
 		must(e)
+		var balance, debits int64
+		must(db.QueryRow("SELECT balance FROM askxuan_payment.points_account WHERE user_id='user-0'").Scan(&balance))
+		must(db.QueryRow("SELECT COUNT(*) FROM askxuan_payment.points_ledger WHERE user_id='user-0' AND kind='reward_pool'").Scan(&debits))
+		if balance != 990 || debits != 1 || original.PointsSpent != 10 {
+			t.Fatalf("duplicate debit balance=%d debits=%d entry=%+v", balance, debits, original)
+		}
 		if original.ID != id {
 			t.Fatal("late retry changed entry")
 		}
-		if _, e = s.Join(ctx, c.ID, "late-user"); !errors.Is(e, ErrClosed) {
+		if _, e = s.Join(ctx, c.ID, "late-user", 10); !errors.Is(e, ErrClosed) {
 			t.Fatal("late entry accepted")
 		}
 		var winner string
@@ -211,7 +256,7 @@ func TestMySQLRewards(t *testing.T) {
 			c.Budget = 50000
 			c = create(c)
 			for i := 0; i < n; i++ {
-				_, e := s.Join(ctx, c.ID, fmt.Sprintf("underfilled-%d", i))
+				_, e := s.Join(ctx, c.ID, fmt.Sprintf("underfilled-%d", i), 10)
 				must(e)
 			}
 			expire(c.ID)
@@ -231,9 +276,9 @@ func TestMySQLRewards(t *testing.T) {
 		c.Budget = 50000
 		c = create(c)
 		for i := 0; i < 20; i++ {
-			v, e := s.Join(ctx, c.ID, fmt.Sprintf("wheel-%d", i))
+			v, e := s.Join(ctx, c.ID, fmt.Sprintf("wheel-%d", i), 10)
 			must(e)
-			v2, e := s.Join(ctx, c.ID, fmt.Sprintf("wheel-%d", i))
+			v2, e := s.Join(ctx, c.ID, fmt.Sprintf("wheel-%d", i), 10)
 			must(e)
 			if v.ID != v2.ID || v.Outcome != v2.Outcome {
 				t.Fatal("rerolled wheel")
@@ -257,18 +302,24 @@ func TestMySQLRewards(t *testing.T) {
 		c := fixture()
 		c.Kind = "wheel"
 		c = create(c)
-		if _, e = broken.Join(ctx, c.ID, "entropy-user"); e == nil {
+		if _, e = broken.Join(ctx, c.ID, "entropy-user", 10); e == nil {
 			t.Fatal("missing entropy accepted")
 		}
 		d, e := s.Detail(ctx, c.ID, "entropy-user", false)
 		must(e)
+		var balance, debits int64
+		must(db.QueryRow("SELECT balance FROM askxuan_payment.points_account WHERE user_id='entropy-user'").Scan(&balance))
+		must(db.QueryRow("SELECT COUNT(*) FROM askxuan_payment.points_ledger WHERE user_id='entropy-user'").Scan(&debits))
+		if balance != 1000 || debits != 0 {
+			t.Fatal("entropy failure charged points")
+		}
 		if d.Mine != nil || d.Campaign.ParticipantCount != 0 {
 			t.Fatal("partial join persisted")
 		}
 		c = create(fixture())
-		_, e = s.Join(ctx, c.ID, "entropy-1")
+		_, e = s.Join(ctx, c.ID, "entropy-1", 10)
 		must(e)
-		_, e = s.Join(ctx, c.ID, "entropy-2")
+		_, e = s.Join(ctx, c.ID, "entropy-2", 10)
 		must(e)
 		expire(c.ID)
 		if e = broken.Draw(ctx, c.ID); e == nil {
@@ -298,12 +349,113 @@ func TestMySQLRewards(t *testing.T) {
 			t.Fatal("draft visible")
 		}
 		must(s.Publish(ctx, v.ID, "admin"))
-		if _, e = s.Join(ctx, v.ID, "user"); !errors.Is(e, ErrClosed) {
+		if _, e = s.Join(ctx, v.ID, "user", 10); !errors.Is(e, ErrClosed) {
 			t.Fatal("joined before start")
 		}
 		must(s.Cancel(ctx, v.ID, "admin", "库存准备取消"))
-		if _, e = s.Join(ctx, v.ID, "user"); !errors.Is(e, ErrClosed) {
+		if _, e = s.Join(ctx, v.ID, "user", 10); !errors.Is(e, ErrClosed) {
 			t.Fatal("joined cancelled campaign")
 		}
 	})
+	t.Run("old_binary_cannot_bypass_points", func(t *testing.T) {
+		c := create(fixture())
+		_, err := db.Exec("INSERT INTO reward_entry(campaign_id,user_id,code,outcome,created_at) VALUES(?,?,'LEGACY-NO-DEBIT','pending',?)", c.ID, "legacy-user", time.Now().Unix())
+		if err == nil {
+			t.Fatal("old free join bypassed points")
+		}
+	})
+	t.Run("balance_confirmation_and_atomic_failure", func(t *testing.T) {
+		c := create(fixture())
+		fund("low", 9)
+		fund("debt", -2)
+		fund("confirmed", 20)
+		for _, u := range []string{"low", "missing", "debt"} {
+			if _, err := s.Join(ctx, c.ID, u, 10); !errors.Is(err, ErrBalance) {
+				t.Fatalf("%s balance: %v", u, err)
+			}
+		}
+		for _, price := range []int64{0, 1, 11} {
+			if _, err := s.Join(ctx, c.ID, "confirmed", price); !errors.Is(err, ErrPrice) {
+				t.Fatalf("unconfirmed price %d: %v", price, err)
+			}
+		}
+		_, err := db.Exec("CREATE TRIGGER reward_fail_audit BEFORE INSERT ON reward_audit FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='injected audit failure'")
+		must(err)
+		_, err = s.Join(ctx, c.ID, "confirmed", 10)
+		_, dropErr := db.Exec("DROP TRIGGER reward_fail_audit")
+		must(dropErr)
+		if err == nil {
+			t.Fatal("injected failure ignored")
+		}
+		d, err := s.Detail(ctx, c.ID, "confirmed", false)
+		must(err)
+		var n int
+		must(db.QueryRow("SELECT COUNT(*) FROM askxuan_payment.points_ledger WHERE user_id='confirmed'").Scan(&n))
+		if d.PointsBalance != 20 || d.Mine != nil || d.Campaign.ParticipantCount != 0 || n != 0 {
+			t.Fatalf("partial debit/entry: %+v ledger=%d", d, n)
+		}
+		_, err = s.Join(ctx, c.ID, "confirmed", 10)
+		must(err)
+	})
+	t.Run("concurrent_campaigns_cannot_overspend", func(t *testing.T) {
+		first, second := create(fixture()), create(fixture())
+		fund("shared-balance", 10)
+		errs := make(chan error, 2)
+		for _, id := range []int64{first.ID, second.ID} {
+			go func(id int64) { _, err := s.Join(ctx, id, "shared-balance", 10); errs <- err }(id)
+		}
+		ok, low := 0, 0
+		for i := 0; i < 2; i++ {
+			err := <-errs
+			if err == nil {
+				ok++
+			} else if errors.Is(err, ErrBalance) {
+				low++
+			} else {
+				t.Fatal(err)
+			}
+		}
+		var balance, n int64
+		must(db.QueryRow("SELECT balance FROM askxuan_payment.points_account WHERE user_id='shared-balance'").Scan(&balance))
+		must(db.QueryRow("SELECT COUNT(*) FROM askxuan_payment.points_ledger WHERE user_id='shared-balance'").Scan(&n))
+		if ok != 1 || low != 1 || balance != 0 || n != 1 {
+			t.Fatalf("overspend ok=%d low=%d balance=%d ledger=%d", ok, low, balance, n)
+		}
+	})
+
+	t.Run("production_table_grants_allow_atomic_join_only", func(t *testing.T) {
+		_, err := db.Exec("CREATE USER 'marketing_user'@'%' IDENTIFIED BY 'isolated-test-only'")
+		must(err)
+		_, err = db.Exec("GRANT ALL ON askxuan_rewards_test.* TO 'marketing_user'@'%'")
+		must(err)
+		permissionSQL, err := os.ReadFile("../../../../../scripts/db/20260910_points_rewards_permissions.sql")
+		must(err)
+		for _, q := range strings.Split(string(permissionSQL), ";") {
+			if strings.TrimSpace(q) != "" {
+				_, err = db.Exec(q)
+				must(err)
+			}
+		}
+		cfg, err := mysql.ParseDSN(dsn)
+		must(err)
+		cfg.User = "marketing_user"
+		cfg.Passwd = "isolated-test-only"
+		limitedDB, err := sql.Open("mysql", cfg.FormatDSN())
+		must(err)
+		defer limitedDB.Close()
+		limited := Store{DB: limitedDB}
+		c := create(fixture())
+		fund("restricted-user", 30)
+		_, err = limited.Join(ctx, c.ID, "restricted-user", 10)
+		must(err)
+		d, err := limited.Detail(ctx, c.ID, "restricted-user", false)
+		must(err)
+		if d.PointsBalance != 20 || d.Mine.PointsSpent != 10 {
+			t.Fatalf("limited account debit failed: %+v", d)
+		}
+		if _, err = limitedDB.Exec("DELETE FROM askxuan_payment.points_ledger WHERE user_id='restricted-user'"); err == nil {
+			t.Fatal("ledger deletion privilege granted")
+		}
+	})
+
 }

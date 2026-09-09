@@ -35,6 +35,8 @@ tar -xzf "$base/runtime/askxuan-admin-$frontend_sha.tar.gz" -C "$public"
 chmod -R a+rX "/var/www/askxuan/releases/$release"
 # The migration is additive, repeatable and contains no production sample activities.
 docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -h127.0.0.1 -uroot < "$candidate/source/scripts/db/20260909_free_rewards.sql"
+docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -h127.0.0.1 -uroot < "$candidate/source/scripts/db/20260910_points_rewards.sql"
+docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -h127.0.0.1 -uroot < "$candidate/source/scripts/db/20260910_points_rewards_permissions.sql"
 cd "$base/backend"
 compose=(docker compose -p askxuan -f docker-compose.yml -f "$base/runtime/docker-compose.full.ecs.yml" -f "$backup/environment.json")
 rollback() {
