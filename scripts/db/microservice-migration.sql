@@ -101,6 +101,8 @@ GRANT ALL PRIVILEGES ON askxuan_logistics.* TO 'logistics_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_marketing.* TO 'marketing_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_file.* TO 'file_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_ai.* TO 'ai_user'@'%';
+GRANT SELECT ON askxuan_payment.payment TO 'ai_user'@'%';
+GRANT SELECT, UPDATE (points_paid) ON askxuan_ai.ai_report TO 'payment_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_media.* TO 'media_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_community.* TO 'community_user'@'%';
 GRANT SELECT ON askxuan_media.media_asset TO 'community_user'@'%';

@@ -10,8 +10,17 @@ docker exec -i "$REPORT_CONTAINER" mysql --protocol=tcp -h127.0.0.1 < "$REPORT_R
 # Reapplying this migration must preserve orders, prices and existing data.
 docker exec -i "$REPORT_CONTAINER" mysql --protocol=tcp -h127.0.0.1 < "$REPORT_ROOT/scripts/db/20260909_ai_topic_reports.sql"
 REPORT_PORT="$(docker port "$REPORT_CONTAINER" 3306/tcp)";REPORT_PORT="${REPORT_PORT##*:}"
-export AI_REPORT_TEST_DSN="root@tcp(127.0.0.1:${REPORT_PORT})/askxuan_ai?charset=utf8mb4&timeout=5s"
-export REPORT_PAYMENT_TEST_DSN="root@tcp(127.0.0.1:${REPORT_PORT})/askxuan_payment?charset=utf8mb4&timeout=5s"
+# Exercise the production service privilege boundary, never a root-only happy path.
+docker exec -i "$REPORT_CONTAINER" mysql --protocol=tcp -h127.0.0.1 <<'SQL'
+CREATE USER 'ai_user'@'%';
+CREATE USER 'payment_user'@'%';
+GRANT ALL PRIVILEGES ON askxuan_ai.* TO 'ai_user'@'%';
+GRANT ALL PRIVILEGES ON askxuan_payment.* TO 'payment_user'@'%';
+SQL
+docker exec -i "$REPORT_CONTAINER" mysql --protocol=tcp -h127.0.0.1 < "$REPORT_ROOT/scripts/db/20260909_ai_topic_report_permissions.sql"
+docker exec -i "$REPORT_CONTAINER" mysql --protocol=tcp -h127.0.0.1 < "$REPORT_ROOT/scripts/db/20260909_ai_topic_report_permissions.sql"
+export AI_REPORT_TEST_DSN="ai_user@tcp(127.0.0.1:${REPORT_PORT})/askxuan_ai?charset=utf8mb4&timeout=5s"
+export REPORT_PAYMENT_TEST_DSN="payment_user@tcp(127.0.0.1:${REPORT_PORT})/askxuan_payment?charset=utf8mb4&timeout=5s"
 cd "$REPORT_ROOT"
 go test ./services/infrastructure/ai-service/internal/logic -run TestMySQLReportGenerate -count=1
 go test ./services/commerce/payment-service/internal/handler -run TestMySQLReportPurchase -count=1
