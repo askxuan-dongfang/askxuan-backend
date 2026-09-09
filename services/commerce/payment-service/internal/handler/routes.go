@@ -17,6 +17,7 @@ import (
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
 	registerPoints(server, svcCtx)
+	registerReportPayment(server, svcCtx)
 	authCfg := &middleware.AuthConfig{Secret: svcCtx.Config.Auth.AccessSecret}
 
 	// ===== C端路由 =====

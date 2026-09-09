@@ -19,6 +19,7 @@ import (
 // RegisterHandlers 注册 ai 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
+	registerReports(server, svcCtx)
 
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/ai/skills", Handler: skillListHandler(svcCtx)},

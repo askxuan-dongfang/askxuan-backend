@@ -3,6 +3,7 @@ module github.com/askxuan/ai-service
 go 1.22
 
 require (
+ github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/askxuan/common v0.0.0
 	github.com/zeromicro/go-zero v1.7.2
 )
