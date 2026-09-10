@@ -45,6 +45,9 @@ func (l *DiyOrderAvailabilityLogic) Check(req *types.DiyOrderAvailabilityReq) (*
 			}
 			return nil, common.ErrSystem
 		}
+		if !canReadDesign(design, studioUser(l.ctx)) {
+			return nil, ErrDesignNotFound
+		}
 		items, err = parseDesignOrderItems(design.DesignData)
 		if err != nil || len(items) == 0 {
 			return nil, common.ErrParam
@@ -291,6 +294,9 @@ func (l *DiyOrderDetailLogic) Detail(req *types.DiyOrderDetailReq) (*types.DiyOr
 		}
 		l.Errorf("查询DIY订单详情失败: %v", err)
 		return nil, common.ErrSystem
+	}
+	if o.UserId != studioUser(l.ctx) {
+		return nil, common.ErrDiyOrderNotFound
 	}
 	return toTypesDiyOrderDetail(l.ctx, l.svcCtx, o), nil
 }

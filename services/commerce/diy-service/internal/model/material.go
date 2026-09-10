@@ -37,6 +37,7 @@ const (
 
 // Material 材料表
 type Material struct {
+	RenderAssets string  `db:"render_assets" json:"renderAssets"`
 	Id           int64   `db:"id" json:"id"`
 	Name         string  `db:"name" json:"name"`
 	Spec         string  `db:"spec" json:"spec"`
@@ -172,8 +173,8 @@ func (m *defaultMaterialModel) Insert(ctx context.Context, data *Material) (*Mat
 		data.Status = MaterialStatusOnShelf
 	}
 	err := m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
-		query := fmt.Sprintf(`INSERT INTO %s (name,spec,unit_price,unit,category,five_elements,material_type,shape,diameter_mm,color_hex,texture_key,finish,translucency,image,stock,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, materialTable)
-		result, err := session.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.MaterialType, data.Shape, data.DiameterMm, data.ColorHex, data.TextureKey, data.Finish, data.Translucency, data.Image, data.Stock, data.Status)
+		query := fmt.Sprintf(`INSERT INTO %s (name,spec,unit_price,unit,category,five_elements,material_type,shape,diameter_mm,color_hex,texture_key,finish,translucency,image,render_assets,stock,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, materialTable)
+		result, err := session.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.MaterialType, data.Shape, data.DiameterMm, data.ColorHex, data.TextureKey, data.Finish, data.Translucency, data.Image, data.RenderAssets, data.Stock, data.Status)
 		if err != nil {
 			return err
 		}
@@ -190,7 +191,7 @@ func (m *defaultMaterialModel) Insert(ctx context.Context, data *Material) (*Mat
 
 func (m *defaultMaterialModel) FindOne(ctx context.Context, id int64) (*Material, error) {
 	var mat Material
-	query := fmt.Sprintf(`SELECT m.id,m.name,m.spec,COALESCE((SELECT MIN(ms.price) FROM %s ms WHERE ms.material_id=m.id),m.unit_price) unit_price,m.unit,m.category,m.five_elements,m.material_type,m.shape,m.diameter_mm,m.color_hex,m.texture_key,m.finish,m.translucency,m.image,COALESCE((SELECT SUM(ms.stock) FROM %s ms WHERE ms.material_id=m.id),m.stock) stock,m.status FROM %s m WHERE m.id=?`, materialSkuTable, materialSkuTable, materialTable)
+	query := fmt.Sprintf(`SELECT m.id,m.name,m.spec,COALESCE((SELECT MIN(ms.price) FROM %s ms WHERE ms.material_id=m.id),m.unit_price) unit_price,m.unit,m.category,m.five_elements,m.material_type,m.shape,m.diameter_mm,m.color_hex,m.texture_key,m.finish,m.translucency,m.image,COALESCE(m.render_assets,'') render_assets,COALESCE((SELECT SUM(ms.stock) FROM %s ms WHERE ms.material_id=m.id),m.stock) stock,m.status FROM %s m WHERE m.id=?`, materialSkuTable, materialSkuTable, materialTable)
 	err := m.conn.QueryRowCtx(ctx, &mat, query, id)
 	if err != nil {
 		return nil, err
@@ -233,7 +234,7 @@ func (m *defaultMaterialModel) FindListByStatus(ctx context.Context, category, k
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT m.id,m.name,m.spec,COALESCE((SELECT MIN(ms.price) FROM %s ms WHERE ms.material_id=m.id),m.unit_price) unit_price,m.unit,m.category,m.five_elements,m.material_type,m.shape,m.diameter_mm,m.color_hex,m.texture_key,m.finish,m.translucency,m.image,COALESCE((SELECT SUM(ms.stock) FROM %s ms WHERE ms.material_id=m.id),m.stock) stock,m.status FROM %s m WHERE %s ORDER BY m.id ASC LIMIT ?,?`, materialSkuTable, materialSkuTable, materialTable, where)
+	listQuery := fmt.Sprintf(`SELECT m.id,m.name,m.spec,COALESCE((SELECT MIN(ms.price) FROM %s ms WHERE ms.material_id=m.id),m.unit_price) unit_price,m.unit,m.category,m.five_elements,m.material_type,m.shape,m.diameter_mm,m.color_hex,m.texture_key,m.finish,m.translucency,m.image,COALESCE(m.render_assets,'') render_assets,COALESCE((SELECT SUM(ms.stock) FROM %s ms WHERE ms.material_id=m.id),m.stock) stock,m.status FROM %s m WHERE %s ORDER BY m.id ASC LIMIT ?,?`, materialSkuTable, materialSkuTable, materialTable, where)
 	listArgs := append(args, offset, size)
 	var list []*Material
 	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, listArgs...); err != nil {
@@ -245,15 +246,16 @@ func (m *defaultMaterialModel) FindListByStatus(ctx context.Context, category, k
 func (m *defaultMaterialModel) Update(ctx context.Context, data *Material) error {
 	normalizeMaterialPresentation(data)
 	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
-		query := fmt.Sprintf(`UPDATE %s SET name=?,spec=?,unit_price=?,unit=?,category=?,five_elements=?,material_type=?,shape=?,diameter_mm=?,color_hex=?,texture_key=?,finish=?,translucency=?,image=?,stock=? WHERE id=?`, materialTable)
-		if _, err := session.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.MaterialType, data.Shape, data.DiameterMm, data.ColorHex, data.TextureKey, data.Finish, data.Translucency, data.Image, data.Stock, data.Id); err != nil {
+		query := fmt.Sprintf(`UPDATE %s SET name=?,spec=?,unit_price=?,unit=?,category=?,five_elements=?,material_type=?,shape=?,diameter_mm=?,color_hex=?,texture_key=?,finish=?,translucency=?,image=?,render_assets=?,stock=? WHERE id=?`, materialTable)
+		if _, err := session.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.MaterialType, data.Shape, data.DiameterMm, data.ColorHex, data.TextureKey, data.Finish, data.Translucency, data.Image, data.RenderAssets, data.Stock, data.Id); err != nil {
 			return err
 		}
-		result, err := session.ExecCtx(ctx, fmt.Sprintf(`UPDATE %s SET spec=?,price=?,stock=? WHERE material_id=?`, materialSkuTable), data.Spec, data.UnitPrice, data.Stock, data.Id)
+		_, err := session.ExecCtx(ctx, fmt.Sprintf(`UPDATE %s SET spec=?,price=?,stock=? WHERE material_id=?`, materialSkuTable), data.Spec, data.UnitPrice, data.Stock, data.Id)
 		if err != nil {
 			return err
 		}
-		affected, err := result.RowsAffected()
+		var affected int64
+		err = session.QueryRowCtx(ctx, &affected, "SELECT COUNT(*) FROM material_sku WHERE material_id=?", data.Id)
 		if err != nil {
 			return err
 		}

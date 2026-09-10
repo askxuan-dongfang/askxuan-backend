@@ -25,18 +25,27 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	// ===== C端路由 =====
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/diy/designs", Handler: designListHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/api/v1/diy/my-designs", Handler: myDesignListHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/api/v1/diy/designs", Handler: designSaveHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/api/v1/diy/designs/:id", Handler: designDetailHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/api/v1/diy/designs/:id/order", Handler: diyDesignOrderCreateHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/diy/my-designs", Handler: auth.AuthFunc(customer.AdminAuthFunc(myDesignListHandler(svcCtx)))},
+		{Method: http.MethodPost, Path: "/api/v1/diy/designs", Handler: auth.AuthFunc(customer.AdminAuthFunc(designSaveHandler(svcCtx)))},
+		{Method: http.MethodGet, Path: "/api/v1/diy/designs/:id", Handler: optionalDesignAuth(svcCtx, designDetailHandler(svcCtx))},
+		{Method: http.MethodPost, Path: "/api/v1/diy/designs/:id/order", Handler: auth.AuthFunc(customer.AdminAuthFunc(diyDesignOrderCreateHandler(svcCtx)))},
 		{Method: http.MethodGet, Path: "/api/v1/diy/materials", Handler: materialListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/diy/blessing-services", Handler: blessingServiceListHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/api/v1/diy/orders/availability", Handler: diyOrderAvailabilityHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/api/v1/diy/orders", Handler: diyOrderCreateHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/api/v1/diy/orders", Handler: diyOrderListHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/api/v1/diy/orders/:id", Handler: diyOrderDetailHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/diy/orders/availability", Handler: auth.AuthFunc(customer.AdminAuthFunc(diyOrderAvailabilityHandler(svcCtx)))},
+		{Method: http.MethodPost, Path: "/api/v1/diy/orders", Handler: auth.AuthFunc(customer.AdminAuthFunc(diyOrderCreateHandler(svcCtx)))},
+		{Method: http.MethodGet, Path: "/api/v1/diy/orders", Handler: auth.AuthFunc(customer.AdminAuthFunc(diyOrderListHandler(svcCtx)))},
+		{Method: http.MethodGet, Path: "/api/v1/diy/orders/:id", Handler: auth.AuthFunc(customer.AdminAuthFunc(diyOrderDetailHandler(svcCtx)))},
 	})
 
+	server.AddRoutes([]rest.Route{
+		{Method: http.MethodPost, Path: "/api/v1/diy/designs/:id/copy", Handler: auth.AuthFunc(customer.AdminAuthFunc(designStudioAction(svcCtx, "copy", false)))},
+		{Method: http.MethodPut, Path: "/api/v1/diy/designs/:id/status", Handler: auth.AuthFunc(customer.AdminAuthFunc(designStudioAction(svcCtx, "status", false)))},
+	})
+	adminDesign := &middleware.AdminAuthConfig{AllowedRoles: []string{"shop_admin", "platform_super"}}
+	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/admin/diy/designs", Handler: auth.AuthFunc(adminDesign.AdminAuthFunc(studioList(svcCtx)))},
+		{Method: http.MethodPut, Path: "/api/v1/admin/diy/designs/:id/status", Handler: auth.AuthFunc(adminDesign.AdminAuthFunc(designStudioAction(svcCtx, "status", true)))},
+	})
 	// ===== 商城台路由 =====
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/admin/diy/orders", Handler: adminDiyOrderListHandler(svcCtx)},
@@ -62,7 +71,10 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 // myDesignListHandler 我的设计列表（网关 JWT 后透传 X-User-Id）
 func myDesignListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userId := r.Header.Get("X-User-Id")
+		userId := ""
+		if id := middleware.UserIDFromCtx(r.Context()); id > 0 {
+			userId = strconv.FormatInt(id, 10)
+		}
 		if userId == "" {
 			common.JsonError(w, common.ErrUnauthorized)
 			return
@@ -144,6 +156,7 @@ func diyDesignOrderCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
+		req.UserId = strconv.FormatInt(middleware.UserIDFromCtx(r.Context()), 10)
 		resp, err := logic.NewDiyDesignOrderCreateLogic(r.Context(), svcCtx).Create(&req)
 		if err != nil {
 			common.JsonError(w, err)
@@ -193,6 +206,7 @@ func diyOrderCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
+		req.UserId = strconv.FormatInt(middleware.UserIDFromCtx(r.Context()), 10)
 		resp, err := logic.NewDiyOrderCreateLogic(r.Context(), svcCtx).Create(&req)
 		if err != nil {
 			common.JsonError(w, err)
@@ -225,6 +239,7 @@ func diyOrderListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
+		req.UserId = strconv.FormatInt(middleware.UserIDFromCtx(r.Context()), 10)
 		resp, err := logic.NewDiyOrderListLogic(r.Context(), svcCtx).List(&req)
 		if err != nil {
 			common.JsonError(w, err)
