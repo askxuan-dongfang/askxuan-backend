@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/askxuan/ai-service/internal/agent"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/types"
@@ -38,7 +39,7 @@ func (l *SkillListLogic) SkillList(req *types.SkillListReq) (*types.SkillListRes
 }
 
 func toTypesSkill(skill model.AISkill) types.AISkill {
-	inputSchema := json.RawMessage(skill.InputSchema)
+	inputSchema := json.RawMessage(agent.GuidedInputSchema(skill.Code, skill.InputSchema))
 	if !json.Valid(inputSchema) {
 		inputSchema = json.RawMessage(`{"fields":[]}`)
 	}

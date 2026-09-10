@@ -45,3 +45,14 @@ func TestMCPClientParsesStandardSSEEnvelope(t *testing.T) {
 		t.Fatalf("unexpected SSE MCP result: %q %v", result, err)
 	}
 }
+
+func TestMCPToolErrorIsNotUsedAsReportEvidence(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":"1","result":{"isError":true,"content":[{"type":"text","text":"invalid date"}]}}`))
+	}))
+	defer server.Close()
+	result, err := NewMCPClient(true, server.URL, 2).Call(context.Background(), `{"enabled":true,"tool":"bazi"}`, `{}`)
+	if err == nil || result != "" {
+		t.Fatalf("tool error became evidence: %q, %v", result, err)
+	}
+}

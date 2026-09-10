@@ -9,7 +9,9 @@ import (
 	"time"
 )
 
-var numberPattern = regexp.MustCompile(`\d+`)
+var numberPattern = regexp.MustCompile(`^[0-9]{1,6}([ ,，、\t]+[0-9]{1,6}){1,2}$`)
+var numberSeparator = regexp.MustCompile(`[ ,，、\t]+`)
+var birthDatePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
 func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (string, error) {
 	inputs := map[string]interface{}{}
@@ -24,7 +26,7 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 		if stringValue(inputs["birthDate"]) == "" || stringValue(inputs["birthTime"]) == "" || stringValue(inputs["gender"]) == "" {
 			return "", nil
 		}
-		date, err := time.Parse("2006-01-02", stringValue(inputs["birthDate"]))
+		year, month, day, err := ParseBirthDate(stringValue(inputs["birthDate"]), stringValue(inputs["calendarType"]))
 		if err != nil {
 			return "", fmt.Errorf("birthDate must be YYYY-MM-DD")
 		}
@@ -33,7 +35,7 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 			return "", err
 		}
 		args = map[string]interface{}{
-			"gender": stringValue(inputs["gender"]), "birthYear": date.Year(), "birthMonth": int(date.Month()), "birthDay": date.Day(),
+			"gender": stringValue(inputs["gender"]), "birthYear": year, "birthMonth": month, "birthDay": day,
 			"birthHour": hour, "birthMinute": minute, "calendarType": defaultString(stringValue(inputs["calendarType"]), "solar"), "detailLevel": "default",
 		}
 		if skillCode == "bazi" && stringValue(inputs["birthplace"]) != "" {
@@ -64,14 +66,9 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 			"date": defaultString(stringValue(inputs["eventTime"]), now.In(time.FixedZone("CST", 8*3600)).Format("2006-01-02T15:04:05")), "detailLevel": "default",
 		}
 		if method == "number" {
-			raw := numberPattern.FindAllString(stringValue(inputs["numbers"]), 3)
-			if len(raw) < 2 {
-				return "", fmt.Errorf("number method requires 2-3 numbers")
-			}
-			numbers := make([]int, 0, len(raw))
-			for _, value := range raw {
-				parsed, _ := strconv.Atoi(value)
-				numbers = append(numbers, parsed)
+			numbers, err := ParseDivinationNumbers(stringValue(inputs["numbers"]))
+			if err != nil {
+				return "", err
 			}
 			args["numbers"] = numbers
 		}
@@ -80,6 +77,26 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 	}
 	encoded, err := json.Marshal(args)
 	return string(encoded), err
+}
+
+// Lunar dates must not pass through the Gregorian parser (e.g. lunar 02-30).
+// Leap months are not in the current catalog; clients guide users to convert them.
+func ParseBirthDate(value, calendar string) (int, int, int, error) {
+	if !birthDatePattern.MatchString(value) {
+		return 0, 0, 0, fmt.Errorf("invalid birth date")
+	}
+	y, _ := strconv.Atoi(value[:4])
+	m, _ := strconv.Atoi(value[5:7])
+	d, _ := strconv.Atoi(value[8:10])
+	if y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || (d > 30 && calendar == "lunar") {
+		return 0, 0, 0, fmt.Errorf("invalid birth date")
+	}
+	if calendar != "lunar" {
+		if _, err := time.Parse("2006-01-02", value); err != nil {
+			return 0, 0, 0, err
+		}
+	}
+	return y, m, d, nil
 }
 
 func RedactToolArguments(argumentsJSON string) string {
@@ -132,4 +149,18 @@ func defaultString(value, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+// ParseDivinationNumbers rejects truncation, decimals, signs and numeric overflow.
+func ParseDivinationNumbers(value string) ([]int, error) {
+	value = strings.TrimSpace(value)
+	if !numberPattern.MatchString(value) {
+		return nil, fmt.Errorf("请填写 2–3 个 0–999999 的整数，用空格或逗号隔开")
+	}
+	parts := numberSeparator.Split(value, -1)
+	result := make([]int, len(parts))
+	for i, part := range parts {
+		result[i], _ = strconv.Atoi(part)
+	}
+	return result, nil
 }

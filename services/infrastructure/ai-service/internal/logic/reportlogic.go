@@ -126,8 +126,11 @@ func ReportCreate(ctx context.Context, s *svc.ServiceContext, user string, req R
 	if err != nil {
 		return nil, err
 	}
-	inputs, err := s.Guard.Validate(skill.InputSchema, req.Question, req.Inputs)
+	inputs, err := s.Guard.Validate(agent.GuidedInputSchema(skill.Code, skill.InputSchema), req.Question, req.Inputs)
 	if err != nil {
+		return nil, common.ErrParamInvalid
+	}
+	if _, err := agent.BuildToolArguments(skill.Code, req.Question, inputs, time.Now()); err != nil {
 		return nil, common.ErrParamInvalid
 	}
 	if err = s.UsageModel.Acquire(ctx, user, s.AIConfig.MinuteRequestLimit, s.AIConfig.DailyRequestLimit); err != nil {

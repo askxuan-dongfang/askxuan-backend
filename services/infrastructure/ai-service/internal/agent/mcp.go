@@ -96,6 +96,7 @@ func (c *MCPClient) Call(ctx context.Context, configJSON, argumentsJSON string) 
 			Message string `json:"message"`
 		} `json:"error"`
 		Result struct {
+			IsError bool `json:"isError"`
 			Content []struct {
 				Text string `json:"text"`
 			} `json:"content"`
@@ -107,6 +108,9 @@ func (c *MCPClient) Call(ctx context.Context, configJSON, argumentsJSON string) 
 	}
 	if decoded.Error != nil {
 		return "", fmt.Errorf("MCP tool failed: %s", decoded.Error.Message)
+	}
+	if decoded.Result.IsError {
+		return "", fmt.Errorf("MCP tool returned an error result")
 	}
 	parts := make([]string, 0, len(decoded.Result.Content)+1)
 	for _, item := range decoded.Result.Content {

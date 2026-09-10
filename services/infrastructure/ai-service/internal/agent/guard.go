@@ -21,12 +21,19 @@ type Option struct {
 	Label string `json:"label"`
 }
 
+type FieldCondition struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 type Field struct {
-	Key      string   `json:"key"`
-	Label    string   `json:"label"`
-	Type     string   `json:"type"`
-	Required bool     `json:"required"`
-	Options  []Option `json:"options"`
+	RequiredWhen *FieldCondition `json:"requiredWhen,omitempty"`
+	Validation   string          `json:"validation,omitempty"`
+	Key          string          `json:"key"`
+	Label        string          `json:"label"`
+	Type         string          `json:"type"`
+	Required     bool            `json:"required"`
+	Options      []Option        `json:"options"`
 }
 
 type InputSchema struct {
@@ -67,13 +74,24 @@ func (g *Guard) Validate(schemaJSON, content string, inputs map[string]interface
 	for _, field := range schema.Fields {
 		known[field.Key] = field
 		value, present := inputs[field.Key]
-		if field.Required && (!present || isEmpty(value)) {
+		required := field.Required || (field.RequiredWhen != nil && inputs[field.RequiredWhen.Key] == field.RequiredWhen.Value)
+		if required && (!present || isEmpty(value)) {
 			return "", fmt.Errorf("%w: %s required", ErrInvalidInputs, field.Key)
+		}
+		if present && !isEmpty(value) && field.Validation == "divination-numbers" {
+			if _, err := ParseDivinationNumbers(stringValue(value)); err != nil {
+				return "", fmt.Errorf("%w: %s", ErrInvalidInputs, err)
+			}
 		}
 		if present && field.Type == "select" && !isAllowedOption(value, field.Options) {
 			return "", fmt.Errorf("%w: %s option", ErrInvalidInputs, field.Key)
 		}
-		if present && !isEmpty(value) && !isValidFieldValue(value, field.Type) {
+		validType := isValidFieldValue(value, field.Type)
+		if field.Key == "birthDate" && inputs["calendarType"] == "lunar" {
+			_, _, _, err := ParseBirthDate(stringValue(value), "lunar")
+			validType = err == nil
+		}
+		if present && !isEmpty(value) && !validType {
 			return "", fmt.Errorf("%w: %s type", ErrInvalidInputs, field.Key)
 		}
 	}
