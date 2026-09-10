@@ -13,21 +13,25 @@ previous=$(readlink -f /var/www/askxuan/public)
 test -f "$previous/index.html"
 test ! -e "$candidate"
 test ! -e "$public"
-mkdir -p "$candidate/h5" "$backup" "$public"
+mkdir -p "$candidate/frontend/apps/web-h5" "$backup" "$public"
 printf '%s\n' "$previous" > "$backup/previous-public"
 tar --exclude='./node_modules' --exclude='./dist' --exclude='./.git' -czf "$backup/h5-source-before.tar.gz" -C "$base/frontend/apps/web-h5" .
-tar -xzf "$base/runtime/askxuan-h5-source-$h5_sha.tar.gz" -C "$candidate/h5"
 # Record inherited application provenance; this release changes no service images or databases.
 previous_release=$(basename "$(dirname "$previous")")
 cp "$base/runtime/$previous_release/release.txt" "$backup/previous-release.txt"
+frontend_sha=$(sed -n 's/^frontend=//p' "$backup/previous-release.txt")
+[[ "$frontend_sha" =~ ^[0-9a-f]{7,40}$ ]]
+# H5 imports packages/domain-status using the frontend monorepo directory layout.
+tar -xzf "$base/runtime/askxuan-frontend-$frontend_sha.tar.gz" -C "$candidate/frontend"
+tar -xzf "$base/runtime/askxuan-h5-source-$h5_sha.tar.gz" -C "$candidate/frontend/apps/web-h5"
 docker ps --format '{{.Names}} {{.Image}} {{.Status}}' > "$backup/containers-before.txt"
 node_image="${ASKXUAN_NODE_IMAGE:-node:22-bookworm-slim}"
 if ! docker image inspect "$node_image" >/dev/null 2>&1; then node_image=askxuan/taibu-mcp:local;fi
 docker image inspect "$node_image" >/dev/null
-docker run --rm --user 0:0 -v "$candidate/h5:/workspace" -v "$base/runtime/npm-cache:/root/.npm" -w /workspace "$node_image" sh -c 'npm ci --registry=https://registry.npmmirror.com && npm run build' > "$candidate/build-h5.log" 2>&1
-test -s "$candidate/h5/dist/index.html"
+docker run --rm --user 0:0 -v "$candidate/frontend:/workspace" -v "$base/runtime/npm-cache:/root/.npm" -w /workspace/apps/web-h5 "$node_image" sh -c 'npm ci --registry=https://registry.npmmirror.com && npm run build' > "$candidate/build-h5.log" 2>&1
+test -s "$candidate/frontend/apps/web-h5/dist/index.html"
 cp -a "$previous/." "$public/"
-cp -a "$candidate/h5/dist/." "$public/"
+cp -a "$candidate/frontend/apps/web-h5/dist/." "$public/"
 chmod -R a+rX "/var/www/askxuan/releases/$release"
 # Verify compatibility apps were inherited byte-for-byte before activation.
 for target in admin shop temple; do diff -qr "$previous/$target" "$public/$target" >/dev/null;done
@@ -52,7 +56,7 @@ values=dict(line.split('=',1) for line in Path(old).read_text().splitlines() if 
 values.update(h5=h5,release=release,inherited_from=parent)
 Path(new).write_text(''.join(f'{k}={v}\n' for k,v in values.items()))
 PY
-cmp "$public/index.html" "$candidate/h5/dist/index.html"
+cmp "$public/index.html" "$candidate/frontend/apps/web-h5/dist/index.html"
 touch "$candidate/DEPLOYED"
 trap - ERR
 echo "DEPLOYED $release"
