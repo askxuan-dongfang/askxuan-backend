@@ -28,7 +28,16 @@ func NewCustomerProductListLogic(ctx context.Context, svcCtx *svc.ServiceContext
 }
 
 func (l *CustomerProductListLogic) List(req *types.CustomerProductListReq) (*types.CustomerProductListResp, error) {
-	list, total, err := l.svcCtx.ProductModel.FindList(l.ctx, req.CategoryId, req.Keyword, model.ProductStatusOnShelf, req.Page, req.Size)
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.Size < 1 || req.Size > 100 {
+		req.Size = 20
+	}
+	if _, err := model.CatalogOrder(req.Sort); err != nil {
+		return nil, common.ErrParamInvalid
+	}
+	list, total, err := l.svcCtx.ProductModel.FindList(l.ctx, req.CategoryId, req.Keyword, model.ProductStatusOnShelf, req.Page, req.Size, model.CatalogOptions{Sort: req.Sort, InStock: req.InStock})
 	if err != nil {
 		l.Errorf("查询商品列表失败: %v", err)
 		return nil, common.ErrSystem

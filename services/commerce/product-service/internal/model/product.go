@@ -11,8 +11,8 @@ import (
 
 // 商品状态常量
 const (
-	ProductStatusDraft    = "draft"    // 草稿
-	ProductStatusOnShelf  = "on_shelf" // 上架
+	ProductStatusDraft    = "draft"     // 草稿
+	ProductStatusOnShelf  = "on_shelf"  // 上架
 	ProductStatusOffShelf = "off_shelf" // 下架
 )
 
@@ -41,7 +41,7 @@ type Product struct {
 type ProductModel interface {
 	Insert(ctx context.Context, data *Product) (*Product, error)
 	FindOne(ctx context.Context, id int64) (*Product, error)
-	FindList(ctx context.Context, categoryId int64, keyword, status string, page, size int) ([]*Product, int64, error)
+	FindList(ctx context.Context, categoryId int64, keyword, status string, page, size int, options ...CatalogOptions) ([]*Product, int64, error)
 	Update(ctx context.Context, data *Product) error
 	UpdateStatus(ctx context.Context, id int64, status string) error
 	Delete(ctx context.Context, id int64) error
@@ -91,8 +91,25 @@ func (m *defaultProductModel) FindOne(ctx context.Context, id int64) (*Product, 
 	return &p, nil
 }
 
-func (m *defaultProductModel) FindList(ctx context.Context, categoryId int64, keyword, status string, page, size int) ([]*Product, int64, error) {
+func (m *defaultProductModel) FindList(ctx context.Context, categoryId int64, keyword, status string, page, size int, options ...CatalogOptions) ([]*Product, int64, error) {
 	where, args := buildProductWhere(categoryId, keyword, status)
+	option := CatalogOptions{}
+	if len(options) > 0 {
+		option = options[0]
+	}
+	order, err := CatalogOrder(option.Sort)
+	if err != nil {
+		return nil, 0, err
+	}
+	if option.InStock {
+		where += " AND stock > 0"
+	}
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 20
+	}
 
 	countQuery := fmt.Sprintf(`SELECT COUNT(1) FROM %s WHERE %s`, productTable, where)
 	var total int64
@@ -104,7 +121,7 @@ func (m *defaultProductModel) FindList(ctx context.Context, categoryId int64, ke
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, product_no, name, category_id, description, main_image, status, price, market_price, stock, tags, freight_template_id, create_time, update_time FROM %s WHERE %s ORDER BY create_time DESC LIMIT ?, ?`, productTable, where)
+	listQuery := fmt.Sprintf(`SELECT id, product_no, name, category_id, description, main_image, status, price, market_price, stock, tags, freight_template_id, create_time, update_time FROM %s WHERE %s ORDER BY %s LIMIT ?, ?`, productTable, where, order)
 	listArgs := append(args, offset, size)
 	var list []*Product
 	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, listArgs...); err != nil {
@@ -147,4 +164,23 @@ func buildProductWhere(categoryId int64, keyword, status string) (string, []inte
 		args = append(args, status)
 	}
 	return where, args
+}
+
+// CatalogOptions are applied before pagination so filtering and totals agree.
+type CatalogOptions struct {
+	Sort    string
+	InStock bool
+}
+
+func CatalogOrder(sort string) (string, error) {
+	switch sort {
+	case "", "newest":
+		return "create_time DESC, id DESC", nil
+	case "price_asc":
+		return "price ASC, id DESC", nil
+	case "price_desc":
+		return "price DESC, id DESC", nil
+	default:
+		return "", fmt.Errorf("unsupported catalog sort")
+	}
 }

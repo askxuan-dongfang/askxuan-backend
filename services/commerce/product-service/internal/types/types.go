@@ -54,6 +54,8 @@ type ProductImage struct {
 // ===== C端请求/响应 =====
 
 type CustomerProductListReq struct {
+	Sort       string `form:"sort,optional"`
+	InStock    bool   `form:"inStock,optional"`
 	CategoryId int64  `form:"categoryId,optional"`
 	Keyword    string `form:"keyword,optional"`
 	Page       int    `form:"page,default=1"`

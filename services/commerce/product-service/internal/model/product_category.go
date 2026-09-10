@@ -74,7 +74,7 @@ func (m *defaultProductCategoryModel) Delete(ctx context.Context, id int64) erro
 }
 
 func (m *defaultProductCategoryModel) ListByParentId(ctx context.Context, parentId int64) ([]*ProductCategory, error) {
-	query := fmt.Sprintf(`SELECT id, parent_id, name, level, sort FROM %s WHERE parent_id = ? ORDER BY sort ASC`, productCategoryTable)
+	query := fmt.Sprintf(`SELECT id, parent_id, name, level, sort FROM %s WHERE parent_id = ? ORDER BY sort ASC, id ASC`, productCategoryTable)
 	var list []*ProductCategory
 	err := m.conn.QueryRowsCtx(ctx, &list, query, parentId)
 	if err != nil {
@@ -84,7 +84,7 @@ func (m *defaultProductCategoryModel) ListByParentId(ctx context.Context, parent
 }
 
 func (m *defaultProductCategoryModel) ListAll(ctx context.Context) ([]*ProductCategory, error) {
-	query := fmt.Sprintf(`SELECT id, parent_id, name, level, sort FROM %s ORDER BY sort ASC`, productCategoryTable)
+	query := fmt.Sprintf(`SELECT id, parent_id, name, level, sort FROM %s ORDER BY sort ASC, id ASC`, productCategoryTable)
 	var list []*ProductCategory
 	err := m.conn.QueryRowsCtx(ctx, &list, query)
 	if err != nil {
