@@ -23,9 +23,9 @@ environment = {**os.environ, 'MYSQL_PWD': password}
 command = ['docker', 'exec', '-i', '-e', 'MYSQL_PWD', 'askxuan-mysql']
 action = sys.argv[1]
 if action == 'dump':
-    command += ['mysqldump', '-u', user, '--single-transaction', '--no-tablespaces', '--set-gtid-purged=OFF', database]
+    command += ['mysqldump', '--default-character-set=utf8mb4', '-u', user, '--single-transaction', '--no-tablespaces', '--set-gtid-purged=OFF', database]
 elif action == 'apply':
-    command += ['mysql', '-u', user, database]
+    command += ['mysql', '--default-character-set=utf8mb4', '-u', user, database]
 else:
     raise ValueError('Expected dump or apply')
 subprocess.run(command, env=environment, check=True)
