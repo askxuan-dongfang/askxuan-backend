@@ -10,7 +10,7 @@ candidate="$base/runtime/$release"; backup="$base/backups/$release"
 public="/var/www/askxuan/releases/$release/public"
 [[ "$(readlink -f /var/www/askxuan/public)" == "$expected" ]]
 test -s "$candidate/diy"; test -s "$candidate/h5/index.html"; test -s "$candidate/admin/index.html"
-test ! -e "$public"; mkdir -p "$public" "$backup"
+test ! -e "$candidate/DEPLOYED"; mkdir -p "$public" "$backup"
 cp -a "$expected/." "$public/"
 cp -a "$candidate/h5/." "$public/"
 mkdir -p "$public/admin"; cp -a "$candidate/admin/." "$public/admin/"
@@ -42,12 +42,12 @@ for path,definition in [(Path(candidate)/'compose.release.json',d),(Path(backup)
 PYDEPLOY
 docker build -t "askxuan/diy-service:$release" "$candidate" > "$candidate/build-diy.log" 2>&1
 docker compose -p askxuan -f "$candidate/compose.release.json" config --quiet
-# Back up only the DIY database. Password is consumed inside its own container.
-docker exec askxuan-mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqldump -uroot --single-transaction --databases askxuan_diy' > "$backup/diy-before.sql"
+# Use the running service identity; initialization passwords can be stale.
+python3 "$candidate/diy-release-db.py" dump > "$backup/diy-before.sql"
 test -s "$backup/diy-before.sql"
 [[ "$(readlink -f /var/www/askxuan/public)" == "$expected" ]]
-docker exec -i askxuan-mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot' < "$candidate/20260911_diy_studio.sql"
-docker exec -i askxuan-mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot' < "$candidate/20260911_diy_reference_assets.sql"
+python3 "$candidate/diy-release-db.py" apply < "$candidate/20260911_diy_studio.sql"
+python3 "$candidate/diy-release-db.py" apply < "$candidate/20260911_diy_reference_assets.sql"
 printf '%s\n' "$expected" > "$backup/previous-public"
 rollback(){
  trap - ERR
