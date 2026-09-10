@@ -7,6 +7,9 @@ info (
 )
 
 type Asset {
+    Url string `json:"url,optional"`
+    CoverUrl string `json:"coverUrl,optional"`
+    Duration float64 `json:"duration,optional"`
     Id int64 `json:"id"`
     MediaId int64 `json:"mediaId"`
     AssetType string `json:"assetType"`
@@ -14,6 +17,8 @@ type Asset {
 }
 
 type Post {
+    Following bool `json:"following"`
+    CoverUrl string `json:"coverUrl,optional"`
     Id string `json:"id"`
     MasterId string `json:"masterId"`
     OwnerId string `json:"ownerId,optional"`
@@ -33,6 +38,9 @@ type Post {
 }
 
 type FeedReq {
+    Following bool `form:"following,optional"`
+    Keyword string `form:"keyword,optional"`
+    Sort string `form:"sort,optional"`
     Type string `form:"type,optional"`
     BeliefCode string `form:"beliefCode,optional"`
     Page int `form:"page,optional"`

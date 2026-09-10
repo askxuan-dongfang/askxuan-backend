@@ -1,10 +1,13 @@
 package types
 
 type Asset struct {
-	Id        int64  `json:"id"`
-	MediaId   int64  `json:"mediaId"`
-	AssetType string `json:"assetType"`
-	Sort      int    `json:"sort"`
+	Url       string  `json:"url,omitempty"`
+	CoverUrl  string  `json:"coverUrl,omitempty"`
+	Duration  float64 `json:"duration,omitempty"`
+	Id        int64   `json:"id"`
+	MediaId   int64   `json:"mediaId"`
+	AssetType string  `json:"assetType"`
+	Sort      int     `json:"sort"`
 }
 
 // FollowedMastersResp 我关注的法师 ID 列表（关注时间倒序）
@@ -13,6 +16,8 @@ type FollowedMastersResp struct {
 }
 
 type Post struct {
+	Following    bool    `json:"following"`
+	CoverUrl     string  `json:"coverUrl,omitempty"`
 	Id           string  `json:"id"`
 	MasterId     string  `json:"masterId"`
 	OwnerId      string  `json:"ownerId,omitempty"`
@@ -42,6 +47,10 @@ type Comment struct {
 }
 
 type FeedReq struct {
+	Viewer     string `json:"-" form:"-"`
+	Following  bool   `form:"following,optional"`
+	Keyword    string `form:"keyword,optional"`
+	Sort       string `form:"sort,optional"`
 	Type       string `form:"type,optional"`
 	BeliefCode string `form:"beliefCode,optional"`
 	Page       int    `form:"page,optional"`

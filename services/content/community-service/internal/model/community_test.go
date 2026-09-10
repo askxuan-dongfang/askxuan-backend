@@ -33,6 +33,7 @@ func TestReviewPostCommitsBusinessAndAuditStateTogether(t *testing.T) {
 	mock.ExpectExec("UPDATE post SET status=").WithArgs("approved", "", "P1").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("UPDATE askxuan_audit.audit_queue SET status=").WithArgs("approved", "auditor", "", int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("INSERT INTO askxuan_audit.audit_log").WithArgs(int64(5), "approved", "auditor", "").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("UPDATE askxuan_media.media_asset m JOIN post").WithArgs("P1", "P1").WillReturnResult(sqlmock.NewResult(0, 2))
 	mock.ExpectCommit()
 	mock.ExpectQuery("SELECT " + postRows + " FROM post").WithArgs("P1").WillReturnRows(postRowsResult("approved"))
 	mock.ExpectQuery("SELECT id,media_id,asset_type,sort FROM post_asset").WithArgs("P1").WillReturnRows(sqlmock.NewRows([]string{"id", "media_id", "asset_type", "sort"}))

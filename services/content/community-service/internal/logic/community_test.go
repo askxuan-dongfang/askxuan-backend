@@ -26,3 +26,22 @@ func TestValidatePostAssetRules(t *testing.T) {
 		t.Fatal("duplicate media accepted")
 	}
 }
+
+func TestFeedValidation(t *testing.T) {
+	for _, tc := range []struct {
+		req   types.FeedReq
+		valid bool
+	}{
+		{types.FeedReq{Type: "image"}, true}, {types.FeedReq{Type: "article", Sort: "popular"}, true},
+		{types.FeedReq{Type: "wrong"}, false}, {types.FeedReq{Sort: "likes; DROP TABLE post"}, false},
+		{types.FeedReq{Following: true}, false}, {types.FeedReq{Following: true, Viewer: "u1"}, true},
+	} {
+		err := validateFeed(&tc.req)
+		if (err == nil) != tc.valid {
+			t.Fatalf("%+v: %v", tc.req, err)
+		}
+		if tc.req.Type == "image" {
+			t.Fatal("legacy image alias not normalized")
+		}
+	}
+}

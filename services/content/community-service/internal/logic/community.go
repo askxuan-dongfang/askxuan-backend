@@ -25,8 +25,14 @@ func MyFollowing(ctx context.Context, s *svc.ServiceContext, userId string) (*ty
 
 func Feed(ctx context.Context, s *svc.ServiceContext, req *types.FeedReq) (*types.PostListResp, error) {
 	page, size := normalizePage(req.Page, req.Size)
-	total, list, err := s.Model.ListPosts(ctx, "approved", req.Type, req.BeliefCode, "", page, size)
+	if err := validateFeed(req); err != nil {
+		return nil, err
+	}
+	total, list, err := s.Model.ListFeed(ctx, req, page, size)
 	if err != nil {
+		return nil, common.ErrSystem
+	}
+	if err := s.Model.EnrichMedia(ctx, list, req.Viewer, false); err != nil {
 		return nil, common.ErrSystem
 	}
 	for i := range list {
@@ -40,15 +46,26 @@ func PostDetail(ctx context.Context, s *svc.ServiceContext, id, viewer string) (
 	if err != nil {
 		return nil, mapError(err)
 	}
+	posts := []types.Post{*p}
+	if err := s.Model.EnrichMedia(ctx, posts, viewer, false); err != nil {
+		return nil, common.ErrSystem
+	}
+	p = &posts[0]
 	p.OwnerId = ""
 	p.AuditRemark = ""
 	return p, nil
 }
 func Comments(ctx context.Context, s *svc.ServiceContext, req *types.CommentListReq) (*types.CommentListResp, error) {
 	page, size := normalizePage(req.Page, req.Size)
+	if _, err := s.Model.FindPost(ctx, req.Id, "", false); err != nil {
+		return nil, mapError(err)
+	}
 	total, list, err := s.Model.ListComments(ctx, req.Id, "approved", page, size)
 	if err != nil {
 		return nil, common.ErrSystem
+	}
+	for i := range list {
+		list[i].AuditRemark = ""
 	}
 	return &types.CommentListResp{Total: total, List: list, Page: page, Size: size}, nil
 }
@@ -128,6 +145,9 @@ func AdminPosts(ctx context.Context, s *svc.ServiceContext, req *types.AdminList
 	if err != nil {
 		return nil, common.ErrSystem
 	}
+	if err := s.Model.EnrichMedia(ctx, list, "", true); err != nil {
+		return nil, common.ErrSystem
+	}
 	return &types.PostListResp{Total: total, List: list, Page: page, Size: size}, nil
 }
 func ReviewPost(ctx context.Context, s *svc.ServiceContext, req *types.AdminReviewReq, status string) (*types.Post, error) {
@@ -163,7 +183,7 @@ func ReviewComment(ctx context.Context, s *svc.ServiceContext, req *types.AdminR
 func validatePost(req *types.PostWriteReq) error {
 	req.Title = strings.TrimSpace(req.Title)
 	req.Content = strings.TrimSpace(req.Content)
-	if req.OwnerId == "" || req.MasterId == "" || len([]rune(req.Title)) < 1 || len([]rune(req.Title)) > 120 {
+	if req.OwnerId == "" || req.MasterId == "" || len([]rune(req.Title)) < 1 || len([]rune(req.Title)) > 120 || len([]rune(req.Content)) > 10000 {
 		return common.ErrParam
 	}
 	if req.Type != "article" && req.Type != "video" {
@@ -204,4 +224,25 @@ func mapError(err error) error {
 		return common.NewBizError(40440, "社区内容不存在或状态已变化")
 	}
 	return common.ErrSystem
+}
+
+func validateFeed(req *types.FeedReq) error {
+	req.Type = strings.TrimSpace(req.Type)
+	if req.Type == "image" {
+		req.Type = "article"
+	} // Compatibility with earlier H5 clients.
+	req.Keyword = strings.TrimSpace(req.Keyword)
+	if req.Type != "" && req.Type != "article" && req.Type != "video" {
+		return common.ErrParam
+	}
+	if req.Sort != "" && req.Sort != "latest" && req.Sort != "popular" {
+		return common.ErrParam
+	}
+	if len([]rune(req.Keyword)) > 80 {
+		return common.ErrParam
+	}
+	if req.Following && req.Viewer == "" {
+		return common.ErrUnauthorized
+	}
+	return nil
 }

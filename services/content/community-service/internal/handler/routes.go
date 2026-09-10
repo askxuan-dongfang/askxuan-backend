@@ -41,6 +41,7 @@ func feed(s *svc.ServiceContext) http.HandlerFunc {
 		if !parse(w, r, &q) {
 			return
 		}
+		q.Viewer = r.Header.Get("X-User-Id")
 		v, e := logic.Feed(r.Context(), s, &q)
 		respond(w, v, e)
 	}

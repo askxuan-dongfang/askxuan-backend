@@ -43,6 +43,8 @@ type commentRow struct {
 }
 
 type CommunityModel interface {
+	ListFeed(ctx context.Context, req *types.FeedReq, page, size int) (int64, []types.Post, error)
+	EnrichMedia(ctx context.Context, posts []types.Post, viewer string, review bool) error
 	ValidateAssets(ctx context.Context, ownerId string, coverMediaId int64, assets []types.Asset) error
 	ListPosts(ctx context.Context, status, postType, beliefCode, ownerId string, page, size int) (int64, []types.Post, error)
 	FindPost(ctx context.Context, postNo, viewer string, ownerView bool) (*types.Post, error)
@@ -110,7 +112,7 @@ func (m *communityModel) ListPosts(ctx context.Context, status, postType, belief
 	}
 	var rows []postRow
 	queryArgs := append(append([]interface{}{}, args...), size, offset)
-	if err := m.conn.QueryRowsCtx(ctx, &rows, "SELECT "+postRows+" FROM post"+where+" ORDER BY create_time DESC LIMIT ? OFFSET ?", queryArgs...); err != nil {
+	if err := m.conn.QueryRowsCtx(ctx, &rows, "SELECT "+postRows+" FROM post"+where+" ORDER BY create_time DESC,post_no DESC LIMIT ? OFFSET ?", queryArgs...); err != nil {
 		return 0, nil, err
 	}
 	posts := make([]types.Post, 0, len(rows))
@@ -148,8 +150,14 @@ func (m *communityModel) FindPost(ctx context.Context, postNo, viewer string, ow
 	p.Assets = assets
 	if viewer != "" {
 		var count int64
-		_ = m.conn.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM post_like WHERE post_no=? AND user_id=?", postNo, viewer)
+		if err := m.conn.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM post_like WHERE post_no=? AND user_id=?", postNo, viewer); err != nil {
+			return nil, err
+		}
 		p.Liked = count > 0
+		if err := m.conn.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM master_follow WHERE master_id=? AND user_id=?", p.MasterId, viewer); err != nil {
+			return nil, err
+		}
+		p.Following = count > 0
 	}
 	return &p, nil
 }
@@ -331,7 +339,16 @@ func review(ctx context.Context, s sqlx.Session, table, idField, id, auditor, st
 	if err := s.QueryRowCtx(ctx, &current, "SELECT status,audit_id FROM "+table+" WHERE "+idField+"=? FOR UPDATE", id); err != nil {
 		return err
 	}
-	return applyReview(ctx, s, table, idField, id, auditor, status, remark, current.Status, current.AuditId)
+	if err := applyReview(ctx, s, table, idField, id, auditor, status, remark, current.Status, current.AuditId); err != nil {
+		return err
+	}
+	if status == "approved" {
+		// The reviewer sees these exact owned assets before approving the post.
+		// Publish their media audit state in the same transaction as the post/audit queue.
+		_, err := s.ExecCtx(ctx, `UPDATE askxuan_media.media_asset m JOIN post p ON p.owner_id=m.owner_id SET m.audit_status='approved',m.update_time=CURRENT_TIMESTAMP WHERE p.post_no=? AND m.status='ready' AND (m.id=p.cover_media_id OR m.id IN (SELECT media_id FROM post_asset WHERE post_no=?))`, id, id)
+		return err
+	}
+	return nil
 }
 
 func applyReview(ctx context.Context, s sqlx.Session, table, idField, id, auditor, status, remark, currentStatus string, auditId int64) error {
@@ -432,7 +449,7 @@ func (m *communityModel) ListComments(ctx context.Context, postNo, status string
 	}
 	var rows []commentRow
 	qargs := append(append([]interface{}{}, args...), size, offset)
-	if err := m.conn.QueryRowsCtx(ctx, &rows, "SELECT comment_no,post_no,user_id,content,status,audit_id,audit_remark,create_time FROM post_comment"+where+" ORDER BY create_time DESC LIMIT ? OFFSET ?", qargs...); err != nil {
+	if err := m.conn.QueryRowsCtx(ctx, &rows, "SELECT comment_no,post_no,user_id,content,status,audit_id,audit_remark,create_time FROM post_comment"+where+" ORDER BY create_time DESC,comment_no DESC LIMIT ? OFFSET ?", qargs...); err != nil {
 		return 0, nil, err
 	}
 	list := make([]types.Comment, 0, len(rows))
