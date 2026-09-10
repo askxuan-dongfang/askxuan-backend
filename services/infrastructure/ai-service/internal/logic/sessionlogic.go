@@ -103,7 +103,7 @@ func (l *SessionListLogic) List(req *types.SessionListReq) (*types.SessionListRe
 		return nil, common.ErrParam
 	}
 	page, size := normalizePage(req.Page), normalizeSize(req.Size)
-	list, total, err := l.svcCtx.ConversationModel.ListSessions(l.ctx, req.UserId, req.Status, page, size)
+	list, total, err := l.svcCtx.ConversationModel.ListSessions(l.ctx, req.UserId, model.SessionStatusActive, page, size)
 	if err != nil {
 		return nil, common.ErrSystem
 	}
@@ -137,6 +137,9 @@ func (l *SessionDetailLogic) Detail(req *types.SessionDetailReq) (*types.Session
 	if s.UserId != req.UserId {
 		return nil, common.ErrForbidden
 	}
+	if s.Status != model.SessionStatusActive {
+		return nil, common.ErrSessionNotFound
+	}
 	messages, _, err := l.svcCtx.ConversationModel.ListMessages(l.ctx, req.Id, 1, 100)
 	if err != nil {
 		return nil, common.ErrSystem
@@ -158,7 +161,7 @@ func NewSessionDeleteLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ses
 	return &SessionDeleteLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
 }
 func (l *SessionDeleteLogic) Delete(req *types.SessionDeleteReq) (*types.IdResp, error) {
-	if req.Id == 0 || req.UserId == "" {
+	if req.Id < 1 || req.UserId == "" {
 		return nil, common.ErrParam
 	}
 	ok, err := l.svcCtx.ConversationModel.CloseSession(l.ctx, req.Id, req.UserId)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/askxuan/ai-service/internal/agent"
+	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/common"
@@ -249,7 +250,15 @@ func ReportConversation(ctx context.Context, s *svc.ServiceContext, user string,
 			return err
 		}
 		if sid > 0 {
-			return nil
+			var status string
+			err := tx.QueryRowCtx(ctx, &status, `SELECT status FROM ai_session WHERE id=? AND user_id=? FOR UPDATE`, sid, user)
+			if err == nil && status == model.SessionStatusActive {
+				return nil
+			}
+			if err != nil && !errors.Is(err, sqlx.ErrNotFound) {
+				return err
+			}
+			// A deleted follow-up must never be resurrected. The purchased report remains available.
 		}
 		result, err := tx.ExecCtx(ctx, `INSERT INTO ai_session(session_no,user_id,skill_code,selection_mode,skill_version,title,status) VALUES(?,?,'general','explicit','1.0',?,'active')`, strings.ReplaceAll(uuid.NewString(), "-", ""), user, "报告追问 · "+r.Title)
 		if err != nil {

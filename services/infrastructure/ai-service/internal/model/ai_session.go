@@ -109,13 +109,16 @@ func (m *conversationModel) FindSession(ctx context.Context, id int64) (*AISessi
 	err := m.conn.QueryRowCtx(ctx, &s, "SELECT "+sessionRows+" FROM ai_session WHERE id=?", id)
 	return &s, err
 }
+
+// CloseSession is a customer-visible soft deletion. Repeated owner requests are idempotent.
 func (m *conversationModel) CloseSession(ctx context.Context, id int64, userId string) (bool, error) {
-	res, err := m.conn.ExecCtx(ctx, "UPDATE ai_session SET status=? WHERE id=? AND user_id=?", SessionStatusClosed, id, userId)
+	_, err := m.conn.ExecCtx(ctx, "UPDATE ai_session SET status=? WHERE id=? AND user_id=? AND status<>?", SessionStatusClosed, id, userId, SessionStatusClosed)
 	if err != nil {
 		return false, err
 	}
-	n, err := res.RowsAffected()
-	return n > 0, err
+	var count int64
+	err = m.conn.QueryRowCtx(ctx, &count, "SELECT COUNT(1) FROM ai_session WHERE id=? AND user_id=? AND status=?", id, userId, SessionStatusClosed)
+	return count == 1, err
 }
 func (m *conversationModel) ListMessages(ctx context.Context, sessionId int64, page, size int) ([]*AIMessage, int64, error) {
 	var total int64
@@ -136,7 +139,7 @@ func (m *conversationModel) ListAllMessages(ctx context.Context, sessionId int64
 }
 func (m *conversationModel) FindMessageForUser(ctx context.Context, sessionId, messageId int64, userId string) (*AIMessage, error) {
 	var message AIMessage
-	err := m.conn.QueryRowCtx(ctx, &message, "SELECT "+joinedMessageRows+" FROM ai_message m JOIN ai_session s ON s.id=m.session_id WHERE m.id=? AND m.session_id=? AND s.user_id=?", messageId, sessionId, userId)
+	err := m.conn.QueryRowCtx(ctx, &message, "SELECT "+joinedMessageRows+" FROM ai_message m JOIN ai_session s ON s.id=m.session_id WHERE m.id=? AND m.session_id=? AND s.user_id=? AND s.status='active'", messageId, sessionId, userId)
 	return &message, err
 }
 func (m *conversationModel) CreateTurn(ctx context.Context, sessionId int64, userId, content, inputJSON, attachmentsJSON string) (pendingId int64, err error) {
@@ -191,7 +194,7 @@ func (m *conversationModel) FailMessage(ctx context.Context, id int64, message s
 	return err
 }
 func (m *conversationModel) PrepareRetry(ctx context.Context, sessionId, messageId int64, userId string) (bool, error) {
-	res, err := m.conn.ExecCtx(ctx, "UPDATE ai_message m JOIN ai_session s ON s.id=m.session_id SET m.status=?,m.stage='',m.run_id=0,m.error_message='',m.retry_count=m.retry_count+1 WHERE m.id=? AND m.session_id=? AND m.role=? AND m.status=? AND s.user_id=?", MessageStatusPending, messageId, sessionId, RoleAssistant, MessageStatusFailed, userId)
+	res, err := m.conn.ExecCtx(ctx, "UPDATE ai_message m JOIN ai_session s ON s.id=m.session_id SET m.status=?,m.stage='',m.run_id=0,m.error_message='',m.retry_count=m.retry_count+1 WHERE m.id=? AND m.session_id=? AND m.role=? AND m.status=? AND s.user_id=? AND s.status='active'", MessageStatusPending, messageId, sessionId, RoleAssistant, MessageStatusFailed, userId)
 	if err != nil {
 		return false, err
 	}

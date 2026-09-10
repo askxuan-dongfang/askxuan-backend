@@ -42,6 +42,9 @@ func (l *MessageSendLogic) Send(req *types.MessageSendReq) (*types.MessageSendRe
 	if session.UserId != req.UserId {
 		return nil, common.ErrForbidden
 	}
+	if session.Status != model.SessionStatusActive {
+		return nil, common.ErrSessionNotFound
+	}
 	skill, err := l.svcCtx.SkillModel.FindByCode(l.ctx, session.SkillCode)
 	if err != nil {
 		return nil, common.ErrSystem
@@ -112,6 +115,9 @@ func (l *MessageListLogic) List(req *types.MessageListReq) (*types.MessageListRe
 	if s.UserId != req.UserId {
 		return nil, common.ErrForbidden
 	}
+	if s.Status != model.SessionStatusActive {
+		return nil, common.ErrSessionNotFound
+	}
 	page, size := normalizePage(req.Page), normalizeSize(req.Size)
 	messages, total, err := l.svcCtx.ConversationModel.ListMessages(l.ctx, req.Id, page, size)
 	if err != nil {
@@ -136,6 +142,19 @@ func NewMessageRetryLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Mess
 func (l *MessageRetryLogic) Retry(req *types.MessageRetryReq) (*types.MessageSendResp, error) {
 	if req.Id == 0 || req.MessageId == 0 || req.UserId == "" {
 		return nil, common.ErrParam
+	}
+	session, err := l.svcCtx.ConversationModel.FindSession(l.ctx, req.Id)
+	if errors.Is(err, sqlx.ErrNotFound) {
+		return nil, common.ErrSessionNotFound
+	}
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	if session.UserId != req.UserId {
+		return nil, common.ErrForbidden
+	}
+	if session.Status != model.SessionStatusActive {
+		return nil, common.ErrSessionNotFound
 	}
 	if err := l.svcCtx.UsageModel.Acquire(l.ctx, req.UserId, l.svcCtx.AIConfig.MinuteRequestLimit, l.svcCtx.AIConfig.DailyRequestLimit); err != nil {
 		if errors.Is(err, model.ErrQuotaExceeded) {
@@ -373,6 +392,12 @@ func NewMessageTraceLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Mess
 func (l *MessageTraceLogic) Trace(req *types.MessageTraceReq) (*types.MessageTraceResp, error) {
 	if req.Id == 0 || req.MessageId == 0 || req.UserId == "" {
 		return nil, common.ErrParam
+	}
+	if _, err := l.svcCtx.ConversationModel.FindMessageForUser(l.ctx, req.Id, req.MessageId, req.UserId); err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrSessionNotFound
+		}
+		return nil, common.ErrSystem
 	}
 	run, calls, err := l.svcCtx.RunModel.TraceForUser(l.ctx, req.MessageId, req.UserId)
 	if err != nil {
