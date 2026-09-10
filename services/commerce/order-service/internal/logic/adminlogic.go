@@ -145,6 +145,10 @@ func (l *AdminOrderShipLogic) Ship(req *types.AdminOrderShipReq) (*types.ShopOrd
 		}
 		return nil, common.ErrSystem
 	}
+	if common.IsExperienceOrder(o.OrderNo) {
+		req.ExpressCompany = "体验物流（不发货）"
+		req.TrackingNo = "SIM-" + o.OrderNo
+	}
 	if strings.TrimSpace(req.ExpressCompany) == "" || strings.TrimSpace(req.TrackingNo) == "" || len(req.TrackingNo) > 64 || len([]rune(req.ExpressCompany)) > 64 {
 		return nil, common.ErrParam
 	}

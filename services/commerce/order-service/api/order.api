@@ -11,6 +11,7 @@ info (
 
 type (
     ShopOrder {
+        IsExperience bool `json:"isExperience"`
         Id           int64              `json:"id"`
         OrderNo      string             `json:"orderNo"`
         UserId       string             `json:"userId"`

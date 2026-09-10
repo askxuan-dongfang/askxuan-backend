@@ -52,7 +52,16 @@ func NewAdminProductCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminProductCreateLogic) Create(req *types.AdminProductCreateReq) (*types.AdminProductCreateResp, error) {
+	if err := validateExperienceSource(req.IsExperience, req.SourceName, req.SourceUrl, req.SourceNote); err != nil {
+		return nil, err
+	}
+
 	p, err := l.svcCtx.ProductModel.Insert(l.ctx, &model.Product{
+		IsExperience: req.IsExperience,
+		SourceName:   req.SourceName,
+		SourceUrl:    req.SourceUrl,
+		SourceNote:   req.SourceNote,
+
 		Name:              req.Name,
 		CategoryId:        req.CategoryId,
 		Description:       req.Description,
@@ -122,7 +131,34 @@ func NewAdminProductUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminProductUpdateLogic) Update(req *types.AdminProductUpdateReq) (*types.Product, error) {
-	err := l.svcCtx.ProductModel.Update(l.ctx, &model.Product{
+	previous, err := l.svcCtx.ProductModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		if err == sqlx.ErrNotFound {
+			return nil, common.ErrProductNotFound
+		}
+		return nil, common.ErrSystem
+	}
+	if req.IsExperience != nil && *req.IsExperience != previous.IsExperience {
+		return nil, common.NewBizError(common.ErrParam.Code, "商品类型创建后不能切换，请新建商品")
+	}
+	if req.SourceName != nil {
+		previous.SourceName = *req.SourceName
+	}
+	if req.SourceUrl != nil {
+		previous.SourceUrl = *req.SourceUrl
+	}
+	if req.SourceNote != nil {
+		previous.SourceNote = *req.SourceNote
+	}
+	if err := validateExperienceSource(previous.IsExperience, previous.SourceName, previous.SourceUrl, previous.SourceNote); err != nil {
+		return nil, err
+	}
+	err = l.svcCtx.ProductModel.Update(l.ctx, &model.Product{
+		IsExperience: previous.IsExperience,
+		SourceName:   previous.SourceName,
+		SourceUrl:    previous.SourceUrl,
+		SourceNote:   previous.SourceNote,
+
 		Id:                req.Id,
 		Name:              req.Name,
 		CategoryId:        req.CategoryId,

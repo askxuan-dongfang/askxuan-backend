@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/askxuan/common"
@@ -68,11 +69,16 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 		}
 	}()
 
+	initialOrderNo := ""
+	if len(quote.Items) > 0 && quote.Items[0].IsExperience {
+		initialOrderNo = common.ExperienceOrderPrefix + strings.ReplaceAll(uuid.NewString(), "-", "")[:24]
+	}
 	// 事务写 order + items
 	var orderNo string
 	var orderId int64
 	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, session sqlx.Session) error {
 		o, err := l.svcCtx.ShopOrderModel.InsertWithSession(ctx, session, &model.ShopOrder{
+			OrderNo:     initialOrderNo,
 			RequestId:   requestID,
 			UserId:      strconv.FormatInt(userID, 10),
 			TotalAmount: quote.TotalAmount,
@@ -145,7 +151,7 @@ func (l *OrderListLogic) List(req *types.OrderListReq) (*types.OrderListResp, er
 	}
 	resp := &types.OrderListResp{Total: total, Page: req.Page, Size: req.Size}
 	for _, o := range list {
-		resp.List = append(resp.List, toTypesOrder(o, nil, model.ShopOrderLogistics{}))
+		resp.List = append(resp.List, *toTypesOrderDetail(l.ctx, l.svcCtx, o))
 	}
 	return resp, nil
 }
@@ -279,17 +285,18 @@ func mqOrderNotify(orderNo, userId, action string) mq.OrderNotify {
 // toTypesOrder 转换为 types.ShopOrder（列表用，不查 items/logistics）
 func toTypesOrder(o *model.ShopOrder, items []types.ShopOrderItem, logistics model.ShopOrderLogistics) types.ShopOrder {
 	return types.ShopOrder{
-		Id:          o.Id,
-		OrderNo:     o.OrderNo,
-		UserId:      o.UserId,
-		TotalAmount: o.TotalAmount,
-		PayAmount:   o.PayAmount,
-		Status:      o.Status,
-		AddressId:   o.AddressId,
-		Note:        o.Note,
-		Items:       items,
-		Logistics:   toTypesLogistics(logistics),
-		CreateTime:  o.CreateTime,
+		Id:           o.Id,
+		OrderNo:      o.OrderNo,
+		IsExperience: common.IsExperienceOrder(o.OrderNo),
+		UserId:       o.UserId,
+		TotalAmount:  o.TotalAmount,
+		PayAmount:    o.PayAmount,
+		Status:       o.Status,
+		AddressId:    o.AddressId,
+		Note:         o.Note,
+		Items:        items,
+		Logistics:    toTypesLogistics(logistics),
+		CreateTime:   o.CreateTime,
 	}
 }
 

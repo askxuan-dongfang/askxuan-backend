@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.1
-// source: rpc/catalog/catalog.proto
+// source: common/rpc/catalog/catalog.proto
 
 package catalog
 
@@ -32,7 +32,7 @@ type CartLine struct {
 
 func (x *CartLine) Reset() {
 	*x = CartLine{}
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[0]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -44,7 +44,7 @@ func (x *CartLine) String() string {
 func (*CartLine) ProtoMessage() {}
 
 func (x *CartLine) ProtoReflect() protoreflect.Message {
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[0]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -57,7 +57,7 @@ func (x *CartLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CartLine.ProtoReflect.Descriptor instead.
 func (*CartLine) Descriptor() ([]byte, []int) {
-	return file_rpc_catalog_catalog_proto_rawDescGZIP(), []int{0}
+	return file_common_rpc_catalog_catalog_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *CartLine) GetProductId() int64 {
@@ -90,13 +90,14 @@ type CatalogQuote struct {
 	UnitPrice     float64                `protobuf:"fixed64,5,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
 	Quantity      int32                  `protobuf:"varint,6,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	Image         string                 `protobuf:"bytes,7,opt,name=image,proto3" json:"image,omitempty"`
+	IsExperience  bool                   `protobuf:"varint,8,opt,name=is_experience,json=isExperience,proto3" json:"is_experience,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CatalogQuote) Reset() {
 	*x = CatalogQuote{}
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[1]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -108,7 +109,7 @@ func (x *CatalogQuote) String() string {
 func (*CatalogQuote) ProtoMessage() {}
 
 func (x *CatalogQuote) ProtoReflect() protoreflect.Message {
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[1]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -121,7 +122,7 @@ func (x *CatalogQuote) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CatalogQuote.ProtoReflect.Descriptor instead.
 func (*CatalogQuote) Descriptor() ([]byte, []int) {
-	return file_rpc_catalog_catalog_proto_rawDescGZIP(), []int{1}
+	return file_common_rpc_catalog_catalog_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CatalogQuote) GetProductId() int64 {
@@ -173,6 +174,13 @@ func (x *CatalogQuote) GetImage() string {
 	return ""
 }
 
+func (x *CatalogQuote) GetIsExperience() bool {
+	if x != nil {
+		return x.IsExperience
+	}
+	return false
+}
+
 type ReserveCartReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
@@ -183,7 +191,7 @@ type ReserveCartReq struct {
 
 func (x *ReserveCartReq) Reset() {
 	*x = ReserveCartReq{}
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[2]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -195,7 +203,7 @@ func (x *ReserveCartReq) String() string {
 func (*ReserveCartReq) ProtoMessage() {}
 
 func (x *ReserveCartReq) ProtoReflect() protoreflect.Message {
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[2]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -208,7 +216,7 @@ func (x *ReserveCartReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReserveCartReq.ProtoReflect.Descriptor instead.
 func (*ReserveCartReq) Descriptor() ([]byte, []int) {
-	return file_rpc_catalog_catalog_proto_rawDescGZIP(), []int{2}
+	return file_common_rpc_catalog_catalog_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ReserveCartReq) GetRequestId() string {
@@ -236,7 +244,7 @@ type ReserveCartResp struct {
 
 func (x *ReserveCartResp) Reset() {
 	*x = ReserveCartResp{}
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[3]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -248,7 +256,7 @@ func (x *ReserveCartResp) String() string {
 func (*ReserveCartResp) ProtoMessage() {}
 
 func (x *ReserveCartResp) ProtoReflect() protoreflect.Message {
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[3]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -261,7 +269,7 @@ func (x *ReserveCartResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReserveCartResp.ProtoReflect.Descriptor instead.
 func (*ReserveCartResp) Descriptor() ([]byte, []int) {
-	return file_rpc_catalog_catalog_proto_rawDescGZIP(), []int{3}
+	return file_common_rpc_catalog_catalog_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ReserveCartResp) GetRequestId() string {
@@ -294,7 +302,7 @@ type ReleaseCartReq struct {
 
 func (x *ReleaseCartReq) Reset() {
 	*x = ReleaseCartReq{}
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[4]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -306,7 +314,7 @@ func (x *ReleaseCartReq) String() string {
 func (*ReleaseCartReq) ProtoMessage() {}
 
 func (x *ReleaseCartReq) ProtoReflect() protoreflect.Message {
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[4]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -319,7 +327,7 @@ func (x *ReleaseCartReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReleaseCartReq.ProtoReflect.Descriptor instead.
 func (*ReleaseCartReq) Descriptor() ([]byte, []int) {
-	return file_rpc_catalog_catalog_proto_rawDescGZIP(), []int{4}
+	return file_common_rpc_catalog_catalog_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ReleaseCartReq) GetRequestId() string {
@@ -338,7 +346,7 @@ type ReleaseCartResp struct {
 
 func (x *ReleaseCartResp) Reset() {
 	*x = ReleaseCartResp{}
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[5]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -350,7 +358,7 @@ func (x *ReleaseCartResp) String() string {
 func (*ReleaseCartResp) ProtoMessage() {}
 
 func (x *ReleaseCartResp) ProtoReflect() protoreflect.Message {
-	mi := &file_rpc_catalog_catalog_proto_msgTypes[5]
+	mi := &file_common_rpc_catalog_catalog_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -363,7 +371,7 @@ func (x *ReleaseCartResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReleaseCartResp.ProtoReflect.Descriptor instead.
 func (*ReleaseCartResp) Descriptor() ([]byte, []int) {
-	return file_rpc_catalog_catalog_proto_rawDescGZIP(), []int{5}
+	return file_common_rpc_catalog_catalog_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ReleaseCartResp) GetReleased() bool {
@@ -373,16 +381,16 @@ func (x *ReleaseCartResp) GetReleased() bool {
 	return false
 }
 
-var File_rpc_catalog_catalog_proto protoreflect.FileDescriptor
+var File_common_rpc_catalog_catalog_proto protoreflect.FileDescriptor
 
-const file_rpc_catalog_catalog_proto_rawDesc = "" +
+const file_common_rpc_catalog_catalog_proto_rawDesc = "" +
 	"\n" +
-	"\x19rpc/catalog/catalog.proto\x12\acatalog\"\\\n" +
+	" common/rpc/catalog/catalog.proto\x12\acatalog\"\\\n" +
 	"\bCartLine\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x03R\tproductId\x12\x15\n" +
 	"\x06sku_id\x18\x02 \x01(\x03R\x05skuId\x12\x1a\n" +
-	"\bquantity\x18\x03 \x01(\x05R\bquantity\"\xd3\x01\n" +
+	"\bquantity\x18\x03 \x01(\x05R\bquantity\"\xf8\x01\n" +
 	"\fCatalogQuote\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x03R\tproductId\x12\x15\n" +
@@ -392,7 +400,8 @@ const file_rpc_catalog_catalog_proto_rawDesc = "" +
 	"\n" +
 	"unit_price\x18\x05 \x01(\x01R\tunitPrice\x12\x1a\n" +
 	"\bquantity\x18\x06 \x01(\x05R\bquantity\x12\x14\n" +
-	"\x05image\x18\a \x01(\tR\x05image\"X\n" +
+	"\x05image\x18\a \x01(\tR\x05image\x12#\n" +
+	"\ris_experience\x18\b \x01(\bR\fisExperience\"X\n" +
 	"\x0eReserveCartReq\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12'\n" +
@@ -412,19 +421,19 @@ const file_rpc_catalog_catalog_proto_rawDesc = "" +
 	"\vReleaseCart\x12\x17.catalog.ReleaseCartReq\x1a\x18.catalog.ReleaseCartRespB/Z-github.com/askxuan/common/rpc/catalog;catalogb\x06proto3"
 
 var (
-	file_rpc_catalog_catalog_proto_rawDescOnce sync.Once
-	file_rpc_catalog_catalog_proto_rawDescData []byte
+	file_common_rpc_catalog_catalog_proto_rawDescOnce sync.Once
+	file_common_rpc_catalog_catalog_proto_rawDescData []byte
 )
 
-func file_rpc_catalog_catalog_proto_rawDescGZIP() []byte {
-	file_rpc_catalog_catalog_proto_rawDescOnce.Do(func() {
-		file_rpc_catalog_catalog_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_rpc_catalog_catalog_proto_rawDesc), len(file_rpc_catalog_catalog_proto_rawDesc)))
+func file_common_rpc_catalog_catalog_proto_rawDescGZIP() []byte {
+	file_common_rpc_catalog_catalog_proto_rawDescOnce.Do(func() {
+		file_common_rpc_catalog_catalog_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_common_rpc_catalog_catalog_proto_rawDesc), len(file_common_rpc_catalog_catalog_proto_rawDesc)))
 	})
-	return file_rpc_catalog_catalog_proto_rawDescData
+	return file_common_rpc_catalog_catalog_proto_rawDescData
 }
 
-var file_rpc_catalog_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_rpc_catalog_catalog_proto_goTypes = []any{
+var file_common_rpc_catalog_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_common_rpc_catalog_catalog_proto_goTypes = []any{
 	(*CartLine)(nil),        // 0: catalog.CartLine
 	(*CatalogQuote)(nil),    // 1: catalog.CatalogQuote
 	(*ReserveCartReq)(nil),  // 2: catalog.ReserveCartReq
@@ -432,7 +441,7 @@ var file_rpc_catalog_catalog_proto_goTypes = []any{
 	(*ReleaseCartReq)(nil),  // 4: catalog.ReleaseCartReq
 	(*ReleaseCartResp)(nil), // 5: catalog.ReleaseCartResp
 }
-var file_rpc_catalog_catalog_proto_depIdxs = []int32{
+var file_common_rpc_catalog_catalog_proto_depIdxs = []int32{
 	0, // 0: catalog.ReserveCartReq.items:type_name -> catalog.CartLine
 	1, // 1: catalog.ReserveCartResp.items:type_name -> catalog.CatalogQuote
 	2, // 2: catalog.CatalogService.ReserveCart:input_type -> catalog.ReserveCartReq
@@ -446,26 +455,26 @@ var file_rpc_catalog_catalog_proto_depIdxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
-func init() { file_rpc_catalog_catalog_proto_init() }
-func file_rpc_catalog_catalog_proto_init() {
-	if File_rpc_catalog_catalog_proto != nil {
+func init() { file_common_rpc_catalog_catalog_proto_init() }
+func file_common_rpc_catalog_catalog_proto_init() {
+	if File_common_rpc_catalog_catalog_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rpc_catalog_catalog_proto_rawDesc), len(file_rpc_catalog_catalog_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_rpc_catalog_catalog_proto_rawDesc), len(file_common_rpc_catalog_catalog_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_rpc_catalog_catalog_proto_goTypes,
-		DependencyIndexes: file_rpc_catalog_catalog_proto_depIdxs,
-		MessageInfos:      file_rpc_catalog_catalog_proto_msgTypes,
+		GoTypes:           file_common_rpc_catalog_catalog_proto_goTypes,
+		DependencyIndexes: file_common_rpc_catalog_catalog_proto_depIdxs,
+		MessageInfos:      file_common_rpc_catalog_catalog_proto_msgTypes,
 	}.Build()
-	File_rpc_catalog_catalog_proto = out.File
-	file_rpc_catalog_catalog_proto_goTypes = nil
-	file_rpc_catalog_catalog_proto_depIdxs = nil
+	File_common_rpc_catalog_catalog_proto = out.File
+	file_common_rpc_catalog_catalog_proto_goTypes = nil
+	file_common_rpc_catalog_catalog_proto_depIdxs = nil
 }

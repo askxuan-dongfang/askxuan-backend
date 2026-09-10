@@ -62,6 +62,9 @@ func (l *PaymentCreateLogic) Create(req *types.PaymentCreateReq) (*types.Payment
 		}
 	}
 
+	if req.OrderType == model.OrderTypeShopOrder && common.IsExperienceOrder(req.OrderNo) && req.Channel != model.PaymentChannelMock {
+		return nil, common.NewBizError(common.ErrParam.Code, "体验订单仅支持模拟支付")
+	}
 	idempotencyKey := req.OrderType + ":" + req.OrderNo
 	if existing, err := l.svcCtx.PaymentModel.FindByIdempotencyKey(l.ctx, idempotencyKey); err == nil {
 		return &types.PaymentCreateResp{Id: existing.Id, PaymentNo: existing.PaymentNo,

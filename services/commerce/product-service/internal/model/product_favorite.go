@@ -23,13 +23,18 @@ func (m *defaultProductModel) SetProductFavorite(ctx context.Context, userId int
 // ListFavoriteProducts 查询用户收藏的商品列表（收藏时间倒序，上限 50）
 func (m *defaultProductModel) ListFavoriteProducts(ctx context.Context, userId int64) ([]types.Product, error) {
 	var rows []Product
-	query := fmt.Sprintf(`SELECT p.id, p.product_no, p.name, p.category_id, p.description, p.main_image, p.status, p.price, p.market_price, p.stock, p.tags, p.freight_template_id, p.create_time, p.update_time FROM %s p JOIN %s f ON f.product_id = p.id WHERE f.user_id = ? ORDER BY f.create_time DESC LIMIT 50`, productTable, productFavoriteTable)
+	query := fmt.Sprintf(`SELECT p.id, p.product_no, p.name, p.category_id, p.description, p.main_image, p.status, p.price, p.market_price, p.stock, p.tags, p.freight_template_id, p.is_experience, p.source_name, p.source_url, p.source_note, p.create_time, p.update_time FROM %s p JOIN %s f ON f.product_id = p.id WHERE f.user_id = ? ORDER BY f.create_time DESC LIMIT 50`, productTable, productFavoriteTable)
 	if err := m.conn.QueryRowsCtx(ctx, &rows, query, userId); err != nil {
 		return nil, err
 	}
 	list := make([]types.Product, 0, len(rows))
 	for i := range rows {
 		list = append(list, types.Product{
+			IsExperience: rows[i].IsExperience,
+			SourceName:   rows[i].SourceName,
+			SourceUrl:    rows[i].SourceUrl,
+			SourceNote:   rows[i].SourceNote,
+
 			Id:                rows[i].Id,
 			ProductNo:         rows[i].ProductNo,
 			Name:              rows[i].Name,

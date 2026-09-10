@@ -200,6 +200,11 @@ func (l *CustomerCategoryTreeLogic) Tree(req *types.CustomerCategoryTreeReq) (*t
 
 func toTypesProduct(p *model.Product) types.Product {
 	return types.Product{
+		IsExperience: p.IsExperience,
+		SourceName:   p.SourceName,
+		SourceUrl:    p.SourceUrl,
+		SourceNote:   p.SourceNote,
+
 		Id:                p.Id,
 		ProductNo:         p.ProductNo,
 		Name:              p.Name,
