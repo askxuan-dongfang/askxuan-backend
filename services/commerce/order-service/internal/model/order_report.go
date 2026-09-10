@@ -102,7 +102,7 @@ func (m *defaultShopOrderModel) GetReportReturnRate(ctx context.Context, start, 
 }
 
 func paidOrderReportWhere(timeColumn, statusColumn, start, end string) (string, []interface{}) {
-	clauses := []string{statusColumn + " IN ('paid','shipped','completed','in_return')"}
+	clauses := []string{statusColumn + " IN ('paid','shipped','completed','in_return')", strings.TrimSuffix(statusColumn, "status") + "order_no NOT LIKE 'EXO-%'"}
 	args := []interface{}{}
 	if start = strings.TrimSpace(start); start != "" {
 		clauses = append(clauses, timeColumn+">=?")

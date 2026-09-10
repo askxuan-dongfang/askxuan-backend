@@ -18,6 +18,7 @@ message CatalogQuote {
   double unit_price = 5;
   int32 quantity = 6;
   string image = 7;
+  bool is_experience = 8;
 }
 
 message ReserveCartReq {

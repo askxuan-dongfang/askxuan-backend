@@ -38,11 +38,11 @@ func (s *CatalogServer) ReserveCart(ctx context.Context, req *catalog.ReserveCar
 	resp := &catalog.ReserveCartResp{RequestId: req.GetRequestId()}
 	err := s.svcCtx.DB.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
 		for _, line := range req.GetItems() {
-			if line.GetProductId() <= 0 || line.GetQuantity() <= 0 {
+			if line.GetProductId() <= 0 || line.GetQuantity() <= 0 || line.GetQuantity() > 99 {
 				return status.Error(codes.InvalidArgument, "商品或数量无效")
 			}
 			var product model.Product
-			if err := session.QueryRowCtx(ctx, &product, `SELECT id,product_no,name,category_id,description,main_image,status,price,market_price,stock,tags,freight_template_id,create_time,update_time FROM product WHERE id=? FOR UPDATE`, line.GetProductId()); err != nil {
+			if err := session.QueryRowCtx(ctx, &product, `SELECT id,product_no,name,category_id,description,main_image,status,price,market_price,stock,tags,freight_template_id,is_experience,source_name,source_url,source_note,create_time,update_time FROM product WHERE id=? FOR UPDATE`, line.GetProductId()); err != nil {
 				if errors.Is(err, sqlx.ErrNotFound) {
 					return status.Error(codes.NotFound, "商品不存在")
 				}
@@ -52,8 +52,11 @@ func (s *CatalogServer) ReserveCart(ctx context.Context, req *catalog.ReserveCar
 				return status.Error(codes.FailedPrecondition, "商品已下架")
 			}
 
+			if len(resp.Items) > 0 && resp.Items[0].IsExperience != product.IsExperience {
+				return status.Error(codes.InvalidArgument, "体验商品与普通商品请分开结算")
+			}
 			quote := &catalog.CatalogQuote{ProductId: product.Id, ProductName: product.Name,
-				Quantity: line.GetQuantity(), Image: product.MainImage, UnitPrice: product.Price}
+				Quantity: line.GetQuantity(), Image: product.MainImage, UnitPrice: product.Price, IsExperience: product.IsExperience}
 			if line.GetSkuId() > 0 {
 				var sku model.ProductSku
 				if err := session.QueryRowCtx(ctx, &sku, `SELECT id,product_id,spec_name,spec_value,price,stock,sku_no FROM product_sku WHERE id=? AND product_id=? FOR UPDATE`, line.GetSkuId(), product.Id); err != nil {
@@ -65,9 +68,19 @@ func (s *CatalogServer) ReserveCart(ctx context.Context, req *catalog.ReserveCar
 				if _, err := session.ExecCtx(ctx, `UPDATE product_sku SET stock=stock-? WHERE id=? AND stock>=?`, line.GetQuantity(), sku.Id, line.GetQuantity()); err != nil {
 					return err
 				}
+				if _, err := session.ExecCtx(ctx, `UPDATE product SET stock=(SELECT COALESCE(SUM(stock),0) FROM product_sku WHERE product_id=?) WHERE id=?`, product.Id, product.Id); err != nil {
+					return err
+				}
 				quote.SkuId, quote.UnitPrice = sku.Id, sku.Price
 				quote.SkuSpec = sku.SpecName + "：" + sku.SpecValue
 			} else {
+				var skuCount int64
+				if err := session.QueryRowCtx(ctx, &skuCount, `SELECT COUNT(*) FROM product_sku WHERE product_id=?`, product.Id); err != nil {
+					return err
+				}
+				if skuCount > 0 {
+					return status.Error(codes.InvalidArgument, "请选择商品规格")
+				}
 				if product.Stock < int(line.GetQuantity()) {
 					return status.Error(codes.ResourceExhausted, "商品库存不足")
 				}
@@ -116,8 +129,15 @@ func (s *CatalogServer) ReleaseCart(ctx context.Context, req *catalog.ReleaseCar
 			return err
 		}
 		for _, item := range snapshot.Items {
+			var productID int64
+			if err := session.QueryRowCtx(ctx, &productID, `SELECT id FROM product WHERE id=? FOR UPDATE`, item.ProductId); err != nil {
+				return err
+			}
 			if item.SkuId > 0 {
 				if _, err := session.ExecCtx(ctx, `UPDATE product_sku SET stock=stock+? WHERE id=?`, item.Quantity, item.SkuId); err != nil {
+					return err
+				}
+				if _, err := session.ExecCtx(ctx, `UPDATE product SET stock=(SELECT COALESCE(SUM(stock),0) FROM product_sku WHERE product_id=?) WHERE id=?`, item.ProductId, item.ProductId); err != nil {
 					return err
 				}
 			} else if _, err := session.ExecCtx(ctx, `UPDATE product SET stock=stock+? WHERE id=?`, item.Quantity, item.ProductId); err != nil {

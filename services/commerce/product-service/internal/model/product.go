@@ -21,6 +21,11 @@ const productTable = "product"
 // Product 商品表
 // 对应数据库表 product（askxuan_product 库）
 type Product struct {
+	IsExperience bool   `db:"is_experience" json:"isExperience"`
+	SourceName   string `db:"source_name" json:"sourceName"`
+	SourceUrl    string `db:"source_url" json:"sourceUrl"`
+	SourceNote   string `db:"source_note" json:"sourceNote"`
+
 	Id                int64   `db:"id" json:"id"`
 	ProductNo         string  `db:"product_no" json:"productNo"`
 	Name              string  `db:"name" json:"name"`
@@ -68,8 +73,8 @@ func (m *defaultProductModel) Insert(ctx context.Context, data *Product) (*Produ
 	data.CreateTime = now
 	data.UpdateTime = now
 
-	query := fmt.Sprintf(`INSERT INTO %s (product_no, name, category_id, description, main_image, status, price, market_price, stock, tags, freight_template_id, create_time, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, productTable)
-	result, err := m.conn.ExecCtx(ctx, query, data.ProductNo, data.Name, data.CategoryId, data.Description, data.MainImage, data.Status, data.Price, data.MarketPrice, data.Stock, data.Tags, data.FreightTemplateId, data.CreateTime, data.UpdateTime)
+	query := fmt.Sprintf(`INSERT INTO %s (product_no, name, category_id, description, main_image, status, price, market_price, stock, tags, freight_template_id, is_experience, source_name, source_url, source_note, create_time, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, productTable)
+	result, err := m.conn.ExecCtx(ctx, query, data.ProductNo, data.Name, data.CategoryId, data.Description, data.MainImage, data.Status, data.Price, data.MarketPrice, data.Stock, data.Tags, data.FreightTemplateId, data.IsExperience, data.SourceName, data.SourceUrl, data.SourceNote, data.CreateTime, data.UpdateTime)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +88,7 @@ func (m *defaultProductModel) Insert(ctx context.Context, data *Product) (*Produ
 
 func (m *defaultProductModel) FindOne(ctx context.Context, id int64) (*Product, error) {
 	var p Product
-	query := fmt.Sprintf(`SELECT id, product_no, name, category_id, description, main_image, status, price, market_price, stock, tags, freight_template_id, create_time, update_time FROM %s WHERE id = ?`, productTable)
+	query := fmt.Sprintf(`SELECT id, product_no, name, category_id, description, main_image, status, price, market_price, stock, tags, freight_template_id, is_experience, source_name, source_url, source_note, create_time, update_time FROM %s WHERE id = ?`, productTable)
 	err := m.conn.QueryRowCtx(ctx, &p, query, id)
 	if err != nil {
 		return nil, err
@@ -121,7 +126,7 @@ func (m *defaultProductModel) FindList(ctx context.Context, categoryId int64, ke
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, product_no, name, category_id, description, main_image, status, price, market_price, stock, tags, freight_template_id, create_time, update_time FROM %s WHERE %s ORDER BY %s LIMIT ?, ?`, productTable, where, order)
+	listQuery := fmt.Sprintf(`SELECT id, product_no, name, category_id, description, main_image, status, price, market_price, stock, tags, freight_template_id, is_experience, source_name, source_url, source_note, create_time, update_time FROM %s WHERE %s ORDER BY %s LIMIT ?, ?`, productTable, where, order)
 	listArgs := append(args, offset, size)
 	var list []*Product
 	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, listArgs...); err != nil {
@@ -131,8 +136,8 @@ func (m *defaultProductModel) FindList(ctx context.Context, categoryId int64, ke
 }
 
 func (m *defaultProductModel) Update(ctx context.Context, data *Product) error {
-	query := fmt.Sprintf(`UPDATE %s SET name=?, category_id=?, description=?, main_image=?, price=?, market_price=?, stock=?, tags=?, freight_template_id=?, update_time=? WHERE id=?`, productTable)
-	_, err := m.conn.ExecCtx(ctx, query, data.Name, data.CategoryId, data.Description, data.MainImage, data.Price, data.MarketPrice, data.Stock, data.Tags, data.FreightTemplateId, time.Now().Format("2006-01-02 15:04:05"), data.Id)
+	query := fmt.Sprintf(`UPDATE %s SET name=?, category_id=?, description=?, main_image=?, price=?, market_price=?, stock=CASE WHEN EXISTS(SELECT 1 FROM product_sku WHERE product_id=product.id) THEN (SELECT COALESCE(SUM(stock),0) FROM product_sku WHERE product_id=product.id) ELSE ? END, tags=?, freight_template_id=?, is_experience=?, source_name=?, source_url=?, source_note=?, update_time=? WHERE id=?`, productTable)
+	_, err := m.conn.ExecCtx(ctx, query, data.Name, data.CategoryId, data.Description, data.MainImage, data.Price, data.MarketPrice, data.Stock, data.Tags, data.FreightTemplateId, data.IsExperience, data.SourceName, data.SourceUrl, data.SourceNote, time.Now().Format("2006-01-02 15:04:05"), data.Id)
 	return err
 }
 

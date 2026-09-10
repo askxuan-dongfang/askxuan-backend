@@ -39,17 +39,33 @@ func NewProductSkuModel(conn sqlx.SqlConn) ProductSkuModel {
 }
 
 func (m *defaultProductSkuModel) Insert(ctx context.Context, data *ProductSku) (*ProductSku, error) {
-	query := fmt.Sprintf(`INSERT INTO %s (product_id, spec_name, spec_value, price, stock, sku_no) VALUES (?, ?, ?, ?, ?, ?)`, productSkuTable)
-	result, err := m.conn.ExecCtx(ctx, query, data.ProductId, data.SpecName, data.SpecValue, data.Price, data.Stock, data.SkuNo)
+	err := m.mutate(ctx, data.ProductId, func(tx sqlx.Session) error {
+		result, err := tx.ExecCtx(ctx, `INSERT INTO product_sku(product_id,spec_name,spec_value,price,stock,sku_no) VALUES(?,?,?,?,?,?)`, data.ProductId, data.SpecName, data.SpecValue, data.Price, data.Stock, data.SkuNo)
+		if err != nil {
+			return err
+		}
+		data.Id, err = result.LastInsertId()
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-	data.Id = id
 	return data, nil
+}
+
+// Serialize admin SKU changes with cart reservation and maintain the catalog aggregate.
+func (m *defaultProductSkuModel) mutate(ctx context.Context, productID int64, apply func(sqlx.Session) error) error {
+	return m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		var id int64
+		if err := tx.QueryRowCtx(ctx, &id, `SELECT id FROM product WHERE id=? FOR UPDATE`, productID); err != nil {
+			return err
+		}
+		if err := apply(tx); err != nil {
+			return err
+		}
+		_, err := tx.ExecCtx(ctx, `UPDATE product SET stock=(SELECT COALESCE(SUM(stock),0) FROM product_sku WHERE product_id=?) WHERE id=?`, productID, productID)
+		return err
+	})
 }
 
 func (m *defaultProductSkuModel) FindOne(ctx context.Context, id int64) (*ProductSku, error) {
@@ -63,15 +79,24 @@ func (m *defaultProductSkuModel) FindOne(ctx context.Context, id int64) (*Produc
 }
 
 func (m *defaultProductSkuModel) Update(ctx context.Context, data *ProductSku) error {
-	query := fmt.Sprintf(`UPDATE %s SET spec_name=?, spec_value=?, price=?, stock=?, sku_no=? WHERE id=?`, productSkuTable)
-	_, err := m.conn.ExecCtx(ctx, query, data.SpecName, data.SpecValue, data.Price, data.Stock, data.SkuNo, data.Id)
-	return err
+	old, err := m.FindOne(ctx, data.Id)
+	if err != nil {
+		return err
+	}
+	return m.mutate(ctx, old.ProductId, func(tx sqlx.Session) error {
+		_, err := tx.ExecCtx(ctx, `UPDATE product_sku SET spec_name=?,spec_value=?,price=?,stock=?,sku_no=? WHERE id=?`, data.SpecName, data.SpecValue, data.Price, data.Stock, data.SkuNo, data.Id)
+		return err
+	})
 }
-
 func (m *defaultProductSkuModel) Delete(ctx context.Context, id int64) error {
-	query := fmt.Sprintf(`DELETE FROM %s WHERE id = ?`, productSkuTable)
-	_, err := m.conn.ExecCtx(ctx, query, id)
-	return err
+	old, err := m.FindOne(ctx, id)
+	if err != nil {
+		return err
+	}
+	return m.mutate(ctx, old.ProductId, func(tx sqlx.Session) error {
+		_, err := tx.ExecCtx(ctx, `DELETE FROM product_sku WHERE id=?`, id)
+		return err
+	})
 }
 
 func (m *defaultProductSkuModel) ListByProductId(ctx context.Context, productId int64) ([]*ProductSku, error) {

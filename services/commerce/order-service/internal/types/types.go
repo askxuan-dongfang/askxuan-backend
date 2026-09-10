@@ -2,17 +2,18 @@ package types
 
 // ShopOrder 商城订单
 type ShopOrder struct {
-	Id          int64              `json:"id"`
-	OrderNo     string             `json:"orderNo"`
-	UserId      string             `json:"userId"`
-	TotalAmount float64            `json:"totalAmount"`
-	PayAmount   float64            `json:"payAmount"`
-	Status      string             `json:"status"`
-	AddressId   int64              `json:"addressId"`
-	Note        string             `json:"note"`
-	Items       []ShopOrderItem    `json:"items"`
-	Logistics   ShopOrderLogistics `json:"logistics"`
-	CreateTime  string             `json:"createTime"`
+	IsExperience bool               `json:"isExperience"`
+	Id           int64              `json:"id"`
+	OrderNo      string             `json:"orderNo"`
+	UserId       string             `json:"userId"`
+	TotalAmount  float64            `json:"totalAmount"`
+	PayAmount    float64            `json:"payAmount"`
+	Status       string             `json:"status"`
+	AddressId    int64              `json:"addressId"`
+	Note         string             `json:"note"`
+	Items        []ShopOrderItem    `json:"items"`
+	Logistics    ShopOrderLogistics `json:"logistics"`
+	CreateTime   string             `json:"createTime"`
 }
 
 // ShopOrderItem 订单明细

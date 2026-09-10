@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/askxuan/common"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -51,12 +52,17 @@ var ErrInvalid = errors.New("请检查填写的信息")
 // Reading DECIMAL amounts as cents in SQL avoids float truncation around thresholds.
 func Award(ctx context.Context, tx sqlx.Session, paymentID int64) error {
 	var p struct {
-		User  string `db:"user_id"`
-		No    string `db:"payment_no"`
-		Cents int64  `db:"cents"`
+		User      string `db:"user_id"`
+		No        string `db:"payment_no"`
+		Cents     int64  `db:"cents"`
+		OrderType string `db:"order_type"`
+		OrderNo   string `db:"order_no"`
 	}
-	if err := tx.QueryRowCtx(ctx, &p, `SELECT user_id,payment_no,CAST(ROUND(amount*100) AS SIGNED) cents FROM payment WHERE id=?`, paymentID); err != nil {
+	if err := tx.QueryRowCtx(ctx, &p, `SELECT user_id,payment_no,order_type,order_no,CAST(ROUND(amount*100) AS SIGNED) cents FROM payment WHERE id=?`, paymentID); err != nil {
 		return err
+	}
+	if p.OrderType == "shop_order" && common.IsExperienceOrder(p.OrderNo) {
+		return nil
 	}
 	var count int64
 	if err := tx.QueryRowCtx(ctx, &count, `SELECT COUNT(*) FROM points_payment_award WHERE payment_id=?`, paymentID); err != nil {

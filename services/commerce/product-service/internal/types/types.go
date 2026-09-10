@@ -2,6 +2,11 @@ package types
 
 // Product 商品
 type Product struct {
+	IsExperience bool   `json:"isExperience,optional"`
+	SourceName   string `json:"sourceName,optional"`
+	SourceUrl    string `json:"sourceUrl,optional"`
+	SourceNote   string `json:"sourceNote,optional"`
+
 	Id                int64          `json:"id"`
 	ProductNo         string         `json:"productNo"`
 	Name              string         `json:"name"`
@@ -181,6 +186,11 @@ type AdminProductListResp struct {
 }
 
 type AdminProductCreateReq struct {
+	IsExperience bool   `json:"isExperience,optional"`
+	SourceName   string `json:"sourceName,optional"`
+	SourceUrl    string `json:"sourceUrl,optional"`
+	SourceNote   string `json:"sourceNote,optional"`
+
 	Name              string  `json:"name"`
 	CategoryId        int64   `json:"categoryId"`
 	Description       string  `json:"description"`
@@ -201,6 +211,11 @@ type AdminProductDetailReq struct {
 }
 
 type AdminProductUpdateReq struct {
+	IsExperience *bool   `json:"isExperience,optional"`
+	SourceName   *string `json:"sourceName,optional"`
+	SourceUrl    *string `json:"sourceUrl,optional"`
+	SourceNote   *string `json:"sourceNote,optional"`
+
 	Id                int64   `path:"id"`
 	Name              string  `json:"name"`
 	CategoryId        int64   `json:"categoryId"`

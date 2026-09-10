@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/askxuan/common"
 	"os"
 	"os/signal"
 	"syscall"
@@ -142,7 +143,7 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 				}
 				logx.Infof("收到订单状态变更: orderId=%s action=%s userId=%s",
 					evt.OrderId, evt.Action, evt.UserId)
-				if evt.Action == "completed" {
+				if evt.Action == "completed" && !common.IsExperienceOrder(evt.OrderId) {
 					model.InsertFinanceLog(model.FinanceLog{
 						Type:        "income",
 						Amount:      0,

@@ -1,0 +1,175 @@
+{
+  "checkedAt": "2026-09-11",
+  "imageUse": "Public product imagery retained only for clearly attributed, non-sale experience cases; no claim of ownership or supplier authorization.",
+  "products": [
+    {
+      "productNo": "EXP-20260911-lotus-sandalwood",
+      "name": "步步生莲檀木手串",
+      "categoryName": "佛珠手串",
+      "description": "木质圆珠搭配莲花造型配珠，珠径约 10mm，适合手围约 14–16cm。参考原商品提供檀香木、绿檀木与黑檀木款式。佩戴后保持干燥，避免长时间暴晒。",
+      "price": 59,
+      "marketPrice": 0,
+      "stock": 60,
+      "tags": "体验商品,文化好物",
+      "isExperience": true,
+      "sourceName": "新敦煌旗舰店 · 有赞公开商品页",
+      "sourceUrl": "https://detail.youzan.com/show/goods?alias=2fpjhi0afsu2ns2&from_source=gbox_seo",
+      "sourceNote": "资料核对：2026-09-11。商品名称、图片与基础参数参考原商品页面；页面价格为体验结算金额，库存为模拟数量，不代表原商家实时售价、库存或供货关系。仅模拟下单，不实际扣款、发货或发放消费积分。",
+      "skus": [
+        {
+          "specName": "款式",
+          "specValue": "檀香木",
+          "price": 59,
+          "stock": 20,
+          "skuNo": "EXP-lotus-sandalwood-1"
+        },
+        {
+          "specName": "款式",
+          "specValue": "绿檀木",
+          "price": 59,
+          "stock": 20,
+          "skuNo": "EXP-lotus-sandalwood-2"
+        },
+        {
+          "specName": "款式",
+          "specValue": "黑檀木",
+          "price": 59,
+          "stock": 20,
+          "skuNo": "EXP-lotus-sandalwood-3"
+        }
+      ],
+      "images": [
+        {
+          "path": "/catalog-experiences/lotus-sandalwood-1.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/05/15/Fh6UTpayn-DzigaJiJgxbGExycqA.jpg!middle.jpg",
+          "sha256": "3a6c03f00bdb329ad4aba63fc6bcdaf3fda4cbbfba9e1398039a9866be0a2d02"
+        },
+        {
+          "path": "/catalog-experiences/lotus-sandalwood-2.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/05/15/FmPsGWFDx-jmKRmYMpPE9-2ZITRr.jpg!middle.jpg",
+          "sha256": "a2822a2acd488ffe0c3220e5851896b332c7d418dbd2360e980e1aa0b21cb6b2"
+        },
+        {
+          "path": "/catalog-experiences/lotus-sandalwood-3.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/05/15/FioTMQ2f_x19Gl7rx-lRbGUysEQ3.jpg!middle.jpg",
+          "sha256": "0e57274552e52a054a027ddcc3ae609f45ce6e97198184e2e7997ece4e0f43bb"
+        }
+      ]
+    },
+    {
+      "productNo": "EXP-20260911-mugwort-beads",
+      "name": "青芜 · 艾草合香珠手串",
+      "categoryName": "佛珠手串",
+      "description": "以苍艾合香珠搭配白玛瑙、蓝玉髓，呈现草木与矿石的自然配色。珠径约 10mm，适合手围约 14–16cm，约 15g。仅作为饰品案例展示。",
+      "price": 79,
+      "marketPrice": 0,
+      "stock": 20,
+      "tags": "体验商品,文化好物",
+      "isExperience": true,
+      "sourceName": "新敦煌旗舰店 · 有赞公开商品页",
+      "sourceUrl": "https://detail.youzan.com/show/goods?from_source=gbox_seo&alias=1ybs9m7vsdgrjyd",
+      "sourceNote": "资料核对：2026-09-11。商品名称、图片与基础参数参考原商品页面；页面价格为体验结算金额，库存为模拟数量，不代表原商家实时售价、库存或供货关系。仅模拟下单，不实际扣款、发货或发放消费积分。",
+      "skus": [
+        {
+          "specName": "款式",
+          "specValue": "单圈 · 10mm",
+          "price": 79,
+          "stock": 20,
+          "skuNo": "EXP-mugwort-beads-1"
+        }
+      ],
+      "images": [
+        {
+          "path": "/catalog-experiences/mugwort-beads-1.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/06/05/Fq19OJBGsXXQBFtx5EV4jSNxjvW_.jpg!middle.jpg",
+          "sha256": "4644e75d3b94d5010a15fe26a6bede4254224e7831c3be8ca8c422bb99890c09"
+        },
+        {
+          "path": "/catalog-experiences/mugwort-beads-2.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/06/05/FiF82Q6C-kMBGQhJ7SEMb27L54qX.jpg!middle.jpg",
+          "sha256": "2eaec997b8a1160ecf15339935c9fc8eeece0015274a335aa4d889c19be8e214"
+        },
+        {
+          "path": "/catalog-experiences/mugwort-beads-3.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/06/05/FpCJHpI1NwsbTKCKclFXc4RGKaBC.jpg!middle.jpg",
+          "sha256": "5aa96249fedd4160d590a1cf16d6099554c5d88fcd895dcb8f11652e337ab83f"
+        }
+      ]
+    },
+    {
+      "productNo": "EXP-20260911-flying-incense-cup",
+      "name": "敦煌飞天引香盏",
+      "categoryName": "法器供具",
+      "description": "色釉陶瓷香器，以飞天纹样装点茶室或案头。原商品页面标注尺寸约 8 × 7cm、重量约 300g。使用香器时放置在稳固耐热表面，远离可燃物。",
+      "price": 129,
+      "marketPrice": 0,
+      "stock": 20,
+      "tags": "体验商品,文化好物",
+      "isExperience": true,
+      "sourceName": "新敦煌旗舰店 · 有赞公开商品页",
+      "sourceUrl": "https://detail.youzan.com/show/goods?from_source=gbox_seo&alias=1yj8kuhkaagxbpw",
+      "sourceNote": "资料核对：2026-09-11。商品名称、图片与基础参数参考原商品页面；页面价格为体验结算金额，库存为模拟数量，不代表原商家实时售价、库存或供货关系。仅模拟下单，不实际扣款、发货或发放消费积分。",
+      "skus": [
+        {
+          "specName": "款式",
+          "specValue": "色釉陶瓷 · 单件",
+          "price": 129,
+          "stock": 20,
+          "skuNo": "EXP-flying-incense-cup-1"
+        }
+      ],
+      "images": [
+        {
+          "path": "/catalog-experiences/flying-incense-cup-1.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/08/06/Fmofp9l6C3lfUIlZJGWKGY7L-LJC.jpg!middle.jpg",
+          "sha256": "004123d90412e08fca764c66bd0a5ccc9d0cbad3375e02c7c0c4148d7e83892d"
+        },
+        {
+          "path": "/catalog-experiences/flying-incense-cup-2.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/08/06/FtLgSRScGx-LArwxyg1ad7hRw8dW.jpg!middle.jpg",
+          "sha256": "96469fdc89bbc787d9efb852740bc4d653e0bd4a1ce51712ab104ce589f23c76"
+        }
+      ]
+    },
+    {
+      "productNo": "EXP-20260911-flying-clay-burner",
+      "name": "敦煌飞天粗陶香炉",
+      "categoryName": "法器供具",
+      "description": "飞天图案与粗陶质感结合，适合案头陈设和香道空间。原商品页面标注尺寸约 11.5 × 9.8cm、重量约 328g。尺寸为参考，陶瓷制品避免碰撞。",
+      "price": 159,
+      "marketPrice": 0,
+      "stock": 20,
+      "tags": "体验商品,文化好物",
+      "isExperience": true,
+      "sourceName": "新敦煌旗舰店 · 有赞公开商品页",
+      "sourceUrl": "https://detail.youzan.com/show/goods?from_source=gbox_seo&alias=3nejfqkbslw8vzi",
+      "sourceNote": "资料核对：2026-09-11。商品名称、图片与基础参数参考原商品页面；页面价格为体验结算金额，库存为模拟数量，不代表原商家实时售价、库存或供货关系。仅模拟下单，不实际扣款、发货或发放消费积分。",
+      "skus": [
+        {
+          "specName": "款式",
+          "specValue": "粗陶 · 单件",
+          "price": 159,
+          "stock": 20,
+          "skuNo": "EXP-flying-clay-burner-1"
+        }
+      ],
+      "images": [
+        {
+          "path": "/catalog-experiences/flying-clay-burner-1.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/05/29/FgjcGYrGaO5RcBcdJKdyFNqvMsj9.jpg!middle.jpg",
+          "sha256": "c09dd77b5ef5566d10d1680eb09fe9a7cbd12856eef889fb4a7126247c60ba71"
+        },
+        {
+          "path": "/catalog-experiences/flying-clay-burner-2.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/05/29/Fid6IPFK2yDdtBVmI6ZimuGlxZDU.jpg!middle.jpg",
+          "sha256": "087cf166b1b28ad7100d638790b3a2b966cc60c2223325bd1f858fa20c11fadd"
+        },
+        {
+          "path": "/catalog-experiences/flying-clay-burner-3.jpg",
+          "originUrl": "https://img01.yzcdn.cn/upload_files/2026/05/29/FiB1YyhQKdNPhXZpD7hnlKiYA31D.jpg!middle.jpg",
+          "sha256": "f192db9f670508641cf8dd5ed65c8932ce03361385e93b078f17f7920209709d"
+        }
+      ]
+    }
+  ]
+}

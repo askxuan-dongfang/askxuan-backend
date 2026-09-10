@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/askxuan/common"
 	"math"
 	"time"
 
@@ -122,6 +123,9 @@ func CalculateBookingSplit(serviceFee, meritMoney, totalFee, rate float64) (Book
 }
 
 func RecordPlatformReceipt(ctx context.Context, receipt PaymentReceipt) error {
+	if receipt.SourceType == "shop_order" && common.IsExperienceOrder(receipt.SourceNo) {
+		return nil
+	}
 	if receipt.PaymentNo == "" || receipt.SourceType == "" || receipt.SourceNo == "" || receipt.Amount <= 0 {
 		return fmt.Errorf("平台收款事件字段不完整")
 	}
@@ -164,6 +168,9 @@ func RecordPlatformReceipt(ctx context.Context, receipt PaymentReceipt) error {
 // RecordPlatformRefund posts a refund once and reverses the platform cash and
 // customer-funds-held entries. The source payment receipt must already exist.
 func RecordPlatformRefund(ctx context.Context, receipt PaymentReceipt) error {
+	if receipt.SourceType == "shop_order" && common.IsExperienceOrder(receipt.SourceNo) {
+		return nil
+	}
 	if receipt.PaymentNo == "" || receipt.SourceType == "" || receipt.SourceNo == "" || receipt.Amount <= 0 {
 		return fmt.Errorf("平台退款事件字段不完整")
 	}
