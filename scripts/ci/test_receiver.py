@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 import ecs_receiver as receiver
+from retag_release import retag
 
 A, B = 'a' * 40, 'b' * 40
 
@@ -124,6 +125,22 @@ class ReceiverTests(unittest.TestCase):
             (base / 'state.json').write_text(json.dumps({'last_release': 'ci-web-later-2'}))
             with patch.object(receiver, 'BASE', base), self.assertRaisesRegex(ValueError, 'latest global'):
                 receiver.rollback_latest('ci-h5-older-1')
+
+    def test_retry_retags_only_metadata_without_changing_payload(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest = {'release': 'ci-h5-123-1-' + A[:12], 'files': {'payload/h5/index.html': 'checksum'}}
+            archive = self.archive(base, [('manifest.json', json.dumps(manifest).encode(), tarfile.REGTYPE),
+                                          ('payload/h5/index.html', b'unchanged', tarfile.REGTYPE)])
+            self.assertEqual(retag(archive, base / 'retry.tgz', '123', '1'), archive)
+            retried = retag(archive, base / 'retry.tgz', '123', '2')
+            with tarfile.open(retried) as tar:
+                updated = json.load(tar.extractfile('manifest.json'))
+                self.assertEqual(updated['release'], 'ci-h5-123-2-' + A[:12])
+                self.assertEqual(updated['files'], manifest['files'])
+                self.assertEqual(tar.extractfile('payload/h5/index.html').read(), b'unchanged')
+            with self.assertRaisesRegex(ValueError, 'does not belong'):
+                retag(archive, base / 'bad.tgz', '124', '2')
 
 
 if __name__ == '__main__':

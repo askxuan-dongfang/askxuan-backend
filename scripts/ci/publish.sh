@@ -7,7 +7,8 @@ trap 'rm -rf "$temp"' EXIT
 printf '%s\n' "$ECS_DEPLOY_KEY" > "$temp/key"
 printf '%s\n' "$ECS_KNOWN_HOSTS" > "$temp/known_hosts"
 unset ECS_DEPLOY_KEY ECS_KNOWN_HOSTS
+artifact="$(python3 "$(dirname "$0")/retag_release.py" "${1:-release.tgz}" "$temp/release.tgz")"
 ssh -T -i "$temp/key" -o IdentitiesOnly=yes -o BatchMode=yes \
   -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$temp/known_hosts" \
   -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
-  "askxuan-ci@$ECS_HOST" deploy < "${1:-release.tgz}"
+  "askxuan-ci@$ECS_HOST" deploy < "$artifact"
