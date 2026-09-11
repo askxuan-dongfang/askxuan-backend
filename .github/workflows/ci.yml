@@ -1,77 +1,69 @@
-# askXuan-backend CI 流水线
-# 触发条件：push 到 main/develop 分支 或 Pull Request
-#
-# 历史教训：本仓库 checkout 根目录即后端代码根目录，
-# 曾因 working-directory: askXuan-backend 导致所有 job 全部失败。
-
-name: CI
-
+name: CI and ECS release
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
-
-env:
-  GO_VERSION: "1.22"
-
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  # ===== 编译检查（20 服务 + common 全量 go build） =====
   build:
-    name: Build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Build all modules
-        run: make build
-
-  # ===== 单元测试（严格模式：任一模块失败即红） =====
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.22'
+          cache-dependency-path: '**/go.sum'
+      - run: python3 scripts/ci/release.py backend
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ecs-release
+          path: release.tgz
+          retention-days: 3
+          if-no-files-found: error
   test:
-    name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Run tests (strict)
-        run: make test-ci
-
-  # ===== go vet =====
+          go-version: '1.22'
+          cache-dependency-path: '**/go.sum'
+      - run: make test-ci
+      - run: python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
   vet:
-    name: Vet
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Run go vet
-        run: make vet
-
-  # ===== Lint（暂缓启用） =====
-  # 现有代码基线存在大量历史告警（如 go-zero 的 json:"...,optional"
-  # 标签触发 staticcheck SA5008），全量清零前 lint 会长期红灯。
-  # 清理完成后按下面模板重新启用（本地验证用 make lint-ci）：
-  #
-  #  lint:
-  #    name: Lint
-  #    runs-on: ubuntu-latest
-  #    steps:
-  #      - uses: actions/checkout@v4
-  #      - uses: actions/setup-go@v5
-  #        with:
-  #          go-version: ${{ env.GO_VERSION }}
-  #      - name: Install golangci-lint
-  #        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.62.2
-  #      - name: Run lint (per module)
-  #        run: make lint-ci
+          go-version: '1.22'
+          cache-dependency-path: '**/go.sum'
+      - run: make vet
+  deploy:
+    needs: [build, test, vet]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ECS_DEPLOY_ENABLED == 'true'
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ecs-release
+      - name: Publish binaries through restricted SSH receiver
+        env:
+          ECS_HOST: ${{ vars.ECS_HOST }}
+          ECS_DEPLOY_KEY: ${{ secrets.ECS_DEPLOY_KEY }}
+          ECS_KNOWN_HOSTS: ${{ secrets.ECS_KNOWN_HOSTS }}
+        run: bash scripts/ci/publish.sh release.tgz

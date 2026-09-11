@@ -196,3 +196,8 @@ _site/
 *.test
 *.out
 vendor/
+
+# CI packaging and Python tooling
+__pycache__/
+*.pyc
+release.tgz
