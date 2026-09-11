@@ -54,6 +54,9 @@ func NewAdminMaterialCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext
 }
 
 func (l *AdminMaterialCreateLogic) Create(req *types.AdminMaterialCreateReq) (*types.AdminMaterialCreateResp, error) {
+	if !model.ValidRenderAssets(req.RenderAssets) {
+		return nil, common.ErrParam
+	}
 	m, err := l.svcCtx.MaterialModel.Insert(l.ctx, &model.Material{
 		Name:         req.Name,
 		Spec:         req.Spec,
@@ -68,8 +71,8 @@ func (l *AdminMaterialCreateLogic) Create(req *types.AdminMaterialCreateReq) (*t
 		TextureKey:   req.TextureKey,
 		Finish:       req.Finish,
 		Translucency: req.Translucency,
-		Image:        req.Image,
-		Stock:        req.Stock,
+		Image:        req.Image, RenderAssets: req.RenderAssets,
+		Stock: req.Stock,
 	})
 	if err != nil {
 		l.Errorf("创建材料失败: %v", err)
@@ -90,6 +93,9 @@ func NewAdminMaterialUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext
 }
 
 func (l *AdminMaterialUpdateLogic) Update(req *types.AdminMaterialUpdateReq) (*types.Material, error) {
+	if !model.ValidRenderAssets(req.RenderAssets) {
+		return nil, common.ErrParam
+	}
 	err := l.svcCtx.MaterialModel.Update(l.ctx, &model.Material{
 		Id:           req.Id,
 		Name:         req.Name,
@@ -105,8 +111,8 @@ func (l *AdminMaterialUpdateLogic) Update(req *types.AdminMaterialUpdateReq) (*t
 		TextureKey:   req.TextureKey,
 		Finish:       req.Finish,
 		Translucency: req.Translucency,
-		Image:        req.Image,
-		Stock:        req.Stock,
+		Image:        req.Image, RenderAssets: req.RenderAssets,
+		Stock: req.Stock,
 	})
 	if err != nil {
 		l.Errorf("更新材料失败: %v", err)

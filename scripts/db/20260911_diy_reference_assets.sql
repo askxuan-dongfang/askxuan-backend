@@ -1,0 +1,6 @@
+USE askxuan_diy;
+SET NAMES utf8mb4;
+-- Optional licensed reference assets. Original photos remain unchanged.
+UPDATE material SET render_assets='{"beadImageUrl": "/assets/diy/sources/lapis.jpg", "imageCrop": {"x": 158, "y": 36, "width": 470, "height": 470, "imageWidth": 800, "imageHeight": 600}, "source": "licensed", "attribution": "Adam Ognisty / CC BY-SA 3.0; 矿石球实拍参考，画布裁切。来源 /assets/diy/credits.html"}' WHERE name='青金石' AND COALESCE(render_assets,'')='';
+UPDATE material SET render_assets='{"beadImageUrl": "/assets/diy/sources/rose.jpg", "imageCrop": {"x": 40, "y": 38, "width": 410, "height": 410, "imageWidth": 519, "imageHeight": 519}, "source": "licensed", "attribution": "Ba7rainsun / CC BY-SA 4.0; 矿石球实拍参考，画布裁切。来源 /assets/diy/credits.html"}' WHERE name='粉晶' AND COALESCE(render_assets,'')='';
+UPDATE material SET render_assets='{"normalMapUrl": "/assets/diy/textures/wood/NormalGL.jpg", "roughnessMapUrl": "/assets/diy/textures/wood/Roughness.jpg", "source": "procedural", "attribution": "ambientCG Wood051 / CC0; 通用木纹参考，颜色采用材料配置 /assets/diy/credits.html"}' WHERE material_type='wood' AND COALESCE(render_assets,'')='';

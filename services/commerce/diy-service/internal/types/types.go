@@ -2,6 +2,9 @@ package types
 
 // DiyDesign DIY设计
 type DiyDesign struct {
+	Revision         int64   `json:"revision"`
+	SourceDesignId   int64   `json:"sourceDesignId"`
+	Description      string  `json:"description"`
 	Id               int64   `json:"id"`
 	DesignNo         string  `json:"designNo"`
 	UserId           string  `json:"userId"`
@@ -58,6 +61,7 @@ type MaterialDetailReq struct {
 
 // Material 材料库
 type Material struct {
+	RenderAssets string  `json:"renderAssets,optional"`
 	Id           int64   `json:"id"`
 	Name         string  `json:"name"`
 	Spec         string  `json:"spec"`
@@ -113,6 +117,9 @@ type DesignListReq struct {
 
 // MyDesignItem 我的设计（含最新订单信息）
 type MyDesignItem struct {
+	Revision         int64   `json:"revision"`
+	SourceDesignId   int64   `json:"sourceDesignId"`
+	Description      string  `json:"description"`
 	Id               int64   `json:"id"`
 	DesignNo         string  `json:"designNo"`
 	Name             string  `json:"name"`
@@ -154,6 +161,9 @@ type BlessingServiceListResp struct {
 }
 
 type DesignSaveReq struct {
+	Id               int64   `json:"id,optional"`
+	Revision         int64   `json:"revision,optional"`
+	Description      string  `json:"description,optional"`
 	UserId           string  `json:"userId"`
 	Name             string  `json:"name"`
 	DesignData       string  `json:"designData"`
@@ -163,7 +173,8 @@ type DesignSaveReq struct {
 }
 
 type DesignSaveResp struct {
-	Id int64 `json:"id"`
+	Revision int64 `json:"revision"`
+	Id       int64 `json:"id"`
 }
 
 type DesignDetailReq struct {
@@ -310,6 +321,7 @@ type AdminMaterialListResp struct {
 }
 
 type AdminMaterialCreateReq struct {
+	RenderAssets string  `json:"renderAssets,optional"`
 	Name         string  `json:"name"`
 	Spec         string  `json:"spec"`
 	UnitPrice    float64 `json:"unitPrice"`
@@ -332,6 +344,7 @@ type AdminMaterialCreateResp struct {
 }
 
 type AdminMaterialUpdateReq struct {
+	RenderAssets string  `json:"renderAssets,optional"`
 	Id           int64   `path:"id"`
 	Name         string  `json:"name"`
 	Spec         string  `json:"spec"`

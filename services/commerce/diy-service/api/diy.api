@@ -11,6 +11,9 @@ info (
 
 type (
     DiyDesign {
+        Revision int64 `json:"revision"`
+        SourceDesignId int64 `json:"sourceDesignId"`
+        Description string `json:"description"`
         Id              int64  `json:"id"`
         DesignNo        string `json:"designNo"`
         UserId          string `json:"userId"`
@@ -58,6 +61,7 @@ type (
     }
 
     Material {
+        RenderAssets string `json:"renderAssets,optional"` // JSON: beadImageUrl/imageCrop/albedoMapUrl/normalMapUrl/roughnessMapUrl/source/attribution
         Id           int64   `json:"id"`
         Name         string  `json:"name"`
         Spec         string  `json:"spec"`
@@ -105,6 +109,9 @@ type (
 
     // MyDesignItem 我的设计（含最新订单信息）
     MyDesignItem {
+        Revision int64 `json:"revision"`
+        SourceDesignId int64 `json:"sourceDesignId"`
+        Description string `json:"description"`
         Id               int64  `json:"id"`
         DesignNo         string `json:"designNo"`
         Name             string `json:"name"`
@@ -134,6 +141,9 @@ type (
     }
 
     DesignSaveReq {
+        Id int64 `json:"id,optional"`
+        Revision int64 `json:"revision,optional"` // Required when updating an existing design
+        Description string `json:"description,optional"`
         UserId           string  `json:"userId"`
         Name             string  `json:"name"`
         DesignData       string  `json:"designData"`
@@ -143,6 +153,7 @@ type (
     }
 
     DesignSaveResp {
+        Revision int64 `json:"revision"`
         Id int64 `json:"id"`
     }
 
@@ -304,6 +315,7 @@ type (
     }
 
     AdminMaterialCreateReq {
+        RenderAssets string `json:"renderAssets,optional"` // JSON: beadImageUrl/imageCrop/albedoMapUrl/normalMapUrl/roughnessMapUrl/source/attribution
         Name         string  `json:"name"`
         Spec         string  `json:"spec"`
         UnitPrice    float64 `json:"unitPrice"`
@@ -326,6 +338,7 @@ type (
     }
 
     AdminMaterialUpdateReq {
+        RenderAssets string `json:"renderAssets,optional"` // JSON: beadImageUrl/imageCrop/albedoMapUrl/normalMapUrl/roughnessMapUrl/source/attribution
         Id           int64   `path:"id"`
         Name         string  `json:"name"`
         Spec         string  `json:"spec"`
@@ -488,4 +501,35 @@ service diy-service {
 
     @handler adminBlessingServiceDelete
     delete /blessing-services/:id (AdminBlessingServiceDeleteReq)
+}
+
+// DIY Studio: handlers validate customer/admin JWT locally. Identity and prices
+// are server-authoritative. Save always creates/updates a private v2 document.
+// New documents contain 1..60 beads, wristSizeMm 100..260, fitAllowanceMm 0..30.
+type (
+    DesignStatusReq {
+        Id int64 `path:"id"`
+        Revision int64 `json:"revision"`
+        Status string `json:"status"`
+    }
+    StudioListReq {
+        Page int `form:"page,default=1"`
+        Size int `form:"size,default=20"`
+        Status string `form:"status,optional"`
+        Keyword string `form:"keyword,optional"`
+    }
+)
+@server(prefix: /api/v1/diy)
+service diy-studio {
+    @handler designCopy
+    post /designs/:id/copy (DesignDetailReq) returns (DiyDesign)
+    @handler designPublication
+    put /designs/:id/status (DesignStatusReq) returns (DiyDesign)
+}
+@server(prefix: /api/v1/admin/diy)
+service diy-studio-admin {
+    @handler studioList
+    get /designs (StudioListReq) returns (DesignListResp)
+    @handler studioModeration
+    put /designs/:id/status (DesignStatusReq) returns (DiyDesign)
 }

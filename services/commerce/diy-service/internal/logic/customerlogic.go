@@ -2,7 +2,6 @@ package logic
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/diy-service/internal/model"
@@ -28,7 +27,7 @@ func (l *BlessingServiceListLogic) List(req *types.BlessingServiceListReq) (*typ
 	if req.Page <= 0 {
 		req.Page = 1
 	}
-	if req.Size <= 0 {
+	if req.Size <= 0 || req.Size > 100 {
 		req.Size = 20
 	}
 	list, total, err := l.svcCtx.ExtraServiceModel.FindListByStatus(l.ctx, model.BlessingServiceStatusOnShelf, req.Page, req.Size)
@@ -61,7 +60,7 @@ func (l *DesignListLogic) List(req *types.DesignListReq) (*types.DesignListResp,
 	if req.Page <= 0 {
 		req.Page = 1
 	}
-	if req.Size <= 0 {
+	if req.Size <= 0 || req.Size > 100 {
 		req.Size = 20
 	}
 	list, total, err := l.svcCtx.DiyDesignModel.FindListPublic(l.ctx, req.Page, req.Size)
@@ -105,7 +104,7 @@ func (l *MyDesignListLogic) List(userId string, page, size int) (*types.MyDesign
 	resp := &types.MyDesignListResp{Total: total, Page: page, Size: size}
 	for _, d := range list {
 		resp.List = append(resp.List, types.MyDesignItem{
-			Id:               d.Id,
+			Id: d.Id, Revision: d.Revision, SourceDesignId: d.SourceDesignId, Description: d.Description,
 			DesignNo:         d.DesignNo,
 			Name:             d.Name,
 			DesignData:       d.DesignData,
@@ -133,23 +132,7 @@ func NewDesignSaveLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Design
 }
 
 func (l *DesignSaveLogic) Save(req *types.DesignSaveReq) (*types.DesignSaveResp, error) {
-	d, err := l.svcCtx.DiyDesignModel.Insert(l.ctx, &model.DiyDesign{
-		UserId:           req.UserId,
-		Name:             req.Name,
-		DesignData:       req.DesignData,
-		TotalPrice:       req.TotalPrice,
-		Status:           req.Status,
-		BlessServiceCode: req.BlessServiceCode,
-	})
-	if err != nil {
-		l.Errorf("保存设计失败: %v", err)
-		return nil, common.ErrSystem
-	}
-	// 缓存设计草稿（24 小时），便于用户下次进入设计页恢复上一次编辑
-	if jsonBytes, mErr := json.Marshal(toTypesDesign(d)); mErr == nil {
-		_ = l.svcCtx.Redis.Setex("diy:draft:"+req.UserId, string(jsonBytes), 86400)
-	}
-	return &types.DesignSaveResp{Id: d.Id}, nil
+	return NewDesignStudio(l.ctx, l.svcCtx).Save(req)
 }
 
 // DesignDetailLogic 设计详情
@@ -171,6 +154,9 @@ func (l *DesignDetailLogic) Detail(req *types.DesignDetailReq) (*types.DiyDesign
 		}
 		l.Errorf("查询设计详情失败: %v", err)
 		return nil, common.ErrSystem
+	}
+	if !canReadDesign(d, studioUser(l.ctx)) {
+		return nil, ErrDesignNotFound
 	}
 	t := toTypesDesign(d)
 	return &t, nil
@@ -210,7 +196,7 @@ func (l *MaterialListLogic) List(req *types.MaterialListReq) (*types.MaterialLis
 
 func toTypesDesign(d *model.DiyDesign) types.DiyDesign {
 	return types.DiyDesign{
-		Id:               d.Id,
+		Id: d.Id, Revision: d.Revision, SourceDesignId: d.SourceDesignId, Description: d.Description,
 		DesignNo:         d.DesignNo,
 		UserId:           d.UserId,
 		Name:             d.Name,
@@ -238,9 +224,9 @@ func toTypesMaterial(m *model.Material) types.Material {
 		TextureKey:   m.TextureKey,
 		Finish:       m.Finish,
 		Translucency: m.Translucency,
-		Image:        m.Image,
-		Stock:        m.Stock,
-		Status:       m.Status,
+		Image:        m.Image, RenderAssets: m.RenderAssets,
+		Stock:  m.Stock,
+		Status: m.Status,
 	}
 }
 

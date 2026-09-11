@@ -2,6 +2,8 @@ package model
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -17,10 +19,15 @@ const (
 	DesignStatusRejected      = "rejected"       // 审核驳回
 )
 
+const designFields = "id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description"
+
 const diyDesignTable = "askxuan_diy.diy_design"
 
 // DiyDesign DIY设计表
 type DiyDesign struct {
+	Revision         int64   `db:"revision" json:"revision"`
+	SourceDesignId   int64   `db:"source_design_id" json:"sourceDesignId"`
+	Description      string  `db:"description" json:"description"`
 	Id               int64   `db:"id" json:"id"`
 	DesignNo         string  `db:"design_no" json:"designNo"`
 	UserId           string  `db:"user_id" json:"userId"`
@@ -47,6 +54,8 @@ type DiyDesignModel interface {
 	FindListPublic(ctx context.Context, page, size int) ([]*DiyDesign, int64, error)
 	FindListByUserWithOrders(ctx context.Context, userId string, page, size int) ([]*DiyDesignWithOrder, int64, error)
 	Update(ctx context.Context, data *DiyDesign) error
+	UpdateOwned(ctx context.Context, data *DiyDesign, revision int64) error
+	FindStudioList(ctx context.Context, owner, status, keyword string, page, size int) ([]*DiyDesign, int64, error)
 }
 
 type defaultDiyDesignModel struct {
@@ -59,17 +68,22 @@ func NewDiyDesignModel(conn sqlx.SqlConn) DiyDesignModel {
 
 func (m *defaultDiyDesignModel) Insert(ctx context.Context, data *DiyDesign) (*DiyDesign, error) {
 	if data.DesignNo == "" {
-		data.DesignNo = "D" + time.Now().Format("20060102") + fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+		var token [12]byte
+		if _, err := rand.Read(token[:]); err != nil {
+			return nil, err
+		}
+		data.DesignNo = "D" + hex.EncodeToString(token[:])
 	}
 	if data.Status == "" {
 		data.Status = DesignStatusPrivate
 	}
+	data.Revision = 1
 	now := time.Now().Format("2006-01-02 15:04:05")
 	data.CreateTime = now
 	data.UpdateTime = now
 
-	query := fmt.Sprintf(`INSERT INTO %s (design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, diyDesignTable)
-	result, err := m.conn.ExecCtx(ctx, query, data.DesignNo, data.UserId, data.Name, data.DesignData, data.TotalPrice, data.Status, data.BlessServiceCode, data.CreateTime, data.UpdateTime)
+	query := fmt.Sprintf(`INSERT INTO %s (design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, diyDesignTable)
+	result, err := m.conn.ExecCtx(ctx, query, data.DesignNo, data.UserId, data.Name, data.DesignData, data.TotalPrice, data.Status, data.BlessServiceCode, data.CreateTime, data.UpdateTime, data.Revision, data.SourceDesignId, data.Description)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +97,7 @@ func (m *defaultDiyDesignModel) Insert(ctx context.Context, data *DiyDesign) (*D
 
 func (m *defaultDiyDesignModel) FindOne(ctx context.Context, id int64) (*DiyDesign, error) {
 	var d DiyDesign
-	query := fmt.Sprintf(`SELECT id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time FROM %s WHERE id = ?`, diyDesignTable)
+	query := fmt.Sprintf(`SELECT id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description FROM %s WHERE id = ?`, diyDesignTable)
 	err := m.conn.QueryRowCtx(ctx, &d, query, id)
 	if err != nil {
 		return nil, err
@@ -102,7 +116,7 @@ func (m *defaultDiyDesignModel) FindListPublic(ctx context.Context, page, size i
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time FROM %s WHERE status = ? ORDER BY create_time DESC LIMIT ?, ?`, diyDesignTable)
+	listQuery := fmt.Sprintf(`SELECT id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description FROM %s WHERE status = ? ORDER BY create_time DESC LIMIT ?, ?`, diyDesignTable)
 	var list []*DiyDesign
 	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, DesignStatusPublic, offset, size); err != nil {
 		return nil, 0, err
@@ -121,7 +135,7 @@ func (m *defaultDiyDesignModel) FindListByUserWithOrders(ctx context.Context, us
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT d.id, d.design_no, d.user_id, d.name, d.design_data, d.total_price, d.status, d.bless_service_code, d.create_time, d.update_time,
+	listQuery := fmt.Sprintf(`SELECT d.id, d.design_no, d.user_id, d.name, d.design_data, d.total_price, d.status, d.bless_service_code, d.create_time, d.update_time, d.revision, d.source_design_id, d.description,
 		COALESCE(o.order_no,'') AS order_no, COALESCE(o.status,'') AS order_status
 		FROM %s d
 		LEFT JOIN askxuan_diy.diy_order o ON o.design_id = d.id
