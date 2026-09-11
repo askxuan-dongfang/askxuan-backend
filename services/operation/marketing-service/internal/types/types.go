@@ -14,6 +14,7 @@ type PageReq struct {
 type Banner struct {
 	Id        int64  `json:"id"`
 	Title     string `json:"title"`
+	Placement string `json:"placement"`
 	ImageUrl  string `json:"imageUrl"`
 	LinkType  string `json:"linkType"` // temple/master/product/diy/ad_landing
 	LinkValue string `json:"linkValue"`
@@ -26,9 +27,10 @@ type Banner struct {
 
 // BannerListReq Banner 列表请求
 type BannerListReq struct {
-	Status string `form:"status,optional"`
-	Page   int    `form:"page,default=1"`
-	Size   int    `form:"size,default=20"`
+	Placement string `form:"placement,optional"`
+	Status    string `form:"status,optional"`
+	Page      int    `form:"page,default=1"`
+	Size      int    `form:"size,default=20"`
 }
 
 // BannerListResp Banner 列表响应
@@ -42,25 +44,27 @@ type BannerListResp struct {
 // BannerCreateReq 创建 Banner
 type BannerCreateReq struct {
 	Title     string `json:"title"`
-	ImageUrl  string `json:"imageUrl"`
-	LinkType  string `json:"linkType"`
-	LinkValue string `json:"linkValue"`
-	Sort      int    `json:"sort,optional"`
-	StartTime string `json:"startTime"`
-	EndTime   string `json:"endTime"`
-}
-
-// BannerUpdateReq 更新 Banner
-type BannerUpdateReq struct {
-	Id        int64  `path:"id"`
-	Title     string `json:"title,optional"`
+	Placement string `json:"placement,optional"`
 	ImageUrl  string `json:"imageUrl,optional"`
 	LinkType  string `json:"linkType,optional"`
 	LinkValue string `json:"linkValue,optional"`
 	Sort      int    `json:"sort,optional"`
-	Status    string `json:"status,optional"`
 	StartTime string `json:"startTime,optional"`
 	EndTime   string `json:"endTime,optional"`
+}
+
+// Omitted fields stay unchanged; explicit empty dates remove a schedule boundary.
+type BannerUpdateReq struct {
+	Id        int64   `path:"id"`
+	Title     *string `json:"title,optional"`
+	Placement *string `json:"placement,optional"`
+	ImageUrl  *string `json:"imageUrl,optional"`
+	LinkType  *string `json:"linkType,optional"`
+	LinkValue *string `json:"linkValue,optional"`
+	Sort      *int    `json:"sort,optional"`
+	Status    *string `json:"status,optional"`
+	StartTime *string `json:"startTime,optional"`
+	EndTime   *string `json:"endTime,optional"`
 }
 
 // IdResp 通用 ID 响应

@@ -25,6 +25,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/marketing/banners", Handler: customerBannerListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/marketing/recommends", Handler: customerRecommendListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/marketing/activities", Handler: customerActivityListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/marketing/activities/:id", Handler: customerActivityDetailHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/marketing/coupons", Handler: customerCouponListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/marketing/coupons/:id/receive", Handler: customerCouponReceiveHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/marketing/my-coupons", Handler: customerMyCouponHandler(svcCtx)},
@@ -269,5 +270,17 @@ func respond(w http.ResponseWriter, resp interface{}, err error) {
 		common.JsonError(w, err)
 	} else {
 		common.Ok(w, resp)
+	}
+}
+
+func customerActivityDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.IdReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.NewCustomerActivityListLogic(r.Context(), svcCtx).Detail(&req)
+		respond(w, resp, err)
 	}
 }

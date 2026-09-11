@@ -3,8 +3,8 @@ package model
 import (
 	"context"
 
-	"github.com/askxuan/master-service/internal/types"
 	"fmt"
+	"github.com/askxuan/master-service/internal/types"
 	"regexp"
 	"strings"
 
@@ -20,6 +20,10 @@ const (
 )
 
 func NormalizeBeliefCode(code, masterType, sect string) string {
+	code = strings.TrimSpace(strings.ToLower(code))
+	if code == "taoism" {
+		return "daoism"
+	}
 	if code != "" {
 		return code
 	}
@@ -75,7 +79,7 @@ type Master struct {
 	AuthStatus             string  `db:"auth_status" json:"authStatus"`
 	ShelfStatus            string  `db:"shelf_status" json:"shelfStatus"`
 	PlatformStatus         string  `db:"platform_status" json:"platformStatus"`
-	ManageBy               string  `db:"manage_by" json:"manageBy"` // temple=寺庙绑定 / platform=平台(野生)
+	ManageBy               string  `db:"manage_by" json:"manageBy"`      // temple=寺庙绑定 / platform=平台(野生)
 	Specialties            string  `db:"specialties" json:"specialties"` // 逗号分隔
 	Avatar                 string  `db:"avatar" json:"avatar"`
 	Rating                 float64 `db:"rating" json:"rating"`
@@ -196,8 +200,13 @@ func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, te
 	where := "WHERE shelf_status = ? AND platform_status = ?"
 	args := []interface{}{MasterShelfStatusOnShelf, MasterPlatformStatusNormal}
 	if beliefCode != "" {
-		where += " AND belief_code = ?"
-		args = append(args, beliefCode)
+		if beliefCode == "daoism" || beliefCode == "taoism" {
+			where += " AND belief_code IN (?,?)"
+			args = append(args, "daoism", "taoism")
+		} else {
+			where += " AND belief_code = ?"
+			args = append(args, beliefCode)
+		}
 	}
 	if sect != "" {
 		where += " AND sect = ?"

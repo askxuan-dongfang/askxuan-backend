@@ -94,7 +94,7 @@ func toTypeMasterWithTempleName(m *model.Master, templeName string) types.Master
 		TempleId:               m.TempleCode,
 		TempleName:             templeName,
 		Position:               m.Position,
-		BeliefCode:             m.BeliefCode,
+		BeliefCode:             model.NormalizeBeliefCode(m.BeliefCode, m.Type, m.Sect),
 		Sect:                   m.Sect,
 		Type:                   m.Type,
 		AuthStatus:             m.AuthStatus,

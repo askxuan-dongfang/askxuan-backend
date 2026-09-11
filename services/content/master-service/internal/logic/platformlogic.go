@@ -75,7 +75,7 @@ func (l *PlatformMasterListLogic) templeName(templeCode string) string {
 	return name
 }
 
-// PlatformMasterCreateLogic 平台创建野生大师（无寺庙，初始待审核）
+// PlatformMasterCreateLogic 平台创建独立执业大师（无寺庙，初始待审核）
 type PlatformMasterCreateLogic struct {
 	logx.Logger
 	ctx    context.Context
@@ -115,7 +115,7 @@ func (l *PlatformMasterCreateLogic) Create(req *types.PlatformMasterCreateReq) (
 		ConsultResponseMinutes: req.ConsultResponseMinutes,
 	}
 	if _, err := l.svcCtx.MasterModel.Insert(l.ctx, master); err != nil {
-		l.Errorf("创建野生大师失败: %v", err)
+		l.Errorf("创建独立执业大师失败: %v", err)
 		return nil, common.ErrSystem
 	}
 	return &types.PlatformMasterCreateResp{Id: code}, nil
@@ -332,7 +332,7 @@ func (l *PlatformMasterDetailLogic) PlatformMasterDetail(req *types.PlatformMast
 	return &resp, nil
 }
 
-// PlatformMasterUpdateLogic 平台编辑法师（野生大师由平台直管）
+// PlatformMasterUpdateLogic 平台编辑法师（独立执业大师由平台直管）
 type PlatformMasterUpdateLogic struct {
 	logx.Logger
 	ctx    context.Context
@@ -365,7 +365,7 @@ func (l *PlatformMasterUpdateLogic) PlatformMasterUpdate(req *types.PlatformMast
 		if !model.IsValidBeliefCode(req.BeliefCode) {
 			return nil, common.ErrParamInvalid
 		}
-		master.BeliefCode = req.BeliefCode
+		master.BeliefCode = model.NormalizeBeliefCode(req.BeliefCode, req.Type, req.Sect)
 	}
 	if req.Sect != "" {
 		master.Sect = req.Sect

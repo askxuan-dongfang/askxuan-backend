@@ -2,6 +2,8 @@ package logic
 
 import (
 	"context"
+	"errors"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/marketing-service/internal/model"
@@ -134,4 +136,19 @@ func (l *AdminActivityUpdateLogic) Update(req *types.ActivityUpdateReq) (*types.
 		return nil, common.NewBizError(40404, "活动不存在")
 	}
 	return &types.IdResp{Id: a.Id}, nil
+}
+
+func (l *CustomerActivityListLogic) Detail(req *types.IdReq) (*types.Activity, error) {
+	a, err := model.FindActivity(l.ctx, req.Id)
+	if errors.Is(err, sqlx.ErrNotFound) {
+		return nil, common.NewBizError(40404, "活动不存在或已结束")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if a.Status != model.StatusEnabled || !inTimeRange(a.StartTime, a.EndTime) {
+		return nil, common.NewBizError(40404, "活动不存在或已结束")
+	}
+	result := activityToType(a)
+	return &result, nil
 }

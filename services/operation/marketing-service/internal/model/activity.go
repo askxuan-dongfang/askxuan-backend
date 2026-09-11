@@ -72,3 +72,10 @@ func UpdateActivity(id int64, a Activity) (Activity, bool) {
 	}
 	return Activity{}, false
 }
+
+// FindActivity reads one record without applying publication policy.
+func FindActivity(ctx context.Context, id int64) (Activity, error) {
+	var a Activity
+	err := db.QueryRowCtx(ctx, &a, `SELECT id,name,type,IFNULL(DATE_FORMAT(start_time,'%Y-%m-%d %H:%i:%s'),'') start_time,IFNULL(DATE_FORMAT(end_time,'%Y-%m-%d %H:%i:%s'),'') end_time,IFNULL(config,'') config,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') created_at FROM activity WHERE id=?`, id)
+	return a, err
+}
