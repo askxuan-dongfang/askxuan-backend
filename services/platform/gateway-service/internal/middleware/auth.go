@@ -77,6 +77,12 @@ func Auth(secret string, noAuthPaths []string) func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Published marketing activity pages are public, read-only landing pages.
+			// Administrative routes and every write method still require a token.
+			if r.Method == http.MethodGet && (r.URL.Path == "/api/v1/marketing/activities" || strings.HasPrefix(r.URL.Path, "/api/v1/marketing/activities/")) {
+				next.ServeHTTP(w, r)
+				return
+			}
 			// 白名单放行：GET 请求前缀匹配（支持 /temples 和 /temples/T001 等公开浏览接口）
 			if r.Method == http.MethodGet {
 				for _, p := range whitelist {

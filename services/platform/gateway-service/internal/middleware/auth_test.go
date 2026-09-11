@@ -1,10 +1,36 @@
 package middleware
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/askxuan/common"
 )
+
+func TestMarketingActivityGuestReadBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		method, path string
+		public       bool
+	}{
+		{http.MethodGet, "/api/v1/marketing/activities", true},
+		{http.MethodGet, "/api/v1/marketing/activities/1", true},
+		{http.MethodPost, "/api/v1/marketing/activities", false},
+		{http.MethodPut, "/api/v1/marketing/activities/1", false},
+		{http.MethodGet, "/api/v1/marketing/activities-private", false},
+		{http.MethodGet, "/api/v1/admin/marketing/activities", false},
+		{http.MethodPut, "/api/v1/admin/marketing/banners/1", false},
+	} {
+		t.Run(tc.method+tc.path, func(t *testing.T) {
+			called := false
+			handler := Auth("local-test-secret", nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
+			handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(tc.method, tc.path, nil))
+			if called != tc.public {
+				t.Fatalf("reached service=%v, expected=%v", called, tc.public)
+			}
+		})
+	}
+}
 
 func TestRoleAllowedForAdminPath(t *testing.T) {
 	tests := []struct {
