@@ -52,6 +52,21 @@ def atomic_json(path, value):
     os.replace(tmp, path)
 
 
+def atomic_compose(path, value):
+    # Compose interpolates dollar expressions even in JSON array commands and
+    # environment values. Docker inspect contains literal container values.
+    # Escape once at serialization so Compose restores those exact values.
+    def escaped(item):
+        if isinstance(item, str):
+            return item.replace('$', '$$')
+        if isinstance(item, list):
+            return [escaped(v) for v in item]
+        if isinstance(item, dict):
+            return {k: escaped(v) for k, v in item.items()}
+        return item
+    atomic_json(path, escaped(value))
+
+
 def extract(archive, dest, scope):
     with tarfile.open(archive, 'r:gz') as tar:
         members = tar.getmembers()
@@ -235,8 +250,8 @@ def deploy(candidate, manifest, state):
                     obj['volumes'].update(vols)
                 changed.append(name)
             if changed:
-                atomic_json(candidate / 'compose.json', current)
-                atomic_json(rollback, before)
+                atomic_compose(candidate / 'compose.json', current)
+                atomic_compose(rollback, before)
                 journal['phase'] = 'switching-backend'
                 atomic_json(candidate / 'transaction.json', journal)
                 compose_up(candidate / 'compose.json')

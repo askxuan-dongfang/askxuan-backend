@@ -14,6 +14,17 @@ A, B = 'a' * 40, 'b' * 40
 
 
 class ReceiverTests(unittest.TestCase):
+    def test_compose_preserves_container_shell_and_environment_dollars(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'compose.json'
+            value = {'services': {'diy-service': {'command': ['/bin/sh', '-c', '/app/${BINARY} -f etc/${BINARY}.yaml'],
+                                                 'environment': {'BINARY': 'diy', 'EXAMPLE': 'literal$VALUE${NAME:-default}'}}}}
+            receiver.atomic_compose(path, value)
+            stored = json.loads(path.read_text())['services']['diy-service']
+            self.assertEqual(stored['command'][2], '/app/$${BINARY} -f etc/$${BINARY}.yaml')
+            self.assertEqual(stored['environment']['EXAMPLE'], 'literal$$VALUE$${NAME:-default}')
+            self.assertEqual(value['services']['diy-service']['environment']['EXAMPLE'], 'literal$VALUE${NAME:-default}')
+
     def archive(self, base, members):
         path = base / 'archive.tgz'
         with tarfile.open(path, 'w:gz') as tar:
