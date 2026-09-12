@@ -1,69 +1,48 @@
-# askXuan-backend Go 微服务
+# askXuan-backend · 产品 0.0.1
 
-基于 **Go 1.22 + go-zero** 微服务框架构建，注册中心 etcd，统一响应格式 `{code,message,data}`。
+问玄东方的业务 API、消息协作与发布工具仓库。使用 **Go 1.22、go-zero v1.7.2** 和多模块 workspace；5 个业务域下有 **19 个下游服务 + 1 个网关**，加上 `common` 共 **21 个 Go module**。
 
-> 配套文档：`askXuan-docs/docs/guides/Go后端指南.md`（go-zero 入门）、`askXuan-docs/docs/standards/统一数据字典.md`（数据规范）、`askXuan-docs/.trae/specs/pivot-to-go-and-mobile-strategy/spec.md`（架构决策）
+当前产品版本为 **0.0.1**，见 [VERSION](VERSION)。日常后端开发使用本仓；H5、iOS、管理台和品牌资产位于同级 `askXuan-frontend`，产品说明、API 契约和运维指南位于同级 `askXuan-docs`。Go 版本、依赖版本、API 路径中的 `v1`、业务记录版本与设备上报的 `appVersion` 保持各自语义，不随产品版本一起改写。
 
-## 目录结构
+## 从哪里开始
 
-按 **5 大业务域** 分组，共 19 个下游业务服务 + 1 个网关 + 1 个公共模块（21 个 Go module）。
+| 需要完成的工作 | 入口 |
+| --- | --- |
+| 查看当前产品能力与操作方式 | [产品手册目录](https://github.com/askxuan-dongfang/askxuan-docs/blob/master/docs/guides/手册目录.md) |
+| 理解 Go 服务分层 | [Go 后端指南](https://github.com/askxuan-dongfang/askxuan-docs/blob/master/docs/guides/Go后端指南.md)；实际目录和命令以本 README、[Makefile](Makefile) 为准 |
+| 核对 HTTP 接口和业务字段 | [API Reference](https://github.com/askxuan-dongfang/askxuan-docs/blob/master/API-REFERENCE.md)、[统一数据字典](https://github.com/askxuan-dongfang/askxuan-docs/blob/master/docs/standards/统一数据字典.md) |
+| 发布、数据库迁移与回滚 | [GitHub Actions 与 ECS 发布](https://github.com/askxuan-dongfang/askxuan-docs/blob/master/docs/deployment/GITHUB-ACTIONS.md)、[本仓发布工具](scripts/ci/README.md) |
+| 聊天、APNs 与公网通话验收 | [聊天发布与验收边界](https://github.com/askxuan-dongfang/askxuan-docs/blob/master/docs/deployment/CHAT.md) |
+| 消息可靠性与故障演练 | [MQ 监控与故障演练](https://github.com/askxuan-dongfang/askxuan-docs/blob/master/docs/guides/MQ可靠投递监控与故障演练.md) |
 
-```
+## 目录与数据用途
+
+```text
 askXuan-backend/
-├── go.work                      # Go workspace 多模块工作区
-├── Makefile                     # 便捷命令（启动/编译/测试/lint/docker）
-├── .golangci.yml                # 14 个 linter 配置
-├── .github/workflows/ci.yml     # GitHub Actions CI（lint/build/test/vet）
-├── docker-compose.yml           # 基础设施（MySQL/Redis/RabbitMQ/MinIO/etcd）
-├── docker-compose.full.yml      # 本地 Docker 全量后端服务（20 个 Go 服务）
-│
-├── common/                      # 公共模块（JWT/错误码/响应封装/中间件）
-│   ├── response.go              # {code,message,data} 统一响应体
-│   ├── errorcode.go             # 错误码常量与 BizError（40001-50299）
-│   ├── jwt.go                   # JWT 签发/校验（Access 2h + Refresh 7d）
-│   └── middleware/              # CORS / Auth / AdminAuth 中间件
-│
-├── services/                    # 业务服务（按业务域分组）
-│   ├── platform/                # ① 平台域
-│   │   ├── gateway-service/     #   API 网关 (8080) - 反向代理 + JWT + CORS
-│   │   ├── auth-service/        #   认证服务 (8081) - login/refresh/logout + 角色权限
-│   │   └── user-service/        #   用户服务 (8082) - register/profile + 地址/画像
-│   │
-│   ├── content/                 # ② 内容域
-│   │   ├── temple-service/      #   寺院服务 (8083) - 寺院/图片/入驻/加持任务
-│   │   ├── master-service/      #   法师服务 (8084) - 法师/排班/资质/加持任务
-│   │   ├── booking-service/     #   预约服务 (8085) - 预约/状态流转/评价
-│   │   ├── review-service/      #   评价服务 (8092) - 评价/回复/举报
-│   │   └── community-service/   #   大师广场 (8099) - 帖子/评论/点赞/审核
-│   │
-│   ├── commerce/                # ③ 商城域
-│   │   ├── product-service/     #   商品服务 (8086) - 商品/SKU/分类
-│   │   ├── diy-service/         #   DIY服务 (8088) - DIY设计/材料/加持派发
-│   │   ├── order-service/       #   订单服务 (8089) - 商城订单/退换货
-│   │   └── payment-service/     #   支付服务 (8090) - 支付/退款/对账
-│   │
-│   ├── operation/               # ④ 运营域
-│   │   ├── finance-service/     #   财务服务 (8091) - 结算/提现/抽成
-│   │   ├── audit-service/       #   审核服务 (8093) - 内容审核/举报处理
-│   │   ├── logistics-service/   #   物流服务 (8095) - 快递/运费/追踪
-│   │   └── marketing-service/   #   营销服务 (8096) - 优惠券/活动/Banner
-│   │
-│   └── infrastructure/          # ⑤ 基础设施域
-│       ├── message-service/     #   消息服务 (8094) - 站内消息 + MQ 消费
-│       ├── file-service/        #   文件服务 (8097) - MinIO 上传/预签名
-│       ├── ai-service/          #   AI服务 (8098) - AI问事/7技能对话
-│       └── media-service/       #   媒体服务 (8100) - 上传/回调/直播房间
-│
-├── build/docker/Dockerfile      # 多阶段构建通用 Dockerfile
-├── scripts/                     # 运维脚本
-│   ├── deploy.sh                # 单服务 Docker 构建
-│   ├── docker-build-all.sh      # 批量构建所有镜像
-│   └── migrate.sh               # 数据库迁移
-├── envs/                        # 环境配置
-│   ├── dev.env                  # 开发环境
-│   └── prod.env                 # 生产环境模板
-└── db/init.sql                     # 数据库全量初始化
+├── VERSION                      # 产品版本 0.0.1
+├── go.work                      # 21 个 module 的 workspace
+├── Makefile                     # 开发、编译、检查与本地栈入口
+├── common/                      # JWT、错误码、响应、中间件、公共设施
+├── services/                    # platform/content/commerce/operation/infrastructure
+├── db/init.sql                  # 本地新环境全量初始化与种子数据
+├── scripts/db/                  # 分阶段 SQL；包含迁移和演示数据调整
+├── scripts/dev/                 # 本地 Docker/OpenIM 启停、配置生成与检查
+├── scripts/ci/                  # CI 打包、受限上传、ECS 接收器与测试
+├── scripts/ops/                 # 专项部署、配置、导入与运维工具
+├── scripts/drills/              # 有副作用的受控故障演练
+├── deploy/nginx/                # Nginx 对象访问与 H5 HTML 缓存片段
+├── configs/openim/              # OpenIM webhook 源配置
+├── build/docker/Dockerfile      # 受 Git 管理的构建定义
+├── docker-compose*.yml          # 本地基础设施与 20 个 Go 服务
+├── envs/ai.env.example          # 已跟踪的 AI 环境配置示例
+├── .docker/etc/                 # 本地生成的容器配置
+├── .local/openim/               # OpenIM 下载、运行环境、持久数据及本地备份
+└── logs/                       # 宿主服务日志与 pids/ 进程记录
 ```
+
+`.local/openim` 包含数据库、消息组件数据和恢复材料，不能当作缓存整体清理。`logs` 用于排障，`logs/pids` 还被启停命令读取；**当前 `make clean` 会删除整个 `logs`**，并非只删编译产物。清理前应先停止相关服务、保留所需日志和备份。`build/docker/Dockerfile` 是源码。
+
+配置以各服务的 `etc/*.yaml`、Compose 和实际环境注入为准。仓库没有已跟踪的通用 `envs/dev.env`、`envs/prod.env` 模板；本机存在的环境文件不能直接当作可发布配置或复制到其他环境。
 
 ## 服务清单与端口
 
@@ -78,318 +57,116 @@ askXuan-backend/
 | 内容 | review-service | services/content/review-service | 8092 | 评价/回复/举报 |
 | 内容 | community-service | services/content/community-service | 8099 | 大师广场/评论/点赞/审核 |
 | 商城 | product-service | services/commerce/product-service | 8086 | 商品/SKU/分类/上下架 |
-| 商城 | diy-service | services/commerce/diy-service | 8088 | DIY设计/材料库/加持任务派发 |
+| 商城 | diy-service | services/commerce/diy-service | 8088 | DIY设计/材料库/订单/审核与加持派发 |
 | 商城 | order-service | services/commerce/order-service | 8089 | 商城订单/退换货 |
 | 商城 | payment-service | services/commerce/payment-service | 8090 | 支付/退款/对账 |
 | 运营 | finance-service | services/operation/finance-service | 8091 | 结算/提现/抽成配置 |
 | 运营 | audit-service | services/operation/audit-service | 8093 | 内容审核/举报处理/敏感词 |
 | 运营 | logistics-service | services/operation/logistics-service | 8095 | 快递/运费模板/物流追踪 |
-| 运营 | marketing-service | services/operation/marketing-service | 8096 | 优惠券/活动/Banner/推荐位 |
-| 基础设施 | message-service | services/infrastructure/message-service | 8094 | 站内消息/推送/模板 |
+| 运营 | marketing-service | services/operation/marketing-service | 8096 | 优惠券/活动/Banner/积分奖励活动 |
+| 基础设施 | message-service | services/infrastructure/message-service | 8094 | 站内消息/OpenIM 接入/聊天权限与模板 |
 | 基础设施 | file-service | services/infrastructure/file-service | 8097 | MinIO 文件上传/预签名 |
-| 基础设施 | ai-service | services/infrastructure/ai-service | 8098 | AI问事/7技能对话 |
+| 基础设施 | ai-service | services/infrastructure/ai-service | 8098 | AI问事/模型选择/专题报告/供应商配置 |
 | 基础设施 | media-service | services/infrastructure/media-service | 8100 | 媒体上传/处理回调/直播房间 |
 
-## 环境准备
 
-1. **安装 Go 1.22+**：`brew install go`
-2. **配置代理**（国内必须）：`export GOPROXY=https://goproxy.cn,direct`
-3. **启动基础设施**（项目根目录）：
-   ```bash
-   docker compose up -d
-   ```
-   启动 MySQL 8(3306) / Redis 7(6379) / RabbitMQ(5672) / MinIO(9000) / etcd(2379)
-4. **初始化数据库**：
-   ```bash
-   make db-init
-   ```
+以上为 HTTP 端口，RPC 另见 [Makefile](Makefile) 中 `RPC_PORTS` 和各服务配置。每个服务独立维护 `go.mod`；[go.work](go.work) 聚合全部模块，服务通过 `replace` 引用本地 `common`。
 
-### 已有数据库升级
+## 本地启动
 
-全新环境使用 `make db-init`。已有数据库按需求落地顺序执行幂等前向迁移，再刷新服务账户授权：
+需要 Go 1.22+、Docker 与 Compose；网络需要时可配置 `GOPROXY`。以下命令均在本仓根目录执行，使用本地开发配置。
 
 ```bash
-for migration in \
-  scripts/db/20260713_belief_codes.sql \
-  scripts/db/20260713_intention_hub.sql \
-  scripts/db/20260713_ai_persistence.sql \
-  scripts/db/20260713_diy_design_order_pricing.sql \
-  scripts/db/20260713_media_live.sql \
-  scripts/db/20260713_community.sql \
-	  scripts/db/20260715_booking_payment_slots_grpc.sql \
-  scripts/db/20260715_seed_data_consistency.sql; do
-  docker exec -i askxuan-mysql mysql -uroot -proot123 < "$migration"
-done
-docker exec -i askxuan-mysql mysql -uroot -proot123 < scripts/db/microservice-migration.sql
-```
+make help
 
-`20260713_belief_codes.sql` 会把默认库中的寺院和法师存量数据同步到服务分库，再补充一级流派字段。`20260715_booking_payment_slots_grpc.sql` 会迁移结构化时段、预约计价/支付快照和支付幂等键；`20260715_seed_data_consistency.sql` 会统一演示用户 ID、修复旧 DIY 金额、补齐寺院服务目录及缺失唯一索引。以上脚本均可重复执行。
-
-## 闭环测试
-
-```bash
-# 前置：启动基础设施 + 初始化数据库 + 启动所有服务
-docker compose up -d
-make db-init
-make start-all
-
-# MVP-1 预约祈福闭环（10 步）：注册→登录→寺院/法师→预约→消息→管理台确认
-bash scripts/test-mvp1-closed-loop.sh
-
-# 预约权威计价、模拟支付、容量防超卖与 gRPC/响应丢失恢复（10 项）
-RUN_DISRUPTION=1 bash scripts/test-booking-payment-closed-loop.sh
-
-# MVP-2 DIY 定制闭环（16 步）：材料→设计→DIY订单→支付→加持→发货→物流→完成
-bash scripts/test-mvp2-diy-closed-loop.sh
-
-# MVP-2 商城交易闭环（11 步）：商品→订单→支付→发货→物流→确认收货
-bash scripts/test-mvp2-trade-closed-loop.sh
-
-# MVP-3 评价闭环（9 步）：评价创建→列表→详情→回复→举报→处理
-bash scripts/test-mvp3-review-closed-loop.sh
-
-# MVP-3 营销闭环（11 步）：Banner/活动/优惠券/推荐位全链路
-bash scripts/test-mvp3-marketing-closed-loop.sh
-
-# MVP-3 财务闭环（10 步）：总览/结算/提现/抽成配置/报表
-bash scripts/test-mvp3-finance-closed-loop.sh
-
-# MVP-3 审核闭环（10 步）：审核队列/通过/驳回/举报/敏感词/统计
-bash scripts/test-mvp3-audit-closed-loop.sh
-
-# App 改进：信仰流派专题、筛选和管理闭环
-bash scripts/test-app5-belief-closed-loop.sh
-
-# App 改进：诉求聚合寺院服务/大师服务双轨闭环
-bash scripts/test-app6-intention-closed-loop.sh
-
-# App 改进：AI 默认会话、所有权、异步回复和重启恢复闭环
-bash scripts/test-app1-ai-closed-loop.sh
-
-# App 改进：设计广场服务端计价、事务、支付后作者收益闭环
-bash scripts/test-mvp2-diy-closed-loop.sh
-
-# App 改进：媒体/直播基础闭环
-bash scripts/test-mvp4-media-live-closed-loop.sh
-
-# App 改进：大师广场发布、审核、互动闭环
-bash scripts/test-mvp6-community-closed-loop.sh
-```
-
-> 六项 App 改进均使用 MySQL 持久化。AI、媒体、社区闭环脚本还覆盖服务重启、真实 MinIO 对象与审核可见性；脚本失败应按真实回归处理，不使用内存重置规避。
-
-## 快速启动
-
-所有 `make` 命令均在 `askXuan-backend/` 根目录执行。
-
-### Docker 一键启动（推荐）
-
-完整后端栈包含两组：
-
-- `askxuan`：MySQL / Redis / RabbitMQ / MinIO / etcd + 20 个 askXuan Go 服务
-- `open-im-server-383`：OpenIM 的 MongoDB / Redis / Kafka / MinIO / etcd / Web Front / Admin Front，以及本机 OpenIM 服务进程
-
-```bash
-# 推荐：一键启动完整后端栈（先做端口预检）
+# 本地完整栈：OpenIM + askXuan 中间件 + 20 个 Go 服务
+make stack-preflight
 make stack-up
-
-# 停止完整后端栈（保留 Docker volume 和 OpenIM 本地数据）
-make stack-down
-
-# 健康检查
 make stack-check
 
-# 只启动 askXuan 这一组：中间件 + 首次初始化数据库 + 20 个后端服务
-make docker-up
-
-# 查看容器状态
-make docker-ps
-
-# 查看全部日志，或只看网关日志
-make docker-logs
+# 状态与日志
+make stack-ps
 make docker-logs SVC=gateway-service
 
-# 停止全部容器（保留数据卷）
-make docker-down
+# 停止完整栈，保留数据卷与 OpenIM 本地数据
+make stack-down
 ```
 
-完整栈端口已错开：askXuan 使用 `3306/6379/5672/15672/9000/9001/2379/2380/8080-8100/9088`（服务端口未连续占满）；
-OpenIM 使用 `37017/16379/12379/12380/19094/10005/19090/11001/11002/10001/10002`。
-`make stack-preflight` 会在启动前检查端口占用；端口已被对应容器占用视为正常，未知进程占用会直接报错。
+[stack-up.sh](scripts/dev/stack-up.sh) 会先停止已有的宿主 askXuan 进程，再启动 OpenIM 和 Docker 后端。只需要 askXuan Docker 服务时使用 `make docker-up`；`make docker-down` 保留数据卷。OpenIM 的 REST/WebSocket 以及独立组件端口与 askXuan 分开，完整映射和端口占用检查以 [stack-preflight.sh](scripts/dev/stack-preflight.sh) 为准。
 
-`make docker-up` 会先生成 `.docker/etc/*` 容器配置，把本机配置里的
-`localhost/127.0.0.1` 改成 Docker 网络内的 `mysql/redis/rabbitmq/minio/etcd`
-以及各服务名，避免容器重启后服务互相找不到。数据库只在首次检测不到
-`askxuan.temple` 表时初始化；后续重启保留 Docker volume 数据，需要清库时手动执行 `make db-reset`。
+`make docker-up` 调用 [docker-up-all.sh](scripts/dev/docker-up-all.sh)：生成 `.docker/etc` 容器网络配置；首次缺少 `askxuan_temple.temple` 时执行初始化；随后按文件名顺序执行 `scripts/db/20*.sql`，再重建服务容器。这是本地栈流程，包含演示数据调整，不能照搬为生产数据库升级命令。
 
-askXuan 容器访问 OpenIM REST API 走 `host.docker.internal:10002`，避免把两套 compose 网络强行合并造成容器名和端口冲突。
+需要宿主 Go 调试时，先准备本地中间件和数据库，再按需启动服务：
 
 ```bash
-# 拉取依赖
-make tidy
-
-# 启动单个服务
 make start-gateway
-make start-auth
-make start-temple
-# ... 其他同理（见 make help）
+# 在其他终端启动所需服务，例如 make start-auth、make start-user
 
-# 并发启动所有服务（后台运行，日志在 logs/）
+# 或编译并后台启动全部宿主服务，日志输出到 logs/
 make start-all
-tail -f logs/gateway.log
-
-# 停止所有服务
 make stop-all
+```
 
-# 编译所有服务
+宿主 `start-all`/`start-core` 会处理服务端口上的进程，使用前核对本机占用；不要与同端口 Docker 服务同时启动。聊天调试还需要 OpenIM；相关配置和启动入口在 [scripts/dev/openim-up.sh](scripts/dev/openim-up.sh)。
+
+## 数据库、构建与验证
+
+全新本地环境可用 `make db-init` 初始化；已有环境升级前先核对目标 SQL 和数据。`make db-reset` 删除业务库，`scripts/migrate.sh up` 执行的是全量初始化，不是按版本跟踪的生产迁移器。生产迁移遵循部署指南中的备份、审阅和配置合约流程。
+
+```bash
 make build
-
-# 运行单元测试
-make test
-
-# 代码检查
+make test-ci
 make vet
-make lint
+make lint-ci
+python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
 
-# 格式化
-make fmt
+# 与同级文档仓对照接口，包含数据驱动的路由注册
+node ../askXuan-docs/scripts/audit-api-contracts.mjs .
 ```
 
-## Docker 构建
+`make test-ci` 会在任一模块失败时返回非零状态，适合验收。`make test`、`make vet` 和 `make lint` 的现有循环会打印失败后继续，不能只凭命令退出成功判断全部通过；检查模块输出。Lint 配置在 [.golangci.yml](.golangci.yml)，当前 Actions 未运行独立 lint job。
+
+接口静态核对优先使用文档仓的 `audit-api-contracts.mjs`。本仓旧 `scripts/audit-api-reference.mjs` 仅扫描部分固定文件和字面量路由，会漏掉积分、专题报告等注册方式；其“文档过期”输出需回到注册入口确认，不能据此删除 API 文档。这两类检查都不替代真实接口请求验证。
+
+业务联调脚本位于 [scripts](scripts)，运行前读取对应脚本的环境变量、数据库和服务要求：
+
+| 验证范围 | 入口 |
+| --- | --- |
+| 注册与预约 | [注册](scripts/test-customer-registration.sh)、[预约计价/模拟支付/容量](scripts/test-booking-payment-closed-loop.sh) |
+| DIY 与商城履约 | [DIY](scripts/test-mvp2-diy-closed-loop.sh)、[结算](scripts/test-shop-checkout-closed-loop.sh)、[履约](scripts/test-commerce-fulfillment.sh) |
+| 积分商城与奖励活动 | [积分商城](scripts/test-points-mall.sh)、[奖励活动](scripts/test-free-rewards.sh) |
+| AI 与专题报告 | [Agent](scripts/test-ai-agent-v2-closed-loop.sh)、[图像输入](scripts/test-ai-vision-closed-loop.sh)、[专题报告](scripts/test-ai-topic-reports.sh) |
+| 私聊与社区 | [咨询聊天](scripts/test-consultation-chat-closed-loop.sh)、[OpenIM](scripts/test-openim-chat.sh)、[社区](scripts/test-mvp6-community-closed-loop.sh) |
+| 媒体与直播基础 | [媒体/直播脚本](scripts/test-mvp4-media-live-closed-loop.sh) |
+
+脚本可能创建数据、启动测试数据库或重启服务，不是只读健康探针。需要故障注入的用例须单独确认测试环境。脚本通过不代表当前生产真实支付、APNs 或公网音视频已经验收；当前转盘/奖池参与会消耗积分，`test-free-rewards.sh` 的文件名不代表免费参与。具体规则以服务和产品手册为准，现金、积分、体验商品与功德记录分别核对。
+
+## API 联调约定
+
+统一响应为 `{code,message,data}`，业务成功使用 `code: 0`。HTTP 200 不等于业务成功；错误定义见 [common/errorcode.go](common/errorcode.go)，响应封装见 [common/response.go](common/response.go)。
+
+通过网关访问业务 API；公开浏览范围由网关配置和 [鉴权中间件](services/platform/gateway-service/internal/middleware/auth.go) 共同决定。受保护接口使用登录返回的 access token；网关校验后透传用户、角色和寺院/法师身份。40101/40102/40103 表示会话相关错误，40104 为登录凭据错误，40105 为 refresh token 失效；权限错误另行处理。客户端续期或返回登录的行为见产品手册。
 
 ```bash
-# 构建单个服务
-make docker-build SVC=auth-service TAG=v1.0.0
-
-# 构建所有服务
-make docker-build-all TAG=v1.0.0
-
-# 或使用脚本
-./scripts/deploy.sh auth-service v1.0.0
-./scripts/docker-build-all.sh v1.0.0
+curl http://127.0.0.1:8080/api/v1/health
+curl http://127.0.0.1:8080/api/v1/users/profile \
+  -H 'Authorization: Bearer <accessToken>'
 ```
 
-## 联调验证
+测试账号和权限取决于当前环境的种子数据及实际分配，本 README 不维护固定可登录账号表。具体请求字段、状态流转和作用域以 API Reference、对应 handler/logic/model 及目标环境返回为准。
 
-### 1. 登录闭环（auth + gateway + user）
+## CI 与 ECS 运维
 
-```bash
-# 登录（手机号 13800138000，验证码 1234 或 密码 123456）
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"phone":"13800138000","code":"1234"}'
+[当前工作流](.github/workflows/ci.yml) 对 `main`、`develop` 的 push/PR 执行构建、测试与 vet。构建产出 `ecs-release`；仅 `main` 的非 PR 运行且 `ECS_DEPLOY_ENABLED=true` 时进入 production 部署，部署依赖 build/test/vet 完成。工作流也支持手动触发。
 
-# 返回 {code:0, data:{accessToken, refreshToken, userInfo}}
-# 用返回的 accessToken 访问受保护接口：
-curl http://localhost:8080/api/v1/users/profile \
-  -H "Authorization: Bearer <accessToken>"
-```
+日常发布使用 [scripts/ci](scripts/ci/README.md)：CI 编译并记录源码 SHA、祖先和逐文件哈希；受限 SSH 接收器校验原包、串行切换变化组件、做健康检查和失败回滚。生产发布以 CI 原包和接收器状态为依据；Git 推送、CI 结果、实际发布回执和业务验收分别核对。
 
-### 2. 浏览闭环（temple / master，无需鉴权）
+`./scripts/deploy.sh <service> <tag>` 与 `make docker-build` 只在本地构建镜像，脚本输出的 `docker push` 只是提示，不会自动发布 ECS。`scripts/ops` 保留专项迁移和救援入口，使用前遵循统一发布锁、配置合约及回滚流程。SQL/运行配置变化不能靠放宽合约或执行全量初始化来通过部署。
 
-```bash
-# 寺院列表（按宗派筛选）
-curl "http://localhost:8080/api/v1/temples?sect=禅宗&page=1&size=20"
-# 法师列表
-curl "http://localhost:8080/api/v1/masters?type=佛教"
-# 寺院详情
-curl http://localhost:8080/api/v1/temples/T001
-```
+常用运维入口：`make monitor-runtime` 检查网关、RabbitMQ、容器与 outbox；`make drill-mq-outbox` 是会中断消息组件的测试演练。接收器安装、生产状态路径及恢复步骤见文档仓部署指南。
 
-### 3. 预约闭环（booking + message 经 RabbitMQ 联动）
+## 品牌资产与 Nginx 安装清单
 
-```bash
-# 先查询指定日期的权威价格和剩余时段
-curl "http://localhost:8080/api/v1/bookings/availability?templeId=T001&serviceId=S001&date=2026-08-10"
+正式标识、浅深变体和生成器位于前端 [packages/brand](https://github.com/askxuan-dongfang/askxuan-frontend/tree/master/packages/brand)，由 H5、iOS 和管理端接入。该目录是当前品牌资产入口，后端无需另存一套 Logo。
 
-# 创建预约（需带 token；userId 和价格由服务端确定）
-curl -X POST http://localhost:8080/api/v1/bookings \
-  -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
-  -d '{"requestId":"client-uuid","templeId":"T001","masterId":"M001","serviceId":"S001","bookingDate":"2026-08-10","slotCode":"slot-1","meritMoney":200,"meritMoneyTier":"大额"}'
-# 本地 mock 支付成功后预约进入 pending，message-service 收到 booking.events 并生成站内消息
-
-# 用户只可取消自己的预约，寺院/法师确认使用管理端接口
-curl -X PUT http://localhost:8080/api/v1/bookings/B20260630001/status \
-  -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
-  -d '{"status":"cancelled"}'
-
-# 查询站内消息
-curl "http://localhost:8080/api/v1/messages?userId=1001"
-```
-
-### 4. 文件上传（file + MinIO）
-
-```bash
-# 获取预签名上传 URL（前端直传）
-curl "http://localhost:8080/api/v1/files/presigned?fileName=test.jpg&objectType=temples"
-
-# 后端代传上传
-curl -X POST http://localhost:8080/api/v1/files/upload \
-  -H "Authorization: Bearer <token>" -F "file=@/path/to/image.jpg"
-```
-
-## 关键设计说明
-
-### 统一响应格式
-所有接口返回 `{code:0, message:"success", data:...}`，错误时 `code` 非 0。封装在 `common/response.go` 的 `Ok` / `JsonError`。错误码范围 `40001-50299`。
-
-### JWT 鉴权链路
-- **auth-service** 签发 Access(2h) + Refresh(7d) Token
-- **gateway-service** 全局鉴权中间件校验 Access Token，校验通过后将 `userId/mobile/userType` 注入 `X-User-Id` 等请求头透传下游
-- **白名单**：`/api/v1/auth/login`、`/api/v1/auth/refresh`、`/api/v1/users/register`
-- **登出**：将 Access Token 写入 Redis 黑名单（key `jwt:blacklist:<token>`，TTL=剩余有效期）
-- **JWT Claims** 包含：`userId`、`mobile`、`userType`、`roles`、`clientId`、`templeId`、`masterId`、`type`（access/refresh）；标准字段 `sub` 用于标记 token 类型（access/refresh），`exp`/`iat` 由框架填充
-
-### 预约状态流转
-`pending → confirmed → in_progress → completed → reviewed`，任意中间态可 `→ cancelled`。终态为 `reviewed` 和 `cancelled`。流转校验在 `booking-service/internal/model/booking.go` 的 `CanTransit`。
-
-### 支付状态流转
-`pending → paid → refunded`，终态为 `refunded`。流转校验在 `payment-service/internal/model/payment.go` 的 `CanPaymentTransit`。
-
-### RabbitMQ 事件（9 个 fanout 交换机）
-所有交换机均有生产者和消费者，确保异步链路闭环。采用 fanout 模式，按业务域一个交换机聚合该域所有事件：
-- `booking.events` — 预约通知与状态变更（消费者：message-service、finance-service）
-- `blessing.events` — 加持任务派单/接单/完成（消费者：master-service、diy-service、temple-service、message-service）
-- `order.events` — 商城订单状态变更（消费者：finance-service、message-service）
-- `payment.events` — 支付结果通知（消费者：order-service、finance-service、message-service）
-- `logistics.events` — 物流同步（消费者：message-service）
-- `review.events` — 评价通知（消费者：temple-service、message-service）
-- `audit.events` — 审核结果（消费者：message-service）
-- `finance.events` — 提现审核结果（消费者：message-service）
-- `ai.events` — AI 推理完成（消费者：ai-service 自消费）
-
-## Mock 账号
-
-### 管理台账号（用户名 + 密码）
-
-| 用户名 | 密码 | 角色 |
-| --- | --- | --- |
-| admin | 123456 | 平台管理员 |
-| lingyin_admin | 123456 | 寺院管理员（灵隐寺） |
-
-### C 端 / 法师账号（手机号 + 验证码）
-
-| 手机号 | 验证码 | 密码 | 角色 |
-| --- | --- | --- | --- |
-| 13900000001 | 1234 | 123456 | C 端用户 |
-| 13900000002 | 1234 | 123456 | C 端用户 |
-| 13800138001 | 1234 | 123456 | 法师（智海法师） |
-| 13800138002 | 1234 | 123456 | 平台管理员（手机号） |
-| 13800138000 | 1234 | 123456 | C 端用户（善信居士） |
-
-## 依赖说明
-
-每个服务独立 `go.mod`，通过 `go.work` 聚合。`github.com/askxuan/common` 通过 `replace` 指向本地 `../../../common`（服务位于 `services/<域>/<服务>/` 三级目录）。
-
-核心依赖：`go-zero v1.7.2`、`golang-jwt/v5`、`rabbitmq/amqp091-go`、`minio-go/v7`。
-
-## 工程化能力
-
-| 能力 | 文件 | 说明 |
-| --- | --- | --- |
-| 代码规范 | `.golangci.yml` | 14 个 linter（errcheck/govet/staticcheck/goimports 等） |
-| CI/CD | `.github/workflows/ci.yml` | lint + build + test + vet 四阶段 |
-| 容器化 | `build/docker/Dockerfile` | 多阶段构建，参数化 SERVICE/BINARY |
-| 运维脚本 | `scripts/*.sh` | 部署 / 批量构建 / 数据库迁移 |
-| 环境隔离 | `envs/{dev,prod}.env` | 开发/生产环境配置分离 |
-| 单元测试 | `*_test.go` | common / booking / payment 状态机测试 |
+后端的 [deploy/nginx](deploy/nginx) 和 [refresh-h5-html-cache.sh](scripts/ops/refresh-h5-html-cache.sh) 管理静态站点的部分 Nginx 配置。当前片段同时包含 HTML 缓存规则，以及 `/manifest.webmanifest`、`/master.webmanifest` 两个角色的安装清单规则：明确返回 `application/manifest+json`，要求重新验证缓存，缺失文件返回 404。安装脚本备份原配置，仅迁移已知的旧清单规则，遇到自定义冲突时拒绝覆盖；通过 `nginx -t` 后 reload，错误时回滚。配置安装和业务服务发布是独立操作，执行流程见[部署文档](https://github.com/askxuan-dongfang/askxuan-docs/blob/master/docs/deployment/GITHUB-ACTIONS.md)。
