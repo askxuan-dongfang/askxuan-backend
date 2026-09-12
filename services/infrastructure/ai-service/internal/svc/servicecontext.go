@@ -2,11 +2,13 @@ package svc
 
 import (
 	"context"
+	"os"
 
 	"github.com/askxuan/ai-service/internal/agent"
 	"github.com/askxuan/ai-service/internal/config"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
+	"github.com/askxuan/ai-service/internal/settings"
 
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -26,16 +28,17 @@ type ServiceContext struct {
 	MCP               *agent.MCPClient
 	ImageLoader       *agent.ImageLoader
 	AIConfig          config.AIConf
+	Settings          *settings.Manager
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	db := sqlx.NewMysql(c.MySQL.DataSource)
 	runtimeAI := c.AI.Runtime()
-	providerConfig := provider.Config{Provider: runtimeAI.Provider, BaseURL: runtimeAI.BaseURL, APIKey: runtimeAI.APIKey, Model: runtimeAI.Model, VisionModel: runtimeAI.VisionModel}
-	aiProvider, err := provider.New(providerConfig)
+	manager, err := settings.New(runtimeAI, os.Getenv("AI_SETTINGS_DIR"), os.Getenv("AI_SETTINGS_ENCRYPTION_KEY"))
 	if err != nil {
 		panic(err)
 	}
+	snapshot := manager.Snapshot()
 	conversationModel := model.NewConversationModel(db)
 	if err := conversationModel.RecoverPending(context.Background()); err != nil {
 		logx.Errorf("恢复AI待处理消息失败: %v", err)
@@ -47,11 +50,26 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		ConversationModel: conversationModel,
 		UsageModel:        model.NewUsageModel(db),
 		RunModel:          model.NewRunModel(db),
-		Provider:          aiProvider,
-		Models:            provider.NewCatalog(aiProvider),
+		Provider:          snapshot.Provider,
+		Models:            snapshot.Models,
 		Guard:             agent.NewGuard(runtimeAI.MaxInputChars, runtimeAI.BlockedTerms),
 		MCP:               agent.NewMCPClient(runtimeAI.MCP.Enabled, runtimeAI.MCP.BaseURL, runtimeAI.MCP.Timeout),
 		ImageLoader:       agent.NewImageLoader(runtimeAI.AllowedImageHosts, runtimeAI.ImageMaxBytes),
-		AIConfig:          runtimeAI,
+		AIConfig:          snapshot.Config,
+		Settings:          manager,
 	}
+}
+
+// Each request retains one immutable provider/config snapshot, including async work.
+func (s *ServiceContext) Runtime() *ServiceContext {
+	if s.Settings == nil {
+		return s
+	}
+	snapshot := s.Settings.Snapshot()
+	result := *s
+	result.Provider = snapshot.Provider
+	result.Models = snapshot.Models
+	result.AIConfig = snapshot.Config
+	result.Settings = nil
+	return &result
 }

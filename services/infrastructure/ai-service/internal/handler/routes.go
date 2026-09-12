@@ -20,6 +20,7 @@ import (
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
 	registerReports(server, svcCtx)
+	registerProviderSettings(server, svcCtx)
 
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/ai/models", Handler: modelListHandler(svcCtx)},
@@ -43,7 +44,7 @@ func modelListHandler(s *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, err)
 			return
 		}
-		models, err := s.Models.List(r.Context())
+		models, err := s.Runtime().Models.List(r.Context())
 		if err != nil {
 			common.JsonError(w, common.NewBizError(50301, "模型列表暂未加载，请稍后重试"))
 			return

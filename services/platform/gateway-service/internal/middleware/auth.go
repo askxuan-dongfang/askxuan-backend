@@ -48,6 +48,10 @@ var adminRoleRules = []adminRoleRule{
 }
 
 func roleAllowedForAdminPath(path string, claims *common.CustomClaims) bool {
+	// Provider credentials are restricted to human platform super administrators.
+	if path == "/api/v1/ai/admin" || strings.HasPrefix(path, "/api/v1/ai/admin/") {
+		return claims.UserType == "admin" && claims.HasRole("platform_super")
+	}
 	// Internal service tokens retain access to administrative integration APIs.
 	if claims.UserType == "service" && claims.HasRole("platform_service") {
 		return true
@@ -118,7 +122,7 @@ func Auth(secret string, noAuthPaths []string) func(http.Handler) http.Handler {
 			}
 
 			// 管理台/工作台路径角色校验：/api/v1/admin/* 需要管理台角色，法师工作台也使用该前缀
-			if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") {
+			if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") || r.URL.Path == "/api/v1/ai/admin" || strings.HasPrefix(r.URL.Path, "/api/v1/ai/admin/") {
 				if !roleAllowedForAdminPath(r.URL.Path, claims) {
 					common.JsonError(w, common.ErrRoleForbidden)
 					return

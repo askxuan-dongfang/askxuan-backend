@@ -75,3 +75,27 @@ func TestServiceTokenCanCallAdminIntegrations(t *testing.T) {
 		t.Fatal("platform service token should retain integration access")
 	}
 }
+
+func TestProviderSettingsRequireRealSuperAdminClaims(t *testing.T) {
+	for _, tc := range []struct {
+		kind, role string
+		allowed    bool
+	}{{"user", "customer", false}, {"admin", "shop_admin", false}, {"admin", "platform_service", false}, {"service", "platform_service", false}, {"service", "platform_super", false}, {"admin", "platform_super", true}} {
+		token, err := common.GenAccessToken("settings-test-secret", common.TokenInfo{UserId: 1, UserType: tc.kind, Roles: []string{tc.role}}, 60)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, method := range []string{"GET", "PUT", "POST"} {
+			called := false
+			next := Auth("settings-test-secret", nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
+			r := httptest.NewRequest(method, "/api/v1/ai/admin/provider", nil)
+			r.Header.Set("Authorization", "Bearer "+token)
+			r.Header.Set("X-User-Type", "admin")
+			r.Header.Set("X-User-Roles", "platform_super")
+			next.ServeHTTP(httptest.NewRecorder(), r)
+			if called != tc.allowed {
+				t.Fatalf("%s %s/%s allowed=%v", method, tc.kind, tc.role, called)
+			}
+		}
+	}
+}

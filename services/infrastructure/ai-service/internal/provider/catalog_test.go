@@ -113,3 +113,15 @@ func TestPerRequestModelDoesNotChangeSharedProvider(t *testing.T) {
 		t.Fatal("provider default was mutated")
 	}
 }
+
+func TestStandardProviderDoesNotSendDeepSeekOnlyParameters(t *testing.T) {
+	p := NewOpenAICompatible("https://example.com/v1", "fixture-key", "example-model", "")
+	p.UseStandardParameters()
+	payload := p.payload(Request{ThinkingEnabled: true, ReasoningEffort: "high"}, "example-model", nil)
+	if _, ok := payload["thinking"]; ok {
+		t.Fatal("DeepSeek-only thinking parameter sent to another provider")
+	}
+	if payload["reasoning_effort"] != "high" {
+		t.Fatal("standard reasoning parameter missing")
+	}
+}

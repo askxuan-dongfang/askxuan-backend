@@ -14,11 +14,23 @@ import (
 
 type OpenAICompatible struct {
 	baseURL, apiKey, model, visionModel string
+	standardParameters                  bool
 	client                              *http.Client
 }
 
 func NewOpenAICompatible(baseURL, apiKey, model, visionModel string) *OpenAICompatible {
 	return &OpenAICompatible{baseURL: strings.TrimRight(baseURL, "/"), apiKey: apiKey, model: model, visionModel: visionModel, client: &http.Client{Timeout: 60 * time.Second}}
+}
+
+// SetHTTPClient is only called while constructing an unpublished provider snapshot.
+func (p *OpenAICompatible) SetHTTPClient(client *http.Client) { p.client = client }
+func (p *OpenAICompatible) UseStandardParameters()            { p.standardParameters = true }
+func (p *OpenAICompatible) payload(req Request, model string, messages []wireMessage) map[string]interface{} {
+	result := basePayload(req, model, messages)
+	if p.standardParameters {
+		delete(result, "thinking")
+	}
+	return result
 }
 func (p *OpenAICompatible) Name() string  { return "openai_compatible" }
 func (p *OpenAICompatible) Model() string { return p.model }
@@ -38,7 +50,7 @@ func (p *OpenAICompatible) ModelFor(req Request) string {
 func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response, error) {
 	messages := wireMessages(req)
 	model := p.ModelFor(req)
-	payload := basePayload(req, model, messages)
+	payload := p.payload(req, model, messages)
 	if req.MaxTokens > 0 {
 		payload["max_tokens"] = req.MaxTokens
 	}
@@ -85,7 +97,7 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 func (p *OpenAICompatible) Stream(ctx context.Context, req Request, onDelta func(StreamDelta) error) (*Response, error) {
 	messages := wireMessages(req)
 	model := p.ModelFor(req)
-	payload := basePayload(req, model, messages)
+	payload := p.payload(req, model, messages)
 	payload["stream"] = true
 	payload["stream_options"] = map[string]bool{"include_usage": true}
 	body, _ := json.Marshal(payload)

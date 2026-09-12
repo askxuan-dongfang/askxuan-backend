@@ -22,7 +22,7 @@ type SessionCreateLogic struct {
 }
 
 func NewSessionCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SessionCreateLogic {
-	return &SessionCreateLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+	return &SessionCreateLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.SessionCreateResp, error) {
 	if req.UserId == "" {
@@ -100,7 +100,7 @@ type SessionListLogic struct {
 }
 
 func NewSessionListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SessionListLogic {
-	return &SessionListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+	return &SessionListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 func (l *SessionListLogic) List(req *types.SessionListReq) (*types.SessionListResp, error) {
 	if req.UserId == "" {
@@ -125,7 +125,7 @@ type SessionDetailLogic struct {
 }
 
 func NewSessionDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SessionDetailLogic {
-	return &SessionDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+	return &SessionDetailLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 func (l *SessionDetailLogic) Detail(req *types.SessionDetailReq) (*types.SessionDetailResp, error) {
 	if req.UserId == "" {
@@ -162,7 +162,7 @@ type SessionDeleteLogic struct {
 }
 
 func NewSessionDeleteLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SessionDeleteLogic {
-	return &SessionDeleteLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+	return &SessionDeleteLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 func (l *SessionDeleteLogic) Delete(req *types.SessionDeleteReq) (*types.IdResp, error) {
 	if req.Id < 1 || req.UserId == "" {

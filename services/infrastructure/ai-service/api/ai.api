@@ -266,3 +266,52 @@ service ai-service {
     @handler sessionDelete
     delete /sessions/:id (SessionDeleteReq) returns (IdResp)
 }
+
+// Provider administration: platform_super only; credentials are write-only.
+type (
+ AIProviderUpdateReq {
+  Revision int64 `json:"revision"`
+  Provider string `json:"provider"`
+  BaseUrl string `json:"baseUrl"`
+  ApiKey string `json:"apiKey,optional"`
+  DefaultModel string `json:"defaultModel"`
+  VisionModel string `json:"visionModel,optional"`
+  EnabledModels []string `json:"enabledModels"`
+  ThinkingEnabled bool `json:"thinkingEnabled"`
+  ReasoningEffort string `json:"reasoningEffort"`
+  MaxOutputTokens int `json:"maxOutputTokens"`
+ }
+ AIProviderAudit {
+  Revision int64 `json:"revision"`
+  Actor string `json:"actor"`
+  At string `json:"at"`
+  Fields []string `json:"fields"`
+ }
+ AIProviderSettingsResp {
+  Revision int64 `json:"revision"`
+  Provider string `json:"provider"`
+  BaseUrl string `json:"baseUrl"`
+  HasApiKey bool `json:"hasApiKey"`
+  Writable bool `json:"writable"`
+  Source string `json:"source"`
+  DefaultModel string `json:"defaultModel"`
+  VisionModel string `json:"visionModel"`
+  EnabledModels []string `json:"enabledModels"`
+  ThinkingEnabled bool `json:"thinkingEnabled"`
+  ReasoningEffort string `json:"reasoningEffort"`
+  MaxOutputTokens int `json:"maxOutputTokens"`
+  History []AIProviderAudit `json:"history"`
+ }
+)
+@server (
+ group: aiProviderAdmin
+ prefix: /api/v1/ai/admin
+)
+service ai-service {
+ @handler providerSettings
+ get /provider returns (AIProviderSettingsResp)
+ @handler providerSettingsSave
+ put /provider (AIProviderUpdateReq) returns (AIProviderSettingsResp)
+ @handler providerSettingsTest
+ post /provider/test (AIProviderUpdateReq) returns (AIModelListResp)
+}

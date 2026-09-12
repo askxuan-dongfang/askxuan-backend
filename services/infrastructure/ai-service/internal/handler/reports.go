@@ -15,6 +15,7 @@ func registerReports(server *rest.Server, s *svc.ServiceContext) {
 	for _, op := range []struct{ method, path, action string }{{"GET", "/topics", "topics"}, {"POST", "/reports", "create"}, {"GET", "/reports", "list"}, {"GET", "/reports/:id", "detail"}, {"POST", "/reports/:id/retry", "retry"}, {"POST", "/reports/:id/conversation", "conversation"}} {
 		action := op.action
 		server.AddRoute(rest.Route{Method: op.method, Path: "/api/v1/ai" + op.path, Handler: func(w http.ResponseWriter, r *http.Request) {
+			s := s.Runtime()
 			user, err := resolveUserID(r, "")
 			if err != nil {
 				respond(w, nil, err)

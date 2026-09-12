@@ -19,9 +19,12 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	// Credential-bearing admin requests use metadata-only logging.
+	c.Middlewares.Log = false
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
+	server.Use(handler.SafeRequestLog)
 
 	svcCtx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, svcCtx)

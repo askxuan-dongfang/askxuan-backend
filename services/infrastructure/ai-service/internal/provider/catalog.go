@@ -31,6 +31,7 @@ type ModelList struct {
 }
 type Catalog struct {
 	provider           Provider
+	allowed            map[string]bool
 	mu                 sync.Mutex
 	list               []ModelOption
 	fetched, attempted time.Time
@@ -38,6 +39,16 @@ type Catalog struct {
 }
 
 func NewCatalog(p Provider) *Catalog { return &Catalog{provider: p} }
+func NewCatalogWithAllowed(p Provider, ids []string) *Catalog {
+	c := NewCatalog(p)
+	if len(ids) > 0 {
+		c.allowed = make(map[string]bool, len(ids))
+		for _, id := range ids {
+			c.allowed[id] = true
+		}
+	}
+	return c
+}
 
 // Model IDs come from the authenticated upstream catalog. Descriptions and
 // capabilities are our compatibility metadata, not inferred from arbitrary IDs.
@@ -118,6 +129,17 @@ func (c *Catalog) List(ctx context.Context) (ModelList, error) {
 		return ModelList{}, errors.New("模型列表暂不可用")
 	}
 	result := ModelList{List: append([]ModelOption(nil), c.list...), Stale: c.lastErr != nil}
+	if len(c.allowed) > 0 {
+		result.List = []ModelOption{}
+		for _, row := range c.list {
+			if c.allowed[row.ID] {
+				result.List = append(result.List, row)
+			}
+		}
+		if len(result.List) == 0 {
+			return ModelList{}, errors.New("管理员开放的模型暂不可用")
+		}
+	}
 	for _, row := range result.List {
 		if row.ID == c.provider.Model() {
 			result.DefaultModel = row.ID

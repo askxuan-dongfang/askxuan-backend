@@ -26,7 +26,7 @@ type MessageSendLogic struct {
 }
 
 func NewMessageSendLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MessageSendLogic {
-	return &MessageSendLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+	return &MessageSendLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 func (l *MessageSendLogic) Send(req *types.MessageSendReq) (*types.MessageSendResp, error) {
 	if req.Id == 0 || req.UserId == "" || (strings.TrimSpace(req.Content) == "" && len(req.Attachments) == 0) {
@@ -103,7 +103,7 @@ type MessageListLogic struct {
 }
 
 func NewMessageListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MessageListLogic {
-	return &MessageListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+	return &MessageListLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 func (l *MessageListLogic) List(req *types.MessageListReq) (*types.MessageListResp, error) {
 	if req.Id == 0 || req.UserId == "" {
@@ -141,7 +141,7 @@ type MessageRetryLogic struct {
 }
 
 func NewMessageRetryLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MessageRetryLogic {
-	return &MessageRetryLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+	return &MessageRetryLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 func (l *MessageRetryLogic) Retry(req *types.MessageRetryReq) (*types.MessageSendResp, error) {
 	if req.Id == 0 || req.MessageId == 0 || req.UserId == "" {
@@ -159,6 +159,13 @@ func (l *MessageRetryLogic) Retry(req *types.MessageRetryReq) (*types.MessageSen
 	}
 	if session.Status != model.SessionStatusActive {
 		return nil, common.ErrSessionNotFound
+	}
+	pending, err := l.svcCtx.ConversationModel.FindMessageForUser(l.ctx, req.Id, req.MessageId, req.UserId)
+	if err != nil {
+		return nil, common.ErrParamInvalid
+	}
+	if _, err = selectChatModel(l.ctx, l.svcCtx, req.Id, pending.Model, false); err != nil {
+		return nil, err
 	}
 	if err := l.svcCtx.UsageModel.Acquire(l.ctx, req.UserId, l.svcCtx.AIConfig.MinuteRequestLimit, l.svcCtx.AIConfig.DailyRequestLimit); err != nil {
 		if errors.Is(err, model.ErrQuotaExceeded) {
@@ -404,7 +411,7 @@ type MessageTraceLogic struct {
 }
 
 func NewMessageTraceLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MessageTraceLogic {
-	return &MessageTraceLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+	return &MessageTraceLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 
 func (l *MessageTraceLogic) Trace(req *types.MessageTraceReq) (*types.MessageTraceResp, error) {
@@ -437,7 +444,7 @@ func (l *MessageTraceLogic) Trace(req *types.MessageTraceReq) (*types.MessageTra
 }
 
 func NewUsageSummaryLogic(ctx context.Context, svcCtx *svc.ServiceContext) *UsageSummaryLogic {
-	return &UsageSummaryLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
+	return &UsageSummaryLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 
 func (l *UsageSummaryLogic) Summary(req *types.UsageSummaryReq) (*types.UsageSummaryResp, error) {
