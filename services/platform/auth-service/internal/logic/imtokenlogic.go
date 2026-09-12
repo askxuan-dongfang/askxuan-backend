@@ -12,7 +12,7 @@ import (
 )
 
 // ImTokenLogic 为已登录用户重新签发 OpenIM 登录 token。
-// openimUserID 由网关注入的身份头推导：C 端 "u_"+userId，法师端 "m_"+masterId。
+// openimUserID 由处理器校验的 JWT 身份推导，不信任请求身份头。
 type ImTokenLogic struct {
 	logx.Logger
 	ctx          context.Context

@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/askxuan/auth-service/internal/logic"
 	"github.com/askxuan/auth-service/internal/svc"
@@ -144,14 +146,16 @@ func logoutHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 }
 
 // imTokenHandler 为已登录用户续签 OpenIM token。
-// 身份由网关注入的请求头透传：X-User-Id（C端用户）、X-Master-Id（法师端）。
+// 身份仅从已验证的 access token 读取；忽略客户端提供的身份头。
 func imTokenHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.IMTokenReq
 		_ = httpx.Parse(r, &req)
-		userID := r.Header.Get("X-User-Id")
-		masterID := r.Header.Get("X-Master-Id")
-		openimUserID := resolveOpenIMUserID(userID, masterID)
+		openimUserID, authErr := authenticatedIMIdentity(r, svcCtx.Config.Auth.AccessSecret)
+		if authErr != nil {
+			common.JsonError(w, authErr)
+			return
+		}
 
 		l := logic.NewImTokenLogic(r.Context(), svcCtx, openimUserID)
 		resp, err := l.ImToken(&req)
@@ -314,4 +318,22 @@ func adminPermissionListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.Ok(w, resp)
 		}
 	}
+}
+
+func authenticatedIMIdentity(r *http.Request, secret string) (string, error) {
+	auth := r.Header.Get("Authorization")
+	if !strings.HasPrefix(auth, "Bearer ") {
+		return "", common.ErrUnauthorized
+	}
+	claims, err := common.ParseToken(secret, strings.TrimPrefix(auth, "Bearer "))
+	if err != nil || claims.IsRefreshToken() {
+		return "", common.ErrTokenInvalid
+	}
+	if claims.MasterID > 0 {
+		return "m_" + strconv.FormatInt(claims.MasterID, 10), nil
+	}
+	if claims.UserId > 0 {
+		return "u_" + strconv.FormatInt(claims.UserId, 10), nil
+	}
+	return "", common.ErrUnauthorized
 }
