@@ -8,6 +8,18 @@ info (
 )
 
 type (
+    AIModelOption {
+        Id string `json:"id"`
+        Name string `json:"name"`
+        Description string `json:"description"`
+        SupportsVision bool `json:"supportsVision"`
+    }
+    AIModelListResp {
+        List []AIModelOption `json:"list"`
+        DefaultModel string `json:"defaultModel"`
+        Stale bool `json:"stale"`
+    }
+
     AISkill {
         Id             int64  `json:"id"`
         Code           string `json:"code"`
@@ -48,6 +60,7 @@ type (
     }
 
     SessionCreateReq {
+        Model string `json:"model,optional"`
         UserId    string `json:"userId,optional"`
         SkillCode string `json:"skillCode,optional"`
         Question  string `json:"question,optional"`
@@ -133,6 +146,7 @@ type (
     }
 
     MessageSendReq {
+        Model string `json:"model,optional"`
         Id      int64  `path:"id"` // 会话 ID
         UserId  string `json:"userId,optional"`
         Content string `json:"content"`
@@ -216,6 +230,9 @@ type (
     prefix: /api/v1/ai
 )
 service ai-service {
+    @handler modelList
+    get /models returns (AIModelListResp)
+
     @handler skillList
     get /skills (SkillListReq) returns (SkillListResp)
 

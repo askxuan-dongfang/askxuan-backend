@@ -28,14 +28,14 @@ type AISession struct {
 }
 
 type ConversationModel interface {
-	CreateSession(ctx context.Context, userId, skillCode, selectionMode, skillVersion, question, inputJSON, attachmentsJSON string) (*AISession, int64, error)
+	CreateSession(ctx context.Context, userId, skillCode, selectionMode, skillVersion, question, inputJSON, attachmentsJSON, selectedModel string) (*AISession, int64, error)
 	ListSessions(ctx context.Context, userId, status string, page, size int) ([]*AISession, int64, error)
 	FindSession(ctx context.Context, id int64) (*AISession, error)
 	CloseSession(ctx context.Context, id int64, userId string) (bool, error)
 	ListMessages(ctx context.Context, sessionId int64, page, size int) ([]*AIMessage, int64, error)
 	ListAllMessages(ctx context.Context, sessionId int64) ([]*AIMessage, error)
 	FindMessageForUser(ctx context.Context, sessionId, messageId int64, userId string) (*AIMessage, error)
-	CreateTurn(ctx context.Context, sessionId int64, userId, content, inputJSON, attachmentsJSON string) (int64, error)
+	CreateTurn(ctx context.Context, sessionId int64, userId, content, inputJSON, attachmentsJSON, selectedModel string) (int64, error)
 	UpdateMessageContent(ctx context.Context, id int64, content string) error
 	CompleteMessage(ctx context.Context, id int64, meta CompletionMeta) error
 	FailMessage(ctx context.Context, id int64, message string) error
@@ -50,7 +50,7 @@ const sessionRows = "id,session_no,user_id,skill_code,selection_mode,skill_versi
 const messageRows = "id,session_id,role,content,COALESCE(CAST(input_json AS CHAR),'{}') input_json,COALESCE(CAST(attachments_json AS CHAR),'[]') attachments_json,run_id,tokens,prompt_tokens,completion_tokens,provider,model,cost_micros,finish_reason,status,stage,error_message,retry_count,create_time"
 const joinedMessageRows = "m.id,m.session_id,m.role,m.content,COALESCE(CAST(m.input_json AS CHAR),'{}') input_json,COALESCE(CAST(m.attachments_json AS CHAR),'[]') attachments_json,m.run_id,m.tokens,m.prompt_tokens,m.completion_tokens,m.provider,m.model,m.cost_micros,m.finish_reason,m.status,m.stage,m.error_message,m.retry_count,m.create_time"
 
-func (m *conversationModel) CreateSession(ctx context.Context, userId, skillCode, selectionMode, skillVersion, question, inputJSON, attachmentsJSON string) (session *AISession, pendingId int64, err error) {
+func (m *conversationModel) CreateSession(ctx context.Context, userId, skillCode, selectionMode, skillVersion, question, inputJSON, attachmentsJSON, selectedModel string) (session *AISession, pendingId int64, err error) {
 	err = m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
 		title := conversationTitle(question)
 		no := fmt.Sprintf("AI%d%06d", time.Now().UnixMilli(), time.Now().Nanosecond()%1000000)
@@ -75,7 +75,7 @@ func (m *conversationModel) CreateSession(ctx context.Context, userId, skillCode
 		if _, e = tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,input_json,attachments_json,status) VALUES(?,?,?,CAST(? AS JSON),CAST(? AS JSON),?)", id, RoleUser, strings.TrimSpace(question), inputJSON, attachmentsJSON, MessageStatusCompleted); e != nil {
 			return e
 		}
-		pending, e := tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,status) VALUES(?,?,?,?)", id, RoleAssistant, "", MessageStatusPending)
+		pending, e := tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,status,model) VALUES(?,?,?,?,?)", id, RoleAssistant, "", MessageStatusPending, selectedModel)
 		if e != nil {
 			return e
 		}
@@ -142,7 +142,7 @@ func (m *conversationModel) FindMessageForUser(ctx context.Context, sessionId, m
 	err := m.conn.QueryRowCtx(ctx, &message, "SELECT "+joinedMessageRows+" FROM ai_message m JOIN ai_session s ON s.id=m.session_id WHERE m.id=? AND m.session_id=? AND s.user_id=? AND s.status='active'", messageId, sessionId, userId)
 	return &message, err
 }
-func (m *conversationModel) CreateTurn(ctx context.Context, sessionId int64, userId, content, inputJSON, attachmentsJSON string) (pendingId int64, err error) {
+func (m *conversationModel) CreateTurn(ctx context.Context, sessionId int64, userId, content, inputJSON, attachmentsJSON, selectedModel string) (pendingId int64, err error) {
 	err = m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
 		var s AISession
 		if e := tx.QueryRowCtx(ctx, &s, "SELECT "+sessionRows+" FROM ai_session WHERE id=? FOR UPDATE", sessionId); e != nil {
@@ -163,7 +163,7 @@ func (m *conversationModel) CreateTurn(ctx context.Context, sessionId int64, use
 		if _, e := tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,input_json,attachments_json,status) VALUES(?,?,?,CAST(? AS JSON),CAST(? AS JSON),?)", sessionId, RoleUser, strings.TrimSpace(content), inputJSON, attachmentsJSON, MessageStatusCompleted); e != nil {
 			return e
 		}
-		res, e := tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,status) VALUES(?,?,?,?)", sessionId, RoleAssistant, "", MessageStatusPending)
+		res, e := tx.ExecCtx(ctx, "INSERT INTO ai_message(session_id,role,content,status,model) VALUES(?,?,?,?,?)", sessionId, RoleAssistant, "", MessageStatusPending, selectedModel)
 		if e != nil {
 			return e
 		}

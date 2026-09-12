@@ -13,6 +13,7 @@ type Message struct {
 	ImageDataURLs []string `json:"-"`
 }
 type Request struct {
+	Model           string
 	SystemPrompt    string
 	Messages        []Message
 	MaxTokens       int

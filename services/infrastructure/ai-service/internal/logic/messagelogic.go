@@ -68,13 +68,17 @@ func (l *MessageSendLogic) Send(req *types.MessageSendReq) (*types.MessageSendRe
 	if strings.TrimSpace(req.Content) == "" {
 		req.Content = "请分析我上传的图片"
 	}
+	selectedModel, err := selectChatModel(l.ctx, l.svcCtx, req.Id, req.Model, len(req.Attachments) > 0)
+	if err != nil {
+		return nil, err
+	}
 	if err := l.svcCtx.UsageModel.Acquire(l.ctx, req.UserId, l.svcCtx.AIConfig.MinuteRequestLimit, l.svcCtx.AIConfig.DailyRequestLimit); err != nil {
 		if errors.Is(err, model.ErrQuotaExceeded) {
 			return nil, common.ErrTooManyRequest
 		}
 		return nil, common.ErrSystem
 	}
-	pendingId, err := l.svcCtx.ConversationModel.CreateTurn(l.ctx, req.Id, req.UserId, req.Content, inputJSON, attachmentsJSON)
+	pendingId, err := l.svcCtx.ConversationModel.CreateTurn(l.ctx, req.Id, req.UserId, req.Content, inputJSON, attachmentsJSON, selectedModel)
 	if err != nil {
 		switch {
 		case errors.Is(err, sqlx.ErrNotFound):
@@ -193,7 +197,11 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 	if err != nil {
 		return err
 	}
-	requestTemplate := provider.Request{ThinkingEnabled: svcCtx.AIConfig.ThinkingEnabled, ReasoningEffort: svcCtx.AIConfig.ReasoningEffort}
+	pending, err := svcCtx.ConversationModel.FindMessageForUser(ctx, sessionId, messageId, s.UserId)
+	if err != nil {
+		return err
+	}
+	requestTemplate := provider.Request{Model: pending.Model, ThinkingEnabled: svcCtx.AIConfig.ThinkingEnabled, ReasoningEffort: svcCtx.AIConfig.ReasoningEffort}
 	run, err := svcCtx.RunModel.Start(ctx, *s, messageId, svcCtx.Provider.Name(), svcCtx.Provider.ModelFor(requestTemplate))
 	if err != nil {
 		return err
@@ -301,7 +309,7 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 	}
 	var streamed strings.Builder
 	lastPersisted := time.Now()
-	request := provider.Request{SystemPrompt: systemPrompt, Messages: input, MaxTokens: svcCtx.AIConfig.MaxOutputTokens, ThinkingEnabled: svcCtx.AIConfig.ThinkingEnabled, ReasoningEffort: svcCtx.AIConfig.ReasoningEffort}
+	request := provider.Request{Model: pending.Model, SystemPrompt: systemPrompt, Messages: input, MaxTokens: svcCtx.AIConfig.MaxOutputTokens, ThinkingEnabled: svcCtx.AIConfig.ThinkingEnabled, ReasoningEffort: svcCtx.AIConfig.ReasoningEffort}
 	stage := "answering"
 	resp, err := svcCtx.Provider.Stream(ctx, request, func(delta provider.StreamDelta) error {
 		if delta.Reasoning && stage != "reasoning" {
@@ -358,6 +366,16 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 
 func calculateCostMicros(resp provider.Response, aiConfig config.AIConf, at time.Time) int64 {
 	pricing := aiConfig.DeepSeekPricing
+	priceID := strings.ToLower(resp.Model)
+	if strings.Contains(priceID, "flash") && strings.HasPrefix(priceID, "deepseek-") {
+		priceID = "deepseek-flash"
+	}
+	if strings.HasPrefix(priceID, "deepseek-v4-pro") {
+		priceID = "deepseek-v4-pro"
+	}
+	if specific, ok := aiConfig.ModelPricing[priceID]; ok {
+		pricing = specific
+	}
 	if pricing.Enabled && strings.HasPrefix(strings.ToLower(resp.Model), "deepseek-") {
 		hit, miss := resp.PromptCacheHitTokens, resp.PromptCacheMissTokens
 		if hit+miss == 0 {

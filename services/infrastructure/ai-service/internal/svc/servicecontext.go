@@ -21,6 +21,7 @@ type ServiceContext struct {
 	UsageModel        model.UsageModel
 	RunModel          model.RunModel
 	Provider          provider.Provider
+	Models            *provider.Catalog
 	Guard             *agent.Guard
 	MCP               *agent.MCPClient
 	ImageLoader       *agent.ImageLoader
@@ -47,6 +48,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		UsageModel:        model.NewUsageModel(db),
 		RunModel:          model.NewRunModel(db),
 		Provider:          aiProvider,
+		Models:            provider.NewCatalog(aiProvider),
 		Guard:             agent.NewGuard(runtimeAI.MaxInputChars, runtimeAI.BlockedTerms),
 		MCP:               agent.NewMCPClient(runtimeAI.MCP.Enabled, runtimeAI.MCP.BaseURL, runtimeAI.MCP.Timeout),
 		ImageLoader:       agent.NewImageLoader(runtimeAI.AllowedImageHosts, runtimeAI.ImageMaxBytes),

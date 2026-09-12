@@ -70,6 +70,10 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 	if strings.TrimSpace(req.Question) == "" && len(req.Attachments) > 0 {
 		req.Question = "请分析我上传的图片"
 	}
+	selectedModel, err := selectChatModel(l.ctx, l.svcCtx, 0, req.Model, len(req.Attachments) > 0)
+	if err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(req.Question) != "" {
 		if err := l.svcCtx.UsageModel.Acquire(l.ctx, req.UserId, l.svcCtx.AIConfig.MinuteRequestLimit, l.svcCtx.AIConfig.DailyRequestLimit); err != nil {
 			if errors.Is(err, model.ErrQuotaExceeded) {
@@ -78,7 +82,7 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 			return nil, common.ErrSystem
 		}
 	}
-	session, pendingId, err := l.svcCtx.ConversationModel.CreateSession(l.ctx, req.UserId, req.SkillCode, selectionMode, skill.Version, req.Question, inputJSON, attachmentsJSON)
+	session, pendingId, err := l.svcCtx.ConversationModel.CreateSession(l.ctx, req.UserId, req.SkillCode, selectionMode, skill.Version, req.Question, inputJSON, attachmentsJSON, selectedModel)
 	if err != nil {
 		l.Errorf("创建AI会话失败: %v", err)
 		return nil, common.ErrSystem

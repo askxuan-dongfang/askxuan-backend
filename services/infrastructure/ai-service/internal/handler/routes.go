@@ -22,6 +22,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	registerReports(server, svcCtx)
 
 	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/ai/models", Handler: modelListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/skills", Handler: skillListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions", Handler: sessionCreateHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/sessions", Handler: sessionListHandler(svcCtx)},
@@ -34,6 +35,22 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/ai/usage", Handler: usageSummaryHandler(svcCtx)},
 		{Method: http.MethodDelete, Path: "/api/v1/ai/sessions/:id", Handler: sessionDeleteHandler(svcCtx)},
 	})
+}
+
+func modelListHandler(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := resolveUserID(r, ""); err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		models, err := s.Models.List(r.Context())
+		if err != nil {
+			common.JsonError(w, common.NewBizError(50301, "模型列表暂未加载，请稍后重试"))
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		respond(w, models, nil)
+	}
 }
 
 func skillListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

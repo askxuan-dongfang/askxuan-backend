@@ -23,6 +23,9 @@ func NewOpenAICompatible(baseURL, apiKey, model, visionModel string) *OpenAIComp
 func (p *OpenAICompatible) Name() string  { return "openai_compatible" }
 func (p *OpenAICompatible) Model() string { return p.model }
 func (p *OpenAICompatible) ModelFor(req Request) string {
+	if req.Model != "" {
+		return req.Model
+	}
 	if p.visionModel != "" {
 		for _, message := range req.Messages {
 			if len(message.ImageDataURLs) > 0 {
@@ -53,7 +56,7 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("provider returned %d: %s", resp.StatusCode, strings.TrimSpace(string(data)))
+		return nil, fmt.Errorf("provider returned status %d", resp.StatusCode)
 	}
 	var decoded struct {
 		Choices []struct {
@@ -99,8 +102,8 @@ func (p *OpenAICompatible) Stream(ctx context.Context, req Request, onDelta func
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		data, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
-		return nil, fmt.Errorf("provider returned %d: %s", resp.StatusCode, strings.TrimSpace(string(data)))
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 2<<20))
+		return nil, fmt.Errorf("provider returned status %d", resp.StatusCode)
 	}
 
 	result := &Response{}

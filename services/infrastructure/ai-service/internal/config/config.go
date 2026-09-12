@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
@@ -39,6 +40,7 @@ type AIConf struct {
 	AllowedImageHosts    []string `json:",optional"`
 	ImageMaxBytes        int
 	DeepSeekPricing      DeepSeekPricingConf
+	ModelPricing         map[string]DeepSeekPricingConf `json:",optional"`
 	MCP                  MCPConf
 }
 
@@ -78,6 +80,11 @@ func (c AIConf) Runtime() AIConf {
 		c.AllowedImageHosts = splitTerms(raw)
 	}
 	c.ImageMaxBytes = envInt("AI_IMAGE_MAX_BYTES", c.ImageMaxBytes, 8<<20)
+	if raw := os.Getenv("AI_MODEL_PRICING"); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &c.ModelPricing); err != nil {
+			panic("AI_MODEL_PRICING is invalid JSON")
+		}
+	}
 	c.DeepSeekPricing.Enabled = envBool("AI_DEEPSEEK_PRICING_ENABLED", c.DeepSeekPricing.Enabled)
 	c.DeepSeekPricing.CacheHitOffPeakPerMillion = envFloat("AI_DEEPSEEK_CACHE_HIT_OFFPEAK", c.DeepSeekPricing.CacheHitOffPeakPerMillion)
 	c.DeepSeekPricing.CacheMissOffPeakPerMillion = envFloat("AI_DEEPSEEK_CACHE_MISS_OFFPEAK", c.DeepSeekPricing.CacheMissOffPeakPerMillion)
