@@ -155,6 +155,7 @@ services:
       - "8085:8085"
     volumes:
       - ./.docker/etc/booking:/app/etc:ro
+      - ./storage/chat:/var/lib/askxuan/chat
 
   product-service:
     <<: *backend-common

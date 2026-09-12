@@ -4,6 +4,8 @@ package messagecustomer
 
 import (
 	"context"
+	"github.com/askxuan/common/middleware"
+	"strconv"
 	"strings"
 
 	"github.com/askxuan/common"
@@ -24,7 +26,11 @@ func NewUnbindDeviceTokenLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 func (l *UnbindDeviceTokenLogic) UnbindDeviceToken(req *types.DeviceTokenUnbindReq) (*types.DeviceTokenResp, error) {
-	userId := strings.TrimSpace(req.UserId)
+	user := middleware.UserIDFromCtx(l.ctx)
+	if user <= 0 {
+		return nil, common.ErrForbidden
+	}
+	userId := strconv.FormatInt(user, 10)
 	token := strings.TrimSpace(req.DeviceToken)
 	if userId == "" || token == "" {
 		return nil, common.ErrParamMissing

@@ -20,6 +20,8 @@ type BookingChatMessage struct {
 	SenderId          string `db:"sender_id" json:"senderId"`
 	ReceiverId        string `db:"receiver_id" json:"receiverId"`
 	Content           string `db:"content" json:"content"`
+	Kind              string `db:"kind"`
+	AttachmentJSON    string `db:"attachment_json"`
 	Status            string `db:"status" json:"status"`
 	CreateTime        string `db:"create_time" json:"createTime"`
 }
@@ -40,11 +42,16 @@ type BookingChatConversation struct {
 }
 
 type BookingChatModel interface {
+	MessagesCursor(context.Context, string, int64, int64, int) ([]*BookingChatMessage, bool, error)
+	ReadCursor(context.Context, string, string) (int64, error)
+	MarkRead(context.Context, string, string, int64) (int64, error)
+	Unread(context.Context, string, string) (int64, error)
+
 	Insert(ctx context.Context, data *BookingChatMessage) (*BookingChatMessage, bool, error)
 	UpdateDelivery(ctx context.Context, id int64, status, serverMsgId string) error
 	FindByClientMessageID(ctx context.Context, bookingId, clientMessageId string) (*BookingChatMessage, error)
 	ListMessages(ctx context.Context, bookingId string, page, size int) ([]*BookingChatMessage, int64, error)
-	ListConversations(ctx context.Context, userId, masterCode string, page, size int) ([]*BookingChatConversation, int64, error)
+	ListConversations(ctx context.Context, userId, masterCode string, page, size int, queryText, reader string, unreadOnly bool) ([]*BookingChatConversation, int64, error)
 }
 
 type defaultBookingChatModel struct{ conn sqlx.SqlConn }
@@ -53,7 +60,7 @@ func NewBookingChatModel(conn sqlx.SqlConn) BookingChatModel {
 	return &defaultBookingChatModel{conn: conn}
 }
 
-const bookingChatSelect = `id,booking_id,source_type,client_message_id,openim_server_msg_id,sender_type,sender_id,receiver_id,content,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
+const bookingChatSelect = `id,booking_id,source_type,client_message_id,openim_server_msg_id,sender_type,sender_id,receiver_id,content,kind,attachment_json,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
 
 func (m *defaultBookingChatModel) Insert(ctx context.Context, data *BookingChatMessage) (*BookingChatMessage, bool, error) {
 	if existing, err := m.FindByClientMessageID(ctx, data.BookingId, data.ClientMessageId); err == nil {
@@ -61,14 +68,20 @@ func (m *defaultBookingChatModel) Insert(ctx context.Context, data *BookingChatM
 	} else if !errors.Is(err, sqlx.ErrNotFound) {
 		return nil, false, err
 	}
+	if data.Kind == "" {
+		data.Kind = "text"
+	}
+	if data.AttachmentJSON == "" {
+		data.AttachmentJSON = "{}"
+	}
 	if data.Status == "" {
 		data.Status = "pending"
 	}
 	if data.SourceType == "" {
 		data.SourceType = "booking"
 	}
-	result, err := m.conn.ExecCtx(ctx, `INSERT INTO `+bookingChatMessageTable+` (booking_id,source_type,client_message_id,openim_server_msg_id,sender_type,sender_id,receiver_id,content,status,create_time) VALUES(?,?,?,?,?,?,?,?,?,NOW())`,
-		data.BookingId, data.SourceType, data.ClientMessageId, data.OpenIMServerMsgId, data.SenderType, data.SenderId, data.ReceiverId, data.Content, data.Status)
+	result, err := m.conn.ExecCtx(ctx, `INSERT INTO `+bookingChatMessageTable+` (booking_id,source_type,client_message_id,openim_server_msg_id,sender_type,sender_id,receiver_id,content,kind,attachment_json,status,notify_status,notify_after,push_status,push_after,create_time) VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending',NOW(),'pending',NOW(),NOW())`,
+		data.BookingId, data.SourceType, data.ClientMessageId, data.OpenIMServerMsgId, data.SenderType, data.SenderId, data.ReceiverId, data.Content, data.Kind, data.AttachmentJSON, data.Status)
 	if err != nil {
 		if existing, findErr := m.FindByClientMessageID(ctx, data.BookingId, data.ClientMessageId); findErr == nil {
 			return existing, false, nil
@@ -109,7 +122,7 @@ func (m *defaultBookingChatModel) ListMessages(ctx context.Context, bookingId st
 	return list, total, err
 }
 
-func (m *defaultBookingChatModel) ListConversations(ctx context.Context, userId, masterCode string, page, size int) ([]*BookingChatConversation, int64, error) {
+func (m *defaultBookingChatModel) ListConversations(ctx context.Context, userId, masterCode string, page, size int, queryText, reader string, unreadOnly bool) ([]*BookingChatConversation, int64, error) {
 	where := `x.payment_status='success' AND x.chat_status<>'closed'`
 	args := []interface{}{}
 	if masterCode != "" {
@@ -118,6 +131,15 @@ func (m *defaultBookingChatModel) ListConversations(ctx context.Context, userId,
 	} else {
 		where += ` AND x.user_id=?`
 		args = append(args, userId)
+	}
+	if queryText != "" {
+		where += ` AND (x.master_name LIKE ? OR x.service_name LIKE ? OR EXISTS(SELECT 1 FROM askxuan_user.user u WHERE CAST(u.id AS CHAR)=x.user_id AND u.nickname LIKE ?) OR EXISTS(SELECT 1 FROM booking_chat_message cm WHERE cm.booking_id=x.source_id AND cm.status='sent' AND cm.content LIKE ?))`
+		term := "%" + queryText + "%"
+		args = append(args, term, term, term, term)
+	}
+	if unreadOnly {
+		where += ` AND EXISTS(SELECT 1 FROM booking_chat_message cm WHERE cm.booking_id=x.source_id AND cm.receiver_id=? AND cm.status='sent' AND cm.id>COALESCE((SELECT through_id FROM chat_read_cursor cr WHERE cr.conversation_id=x.source_id AND cr.reader_id=?),0))`
+		args = append(args, reader, reader)
 	}
 	const sources = `(SELECT b.booking_no source_id,'booking' source_type,b.user_id,b.master_code,b.master_name,b.temple_name,b.service_name,DATE_FORMAT(b.booking_date,'%Y-%m-%d') booking_date,'' expires_at,b.payment_status,IF(b.status<>'cancelled','active','closed') chat_status,b.create_time
 		FROM booking b
@@ -139,4 +161,58 @@ func (m *defaultBookingChatModel) ListConversations(ctx context.Context, userId,
 		return nil, 0, err
 	}
 	return list, total, nil
+}
+
+// Stable keyset pagination avoids skipped/duplicated rows when new messages arrive.
+func (m *defaultBookingChatModel) MessagesCursor(ctx context.Context, id string, before, after int64, size int) ([]*BookingChatMessage, bool, error) {
+	where := "booking_id=? AND status='sent'"
+	args := []interface{}{id}
+	order := "DESC"
+	if before > 0 {
+		where += " AND id<?"
+		args = append(args, before)
+	}
+	if after > 0 {
+		where += " AND id>?"
+		args = append(args, after)
+		order = "ASC"
+	}
+	args = append(args, size+1)
+	var rows []*BookingChatMessage
+	err := m.conn.QueryRowsCtx(ctx, &rows, "SELECT "+bookingChatSelect+" FROM booking_chat_message WHERE "+where+" ORDER BY id "+order+" LIMIT ?", args...)
+	more := len(rows) > size
+	if more {
+		rows = rows[:size]
+	}
+	if order == "DESC" {
+		for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
+			rows[i], rows[j] = rows[j], rows[i]
+		}
+	}
+	if rows == nil {
+		rows = []*BookingChatMessage{}
+	}
+	return rows, more, err
+}
+func (m *defaultBookingChatModel) ReadCursor(ctx context.Context, id, reader string) (int64, error) {
+	var n int64
+	err := m.conn.QueryRowCtx(ctx, &n, "SELECT COALESCE(MAX(through_id),0) FROM chat_read_cursor WHERE conversation_id=? AND reader_id=?", id, reader)
+	return n, err
+}
+func (m *defaultBookingChatModel) MarkRead(ctx context.Context, id, reader string, through int64) (int64, error) {
+	// Clamp to a message that the client actually fetched, never a future/global ID.
+	var valid int64
+	if err := m.conn.QueryRowCtx(ctx, &valid, "SELECT COALESCE(MAX(id),0) FROM booking_chat_message WHERE booking_id=? AND status='sent' AND id<=?", id, through); err != nil {
+		return 0, err
+	}
+	_, err := m.conn.ExecCtx(ctx, "INSERT INTO chat_read_cursor(conversation_id,reader_id,through_id) VALUES(?,?,?) ON DUPLICATE KEY UPDATE through_id=GREATEST(through_id,VALUES(through_id)),updated_at=NOW()", id, reader, valid)
+	if err != nil {
+		return 0, err
+	}
+	return m.ReadCursor(ctx, id, reader)
+}
+func (m *defaultBookingChatModel) Unread(ctx context.Context, id, reader string) (int64, error) {
+	var n int64
+	err := m.conn.QueryRowCtx(ctx, &n, "SELECT COUNT(*) FROM booking_chat_message WHERE booking_id=? AND receiver_id=? AND status='sent' AND id>COALESCE((SELECT through_id FROM chat_read_cursor WHERE conversation_id=? AND reader_id=?),0)", id, reader, id, reader)
+	return n, err
 }

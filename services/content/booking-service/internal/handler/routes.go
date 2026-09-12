@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/askxuan/booking-service/internal/logic"
 	"github.com/askxuan/booking-service/internal/svc"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
+	"github.com/zeromicro/go-zero/rest/pathvar"
 )
 
 // RegisterHandlers 注册 booking 服务路由
@@ -35,6 +37,17 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	// ============ C端分组（需JWT） ============
 	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/chats", Handler: chatListHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/chats/incoming-call", Handler: chatIncomingCallHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/chats/:id/call-capabilities", Handler: chatCallHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/chats/:id/calls", Handler: chatCallHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/chats/:id/calls", Handler: chatCallHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/chats/:id/calls/:call", Handler: chatCallHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/chats/:id/calls/:call", Handler: chatCallHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/chats/unread", Handler: chatUnreadHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/chats/:id", Handler: chatDetailHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/chats/:id/read", Handler: chatReadHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/chats/:id/attachments", Handler: chatAttachmentHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/chats/:id/attachments/:attachment", Handler: chatAttachmentHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/chats/:id/messages", Handler: chatMessageListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/chats/:id/messages", Handler: chatMessageSendHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/consultations", Handler: consultationCreateHandler(svcCtx)},
@@ -720,5 +733,99 @@ func masterBookingCompleteHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		} else {
 			common.Ok(w, resp)
 		}
+	}
+}
+
+func chatDetailHandler(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ChatDetailReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.ChatDetail(r.Context(), s, req.Id)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+func chatReadHandler(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.ChatReadReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.ChatMarkRead(r.Context(), s, &req)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+func chatAttachmentHandler(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Id         string `path:"id"`
+			Attachment string `path:"attachment,optional"`
+		}
+		// Parse path only: upload body belongs to the bounded multipart reader.
+		vars := pathvar.Vars(r)
+		req.Id = vars["id"]
+		req.Attachment = vars["attachment"]
+		if r.Method == http.MethodPost {
+			logic.ChatUpload(w, r, s, req.Id)
+		} else {
+			logic.ChatDownload(w, r, s, req.Id, req.Attachment)
+		}
+	}
+}
+
+func chatUnreadHandler(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := logic.ChatUnread(r.Context(), s)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func chatCallHandler(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req logic.ChatCallReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		var resp map[string]any
+		var err error
+		if strings.HasSuffix(r.URL.Path, "call-capabilities") {
+			resp, err = logic.ChatCallCapabilities(r.Context(), s, req.Id)
+		} else if r.Method == http.MethodGet {
+			resp, err = logic.ChatCallGet(r.Context(), s, &req)
+		} else {
+			resp, err = logic.ChatCallAction(r.Context(), s, &req)
+		}
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
+	}
+}
+
+func chatIncomingCallHandler(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := logic.ChatIncomingCall(r.Context(), s)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		common.Ok(w, resp)
 	}
 }

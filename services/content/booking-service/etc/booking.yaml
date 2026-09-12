@@ -1,6 +1,8 @@
 Name: booking-service
 Host: 0.0.0.0
 Port: 8085
+MaxBytes: 23068672
+Timeout: 120000
 
 # etcd 服务注册（供 gateway-service 动态发现）
 Etcd:

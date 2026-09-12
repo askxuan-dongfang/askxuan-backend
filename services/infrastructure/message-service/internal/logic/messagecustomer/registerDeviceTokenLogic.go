@@ -4,6 +4,9 @@ package messagecustomer
 
 import (
 	"context"
+	"encoding/hex"
+	"github.com/askxuan/common/middleware"
+	"strconv"
 	"strings"
 
 	"github.com/askxuan/common"
@@ -25,22 +28,42 @@ func NewRegisterDeviceTokenLogic(ctx context.Context, svcCtx *svc.ServiceContext
 }
 
 func (l *RegisterDeviceTokenLogic) RegisterDeviceToken(req *types.DeviceTokenRegisterReq) (*types.DeviceTokenResp, error) {
-	userId := strings.TrimSpace(req.UserId)
-	token := strings.TrimSpace(req.DeviceToken)
-	if userId == "" || token == "" {
-		return nil, common.ErrParamMissing
+	user := middleware.UserIDFromCtx(l.ctx)
+	if user <= 0 {
+		return nil, common.ErrForbidden
 	}
-	clientType := strings.TrimSpace(req.ClientType)
-	if clientType == "" {
-		clientType = "customer"
+	userId := strconv.FormatInt(user, 10)
+	clientType := "customer"
+	identity := "u_" + userId
+	bundle := "com.dongfang.customer"
+	if master := middleware.MasterIDFromCtx(l.ctx); master > 0 {
+		clientType = "master"
+		identity = "m_" + strconv.FormatInt(master, 10)
+		bundle = "com.askxuan.master"
 	}
-	platform := strings.TrimSpace(req.Platform)
-	if platform == "" {
-		platform = "ios"
+	token := strings.ToLower(strings.TrimSpace(req.DeviceToken))
+	decoded, err := hex.DecodeString(token)
+	if err != nil || len(decoded) < 16 || len(decoded) > 127 {
+		return nil, common.NewBizError(40032, "需要真实 APNs 设备令牌")
 	}
+	if req.ClientType != "" && req.ClientType != clientType {
+		return nil, common.ErrForbidden
+	}
+	if req.BundleId != bundle {
+		return nil, common.ErrForbidden
+	}
+	environment := req.Environment
+	if environment == "" {
+		environment = "production"
+	}
+	if environment != "production" && environment != "sandbox" {
+		return nil, common.ErrParamInvalid
+	}
+	platform := "ios"
 
 	id, err := l.svcCtx.DeviceTokenModel.Upsert(l.ctx, &model.DeviceToken{
-		UserId:      userId,
+		UserId:       userId,
+		ChatIdentity: identity, Environment: environment,
 		ClientType:  clientType,
 		Platform:    platform,
 		DeviceToken: token,

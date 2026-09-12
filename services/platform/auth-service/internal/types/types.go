@@ -43,6 +43,7 @@ type RefreshResp struct {
 
 // IMTokenReq OpenIM token 续签请求（无请求体，身份由网关 JWT 头透传）
 type IMTokenReq struct {
+	PlatformID int `json:"platformId,optional"`
 }
 
 // IMTokenResp OpenIM token 续签响应

@@ -34,6 +34,7 @@ type DeleteMessageReq struct {
 }
 
 type DeviceTokenRegisterReq struct {
+	Environment string `json:"environment,optional"`
 	UserId      string `json:"userId"`
 	ClientType  string `json:"clientType"` // customer/master
 	Platform    string `json:"platform"`   // ios/android

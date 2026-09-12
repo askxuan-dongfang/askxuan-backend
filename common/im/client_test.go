@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestSendMessageMatchesOpenIMV383Contract(t *testing.T) {
@@ -38,6 +41,7 @@ func TestSendMessageMatchesOpenIMV383Contract(t *testing.T) {
 
 	client := NewClient(server.URL, "imAdmin", "secret")
 	client.adminToken = "admin-token"
+	client.tokenExpires = time.Now().Add(time.Minute)
 	err := client.SendMessage(context.Background(), &SendMsgReq{
 		SendID: "u_1", RecvID: "m_1", SenderName: "预约用户", SenderPlatformID: 1,
 		SessionType: 1, ContentType: 101, Content: map[string]string{"content": "hello"},
@@ -48,5 +52,53 @@ func TestSendMessageMatchesOpenIMV383Contract(t *testing.T) {
 	}
 	if !called {
 		t.Fatal("OpenIM endpoint was not called")
+	}
+}
+
+func TestAdminCredentialConcurrentRefresh(t *testing.T) {
+	var tokens atomic.Int64
+	var reject atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/auth/get_admin_token" {
+			tokens.Add(1)
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]string{"token": "test-only-token"}})
+			return
+		}
+		if r.Header.Get("token") == "" {
+			t.Error("missing authorization")
+		}
+		code := 0
+		if reject.Load() {
+			code = 1501
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"errCode": code})
+	}))
+	defer server.Close()
+	c := NewClient(server.URL, "test-admin", "test-secret")
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := c.SendMessage(context.Background(), &SendMsgReq{}); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if tokens.Load() != 1 {
+		t.Fatalf("concurrent token requests=%d", tokens.Load())
+	}
+	reject.Store(true)
+	if err := c.SendMessage(context.Background(), &SendMsgReq{}); err == nil {
+		t.Fatal("revocation was ignored")
+	}
+	reject.Store(false)
+	if err := c.SendMessage(context.Background(), &SendMsgReq{}); err != nil {
+		t.Fatal(err)
+	}
+	if tokens.Load() != 2 {
+		t.Fatal("revoked credential did not refresh on retry")
 	}
 }

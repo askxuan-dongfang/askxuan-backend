@@ -9,12 +9,14 @@ import (
 
 	"github.com/askxuan/booking-service/internal/config"
 	"github.com/askxuan/booking-service/internal/handler"
+	"github.com/askxuan/booking-service/internal/logic"
 	"github.com/askxuan/booking-service/internal/model"
 	"github.com/askxuan/booking-service/internal/mq"
 	"github.com/askxuan/booking-service/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/rest"
 )
 
@@ -29,11 +31,15 @@ func main() {
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
 
+	sqlx.DisableLog() // Keep private consultation content out of SQL debug logs.
 	svcCtx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, svcCtx)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	startPaymentSync(ctx, svcCtx)
+	logic.StartChatOutbox(ctx, svcCtx)
+	logic.StartChatPush(ctx, svcCtx)
+	logic.StartChatMaintenance(ctx, svcCtx)
 	mq.StartOutbox(ctx, svcCtx.DB, svcCtx.MqProducer)
 
 	fmt.Printf("启动 booking-service，监听 %s:%d\n", c.Host, c.Port)

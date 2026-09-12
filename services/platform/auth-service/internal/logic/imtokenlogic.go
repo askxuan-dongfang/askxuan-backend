@@ -42,7 +42,14 @@ func (l *ImTokenLogic) ImToken(req *types.IMTokenReq) (*types.IMTokenResp, error
 	imCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	token, err := l.svcCtx.IMClient.GetUserToken(imCtx, l.openimUserID)
+	platform := req.PlatformID
+	if platform == 0 {
+		platform = 1
+	}
+	if platform != 1 && platform != 2 && platform != 5 {
+		return nil, common.ErrParamInvalid
+	}
+	token, err := l.svcCtx.IMClient.GetUserTokenForPlatform(imCtx, l.openimUserID, platform)
 	if err != nil {
 		l.Errorf("获取 OpenIM token 失败 openimUserID=%s: %v", l.openimUserID, err)
 		return nil, common.ErrSystem
