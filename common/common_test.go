@@ -27,7 +27,7 @@ func TestGenAccessToken(t *testing.T) {
 
 func TestGenRefreshToken(t *testing.T) {
 	secret := "test-secret-123"
-	token, err := GenRefreshToken(secret, 1001, 604800) // 7d
+	token, err := GenRefreshToken(secret, TokenInfo{UserId: 1001, UserType: "user"}, 604800) // 7d
 	if err != nil {
 		t.Fatalf("GenRefreshToken 失败: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestParseToken_InvalidToken(t *testing.T) {
 
 func TestIsRefreshToken(t *testing.T) {
 	secret := "test-secret"
-	rt, _ := GenRefreshToken(secret, 1, 3600)
+	rt, _ := GenRefreshToken(secret, TokenInfo{UserId: 1, UserType: "user"}, 3600)
 	claims, _ := ParseToken(secret, rt)
 	if !claims.IsRefreshToken() {
 		t.Error("refresh token 的 IsRefreshToken 应为 true")
@@ -179,5 +179,28 @@ func TestErrorCodeRanges(t *testing.T) {
 				t.Errorf("错误码 %d 不在区间 [%d, %d]", tt.err.Code, tt.min, tt.max)
 			}
 		})
+	}
+}
+
+func TestRefreshTokenCarriesOnlyBoundIdentity(t *testing.T) {
+	for _, domain := range []string{"user", "admin", "master"} {
+		t.Run(domain, func(t *testing.T) {
+			token, err := GenRefreshToken("fixture-key", TokenInfo{UserId: 7, UserType: domain, Roles: []string{"platform_super"}, Mobile: "private-contact"}, 60)
+			if err != nil {
+				t.Fatal(err)
+			}
+			claims, err := ParseToken("fixture-key", token)
+			if err != nil || claims.UserId != 7 || claims.UserType != domain || !claims.IsRefreshToken() || len(claims.Roles) != 0 || claims.Mobile != "" {
+				t.Fatalf("unexpected refresh claims: %+v, %v", claims, err)
+			}
+		})
+	}
+}
+
+func TestRefreshTokenRejectsAmbiguousIdentity(t *testing.T) {
+	for _, identity := range []TokenInfo{{UserId: 7}, {UserId: 7, UserType: "service"}, {UserId: 7, UserType: "unknown"}, {UserType: "user"}, {UserId: -1, UserType: "admin"}} {
+		if token, err := GenRefreshToken("fixture-key", identity, 60); err == nil || token != "" {
+			t.Fatalf("invalid identity signed: %+v", identity)
+		}
 	}
 }

@@ -141,10 +141,14 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		return nil, common.ErrSystem
 	}
 
-	// 签发 Refresh Token（7d）
+	// Master accounts share admin_account storage, but retain their own refresh domain.
+	refreshDomain := "admin"
+	if role.Code == model.RoleCodeMaster {
+		refreshDomain = "master"
+	}
 	refresh, err := common.GenRefreshToken(
 		l.svcCtx.Config.Auth.AccessSecret,
-		acc.Id,
+		common.TokenInfo{UserId: acc.Id, UserType: refreshDomain},
 		l.svcCtx.Config.Auth.RefreshExpire,
 	)
 	if err != nil {

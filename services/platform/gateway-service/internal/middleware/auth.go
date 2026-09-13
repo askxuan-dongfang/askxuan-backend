@@ -48,6 +48,15 @@ var adminRoleRules = []adminRoleRule{
 }
 
 func roleAllowedForAdminPath(path string, claims *common.CustomClaims) bool {
+	// Master inbox routes are more specific than platform message management.
+	if path == "/api/v1/admin/messages/master" || strings.HasPrefix(path, "/api/v1/admin/messages/master/") {
+		return claims.UserType == "admin" && claims.HasRole("master") && claims.MasterID > 0
+	}
+	if path == "/api/v1/admin/messages" || strings.HasPrefix(path, "/api/v1/admin/messages/") ||
+		path == "/api/v1/admin/announcements" || strings.HasPrefix(path, "/api/v1/admin/announcements/") {
+		// Internal notifications use MQ, not these human management endpoints.
+		return claims.UserType == "admin" && claims.HasRole("platform_super")
+	}
 	// Provider credentials are restricted to human platform super administrators.
 	if path == "/api/v1/ai/admin" || strings.HasPrefix(path, "/api/v1/ai/admin/") {
 		return claims.UserType == "admin" && claims.HasRole("platform_super")
@@ -55,6 +64,10 @@ func roleAllowedForAdminPath(path string, claims *common.CustomClaims) bool {
 	// Internal service tokens retain access to administrative integration APIs.
 	if claims.UserType == "service" && claims.HasRole("platform_service") {
 		return true
+	}
+	// Roles alone never establish an administrator identity, including legacy claims.
+	if claims.UserType != "admin" {
+		return false
 	}
 	for _, rule := range adminRoleRules {
 		if path == strings.TrimSuffix(rule.prefix, "/") || strings.HasPrefix(path, rule.prefix) {

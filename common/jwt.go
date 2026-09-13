@@ -9,48 +9,48 @@ import (
 
 // CustomClaims JWT 自定义声明，携带用户身份信息
 type CustomClaims struct {
-	UserId   int64    `json:"userId"`
-	Mobile   string   `json:"mobile,omitempty"`
-	UserType string   `json:"userType,omitempty"`          // user / master / admin
-	Roles    []string `json:"roles,omitempty"`             // 角色列表：customer/temple_admin/master/shop_admin/platform_super/platform_service
-	ClientID string   `json:"clientId,omitempty"`          // 端标识：customer/temple-admin/master/shop-admin/platform-admin
-	TempleID int64    `json:"templeId,omitempty"`          // 寺院ID（temple_admin 专用）
-	TempleCode string `json:"templeCode,omitempty"`        // 寺院编码（如 T001，temple_admin 专用，服务端隔离依据）
-	MasterID int64    `json:"masterId,omitempty"`          // 法师ID（master 专用）
-	Type     string   `json:"type,omitempty"`              // access / refresh
+	UserId     int64    `json:"userId"`
+	Mobile     string   `json:"mobile,omitempty"`
+	UserType   string   `json:"userType,omitempty"`   // user / master / admin
+	Roles      []string `json:"roles,omitempty"`      // 角色列表：customer/temple_admin/master/shop_admin/platform_super/platform_service
+	ClientID   string   `json:"clientId,omitempty"`   // 端标识：customer/temple-admin/master/shop-admin/platform-admin
+	TempleID   int64    `json:"templeId,omitempty"`   // 寺院ID（temple_admin 专用）
+	TempleCode string   `json:"templeCode,omitempty"` // 寺院编码（如 T001，temple_admin 专用，服务端隔离依据）
+	MasterID   int64    `json:"masterId,omitempty"`   // 法师ID（master 专用）
+	Type       string   `json:"type,omitempty"`       // access / refresh
 	jwt.RegisteredClaims
 }
 
 // TokenInfo 签发 Access Token 所需的用户信息
 type TokenInfo struct {
-	UserId   int64
-	Mobile   string
-	UserType string
-	Roles    []string
-	ClientID string
-	TempleID int64
+	UserId     int64
+	Mobile     string
+	UserType   string
+	Roles      []string
+	ClientID   string
+	TempleID   int64
 	TempleCode string
-	MasterID int64
+	MasterID   int64
 }
 
 // JWT 签发与校验工具
 // - Access Token：2h，携带完整用户信息，用于接口鉴权
-// - Refresh Token：7d，仅携带 userId，用于续期
+// - Refresh Token：7d，携带 userId + userType，用于按身份域续期
 
 // GenAccessToken 签发 Access Token
 // secret: 签名密钥；expireSeconds: 有效期（秒）
 func GenAccessToken(secret string, info TokenInfo, expireSeconds int64) (string, error) {
 	now := time.Now()
 	claims := CustomClaims{
-		UserId:   info.UserId,
-		Mobile:   info.Mobile,
-		UserType: info.UserType,
-		Roles:    info.Roles,
-		ClientID: info.ClientID,
+		UserId:     info.UserId,
+		Mobile:     info.Mobile,
+		UserType:   info.UserType,
+		Roles:      info.Roles,
+		ClientID:   info.ClientID,
 		TempleID:   info.TempleID,
 		TempleCode: info.TempleCode,
 		MasterID:   info.MasterID,
-		Type:     "access",
+		Type:       "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(expireSeconds) * time.Second)),
@@ -61,12 +61,22 @@ func GenAccessToken(secret string, info TokenInfo, expireSeconds int64) (string,
 	return token.SignedString([]byte(secret))
 }
 
-// GenRefreshToken 签发 Refresh Token（仅含 userId）
-func GenRefreshToken(secret string, userId int64, expireSeconds int64) (string, error) {
+// GenRefreshToken binds a renewable session to a human identity domain.
+// Roles are reloaded by auth-service; a numeric ID alone must never identify an account.
+func GenRefreshToken(secret string, identity TokenInfo, expireSeconds int64) (string, error) {
+	if identity.UserId <= 0 || expireSeconds <= 0 {
+		return "", ErrTokenInvalid
+	}
+	switch identity.UserType {
+	case "user", "admin", "master":
+	default:
+		return "", ErrTokenInvalid
+	}
 	now := time.Now()
 	claims := CustomClaims{
-		UserId: userId,
-		Type:   "refresh",
+		UserId:   identity.UserId,
+		UserType: identity.UserType,
+		Type:     "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(expireSeconds) * time.Second)),

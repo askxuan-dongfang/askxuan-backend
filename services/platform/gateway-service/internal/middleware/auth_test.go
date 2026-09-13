@@ -1,11 +1,14 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/askxuan/common"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func TestMarketingActivityGuestReadBoundary(t *testing.T) {
@@ -61,7 +64,7 @@ func TestRoleAllowedForAdminPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			claims := &common.CustomClaims{Roles: []string{tt.role}}
+			claims := &common.CustomClaims{UserType: "admin", Roles: []string{tt.role}}
 			if got := roleAllowedForAdminPath(tt.path, claims); got != tt.allowed {
 				t.Fatalf("role=%s path=%s got=%v want=%v", tt.role, tt.path, got, tt.allowed)
 			}
@@ -96,6 +99,107 @@ func TestProviderSettingsRequireRealSuperAdminClaims(t *testing.T) {
 			if called != tc.allowed {
 				t.Fatalf("%s %s/%s allowed=%v", method, tc.kind, tc.role, called)
 			}
+		}
+	}
+}
+
+func TestMessageAdminGatewayAuthorization(t *testing.T) {
+	const secret = "message-gateway-test-secret"
+	for _, identity := range []struct {
+		name, kind, role string
+		masterID         int64
+		refresh          bool
+		platform, master bool
+	}{
+		{name: "anonymous"},
+		{name: "customer", kind: "user", role: "customer"},
+		{name: "shop", kind: "admin", role: "shop_admin"},
+		{name: "temple", kind: "admin", role: "temple_admin"},
+		{name: "master", kind: "admin", role: "master", masterID: 41, master: true},
+		{name: "master without identity", kind: "admin", role: "master"},
+		{name: "human service role", kind: "admin", role: "platform_service"},
+		{name: "internal service", kind: "service", role: "platform_service"},
+		{name: "service super role", kind: "service", role: "platform_super"},
+		{name: "customer super role", kind: "user", role: "platform_super"},
+		{name: "super without identity type", role: "platform_super"},
+		{name: "super refresh", kind: "admin", role: "platform_super", refresh: true},
+		{name: "master refresh", kind: "admin", role: "master", masterID: 41, refresh: true},
+		{name: "platform super", kind: "admin", role: "platform_super", platform: true},
+	} {
+		for _, route := range []struct {
+			method, path string
+			master       bool
+		}{
+			{http.MethodPost, "/api/v1/admin/messages/push", false},
+			{http.MethodGet, "/api/v1/admin/messages/push-logs", false},
+			{http.MethodGet, "/api/v1/admin/messages/templates", false},
+			{http.MethodPost, "/api/v1/admin/messages/templates", false},
+			{http.MethodPut, "/api/v1/admin/messages/templates/1", false},
+			{http.MethodGet, "/api/v1/admin/messages/master", true},
+			{http.MethodPut, "/api/v1/admin/messages/master/1/read", true},
+			{http.MethodGet, "/api/v1/admin/messages/master-private", false},
+			{http.MethodPost, "/api/v1/admin/announcements/create", false},
+		} {
+			t.Run(identity.name+"/"+route.method+route.path, func(t *testing.T) {
+				req := httptest.NewRequest(route.method, route.path, nil)
+				if identity.name != "anonymous" {
+					claims := common.CustomClaims{UserId: 7, UserType: identity.kind, Roles: []string{identity.role}, MasterID: identity.masterID, Type: "access", RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))}}
+					if identity.refresh {
+						claims.Type = "refresh"
+					}
+					token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
+					if err != nil {
+						t.Fatal(err)
+					}
+					req.Header.Set("Authorization", "Bearer "+token)
+				}
+				req.Header.Set("X-User-Id", "999")
+				req.Header.Set("X-User-Type", "admin")
+				req.Header.Set("X-User-Roles", "platform_super,master")
+				req.Header.Set("X-Master-Id", "999")
+				called := false
+				rr := httptest.NewRecorder()
+				Auth(secret, nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true })).ServeHTTP(rr, req)
+				want := identity.platform
+				if route.master {
+					want = identity.master
+				}
+				if called != want {
+					t.Fatalf("reached downstream=%v want=%v body=%s", called, want, rr.Body.String())
+				}
+				if !want {
+					var body common.Body
+					if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil || body.Code == 0 {
+						t.Fatalf("expected authorization error: %v %s", err, rr.Body.String())
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestAdminRolesCannotSubstituteIdentityDomain(t *testing.T) {
+	for _, path := range []string{
+		"/api/v1/admin/products", "/api/v1/admin/orders", "/api/v1/admin/diy/orders",
+		"/api/v1/admin/points/products", "/api/v1/admin/marketing/coupons", "/api/v1/admin/auth/accounts",
+	} {
+		for _, kind := range []string{"", "user", "service", "admin"} {
+			t.Run(path+"/kind="+kind, func(t *testing.T) {
+				token, err := common.GenAccessToken("identity-boundary-test", common.TokenInfo{UserId: 7, UserType: kind, Roles: []string{"platform_super"}}, 60)
+				if err != nil {
+					t.Fatal(err)
+				}
+				req := httptest.NewRequest(http.MethodPost, path, nil)
+				req.Header.Set("Authorization", "Bearer "+token)
+				req.Header.Set("X-User-Type", "admin")
+				req.Header.Set("X-User-Roles", "platform_super")
+				called := false
+				rr := httptest.NewRecorder()
+				Auth("identity-boundary-test", nil)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true })).ServeHTTP(rr, req)
+				if called != (kind == "admin") {
+					t.Fatalf("kind=%q reached service=%v body=%s", kind, called, rr.Body.String())
+				}
+			})
 		}
 	}
 }

@@ -13,14 +13,21 @@ import (
 	messageadminannouncement "github.com/askxuan/message-service/internal/handler/messageadminannouncement"
 	messagecustomer "github.com/askxuan/message-service/internal/handler/messagecustomer"
 	messagemaster "github.com/askxuan/message-service/internal/handler/messagemaster"
+	messageauth "github.com/askxuan/message-service/internal/middleware"
 	"github.com/askxuan/message-service/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
 )
 
 func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	// JWT 鉴权配置（法师消息接口需要登录）
+	// Verify JWT before role guards; never authorize from forwarded headers.
 	authCfg := &middleware.AuthConfig{Secret: serverCtx.Config.AuthSecret}
+	platformAuth := func(next http.HandlerFunc) http.HandlerFunc {
+		return authCfg.AuthFunc(messageauth.AdminRoleFunc("platform_super")(next))
+	}
+	masterAuth := func(next http.HandlerFunc) http.HandlerFunc {
+		return authCfg.AuthFunc(messageauth.AdminRoleFunc("master")(next))
+	}
 
 	server.AddRoutes(
 		[]rest.Route{
@@ -50,7 +57,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	)
 
 	server.AddRoutes(
-		rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
+		rest.WithMiddleware(platformAuth, []rest.Route{
 			{
 				Method:  http.MethodPost,
 				Path:    "/push",
@@ -81,7 +88,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	)
 
 	server.AddRoutes(
-		rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
+		rest.WithMiddleware(platformAuth, []rest.Route{
 			{
 				Method:  http.MethodPut,
 				Path:    "/:id/status",
@@ -137,9 +144,9 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		rest.WithPrefix("/api/v1/messages"),
 	)
 
-	// ===== 法师消息分组（需JWT） =====
+	// ===== 法师消息分组（JWT + 法师角色，消息归属来自 MasterID） =====
 	server.AddRoutes(
-		rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
+		rest.WithMiddleware(masterAuth, []rest.Route{
 			{
 				Method:  http.MethodGet,
 				Path:    "/",

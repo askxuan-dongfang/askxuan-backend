@@ -94,7 +94,7 @@ func (l *LoginLogic) Login(req *types.LoginReq) (*types.LoginResp, error) {
 	// 签发 Refresh Token（7d）
 	refresh, err := common.GenRefreshToken(
 		l.svcCtx.Config.Auth.AccessSecret,
-		u.Id,
+		common.TokenInfo{UserId: u.Id, UserType: "user"},
 		l.svcCtx.Config.Auth.RefreshExpire,
 	)
 	if err != nil {

@@ -27,7 +27,7 @@ RELEASES = Path('/var/www/askxuan/releases')
 SERVICES = {'gateway', 'auth', 'user', 'temple', 'master', 'booking', 'community', 'review',
             'product', 'order', 'payment', 'diy', 'marketing', 'logistics', 'finance', 'audit',
             'message', 'file', 'ai', 'media'}
-WEB = {'admin', 'shop', 'temple'}
+WEB = {'admin', 'temple'}
 SHA = re.compile(r'^[0-9a-f]{40}$')
 
 
@@ -110,6 +110,8 @@ def extract(archive, dest, scope):
                 raise ValueError('Expected Linux amd64 ELF binary')
         elif not (p / 'index.html').is_file():
             raise ValueError('Missing web index')
+    if scope == 'web' and not (dest / 'payload/admin/legacy/shop/index.html').is_file():
+        raise ValueError('Missing unified admin legacy shop entry')
     if scope != 'backend' and any((dest / 'payload/h5' / n).exists() for n in ('admin', 'shop', 'temple')):
         raise ValueError('H5 must not replace admin routes')
     return manifest
@@ -213,6 +215,12 @@ def smoke_web(candidate, manifest):
             with urllib.request.urlopen('https://127.0.0.1/' + urllib.parse.quote(path), context=context, timeout=15) as response:
                 if hashlib.sha256(response.read()).hexdigest() != sha(file):
                     raise RuntimeError('Served web content mismatch: ' + path)
+    if manifest['scope'] == 'web':
+        legacy = candidate / 'payload/admin/legacy/shop/index.html'
+        for path in ('shop/', 'shop/login', 'shop/orders/compatibility-check'):
+            with urllib.request.urlopen('https://127.0.0.1/' + path, context=context, timeout=15) as response:
+                if hashlib.sha256(response.read()).hexdigest() != sha(legacy):
+                    raise RuntimeError('Served legacy admin entry mismatch: ' + path)
 
 
 def deploy(candidate, manifest, state):
@@ -269,6 +277,15 @@ def deploy(candidate, manifest, state):
                     if dest.exists():
                         shutil.rmtree(dest)
                     shutil.copytree(candidate / 'payload' / name, dest)
+            if manifest['scope'] == 'web':
+                # /shop remains an address alias owned by the admin build, not a
+                # separately built application. Replace all obsolete shop assets.
+                legacy = web_public / 'shop'
+                if legacy.is_symlink() or legacy.is_file():
+                    legacy.unlink()
+                elif legacy.exists():
+                    shutil.rmtree(legacy)
+                shutil.copytree(web_public / 'admin/legacy/shop', legacy)
             for p in web_public.parent.rglob('*'):
                 p.chmod(0o755 if p.is_dir() else 0o644)
             web_public.parent.chmod(0o755)
@@ -281,6 +298,11 @@ def deploy(candidate, manifest, state):
         for name, value in manifest['components'].items():
             key = ('backend/' if manifest['scope'] == 'backend' else 'web/') + name
             state.setdefault('components', {})[key] = {**value, 'release': release}
+        if manifest['scope'] == 'web':
+            state['components'].pop('web/shop', None)
+            state.setdefault('aliases', {})['web/shop'] = {
+                'owner': 'web/admin', 'entry': 'admin/legacy/shop/index.html', 'release': release,
+            }
         state['last_release'] = release
         atomic_json(BASE / 'state.json', state)
         journal['phase'] = 'complete'

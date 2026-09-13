@@ -44,7 +44,7 @@ check "法师端登录(zhihai)" "0" "$(echo "$M_RESP" | json_code)" ""
 
 # ===== 端侧 1: iOS C 端 =====
 echo ""
-echo "=== 端侧 1: iOS C 端 (ios-customer + mobile-customer) ==="
+echo "=== 端侧 1: iOS C 端 (ios-customer) ==="
 
 R=$(curl -s --max-time 10 "$GATEWAY/api/v1/temples")
 check "C端-寺院列表" "0" "$(echo "$R" | json_code)" "total=$(echo "$R" | python3 -c "import sys,json;d=json.load(sys.stdin).get('data',{});print(d.get('total','?'))" 2>/dev/null)"
@@ -140,9 +140,9 @@ check "寺院管理台-预约管理" "0" "$(echo "$R" | json_code)" ""
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $T_TOKEN" "$GATEWAY/api/v1/admin/temples/masters?templeId=T001&page=1&size=20")
 check "寺院管理台-法师管理" "0" "$(echo "$R" | json_code)" ""
 
-# ===== 端侧 4: web-shop-admin 商城管理台 =====
+# ===== 统一管理台：商城业务角色 =====
 echo ""
-echo "=== 端侧 4: web-shop-admin 商城管理台 ==="
+echo "=== 统一管理台：商城业务角色 ==="
 
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $A_TOKEN" "$GATEWAY/api/v1/admin/products")
 check "商城管理台-商品列表" "0" "$(echo "$R" | json_code)" ""
@@ -156,9 +156,9 @@ check "商城管理台-订单管理" "0" "$(echo "$R" | json_code)" ""
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $A_TOKEN" "$GATEWAY/api/v1/admin/diy/orders")
 check "商城管理台-DIY订单" "0" "$(echo "$R" | json_code)" ""
 
-# ===== 端侧 5: web-platform-admin 平台管理台 =====
+# ===== 统一管理台：平台业务角色 =====
 echo ""
-echo "=== 端侧 5: web-platform-admin 平台管理台 ==="
+echo "=== 统一管理台：平台业务角色 ==="
 
 R=$(curl -s --max-time 10 -H "Authorization: Bearer $A_TOKEN" "$GATEWAY/api/v1/admin/auth/accounts")
 check "平台管理台-账号管理" "0" "$(echo "$R" | json_code)" ""

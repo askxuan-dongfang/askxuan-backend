@@ -24,6 +24,7 @@ type User struct {
 // UserReadonlyModel 用户只读模型接口
 type UserReadonlyModel interface {
 	FindByMobile(ctx context.Context, mobile string) (*User, error)
+	FindByID(ctx context.Context, id int64) (*User, error)
 }
 
 type defaultUserReadonlyModel struct {
@@ -41,6 +42,16 @@ func (m *defaultUserReadonlyModel) FindByMobile(ctx context.Context, mobile stri
 	query := fmt.Sprintf(`SELECT id, mobile, password, nickname, avatar, gender, status FROM %s WHERE mobile = ?`, userReadonlyTable)
 	err := m.conn.QueryRowCtx(ctx, &u, query, mobile)
 	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// FindByID reloads the original user during refresh, independently of administrator IDs.
+func (m *defaultUserReadonlyModel) FindByID(ctx context.Context, id int64) (*User, error) {
+	var u User
+	query := fmt.Sprintf(`SELECT id, mobile, password, nickname, avatar, gender, status FROM %s WHERE id = ?`, userReadonlyTable)
+	if err := m.conn.QueryRowCtx(ctx, &u, query, id); err != nil {
 		return nil, err
 	}
 	return &u, nil

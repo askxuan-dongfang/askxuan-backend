@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exact H5/admin build. Keep the latest deployed shop/temple apps and all unrelated services.
+# Exact H5/admin build. Refresh the admin-owned shop alias and preserve the temple app and all unrelated services.
 set -euo pipefail
 umask 077
 release="${1:?release}"; h5_sha="${2:?H5 SHA}"; frontend_sha="${3:?frontend SHA}"; community_sha="${4:?community SHA}"
@@ -27,7 +27,10 @@ test "$(readlink -f /var/www/askxuan/public)" = "$previous"
 cp -a "$previous/." "$public/"
 cp -a "$candidate/frontend/apps/web-h5/dist/." "$public/"
 cp -a "$candidate/frontend/apps/web-platform-admin/dist/." "$public/admin/"
-for target in shop temple; do diff -qr "$previous/$target" "$public/$target" >/dev/null;done
+test -s "$candidate/frontend/apps/web-platform-admin/dist/legacy/shop/index.html"
+rm -rf "$public/shop"
+cp -a "$candidate/frontend/apps/web-platform-admin/dist/legacy/shop" "$public/shop"
+diff -qr "$previous/temple" "$public/temple" >/dev/null
 chmod -R a+rX "/var/www/askxuan/releases/$release"
 nginx -t
 curl -fsS http://127.0.0.1:8080/api/v1/health > "$candidate/gateway-health.json"

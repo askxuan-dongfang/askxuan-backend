@@ -18,7 +18,7 @@ SERVICES = {
     'marketing': 'operation', 'logistics': 'operation', 'finance': 'operation', 'audit': 'operation',
     'message': 'infrastructure', 'file': 'infrastructure', 'ai': 'infrastructure', 'media': 'infrastructure',
 }
-APPS = {'admin': 'web-platform-admin', 'shop': 'web-shop-admin', 'temple': 'web-temple-admin', 'h5': 'web-h5'}
+APPS = {'admin': 'web-platform-admin', 'temple': 'web-temple-admin', 'h5': 'web-h5'}
 
 
 def git(root, *args):
@@ -75,10 +75,12 @@ def build(scope, frontend, output):
                     'input': tree_hash(root, ['common', 'go.work', 'go.work.sum', module]),
                 }
         else:
-            for name in (['admin', 'shop', 'temple'] if scope == 'web' else ['h5']):
+            for name in (['admin', 'temple'] if scope == 'web' else ['h5']):
                 app = frontend / 'apps' / APPS[name]
                 subprocess.run(['npm', 'ci'], cwd=app, check=True)
                 subprocess.run(['npm', 'run', 'build'], cwd=app, check=True)
+                if name == 'admin' and not (app / 'dist/legacy/shop/index.html').is_file():
+                    raise ValueError('Unified admin build is missing the legacy shop entry')
                 shutil.copytree(app / 'dist', payload / name)
                 sources = {'frontend': history['frontend'][0]}
                 if name == 'h5':

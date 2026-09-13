@@ -1,6 +1,8 @@
 package svc
 
 import (
+	"context"
+
 	"github.com/askxuan/auth-service/internal/config"
 	"github.com/askxuan/auth-service/internal/model"
 	"github.com/askxuan/common/im"
@@ -9,11 +11,17 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
+// TokenBlacklist keeps session revocation checks replaceable by isolated test fixtures.
+type TokenBlacklist interface {
+	GetCtx(context.Context, string) (string, error)
+	Setex(string, string, int) error
+}
+
 // ServiceContext auth 服务依赖容器
 type ServiceContext struct {
 	Config            config.Config
 	DB                sqlx.SqlConn
-	Redis             *redis.Redis
+	Redis             TokenBlacklist
 	UserReadonlyModel model.UserReadonlyModel
 	AdminAccountModel model.AdminAccountModel
 	RoleModel         model.RoleModel

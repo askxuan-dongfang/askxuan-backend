@@ -81,18 +81,21 @@ if ! docker image inspect "$node_image" >/dev/null 2>&1; then
  docker pull docker.1ms.run/library/node:22-bookworm-slim > "$candidate/node-pull.log" 2>&1
  docker tag docker.1ms.run/library/node:22-bookworm-slim "$node_image"
 fi
-for app in web-h5 web-platform-admin web-shop-admin web-temple-admin; do
+for app in web-h5 web-platform-admin web-temple-admin; do
  docker run --rm --user 0:0 -v "$candidate/frontend:/workspace" -v "$base/runtime/npm-cache:/root/.npm" -w "/workspace/apps/$app" "$node_image" sh -c 'npm ci --registry=https://registry.npmmirror.com && npm run build' > "$candidate/build-$app.log" 2>&1
  echo "BUILT $app"
 done
 mkdir -p "$public"
 cp -a "$(cat "$backup/previous-public")/." "$public/"
 cp -a "$candidate/frontend/apps/web-h5/dist/." "$public/"
-for pair in 'web-platform-admin admin' 'web-shop-admin shop' 'web-temple-admin temple'; do
+for pair in 'web-platform-admin admin' 'web-temple-admin temple'; do
  read -r app target <<< "$pair"
  mkdir -p "$public/$target"
  cp -a "$candidate/frontend/apps/$app/dist/." "$public/$target/"
 done
+test -s "$candidate/frontend/apps/web-platform-admin/dist/legacy/shop/index.html"
+rm -rf "$public/shop"
+cp -a "$candidate/frontend/apps/web-platform-admin/dist/legacy/shop" "$public/shop"
 chmod -R a+rX "/var/www/askxuan/releases/$release"
 # Nothing live is changed before every build succeeds.
 docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" askxuan-mysql mysql -h127.0.0.1 -uroot < "$candidate/backend/scripts/db/20260909_free_rewards.sql"

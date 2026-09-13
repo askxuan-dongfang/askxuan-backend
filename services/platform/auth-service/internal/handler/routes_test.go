@@ -44,7 +44,7 @@ func TestIMIdentityRejectsForgedHeaders(t *testing.T) {
 	if err != nil || id != "u_42" {
 		t.Fatalf("forged master header changed identity: %s %v", id, err)
 	}
-	token, _ = common.GenRefreshToken(secret, 42, 60)
+	token, _ = common.GenRefreshToken(secret, common.TokenInfo{UserId: 42, UserType: "user"}, 60)
 	r.Header.Set("Authorization", "Bearer "+token)
 	if _, err = authenticatedIMIdentity(r, secret); err == nil {
 		t.Fatal("refresh token issued an IM credential")
