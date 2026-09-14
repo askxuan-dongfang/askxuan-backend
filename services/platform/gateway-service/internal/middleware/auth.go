@@ -86,7 +86,7 @@ func roleAllowedForAdminPath(path string, claims *common.CustomClaims) bool {
 }
 
 // Auth 全局 JWT 鉴权中间件
-// - 白名单路径直接放行（前缀匹配：GET 请求匹配 path == prefix 或 path 以 prefix+"/" 开头）
+// - 公开 GET 允许访客访问；携带 token 时验证并透传身份（GET 白名单支持子路径）
 // - 校验 Authorization: Bearer <token>，解析后将用户信息注入请求头透传下游
 // - /api/v1/admin/* 路径额外校验管理台角色
 func Auth(secret string, noAuthPaths []string) func(http.Handler) http.Handler {
@@ -94,28 +94,33 @@ func Auth(secret string, noAuthPaths []string) func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Published marketing activity pages are public, read-only landing pages.
-			// Administrative routes and every write method still require a token.
-			if r.Method == http.MethodGet && (r.URL.Path == "/api/v1/marketing/activities" || strings.HasPrefix(r.URL.Path, "/api/v1/marketing/activities/")) {
-				next.ServeHTTP(w, r)
-				return
+			// Only verified JWT claims may establish a downstream identity, including
+			// on public routes. Never retain client-supplied identity headers.
+			for _, header := range []string{HeaderUserID, HeaderUserMobile, HeaderUserType, HeaderRoles, HeaderClientID, HeaderTempleID, HeaderTempleCode, HeaderMasterID} {
+				r.Header.Del(header)
 			}
-			// 白名单放行：GET 请求前缀匹配（支持 /temples 和 /temples/T001 等公开浏览接口）
+			publicRead := false
 			if r.Method == http.MethodGet {
+				publicRead = r.URL.Path == "/api/v1/marketing/activities" || strings.HasPrefix(r.URL.Path, "/api/v1/marketing/activities/")
 				for _, p := range whitelist {
 					if r.URL.Path == p || strings.HasPrefix(r.URL.Path, p+"/") {
-						next.ServeHTTP(w, r)
-						return
+						publicRead = true
+						break
 					}
 				}
 			} else {
-				// 非 GET 请求精确匹配白名单
+				// Login/refresh and other explicitly public writes retain their
+				// own credential validation, even if a stale bearer was sent.
 				for _, p := range whitelist {
 					if r.URL.Path == p {
 						next.ServeHTTP(w, r)
 						return
 					}
 				}
+			}
+			if publicRead && r.Header.Get("Authorization") == "" {
+				next.ServeHTTP(w, r)
+				return
 			}
 			// 解析 token
 			auth := r.Header.Get("Authorization")
