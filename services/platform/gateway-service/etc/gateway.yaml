@@ -253,3 +253,6 @@ NoAuthPaths:
   - /api/v1/health
   - /api/v1/im              # OpenIM REST 透传，由 OpenIM 自身鉴权
   - /openim/webhook         # OpenIM webhook 回调，不带 JWT
+
+# Auth sessions require AUTH_REDIS_HOST and optional AUTH_REDIS_PASSWORD.
+# This must be the same Redis used by auth-service (see scripts/dev/email-auth/README.md).

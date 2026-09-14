@@ -61,7 +61,7 @@ func NewUserModel(conn sqlx.SqlConn) UserModel {
 // FindByMobile 按手机号查询用户
 func (m *defaultUserModel) FindByMobile(ctx context.Context, mobile string) (*User, error) {
 	var u User
-	query := fmt.Sprintf(`SELECT id, mobile, password, nickname, avatar, gender, IFNULL(birthday,'') AS birthday, region, bio, status, create_time, update_time FROM %s WHERE mobile = ?`, userTable)
+	query := fmt.Sprintf(`SELECT id, IFNULL(mobile,'') AS mobile, password, nickname, avatar, gender, IFNULL(birthday,'') AS birthday, region, bio, status, create_time, update_time FROM %s WHERE mobile = ?`, userTable)
 	err := m.conn.QueryRowCtx(ctx, &u, query, mobile)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func (m *defaultUserModel) FindByMobile(ctx context.Context, mobile string) (*Us
 // FindByID 按 userId 查询
 func (m *defaultUserModel) FindByID(ctx context.Context, id int64) (*User, error) {
 	var u User
-	query := fmt.Sprintf(`SELECT id, mobile, password, nickname, avatar, gender, IFNULL(birthday,'') AS birthday, region, bio, status, create_time, update_time FROM %s WHERE id = ?`, userTable)
+	query := fmt.Sprintf(`SELECT id, IFNULL(mobile,'') AS mobile, password, nickname, avatar, gender, IFNULL(birthday,'') AS birthday, region, bio, status, create_time, update_time FROM %s WHERE id = ?`, userTable)
 	err := m.conn.QueryRowCtx(ctx, &u, query, id)
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func (m *defaultUserModel) FindList(ctx context.Context, filter UserFilter, page
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, mobile, password, nickname, avatar, gender, IFNULL(birthday,'') AS birthday, region, bio, status, create_time, update_time FROM %s WHERE %s ORDER BY id DESC LIMIT ?, ?`,
+	listQuery := fmt.Sprintf(`SELECT id, IFNULL(mobile,'') AS mobile, password, nickname, avatar, gender, IFNULL(birthday,'') AS birthday, region, bio, status, create_time, update_time FROM %s WHERE %s ORDER BY id DESC LIMIT ?, ?`,
 		userTable, where)
 	listArgs := append(args, offset, size)
 	var list []*User

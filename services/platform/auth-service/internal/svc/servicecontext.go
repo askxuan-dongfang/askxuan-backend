@@ -5,6 +5,7 @@ import (
 
 	"github.com/askxuan/auth-service/internal/config"
 	"github.com/askxuan/auth-service/internal/model"
+	"github.com/askxuan/common/identity"
 	"github.com/askxuan/common/im"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -19,6 +20,8 @@ type TokenBlacklist interface {
 
 // ServiceContext auth 服务依赖容器
 type ServiceContext struct {
+	Accounts          *identity.Accounts
+	SessionRedis      *redis.Redis
 	Config            config.Config
 	DB                sqlx.SqlConn
 	Redis             TokenBlacklist
@@ -41,6 +44,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		RoleModel:         model.NewRoleModel(db),
 		PermissionModel:   model.NewPermissionModel(db),
 	}
+	sc.SessionRedis = redis.MustNewRedis(c.Redis)
+	sc.Accounts = &identity.Accounts{DB: db, Challenges: &identity.Challenges{Redis: sc.SessionRedis, Secret: c.Auth.AccessSecret}, Mailer: identity.SMTPFromEnv()}
 	// OpenIM 可选：APIURL 为空时跳过（避免本地无 OpenIM 时登录卡住）
 	if c.IM.APIURL != "" {
 		sc.IMClient = im.NewClient(c.IM.APIURL, c.IM.AdminUserID, c.IM.Secret)

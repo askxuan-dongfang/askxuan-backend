@@ -20,7 +20,7 @@ RUN set -eux; \
     echo "Asia/Shanghai" > /etc/timezone
 
 # ===== Stage 1: builder =====
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 ARG SERVICE
 ARG BINARY

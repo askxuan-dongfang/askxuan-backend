@@ -39,7 +39,7 @@ func NewUserReadonlyModel(conn sqlx.SqlConn) UserReadonlyModel {
 // FindByMobile 按手机号查询用户（仅用于登录校验）
 func (m *defaultUserReadonlyModel) FindByMobile(ctx context.Context, mobile string) (*User, error) {
 	var u User
-	query := fmt.Sprintf(`SELECT id, mobile, password, nickname, avatar, gender, status FROM %s WHERE mobile = ?`, userReadonlyTable)
+	query := fmt.Sprintf(`SELECT id, IFNULL(mobile,'') AS mobile, password, nickname, avatar, gender, status FROM %s WHERE mobile = ?`, userReadonlyTable)
 	err := m.conn.QueryRowCtx(ctx, &u, query, mobile)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (m *defaultUserReadonlyModel) FindByMobile(ctx context.Context, mobile stri
 // FindByID reloads the original user during refresh, independently of administrator IDs.
 func (m *defaultUserReadonlyModel) FindByID(ctx context.Context, id int64) (*User, error) {
 	var u User
-	query := fmt.Sprintf(`SELECT id, mobile, password, nickname, avatar, gender, status FROM %s WHERE id = ?`, userReadonlyTable)
+	query := fmt.Sprintf(`SELECT id, IFNULL(mobile,'') AS mobile, password, nickname, avatar, gender, status FROM %s WHERE id = ?`, userReadonlyTable)
 	if err := m.conn.QueryRowCtx(ctx, &u, query, id); err != nil {
 		return nil, err
 	}

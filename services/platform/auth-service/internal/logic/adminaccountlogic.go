@@ -8,6 +8,7 @@ import (
 	"github.com/askxuan/auth-service/internal/svc"
 	"github.com/askxuan/auth-service/internal/types"
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/identity"
 
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -456,6 +457,11 @@ func canEnableTempleAccount(status string) bool {
 }
 
 func insertAdminAccountWithBinding(ctx context.Context, db sqlx.SqlConn, account *model.AdminAccount, templeAdmin bool) (int64, error) {
+	hash, hashErr := identity.HashPassword(account.Password)
+	if hashErr != nil {
+		return 0, &common.BizError{Code: 40010, Msg: hashErr.Error()}
+	}
+	account.Password = hash
 	var id int64
 	err := db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
 		result, err := session.ExecCtx(ctx, `INSERT INTO admin_account

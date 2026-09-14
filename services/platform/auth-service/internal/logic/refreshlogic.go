@@ -10,6 +10,7 @@ import (
 	"github.com/askxuan/auth-service/internal/svc"
 	"github.com/askxuan/auth-service/internal/types"
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/identity"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -35,6 +36,11 @@ func (l *RefreshLogic) Refresh(req *types.RefreshReq) (*types.RefreshResp, error
 		return nil, common.ErrTokenInvalid
 	}
 
+	if l.svcCtx.SessionRedis != nil {
+		if e := identity.CheckSession(l.ctx, l.svcCtx.SessionRedis, claims.SessionID, identity.SessionDomain(claims.UserType, claims.Roles), claims.UserId); e != nil {
+			return nil, common.ErrTokenInvalid
+		}
+	}
 	// A failed revocation lookup is a temporary service error, never permission to renew.
 	if l.svcCtx.Redis == nil {
 		return nil, common.ErrSystem
@@ -51,6 +57,7 @@ func (l *RefreshLogic) Refresh(req *types.RefreshReq) (*types.RefreshResp, error
 	if err != nil {
 		return nil, err
 	}
+	info.SessionID = claims.SessionID
 	access, err := common.GenAccessToken(l.svcCtx.Config.Auth.AccessSecret, info, l.svcCtx.Config.Auth.AccessExpire)
 	if err != nil {
 		return nil, common.ErrSystem

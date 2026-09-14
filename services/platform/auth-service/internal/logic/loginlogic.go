@@ -2,9 +2,8 @@ package logic
 
 import (
 	"context"
-	"errors"
+	"github.com/askxuan/common/identity"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/askxuan/auth-service/internal/svc"
@@ -12,7 +11,6 @@ import (
 	"github.com/askxuan/common"
 
 	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 // 用户状态常量（与 init.sql user 表一致）
@@ -33,56 +31,48 @@ func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LoginLogic 
 	}
 }
 
-// Login 登录，支持两种方式：
-//  1. 手机号 + 验证码（mock 阶段验证码固定 1234）
-//  2. 账号（手机号）+ 密码（MVP-1 明文比对）
+// Login accepts a verified email/username and an Argon2id password. SMS is disabled until a provider is installed.
 func (l *LoginLogic) Login(req *types.LoginReq) (*types.LoginResp, error) {
-	// 归一化账号：优先 phone，其次 account
-	mobile := strings.TrimSpace(req.Phone)
-	if mobile == "" {
-		mobile = strings.TrimSpace(req.Account)
+	if l.svcCtx.Accounts == nil || req.Code != "" {
+		return nil, common.ErrPwdWrong
 	}
-	if mobile == "" {
-		return nil, common.ErrParam
-	}
-
-	// 查询 user 表
-	u, err := l.svcCtx.UserReadonlyModel.FindByMobile(l.ctx, mobile)
+	a, err := l.svcCtx.Accounts.PasswordLogin(l.ctx, "user", req.Account, req.Password)
 	if err != nil {
-		if errors.Is(err, sqlx.ErrNotFound) {
-			return nil, common.ErrUserNotFound
-		}
-		l.Errorf("查询用户失败 mobile=%s: %v", mobile, err)
-		return nil, common.ErrSystem
+		return nil, common.ErrPwdWrong
 	}
-
-	// 校验凭证
-	if req.Code != "" {
-		// 验证码登录：mock 阶段固定 1234
-		if req.Code != "1234" {
-			return nil, common.ErrPwdWrong
-		}
-	} else {
-		// 密码登录：MVP-1 明文比对
-		if req.Password != u.Password {
-			return nil, common.ErrPwdWrong
-		}
+	return l.IssueCustomer(a.UserID, a.PasswordHash)
+}
+func (l *LoginLogic) IssueCustomer(id int64, verifiedHash ...string) (*types.LoginResp, error) {
+	u, err := l.svcCtx.UserReadonlyModel.FindByID(l.ctx, id)
+	if err != nil {
+		return nil, common.ErrUserNotFound
 	}
-
 	// 校验用户状态
 	if u.Status == userStatusBanned {
 		return nil, common.ErrUserDisabled
 	}
 
+	sid := ""
+	if l.svcCtx.SessionRedis != nil {
+		if len(verifiedHash) > 0 && l.svcCtx.Accounts != nil {
+			sid, err = l.svcCtx.Accounts.IssueSession(l.ctx, "user", u.Id, verifiedHash[0], int(l.svcCtx.Config.Auth.RefreshExpire))
+		} else {
+			sid, err = identity.CreateSession(l.ctx, l.svcCtx.SessionRedis, "user", u.Id, int(l.svcCtx.Config.Auth.RefreshExpire))
+		}
+		if err != nil {
+			return nil, common.ErrSystem
+		}
+	}
 	// 签发 Access Token（2h）
 	access, err := common.GenAccessToken(
 		l.svcCtx.Config.Auth.AccessSecret,
 		common.TokenInfo{
-			UserId:   u.Id,
-			Mobile:   u.Mobile,
-			UserType: "user",
-			Roles:    []string{"customer"},
-			ClientID: "customer",
+			SessionID: sid,
+			UserId:    u.Id,
+			Mobile:    u.Mobile,
+			UserType:  "user",
+			Roles:     []string{"customer"},
+			ClientID:  "customer",
 		},
 		l.svcCtx.Config.Auth.AccessExpire,
 	)
@@ -94,7 +84,7 @@ func (l *LoginLogic) Login(req *types.LoginReq) (*types.LoginResp, error) {
 	// 签发 Refresh Token（7d）
 	refresh, err := common.GenRefreshToken(
 		l.svcCtx.Config.Auth.AccessSecret,
-		common.TokenInfo{UserId: u.Id, UserType: "user"},
+		common.TokenInfo{SessionID: sid, UserId: u.Id, UserType: "user"},
 		l.svcCtx.Config.Auth.RefreshExpire,
 	)
 	if err != nil {

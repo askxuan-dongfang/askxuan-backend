@@ -4,10 +4,12 @@ package types
 
 // LoginReq 登录请求
 type LoginReq struct {
-	Phone    string `json:"phone"`
-	Code     string `json:"code,optional"`     // 验证码（手机号登录）
-	Account  string `json:"account,optional"`  // 账号（密码登录，可传手机号）
-	Password string `json:"password,optional"` // 密码（密码登录）
+	CaptchaID   string `json:"captchaId"`
+	CaptchaCode string `json:"captchaCode"`
+	Phone       string `json:"phone,optional"`
+	Code        string `json:"code,optional"`     // 验证码（手机号登录）
+	Account     string `json:"account,optional"`  // 账号（密码登录，可传手机号）
+	Password    string `json:"password,optional"` // 密码（密码登录）
 }
 
 // UserInfo 用户简要信息
@@ -65,8 +67,10 @@ type LogoutResp struct {
 
 // AdminLoginReq 管理台登录请求
 type AdminLoginReq struct {
-	Account  string `json:"account"`
-	Password string `json:"password"`
+	CaptchaID   string `json:"captchaId"`
+	CaptchaCode string `json:"captchaCode"`
+	Account     string `json:"account"`
+	Password    string `json:"password"`
 }
 
 // ============ 管理台账号管理 ============

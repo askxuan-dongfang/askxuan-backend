@@ -12,6 +12,7 @@ import (
 	"github.com/askxuan/auth-service/internal/svc"
 	"github.com/askxuan/auth-service/internal/types"
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/identity"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -139,12 +140,14 @@ func TestSignInAndRefreshKeepIdentityDomainsSeparate(t *testing.T) {
 			var login *types.LoginResp
 			var err error
 			if domain == "user" {
-				login, err = NewLoginLogic(context.Background(), f.sc).Login(&types.LoginReq{Account: "fixture-user", Password: "fixture-password"})
+				login, err = NewLoginLogic(context.Background(), f.sc).IssueCustomer(f.users.user.Id)
+				f.users.idReads = 0
 			} else {
 				if domain == "master" {
 					f.roles.role.Code = model.RoleCodeMaster
 					f.admins.account.MasterId = "M-fixture"
 				}
+				f.admins.account.Password, _ = identity.HashPassword("fixture-password")
 				login, err = NewAdminLoginLogic(context.Background(), f.sc).AdminLogin(&types.AdminLoginReq{Account: "fixture-admin", Password: "fixture-password"})
 			}
 			if err != nil {

@@ -1,0 +1,13 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ['127.0.0.1:56379:6379']
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: local-identity-fixture-only
+    ports: ['127.0.0.1:53306:3306']
+    volumes: ['./schema.sql:/docker-entrypoint-initdb.d/identity.sql:ro']
+  mail:
+    image: axllent/mailpit:v1.27
+    ports: ['127.0.0.1:51025:1025','127.0.0.1:58025:8025']

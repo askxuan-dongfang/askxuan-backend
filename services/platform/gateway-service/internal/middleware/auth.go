@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -89,8 +90,8 @@ func roleAllowedForAdminPath(path string, claims *common.CustomClaims) bool {
 // - 公开 GET 允许访客访问；携带 token 时验证并透传身份（GET 白名单支持子路径）
 // - 校验 Authorization: Bearer <token>，解析后将用户信息注入请求头透传下游
 // - /api/v1/admin/* 路径额外校验管理台角色
-func Auth(secret string, noAuthPaths []string) func(http.Handler) http.Handler {
-	whitelist := noAuthPaths
+func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Context, *common.CustomClaims) error) func(http.Handler) http.Handler {
+	whitelist := append(append([]string{}, noAuthPaths...), "/api/v1/auth/options", "/api/v1/auth/captcha", "/api/v1/auth/email/code", "/api/v1/auth/email/register", "/api/v1/auth/password/reset")
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -139,6 +140,14 @@ func Auth(secret string, noAuthPaths []string) func(http.Handler) http.Handler {
 				return
 			}
 
+			if claims.UserType != "service" {
+				for _, check := range sessionChecks {
+					if e := check(r.Context(), claims); e != nil {
+						common.JsonError(w, common.ErrTokenInvalid)
+						return
+					}
+				}
+			}
 			// 管理台/工作台路径角色校验：/api/v1/admin/* 需要管理台角色，法师工作台也使用该前缀
 			if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") || r.URL.Path == "/api/v1/ai/admin" || strings.HasPrefix(r.URL.Path, "/api/v1/ai/admin/") {
 				if !roleAllowedForAdminPath(r.URL.Path, claims) {

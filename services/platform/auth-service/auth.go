@@ -22,6 +22,8 @@ func main() {
 
 	// 关闭 etcd 服务注册（MVP-1 本地联调，避免强依赖 etcd 可用性）
 	// 生产环境应保留 Telemetry 配置以注册到 etcd 供网关发现
+	// Default HTTP request dumps can expose passwords and OTPs on slow/error paths.
+	c.Middlewares.Log = false
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
 

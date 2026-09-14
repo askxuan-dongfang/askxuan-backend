@@ -9,6 +9,7 @@ import (
 
 // CustomClaims JWT 自定义声明，携带用户身份信息
 type CustomClaims struct {
+	SessionID  string   `json:"sid,omitempty"`
 	UserId     int64    `json:"userId"`
 	Mobile     string   `json:"mobile,omitempty"`
 	UserType   string   `json:"userType,omitempty"`   // user / master / admin
@@ -23,6 +24,7 @@ type CustomClaims struct {
 
 // TokenInfo 签发 Access Token 所需的用户信息
 type TokenInfo struct {
+	SessionID  string
 	UserId     int64
 	Mobile     string
 	UserType   string
@@ -42,6 +44,7 @@ type TokenInfo struct {
 func GenAccessToken(secret string, info TokenInfo, expireSeconds int64) (string, error) {
 	now := time.Now()
 	claims := CustomClaims{
+		SessionID:  info.SessionID,
 		UserId:     info.UserId,
 		Mobile:     info.Mobile,
 		UserType:   info.UserType,
@@ -74,9 +77,10 @@ func GenRefreshToken(secret string, identity TokenInfo, expireSeconds int64) (st
 	}
 	now := time.Now()
 	claims := CustomClaims{
-		UserId:   identity.UserId,
-		UserType: identity.UserType,
-		Type:     "refresh",
+		SessionID: identity.SessionID,
+		UserId:    identity.UserId,
+		UserType:  identity.UserType,
+		Type:      "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(expireSeconds) * time.Second)),

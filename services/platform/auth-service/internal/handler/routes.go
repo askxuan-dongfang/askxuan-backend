@@ -9,7 +9,9 @@ import (
 	"github.com/askxuan/auth-service/internal/svc"
 	"github.com/askxuan/auth-service/internal/types"
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/identity"
 	"github.com/askxuan/common/middleware"
+	"github.com/zeromicro/go-zero/core/stores/redis"
 
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -17,6 +19,7 @@ import (
 
 // RegisterHandlers 注册 auth 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
+	registerIdentityHandlers(server, svcCtx)
 	// CORS 中间件
 	server.Use(middleware.CorsFunc)
 
@@ -104,6 +107,9 @@ func loginHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
+		if !checkHuman(w, r, svcCtx, req.CaptchaID, req.CaptchaCode) {
+			return
+		}
 		l := logic.NewLoginLogic(r.Context(), svcCtx)
 		resp, err := l.Login(&req)
 		if err != nil {
@@ -135,6 +141,9 @@ func logoutHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.LogoutReq
 		_ = httpx.Parse(r, &req)
+		if req.AccessToken == "" {
+			req.AccessToken = strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		}
 		l := logic.NewLogoutLogic(r.Context(), svcCtx)
 		resp, err := l.Logout(&req)
 		if err != nil {
@@ -151,7 +160,7 @@ func imTokenHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.IMTokenReq
 		_ = httpx.Parse(r, &req)
-		openimUserID, authErr := authenticatedIMIdentity(r, svcCtx.Config.Auth.AccessSecret)
+		openimUserID, authErr := authenticatedIMIdentity(r, svcCtx.Config.Auth.AccessSecret, svcCtx.SessionRedis)
 		if authErr != nil {
 			common.JsonError(w, authErr)
 			return
@@ -182,6 +191,13 @@ func adminLoginHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		var req types.AdminLoginReq
 		if err := httpx.Parse(r, &req); err != nil {
 			common.JsonError(w, common.ErrParam)
+			return
+		}
+		if !checkHuman(w, r, svcCtx, req.CaptchaID, req.CaptchaCode) {
+			return
+		}
+		if e := svcCtx.Accounts.Challenges.Limit(r.Context(), "admin-login", strings.ToLower(req.Account), 10, 600); e != nil {
+			identityError(w, e)
 			return
 		}
 		l := logic.NewAdminLoginLogic(r.Context(), svcCtx)
@@ -320,7 +336,7 @@ func adminPermissionListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	}
 }
 
-func authenticatedIMIdentity(r *http.Request, secret string) (string, error) {
+func authenticatedIMIdentity(r *http.Request, secret string, sessions ...*redis.Redis) (string, error) {
 	auth := r.Header.Get("Authorization")
 	if !strings.HasPrefix(auth, "Bearer ") {
 		return "", common.ErrUnauthorized
@@ -328,6 +344,11 @@ func authenticatedIMIdentity(r *http.Request, secret string) (string, error) {
 	claims, err := common.ParseToken(secret, strings.TrimPrefix(auth, "Bearer "))
 	if err != nil || claims.IsRefreshToken() {
 		return "", common.ErrTokenInvalid
+	}
+	for _, store := range sessions {
+		if store != nil && identity.CheckSession(r.Context(), store, claims.SessionID, identity.SessionDomain(claims.UserType, claims.Roles), claims.UserId) != nil {
+			return "", common.ErrTokenInvalid
+		}
 	}
 	if claims.MasterID > 0 {
 		return "m_" + strconv.FormatInt(claims.MasterID, 10), nil

@@ -10,10 +10,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/askxuan/common"
+	"github.com/askxuan/common/identity"
 	"github.com/askxuan/gateway-service/internal/config"
 	"github.com/askxuan/gateway-service/internal/discovery"
 	"github.com/askxuan/gateway-service/internal/middleware"
 	"github.com/askxuan/gateway-service/internal/proxy"
+	"github.com/zeromicro/go-zero/core/stores/redis"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -76,7 +79,10 @@ func main() {
 
 	// 中间件链：CORS → 全局 JWT 鉴权（白名单 + 透传 X-User-Id）→ 反向代理
 	var handler http.Handler = mux
-	handler = middleware.Auth(c.Auth.AccessSecret, c.NoAuthPaths)(handler)
+	sessionRedis := redis.MustNewRedis(redis.RedisConf{Host: os.Getenv("AUTH_REDIS_HOST"), Pass: os.Getenv("AUTH_REDIS_PASSWORD"), Type: "node"})
+	handler = middleware.Auth(c.Auth.AccessSecret, c.NoAuthPaths, func(ctx context.Context, claims *common.CustomClaims) error {
+		return identity.CheckSession(ctx, sessionRedis, claims.SessionID, identity.SessionDomain(claims.UserType, claims.Roles), claims.UserId)
+	})(handler)
 	handler = middleware.Cors(handler)
 
 	addr := fmt.Sprintf("%s:%d", c.Host, c.Port)

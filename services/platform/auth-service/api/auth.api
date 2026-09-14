@@ -9,12 +9,14 @@ info (
 
 // ============ C端/通用认证 ============
 type (
-    // LoginReq 登录请求，支持 手机号+验证码 或 账号(手机号)+密码
+    // LoginReq 邮箱或用户名 + 密码 + 图片验证码；短信尚未开放
     LoginReq {
-        Phone    string `json:"phone"`
-        Code     string `json:"code,optional"`     // 验证码（手机号登录）
-        Account  string `json:"account,optional"`  // 账号（密码登录，可传手机号）
-        Password string `json:"password,optional"` // 密码（密码登录）
+        Phone    string `json:"phone,optional"`
+        Code     string `json:"code,optional"`     // 旧字段，非空时拒绝
+        Account  string `json:"account,optional"`  // 已验证邮箱或用户名
+        Password string `json:"password,optional"` // 密码
+        CaptchaID string `json:"captchaId"`
+        CaptchaCode string `json:"captchaCode"`
     }
 
     // LoginResp 登录响应
@@ -62,6 +64,8 @@ type (
     AdminLoginReq {
         Account  string `json:"account"`
         Password string `json:"password"`
+        CaptchaID string `json:"captchaId"`
+        CaptchaCode string `json:"captchaCode"`
     }
 )
 
@@ -196,6 +200,11 @@ service auth-service {
     @handler imToken
     post /im-token (IMTokenReq) returns (IMTokenResp)
 }
+
+// Additional identity endpoints are implemented in handler/identity.go:
+// GET /api/v1/auth/options and /captcha
+// POST /api/v1/auth/email/code, /email/register, /password/reset
+// Contract and examples: scripts/dev/email-auth/README.md
 
 // ============ 管理台分组（需JWT + 平台超管角色） ============
 @server (

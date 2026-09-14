@@ -11,6 +11,7 @@ import (
 	"github.com/askxuan/auth-service/internal/svc"
 	"github.com/askxuan/auth-service/internal/types"
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/identity"
 
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -32,31 +33,36 @@ func NewAdminLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *AdminL
 }
 
 // AdminLogin 管理台登录（account + password）
-// MVP-1 阶段明文比对密码
+// 密码只接受 Argon2id 哈希；旧演示账户需先完成凭据迁移。
 func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp, error) {
 	account := strings.TrimSpace(req.Account)
 	if account == "" {
 		return nil, common.ErrParam
 	}
 
-	// 查询 admin_account 表
-	acc, err := l.svcCtx.AdminAccountModel.FindByAccount(l.ctx, account)
-	if err != nil {
-		if errors.Is(err, sqlx.ErrNotFound) {
-			return nil, common.ErrUserNotFound
+	var acc *model.AdminAccount
+	var err error
+	hash := ""
+	if l.svcCtx.Accounts != nil {
+		a, lookup := l.svcCtx.Accounts.Find(l.ctx, "admin", account)
+		if lookup == nil {
+			acc, err = l.svcCtx.AdminAccountModel.FindByID(l.ctx, a.UserID)
+			hash = a.PasswordHash
+		} else if !errors.Is(lookup, sqlx.ErrNotFound) {
+			return nil, common.ErrSystem
 		}
-		l.Errorf("查询管理台账号失败 account=%s: %v", account, err)
-		return nil, common.ErrSystem
 	}
-
-	// 校验账号状态
+	if acc == nil {
+		acc, err = l.svcCtx.AdminAccountModel.FindByAccount(l.ctx, account)
+		if acc != nil {
+			hash = acc.Password
+		}
+	}
+	if err != nil || acc == nil || !identity.CheckPassword(hash, req.Password) {
+		return nil, common.ErrPwdWrong
+	}
 	if acc.Status != model.AccountStatusEnabled {
 		return nil, common.ErrUserDisabled
-	}
-
-	// MVP-1 明文比对密码
-	if req.Password != acc.Password {
-		return nil, common.ErrPwdWrong
 	}
 
 	// 查询角色，获取 code
@@ -121,10 +127,22 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		}
 	}
 
+	sid := ""
+	if l.svcCtx.SessionRedis != nil {
+		if l.svcCtx.Accounts != nil {
+			sid, err = l.svcCtx.Accounts.IssueSession(l.ctx, "admin", acc.Id, hash, int(l.svcCtx.Config.Auth.RefreshExpire))
+		} else {
+			sid, err = identity.CreateSession(l.ctx, l.svcCtx.SessionRedis, "admin", acc.Id, int(l.svcCtx.Config.Auth.RefreshExpire))
+		}
+		if err != nil {
+			return nil, common.ErrSystem
+		}
+	}
 	// 签发 Access Token（2h）
 	access, err := common.GenAccessToken(
 		l.svcCtx.Config.Auth.AccessSecret,
 		common.TokenInfo{
+			SessionID:  sid,
 			UserId:     acc.Id,
 			Mobile:     acc.Account,
 			UserType:   "admin",
@@ -148,7 +166,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	}
 	refresh, err := common.GenRefreshToken(
 		l.svcCtx.Config.Auth.AccessSecret,
-		common.TokenInfo{UserId: acc.Id, UserType: refreshDomain},
+		common.TokenInfo{SessionID: sid, UserId: acc.Id, UserType: refreshDomain},
 		l.svcCtx.Config.Auth.RefreshExpire,
 	)
 	if err != nil {

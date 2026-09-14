@@ -35,3 +35,7 @@ IM:
   APIURL: "http://127.0.0.1:10002"  # OpenIM REST API（已部署）
   AdminUserID: "imAdmin"
   Secret: "openIM123"
+
+# SMTP credentials are supplied only via AUTH_SMTP_* environment variables.
+# See scripts/dev/email-auth/README.md; unset host/from disables email registration.
+# AUTH_TRUSTED_PROXY_CIDRS must name only controlled gateway/reverse-proxy hops.

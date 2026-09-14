@@ -1,0 +1,20 @@
+Name: email-auth-local
+Host: 127.0.0.1
+Port: 58081
+Timeout: 20000
+Log:
+  Mode: console
+  Level: error
+MySQL:
+  DataSource: root:local-identity-fixture-only@tcp(127.0.0.1:53306)/askxuan_auth?charset=utf8mb4&parseTime=true&loc=Local
+Redis:
+  Host: 127.0.0.1:56379
+  Type: node
+Auth:
+  AccessSecret: isolated-email-auth-fixture-signing-key-not-production
+  AccessExpire: 7200
+  RefreshExpire: 604800
+IM:
+  APIURL: ''
+  AdminUserID: ''
+  Secret: ''
