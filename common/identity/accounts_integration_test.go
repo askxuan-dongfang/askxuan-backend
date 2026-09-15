@@ -108,3 +108,58 @@ func TestAccountsIntegration(t *testing.T) {
 		t.Fatal("undelivered code retained")
 	}
 }
+
+// Placeholder accounts retain password login without pretending to own a mailbox.
+func TestUnverifiedPlaceholderIntegration(t *testing.T) {
+	dsn, host := os.Getenv("IDENTITY_TEST_MYSQL"), os.Getenv("IDENTITY_TEST_REDIS")
+	if dsn == "" || host == "" {
+		t.Skip("disposable integration database required")
+	}
+	ctx := context.Background()
+	db := sqlx.NewMysql(dsn)
+	r := redis.MustNewRedis(redis.RedisConf{Host: host, Type: "node"})
+	mail := &testMailer{}
+	s := Accounts{DB: db, Challenges: &Challenges{Redis: r, Secret: RandomID()}, Mailer: mail}
+	name := "demo_" + RandomID()[:18]
+	address := name + "@demo.askxuan.invalid"
+	password := "Demo-placeholder-2026!"
+	hash, _ := HashPassword(password)
+	result, e := db.ExecCtx(ctx, "INSERT INTO askxuan_user.user(mobile,nickname,password,status) VALUES(NULL,?,?,1)", name, hash)
+	if e != nil {
+		t.Fatal(e)
+	}
+	id, _ := result.LastInsertId()
+	defer func() {
+		db.ExecCtx(ctx, "DELETE FROM auth_identity WHERE domain='user' AND user_id=?", id)
+		db.ExecCtx(ctx, "DELETE FROM askxuan_user.user WHERE id=?", id)
+	}()
+	if _, e = db.ExecCtx(ctx, "INSERT INTO auth_identity(domain,user_id,username,email,password_hash,verified_at) VALUES('user',?,?,?,?,NULL)", id, name, address, hash); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.PasswordLogin(ctx, "user", name, password); e != nil {
+		t.Fatal("username login", e)
+	}
+	if _, e = s.PasswordLogin(ctx, "user", address, password); e == nil {
+		t.Fatal("unverified email accepted")
+	}
+	if e = s.SendCode(ctx, "user", address, "reset"); e == nil || mail.code != "" {
+		t.Fatal("placeholder sent email")
+	}
+	real := name + "@example.test"
+	if e = s.Enroll(ctx, "user", id, real, name, "", "", true); e != nil {
+		t.Fatal(e)
+	}
+	if e = s.Enroll(ctx, "user", id, real, name, password, mail.code, false); e != nil {
+		t.Fatal("upgrade placeholder", e)
+	}
+	if _, e = s.PasswordLogin(ctx, "user", real, password); e != nil {
+		t.Fatal("verified email login", e)
+	}
+	another := name + "_other@example.test"
+	if e = s.Enroll(ctx, "user", id, another, name, "", "", true); e != nil {
+		t.Fatal(e)
+	}
+	if e = s.Enroll(ctx, "user", id, another, name, password, mail.code, false); e == nil {
+		t.Fatal("overwrote verified identity")
+	}
+}

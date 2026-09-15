@@ -37,7 +37,7 @@ type Accounts struct {
 func NormalizeEmail(value string) (string, error) {
 	value = strings.ToLower(strings.TrimSpace(value))
 	a, e := mail.ParseAddress(value)
-	if e != nil || a.Address != value || len(value) > 254 || !strings.Contains(value, ".") {
+	if e != nil || a.Address != value || len(value) > 254 || !strings.Contains(value, ".") || strings.HasSuffix(value, ".invalid") {
 		return "", fmt.Errorf("请输入有效邮箱")
 	}
 	return value, nil
@@ -47,7 +47,7 @@ func (s *Accounts) Find(ctx context.Context, domain, account string) (*Account, 
 		return nil, fmt.Errorf("账户类型无效")
 	}
 	var a Account
-	e := s.DB.QueryRowCtx(ctx, &a, `SELECT domain,user_id,username,email,password_hash FROM auth_identity WHERE domain=? AND (username=? OR email=?)`, domain, strings.ToLower(strings.TrimSpace(account)), strings.ToLower(strings.TrimSpace(account)))
+	e := s.DB.QueryRowCtx(ctx, &a, `SELECT domain,user_id,username,email,password_hash FROM auth_identity WHERE domain=? AND (username=? OR (email=? AND verified_at IS NOT NULL))`, domain, strings.ToLower(strings.TrimSpace(account)), strings.ToLower(strings.TrimSpace(account)))
 	return &a, e
 }
 func (s *Accounts) SendCode(ctx context.Context, domain, email, purpose string) error {

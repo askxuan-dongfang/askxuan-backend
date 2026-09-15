@@ -30,7 +30,7 @@ func TestPasswordHashPolicy(t *testing.T) {
 	}
 }
 func TestEmailNormalization(t *testing.T) {
-	for _, raw := range []string{"a\r\nBcc: victim@example.org", "Name <a@example.org>", "bad", "a@b"} {
+	for _, raw := range []string{"a\r\nBcc: victim@example.org", "Name <a@example.org>", "bad", "a@b", "demo@accounts.invalid", "DEMO@ACCOUNTS.INVALID"} {
 		if _, e := NormalizeEmail(raw); e == nil {
 			t.Fatal(raw)
 		}

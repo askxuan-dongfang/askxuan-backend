@@ -54,12 +54,22 @@ func (s *Accounts) Enroll(ctx context.Context, domain string, id int64, email, u
 	if err = s.Challenges.Consume(ctx, "enroll", binding, code, 5); err != nil {
 		return err
 	}
-	// INSERT only: an existing verified identity cannot be overwritten by this tool.
+	// Only an unverified reserved test placeholder can be upgraded. Verified identities remain immutable here.
 	err = s.DB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
-		if _, e := tx.ExecCtx(ctx, `INSERT INTO auth_identity(domain,user_id,username,email,password_hash,verified_at) VALUES (?,?,?,?,?,NOW())`, domain, id, username, email, hash); e != nil {
+		result, e := tx.ExecCtx(ctx, `UPDATE auth_identity SET username=?,email=?,password_hash=?,verified_at=NOW() WHERE domain=? AND user_id=? AND verified_at IS NULL AND email LIKE '%.invalid'`, username, email, hash, domain, id)
+		if e != nil {
 			return e
 		}
-		_, e := tx.ExecCtx(ctx, "UPDATE "+table+" SET password=? WHERE id=?", hash, id)
+		n, e := result.RowsAffected()
+		if e != nil {
+			return e
+		}
+		if n == 0 {
+			if _, e := tx.ExecCtx(ctx, `INSERT INTO auth_identity(domain,user_id,username,email,password_hash,verified_at) VALUES (?,?,?,?,?,NOW())`, domain, id, username, email, hash); e != nil {
+				return e
+			}
+		}
+		_, e = tx.ExecCtx(ctx, "UPDATE "+table+" SET password=? WHERE id=?", hash, id)
 		return e
 	})
 	if err != nil {
