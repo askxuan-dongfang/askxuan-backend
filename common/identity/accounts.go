@@ -58,10 +58,10 @@ func (s *Accounts) SendCode(ctx context.Context, domain, email, purpose string) 
 	if domain != "user" && domain != "admin" {
 		return fmt.Errorf("账户类型无效")
 	}
-	if purpose != "register" && purpose != "reset" {
+	if purpose != "register" && purpose != "reset" && purpose != "master_register" && purpose != "temple_register" && purpose != "activate" {
 		return fmt.Errorf("验证用途无效")
 	}
-	if purpose == "register" && domain != "user" {
+	if (purpose == "register" && domain != "user") || ((purpose == "master_register" || purpose == "temple_register" || purpose == "activate") && domain != "admin") {
 		return fmt.Errorf("工作账户不开放注册")
 	}
 	if !s.Mailer.Ready() {
@@ -84,12 +84,36 @@ func (s *Accounts) SendCode(ctx context.Context, domain, email, purpose string) 
 	if purpose == "reset" && a.Email != email {
 		return nil
 	}
+	if purpose == "master_register" || purpose == "temple_register" {
+		if lookup == nil {
+			return nil
+		}
+		var count int64
+		if e = s.DB.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM master_invitation WHERE email=?", email); e != nil {
+			return e
+		}
+		if count > 0 {
+			return nil
+		}
+	}
+	if purpose == "activate" {
+		var count int64
+		if e = s.DB.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM master_invitation WHERE email=? AND status='pending'", email); e != nil {
+			return e
+		}
+		if count != 1 {
+			return nil
+		}
+	}
 	code := digits(6)
 	id := domain + ":" + purpose + ":" + email
 	if e = s.Challenges.Save(ctx, "email", id, code, 300); e != nil {
 		return fmt.Errorf("验证服务暂不可用")
 	}
 	label := "注册"
+	if purpose == "activate" {
+		label = "账号激活"
+	}
 	if purpose == "reset" {
 		label = "重置密码"
 	}

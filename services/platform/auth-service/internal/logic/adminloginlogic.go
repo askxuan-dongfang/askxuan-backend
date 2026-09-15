@@ -221,9 +221,9 @@ func roleCodeToClientID(roleCode string) string {
 	switch roleCode {
 	case model.RoleCodePlatformSuper, model.RoleCodePlatformService:
 		return "platform-admin"
-	case model.RoleCodeTempleAdmin:
+	case model.RoleCodeTempleAdmin, "temple_applicant":
 		return "temple-admin"
-	case model.RoleCodeMaster:
+	case model.RoleCodeMaster, "master_applicant":
 		return "master"
 	case model.RoleCodeShopAdmin:
 		return "shop-admin"

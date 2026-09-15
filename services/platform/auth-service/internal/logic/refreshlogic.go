@@ -158,7 +158,7 @@ func refreshRoleMatchesDomain(domain, role string) bool {
 		return false
 	}
 	switch role {
-	case model.RoleCodePlatformSuper, model.RoleCodePlatformService, model.RoleCodeTempleAdmin, model.RoleCodeShopAdmin:
+	case model.RoleCodePlatformSuper, model.RoleCodePlatformService, model.RoleCodeTempleAdmin, model.RoleCodeShopAdmin, "master_applicant", "temple_applicant":
 		return true
 	default:
 		return false

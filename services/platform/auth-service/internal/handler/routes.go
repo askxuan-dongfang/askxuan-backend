@@ -20,6 +20,7 @@ import (
 // RegisterHandlers 注册 auth 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	registerIdentityHandlers(server, svcCtx)
+	registerOnboardingHandlers(server, svcCtx)
 	// CORS 中间件
 	server.Use(middleware.CorsFunc)
 
@@ -349,6 +350,9 @@ func authenticatedIMIdentity(r *http.Request, secret string, sessions ...*redis.
 		if store != nil && identity.CheckSession(r.Context(), store, claims.SessionID, identity.SessionDomain(claims.UserType, claims.Roles), claims.UserId) != nil {
 			return "", common.ErrTokenInvalid
 		}
+	}
+	if claims.HasRole("master_applicant") || claims.HasRole("temple_applicant") {
+		return "", common.ErrForbidden
 	}
 	if claims.MasterID > 0 {
 		return "m_" + strconv.FormatInt(claims.MasterID, 10), nil

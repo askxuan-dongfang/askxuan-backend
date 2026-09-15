@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/askxuan/auth-service/internal/logic"
 	"github.com/askxuan/auth-service/internal/svc"
+	"github.com/askxuan/auth-service/internal/types"
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/identity"
 	"github.com/zeromicro/go-zero/rest"
@@ -71,6 +72,7 @@ func checkHuman(w http.ResponseWriter, r *http.Request, sc *svc.ServiceContext, 
 }
 
 type identityRequest struct {
+	Kind        string `json:"kind"`
 	Domain      string `json:"domain"`
 	Email       string `json:"email"`
 	Purpose     string `json:"purpose"`
@@ -106,7 +108,7 @@ func registerIdentityHandlers(server *rest.Server, sc *svc.ServiceContext) {
 			common.Ok(w, c)
 		}},
 	})
-	for _, action := range []string{"email/code", "email/register", "password/reset"} {
+	for _, action := range []string{"email/code", "email/register", "password/reset", "work/register", "work/activate"} {
 		action := action
 		server.AddRoute(rest.Route{Method: "POST", Path: "/api/v1/auth/" + action, Handler: func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-store")
@@ -145,6 +147,24 @@ func registerIdentityHandlers(server *rest.Server, sc *svc.ServiceContext) {
 					return
 				}
 				common.Ok(w, resp)
+			case "work/register":
+				_, e := sc.Accounts.RegisterWork(r.Context(), q.Kind, q.Email, q.Username, q.Password, q.Code, q.Agreement)
+				if e != nil {
+					identityError(w, e)
+					return
+				}
+				resp, e := logic.NewAdminLoginLogic(r.Context(), sc).AdminLogin(&types.AdminLoginReq{Account: q.Email, Password: q.Password})
+				if e != nil {
+					common.JsonError(w, e)
+					return
+				}
+				common.Ok(w, resp)
+			case "work/activate":
+				if e := sc.Accounts.ActivateManagedMaster(r.Context(), q.Email, q.Password, q.Code, q.Agreement); e != nil {
+					identityError(w, e)
+					return
+				}
+				common.Ok(w, map[string]bool{"success": true})
 			case "password/reset":
 				if !strings.Contains(q.Email, "@") {
 					common.JsonError(w, common.ErrParam)

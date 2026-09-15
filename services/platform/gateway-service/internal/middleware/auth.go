@@ -91,7 +91,7 @@ func roleAllowedForAdminPath(path string, claims *common.CustomClaims) bool {
 // - 校验 Authorization: Bearer <token>，解析后将用户信息注入请求头透传下游
 // - /api/v1/admin/* 路径额外校验管理台角色
 func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Context, *common.CustomClaims) error) func(http.Handler) http.Handler {
-	whitelist := append(append([]string{}, noAuthPaths...), "/api/v1/auth/options", "/api/v1/auth/captcha", "/api/v1/auth/email/code", "/api/v1/auth/email/register", "/api/v1/auth/password/reset")
+	whitelist := append(append([]string{}, noAuthPaths...), "/api/v1/auth/options", "/api/v1/auth/captcha", "/api/v1/auth/email/code", "/api/v1/auth/email/register", "/api/v1/auth/password/reset", "/api/v1/auth/work/register", "/api/v1/auth/work/activate")
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -147,6 +147,10 @@ func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Con
 						return
 					}
 				}
+			}
+			if (claims.HasRole("master_applicant") || claims.HasRole("temple_applicant")) && !strings.HasPrefix(r.URL.Path, "/api/v1/auth/onboarding") && r.URL.Path != "/api/v1/auth/logout" {
+				common.JsonError(w, common.ErrRoleForbidden)
+				return
 			}
 			// 管理台/工作台路径角色校验：/api/v1/admin/* 需要管理台角色，法师工作台也使用该前缀
 			if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") || r.URL.Path == "/api/v1/ai/admin" || strings.HasPrefix(r.URL.Path, "/api/v1/ai/admin/") {
