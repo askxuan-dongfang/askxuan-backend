@@ -123,7 +123,7 @@ func (m *defaultBookingChatModel) ListMessages(ctx context.Context, bookingId st
 }
 
 func (m *defaultBookingChatModel) ListConversations(ctx context.Context, userId, masterCode string, page, size int, queryText, reader string, unreadOnly bool) ([]*BookingChatConversation, int64, error) {
-	where := `x.payment_status='success' AND x.chat_status<>'closed'`
+	where := `x.payment_status='success' AND x.chat_status<>'closed' AND TRIM(x.master_code)<>''`
 	args := []interface{}{}
 	if masterCode != "" {
 		where += ` AND x.master_code=?`

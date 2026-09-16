@@ -18,7 +18,10 @@ func TestCanTransit(t *testing.T) {
 		{"pending→cancelled", StatusPending, StatusCancelled, true},
 		{"confirmed→in_progress", StatusConfirmed, StatusInProgress, true},
 		{"confirmed→cancelled", StatusConfirmed, StatusCancelled, true},
-		{"in_progress→completed", StatusInProgress, StatusCompleted, true},
+		{"in_progress→completed(不能跳过回执)", StatusInProgress, StatusCompleted, false},
+		{"in_progress→pending_receipt", StatusInProgress, StatusPendingReceipt, true},
+		{"pending_receipt→completed", StatusPendingReceipt, StatusCompleted, true},
+		{"pending_receipt→in_progress(补充回执)", StatusPendingReceipt, StatusInProgress, true},
 		{"in_progress→cancelled", StatusInProgress, StatusCancelled, true},
 		{"completed→reviewed", StatusCompleted, StatusReviewed, true},
 

@@ -15,6 +15,7 @@ const (
 	StatusConfirmed      = "confirmed"
 	StatusInProgress     = "in_progress"
 	StatusCompleted      = "completed"
+	StatusPendingReceipt = "pending_receipt"
 	StatusCancelled      = "cancelled"
 	StatusReviewed       = "reviewed"
 
@@ -34,7 +35,8 @@ var validTransitions = map[string]map[string]bool{
 	StatusPendingPayment: {StatusPending: true, StatusCancelled: true},
 	StatusPending:        {StatusConfirmed: true, StatusCancelled: true},
 	StatusConfirmed:      {StatusInProgress: true, StatusCancelled: true},
-	StatusInProgress:     {StatusCompleted: true, StatusCancelled: true},
+	StatusInProgress:     {StatusPendingReceipt: true, StatusCancelled: true},
+	StatusPendingReceipt: {StatusCompleted: true, StatusInProgress: true},
 	StatusCompleted:      {StatusReviewed: true},
 }
 

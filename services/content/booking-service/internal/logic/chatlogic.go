@@ -569,7 +569,7 @@ func ChatUnread(ctx context.Context, s *svc.ServiceContext) (map[string]int64, e
 		where = "x.user_id=?"
 	}
 	var count int64
-	query := `SELECT COUNT(*) FROM booking_chat_message m JOIN (SELECT booking_no id,user_id,master_code FROM booking WHERE payment_status='success' AND status<>'cancelled' UNION ALL SELECT order_no id,user_id,master_code FROM consultation_order WHERE payment_status='success') x ON x.id=m.booking_id LEFT JOIN chat_read_cursor c ON c.conversation_id=m.booking_id AND c.reader_id=? WHERE m.receiver_id=? AND m.status='sent' AND m.id>COALESCE(c.through_id,0) AND ` + where
+	query := `SELECT COUNT(*) FROM booking_chat_message m JOIN (SELECT booking_no id,user_id,master_code FROM booking WHERE payment_status='success' AND status<>'cancelled' AND TRIM(master_code)<>'' UNION ALL SELECT order_no id,user_id,master_code FROM consultation_order WHERE payment_status='success') x ON x.id=m.booking_id LEFT JOIN chat_read_cursor c ON c.conversation_id=m.booking_id AND c.reader_id=? WHERE m.receiver_id=? AND m.status='sent' AND m.id>COALESCE(c.through_id,0) AND ` + where
 	if err := s.DB.QueryRowCtx(ctx, &count, query, reader, reader, key); err != nil {
 		return nil, common.ErrSystem
 	}

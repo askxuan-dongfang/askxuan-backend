@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/askxuan/booking-service/internal/model"
-	"github.com/askxuan/booking-service/internal/mq"
 	"github.com/askxuan/booking-service/internal/svc"
 	"github.com/askxuan/booking-service/internal/types"
 	"github.com/askxuan/common"
@@ -262,40 +261,20 @@ func transitBookingStatus(
 		return nil, common.ErrBookingStatusInvalid
 	}
 
-	// 3. 更新状态
-	updated, err := svcCtx.BookingModel.UpdateStatus(ctx, bookingNo, targetStatus)
-	if err != nil {
-		l.Errorf("更新预约状态失败: %v", err)
-		return nil, common.ErrSystem
-	}
-
-	// 4. 记录状态变更日志（失败不阻断主流程）
-	if logErr := svcCtx.StatusLogModel.Insert(ctx, &model.BookingStatusLog{
-		BookingId:    bookingNo,
-		FromStatus:   b.Status,
-		ToStatus:     targetStatus,
-		OperatorId:   operatorId,
-		OperatorType: operatorType,
-		Remark:       remark,
-	}); logErr != nil {
-		l.Errorf("记录状态变更日志失败: %v", logErr)
-	}
-
-	// 5. 发送 MQ 通知（失败不阻断主流程）
-	if svcCtx.MqProducer != nil {
-		if err := svcCtx.MqProducer.Publish(ctx, mq.BookingNotify{
-			BookingId: updated.Id, UserId: updated.UserId, TempleId: updated.TempleId,
-			TempleName: updated.TempleName, MasterId: updated.MasterId, MasterName: updated.MasterName,
-			ServiceName: updated.ServiceName, BookingDate: updated.BookingDate,
-			ServiceFee: updated.ServiceFee, MeritMoney: updated.MeritMoney,
-			TotalFee: updated.TotalFee, Action: action,
-		}); err != nil {
-			l.Errorf("发送预约状态通知失败: %v", err)
+	// Re-read under a row lock; state and history must commit together.
+	if operatorType == model.OperatorTypeTempleAdmin || operatorType == model.OperatorTypeMaster {
+		_, actor, _, accessErr := BookingAccess(ctx, svcCtx, bookingNo, true)
+		if accessErr != nil {
+			return nil, accessErr
 		}
+		operatorId = actor
 	}
+	if err := TransitionWithAudit(ctx, svcCtx, bookingNo, targetStatus, operatorId, operatorType, remark); err != nil {
+		return nil, err
+	}
+ return &types.StatusResp{Id:bookingNo,Status:targetStatus},nil
+}
 
-	return &types.StatusResp{
-		Id:     updated.Id,
-		Status: updated.Status,
-	}, nil
+func StartTempleBooking(ctx context.Context, s *svc.ServiceContext, id, remark string) (*types.StatusResp, error) {
+	return transitBookingStatus(logx.WithContext(ctx), ctx, s, id, model.StatusInProgress, remark, "", model.OperatorTypeTempleAdmin, "in_progress")
 }

@@ -34,6 +34,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPost, Path: "/openim/booking-chat-webhook/:command", Handler: bookingChatWebhookHandler(svcCtx)},
 	})
 
+	registerFulfillment(server, svcCtx, authCfg)
 	// ============ C端分组（需JWT） ============
 	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/chats", Handler: chatListHandler(svcCtx)},
@@ -119,7 +120,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		Path:    "/api/v1/admin/bookings/report",
 		Handler: authCfg.AuthFunc(reportRoleCfg.AdminAuthFunc(adminBookingReportHandler(svcCtx))),
 	})
-	server.AddRoutes([]rest.Route{
+	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, rest.WithMiddleware(templeBookingGuard(svcCtx), []rest.Route{
 		{
 			Method:  http.MethodGet,
 			Path:    "/api/v1/admin/bookings",
@@ -165,7 +166,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Path:    "/api/v1/admin/bookings/:id/review/reply",
 			Handler: adminReviewReplyHandler(svcCtx),
 		},
-	})
+	}...)...))
 
 	// ============ 法师工作台分组（需JWT） ============
 	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{

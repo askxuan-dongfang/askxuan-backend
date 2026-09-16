@@ -60,7 +60,7 @@ func (m *defaultBookingStatusLogModel) Insert(ctx context.Context, data *Booking
 // FindByBookingId 按预约单号查询状态变更日志
 func (m *defaultBookingStatusLogModel) FindByBookingId(ctx context.Context, bookingId string) ([]*BookingStatusLog, error) {
 	query := fmt.Sprintf(
-		"SELECT id, booking_id, from_status, to_status, operator_id, operator_type, remark, create_time FROM %s WHERE booking_id = ? ORDER BY create_time ASC",
+		"SELECT id, booking_id, from_status, to_status, operator_id, operator_type, remark, DATE_FORMAT(create_time,'%%Y-%%m-%%d %%H:%%i:%%s') create_time FROM %s WHERE booking_id = ? ORDER BY create_time ASC,id ASC",
 		statusLogTable)
 	var logs []*BookingStatusLog
 	if err := m.conn.QueryRowsCtx(ctx, &logs, query, bookingId); err != nil {
