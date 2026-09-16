@@ -276,6 +276,8 @@ func buildBookingMessage(action, bookingId string) (string, string) {
 		return "预约已确认", fmt.Sprintf("您的预约（单号 %s）已确认接单，等待执行。您可在预约详情查看服务进度。", bookingId)
 	case "inProgress", "in_progress":
 		return "预约进行中", fmt.Sprintf("您的预约（单号 %s）已开始进行。", bookingId)
+	case "progress":
+		return "服务有新进展", fmt.Sprintf("您的预约（单号 %s）有新的执行记录，可前往服务进度查看。", bookingId)
 	case "pending_receipt":
 		return "履约回执待确认", fmt.Sprintf("您的预约（单号 %s）已提交图片或视频回执，请到预约详情核对并确认完成；有疑问可要求补充。", bookingId)
 	case "completed":

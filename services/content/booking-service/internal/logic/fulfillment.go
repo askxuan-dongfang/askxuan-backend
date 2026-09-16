@@ -115,7 +115,11 @@ func Fulfillment(ctx context.Context, s *svc.ServiceContext, id string) (map[str
 			return nil, common.ErrSystem
 		}
 	}
-	return map[string]any{"status": b.Status, "logs": logs, "receipts": receipts}, nil
+	records, err := ProgressRecords(ctx, s, id)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"status": b.Status, "logs": logs, "receipts": receipts, "records": records}, nil
 }
 
 func lockBooking(ctx context.Context, tx sqlx.Session, id string) (string, error) {
@@ -175,7 +179,11 @@ func SubmitReceipt(ctx context.Context, s *svc.ServiceContext, id string, req Re
 			if e = tx.QueryRowCtx(ctx, &f, "SELECT "+receiptFileColumns+" FROM booking_receipt_file WHERE id=? FOR UPDATE", fileID); e != nil {
 				return common.ErrParamInvalid
 			}
-			if f.BookingId != id || f.Owner != actor || f.ReceiptId != "" {
+			var used int
+			if e = tx.QueryRowCtx(ctx, &used, "SELECT COUNT(*) FROM booking_progress_file WHERE file_id=?", fileID); e != nil {
+				return e
+			}
+			if f.BookingId != id || f.Owner != actor || f.ReceiptId != "" || used > 0 {
 				return common.ErrForbidden
 			}
 			f.ReceiptId = receiptID
@@ -342,7 +350,12 @@ func ReceiptDownload(w http.ResponseWriter, r *http.Request, s *svc.ServiceConte
 		common.JsonError(w, common.NewBizError(40434, "回执文件不存在"))
 		return
 	}
-	if f.ReceiptId == "" && (kind == model.OperatorTypeUser || actor != f.Owner) {
+	var published int
+	if err = s.DB.QueryRowCtx(r.Context(), &published, "SELECT COUNT(*) FROM booking_progress_file pf JOIN booking_progress p ON p.id=pf.progress_id WHERE pf.file_id=? AND p.booking_no=?", fileID, id); err != nil {
+		common.JsonError(w, common.ErrSystem)
+		return
+	}
+	if f.ReceiptId == "" && published == 0 && (kind == model.OperatorTypeUser || actor != f.Owner) {
 		common.JsonError(w, common.ErrForbidden)
 		return
 	}

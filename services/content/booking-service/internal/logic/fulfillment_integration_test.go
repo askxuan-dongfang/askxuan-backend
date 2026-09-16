@@ -42,7 +42,7 @@ func TestFulfillmentIntegration(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	tables := []string{"event_outbox", "booking", "booking_status_log", "booking_slot_inventory", "booking_chat_message", "booking_receipt", "booking_receipt_file"}
+	tables := []string{"event_outbox", "booking", "booking_status_log", "booking_slot_inventory", "booking_chat_message", "booking_receipt", "booking_receipt_file", "booking_progress", "booking_progress_file"}
 	for _, table := range tables {
 		source := string(init)
 		prefix := "CREATE TABLE `" + table + "`"
@@ -52,7 +52,7 @@ func TestFulfillmentIntegration(t *testing.T) {
 		if table == "event_outbox" {
 			prefix = "CREATE TABLE IF NOT EXISTS `askxuan_booking`.`event_outbox`"
 		}
-		if strings.HasPrefix(table, "booking_receipt") {
+		if strings.HasPrefix(table, "booking_receipt") || strings.HasPrefix(table, "booking_progress") {
 			prefix = "CREATE TABLE IF NOT EXISTS " + table + " ("
 		}
 		i := strings.Index(source, prefix)
@@ -272,6 +272,106 @@ func TestFulfillmentIntegration(t *testing.T) {
 	var count int
 	if e := db.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM event_outbox WHERE aggregate_id='TEST-TEMPLE'"); e != nil || count != 6 {
 		t.Fatalf("durable notification count: %d %v", count, e)
+	}
+
+	create("TEST-JOURNEY", "")
+	wish := ProgressRequest{ID: "11111111-1111-4111-8111-111111111111", Content: "愿家人平安，服务前请留意预约说明。"}
+	if _, e = PublishProgress(intruder, s, "TEST-JOURNEY", "wish", wish); e == nil {
+		t.Fatal("another user wrote wish")
+	}
+	if _, e = PublishProgress(temple, s, "TEST-JOURNEY", "wish", wish); e == nil {
+		t.Fatal("provider wrote user wish")
+	}
+	if _, e = PublishProgress(user, s, "TEST-JOURNEY", "wish", wish); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = PublishProgress(user, s, "TEST-JOURNEY", "wish", wish); e != nil {
+		t.Fatal("safe retry", e)
+	}
+	if e = TransitionWithAudit(ctx, s, "TEST-JOURNEY", model.StatusConfirmed, "7", "temple_admin", ""); e != nil {
+		t.Fatal(e)
+	}
+	if e = TransitionWithAudit(ctx, s, "TEST-JOURNEY", model.StatusInProgress, "7", "temple_admin", ""); e != nil {
+		t.Fatal(e)
+	}
+	lateWish := wish
+	lateWish.ID = "22222222-2222-4222-8222-222222222222"
+	if _, e = PublishProgress(user, s, "TEST-JOURNEY", "wish", lateWish); e == nil {
+		t.Fatal("wish edited after start")
+	}
+	stageFile := upload("TEST-JOURNEY", temple)
+	update := ProgressRequest{ID: "33333333-3333-4333-8333-333333333333", Content: "已进入实际执行阶段，附现场记录。", FileIds: []string{stageFile.Id}}
+	if _, e = PublishProgress(other, s, "TEST-JOURNEY", "update", update); e == nil {
+		t.Fatal("cross temple progress")
+	}
+	if _, e = PublishProgress(user, s, "TEST-JOURNEY", "update", update); e == nil {
+		t.Fatal("customer execution progress")
+	}
+	if _, e = PublishProgress(temple, s, "TEST-JOURNEY", "update", update); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = PublishProgress(temple, s, "TEST-JOURNEY", "update", update); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = SubmitReceipt(temple, s, "TEST-JOURNEY", ReceiptRequest{Summary: "不得复用已经发布的阶段文件", FileIds: []string{stageFile.Id}}); e == nil {
+		t.Fatal("stage file reused in final receipt")
+	}
+	w = httptest.NewRecorder()
+	ReceiptDownload(w, httptest.NewRequest("GET", "/", nil).WithContext(user), s, "TEST-JOURNEY", stageFile.Id)
+	if w.Header().Get("Content-Type") != "image/png" {
+		t.Fatal("published progress media inaccessible")
+	}
+	records, e := ProgressRecords(ctx, s, "TEST-JOURNEY")
+	if e != nil || len(records) != 2 || len(records[1].Files) != 1 {
+		t.Fatalf("progress history %+v %v", records, e)
+	}
+	idx, e := JourneyList(user, s, 1, "all", "测试寺院", "", "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if idx["total"].(int) != 3 {
+		t.Fatal("journey count", idx)
+	}
+	idx, e = JourneyList(intruder, s, 1, "all", "", "", "")
+	if e != nil || idx["total"].(int) != 0 {
+		t.Fatal("cross user list", e)
+	}
+	idx, e = JourneyList(other, s, 1, "all", "", "", "")
+	if e != nil || idx["total"].(int) != 0 {
+		t.Fatal("cross temple list", e)
+	}
+	idx, e = JourneyList(master, s, 1, "all", "", "", "")
+	if e != nil || idx["total"].(int) != 1 {
+		t.Fatal("master list isolation", e)
+	}
+	idx, e = JourneyList(user, s, 1, "archive", "", "", "")
+	if e != nil || idx["total"].(int) != 2 {
+		t.Fatal("archive count", e)
+	}
+	for _, row := range idx["list"].([]JourneyRow) {
+		if len(row.Preview) == 0 {
+			t.Fatal("archive preview metadata absent")
+		}
+		for _, file := range row.Preview {
+			if file.BookingId != row.ID {
+				t.Fatal("cross booking archive media")
+			}
+		}
+	}
+	if _, e = JourneyList(user, s, 1, "archive", "", "2026-09-20", "2026-09-01"); e == nil {
+		t.Fatal("reversed date range")
+	}
+	if _, e = PublishProgress(temple, s, "TEST-JOURNEY", "update", ProgressRequest{ID: "55555555-5555-4555-8555-555555555555", Content: "不能复用已发布文件", FileIds: []string{stageFile.Id}}); e == nil {
+		t.Fatal("published stage file reused")
+	}
+	if _, e = JourneyList(user, s, 0, "all", "", "", ""); e == nil {
+		t.Fatal("invalid page")
+	}
+	if _, e = JourneyList(user, s, 1, "all", "", "2026-02-31", ""); e == nil {
+		t.Fatal("invalid date")
+	}
+	if e = db.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM event_outbox WHERE event_key='booking:progress:33333333-3333-4333-8333-333333333333'"); e != nil || count != 1 {
+		t.Fatal("duplicate progress notification", e)
 	}
 
 }

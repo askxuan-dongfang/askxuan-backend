@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/askxuan/booking-service/internal/handler"
 	"github.com/askxuan/booking-service/internal/model"
 	"github.com/askxuan/booking-service/internal/svc"
@@ -26,7 +27,8 @@ func (masters) GetByCode(_ context.Context, code string) (*masterrpc.BookingMast
 }
 func main() {
 	dsn := os.Getenv("FULFILLMENT_TEST_DSN")
-	if !strings.Contains(dsn, "@tcp(127.0.0.1:53306)/askxuan_fulfillment_test_browser?") {
+	isJourney := strings.Contains(dsn, "@tcp(127.0.0.1:53306)/askxuan_fulfillment_test_journey_browser?")
+	if !isJourney && !strings.Contains(dsn, "@tcp(127.0.0.1:53306)/askxuan_fulfillment_test_browser?") {
 		panic("requires isolated local fixture")
 	}
 	sqlx.DisableLog()
@@ -47,8 +49,12 @@ func main() {
 	if e := os.WriteFile(os.Getenv("FULFILLMENT_FIXTURE_TOKENS"), payload, 0600); e != nil {
 		panic(e)
 	}
+	port := 58085
+	if isJourney {
+		port = 58086
+	}
 	var c rest.RestConf
-	err := conf.LoadFromYamlBytes([]byte("Name: fulfillment-fixture\nHost: 127.0.0.1\nPort: 58085\nTimeout: 120000\n"), &c)
+	err := conf.LoadFromYamlBytes([]byte(fmt.Sprintf("Name: fulfillment-fixture\nHost: 127.0.0.1\nPort: %d\nTimeout: 120000\n", port)), &c)
 	if err != nil {
 		panic(err)
 	}

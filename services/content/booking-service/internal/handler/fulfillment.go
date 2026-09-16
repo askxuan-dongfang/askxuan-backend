@@ -11,6 +11,7 @@ import (
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	"net/http"
+	"strconv"
 )
 
 func templeBookingGuard(s *svc.ServiceContext) rest.Middleware {
@@ -46,6 +47,36 @@ func templeBookingGuard(s *svc.ServiceContext) rest.Middleware {
 func registerFulfillment(server *rest.Server, s *svc.ServiceContext, auth *middleware.AuthConfig) {
 	route := func(method, path string, handler http.HandlerFunc) {
 		server.AddRoute(rest.Route{Method: method, Path: path, Handler: auth.AuthFunc(handler)}, rest.WithMaxBytes(21<<20))
+	}
+	route(http.MethodGet, "/api/v1/bookings/journeys", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		page := 1
+		var err error
+		if q.Get("page") != "" {
+			page, err = strconv.Atoi(q.Get("page"))
+		}
+		if err != nil {
+			common.JsonError(w, common.ErrParamInvalid)
+			return
+		}
+		filter := q.Get("filter")
+		if filter == "" {
+			filter = "all"
+		}
+		resp, err := logic.JourneyList(r.Context(), s, page, filter, q.Get("q"), q.Get("from"), q.Get("to"))
+		replyFulfillment(w, resp, err)
+	})
+	for _, kind := range []string{"wish", "update"} {
+		kind := kind
+		route(http.MethodPost, "/api/v1/bookings/:id/progress/"+kind, func(w http.ResponseWriter, r *http.Request) {
+			var req logic.ProgressRequest
+			if httpx.Parse(r, &req) != nil {
+				common.JsonError(w, common.ErrParamInvalid)
+				return
+			}
+			resp, err := logic.PublishProgress(r.Context(), s, pathvar.Vars(r)["id"], kind, req)
+			replyFulfillment(w, resp, err)
+		})
 	}
 	route(http.MethodGet, "/api/v1/bookings/:id/fulfillment", func(w http.ResponseWriter, r *http.Request) {
 		resp, err := logic.Fulfillment(r.Context(), s, pathvar.Vars(r)["id"])
