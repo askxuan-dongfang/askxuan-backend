@@ -1,0 +1,50 @@
+Name: ai-service
+Host: 127.0.0.1
+Port: 18098
+Timeout: 75000
+
+# etcd 服务注册（供 gateway-service 动态发现）
+Etcd:
+  Hosts:
+    - localhost:2379
+  Key: ai.service
+
+Telemetry:
+  Name: ai-service
+  Endpoint: http://localhost:2379
+  Sampler: 1.0
+  Batcher: jaeger
+
+# MySQL 数据源
+MySQL:
+  DataSource: "root:local-experience-only@tcp(127.0.0.1:33079)/askxuan_ai?charset=utf8mb4&parseTime=true&loc=Local"
+
+# 环境变量 AI_PROVIDER/AI_BASE_URL/AI_API_KEY/AI_MODEL 会覆盖下列值。
+AI:
+  Provider: mock
+  BaseURL: ""
+  APIKey: ""
+  Model: ""
+  VisionModel: ""
+  ThinkingEnabled: true
+  ReasoningEffort: low
+  MinuteRequestLimit: 12
+  DailyRequestLimit: 100
+  MaxInputChars: 2000
+  MaxHistoryMessages: 30
+  MaxOutputTokens: 2048
+  InputCostPerMillion: 0
+  OutputCostPerMillion: 0
+  BlockedTerms: []
+  AllowedImageHosts: []
+  ImageMaxBytes: 8388608
+  DeepSeekPricing:
+    Enabled: true
+    CacheHitOffPeakPerMillion: 0.007
+    CacheMissOffPeakPerMillion: 0.22
+    OutputOffPeakPerMillion: 0.66
+    PeakMultiplier: 2
+  MCP:
+    Enabled: false
+    BaseURL: ""
+    Timeout: 10

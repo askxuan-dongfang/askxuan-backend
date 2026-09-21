@@ -32,6 +32,9 @@ type ServiceContext struct {
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
+	// SQL parameters contain private messages, naming inputs and journal notes.
+	// Keep request metadata logs, but never interpolate these values into SQL logs.
+	sqlx.DisableLog()
 	db := sqlx.NewMysql(c.MySQL.DataSource)
 	runtimeAI := c.AI.Runtime()
 	manager, err := settings.New(runtimeAI, os.Getenv("AI_SETTINGS_DIR"), os.Getenv("AI_SETTINGS_ENCRYPTION_KEY"))

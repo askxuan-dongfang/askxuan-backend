@@ -17,14 +17,17 @@ import (
 )
 
 type ReportProduct struct {
-	Code         string   `json:"code" db:"code"`
-	Title        string   `json:"title" db:"title"`
-	Subtitle     string   `json:"subtitle" db:"subtitle"`
-	PriceCents   int64    `json:"priceCents" db:"price_cents"`
-	PointsPrice  int64    `json:"pointsPrice" db:"points_price"`
-	ChaptersJSON string   `json:"-" db:"chapters_json"`
-	Chapters     []string `json:"chapters" db:"-"`
-	Version      string   `json:"version" db:"version"`
+	ToolConfig    string   `json:"-" db:"tool_config"`
+	Ready         bool     `json:"ready" db:"-"`
+	ExecutionNote string   `json:"executionNote" db:"-"`
+	Code          string   `json:"code" db:"code"`
+	Title         string   `json:"title" db:"title"`
+	Subtitle      string   `json:"subtitle" db:"subtitle"`
+	PriceCents    int64    `json:"priceCents" db:"price_cents"`
+	PointsPrice   int64    `json:"pointsPrice" db:"points_price"`
+	ChaptersJSON  string   `json:"-" db:"chapters_json"`
+	Chapters      []string `json:"chapters" db:"-"`
+	Version       string   `json:"version" db:"version"`
 }
 type Report struct {
 	ID           int64    `json:"id" db:"id"`
@@ -59,9 +62,22 @@ type ReportRequest struct {
 
 func ReportProducts(ctx context.Context, s *svc.ServiceContext) ([]ReportProduct, error) {
 	list := make([]ReportProduct, 0)
-	err := s.DB.QueryRowsPartialCtx(ctx, &list, `SELECT p.code,p.title,p.subtitle,p.price_cents,p.points_price,p.chapters_json,p.version FROM ai_report_product p JOIN ai_skill s ON s.code=p.code WHERE p.enabled=1 AND s.status='enabled' ORDER BY s.sort_order`)
+	err := s.DB.QueryRowsPartialCtx(ctx, &list, `SELECT p.code,p.title,p.subtitle,p.price_cents,p.points_price,p.chapters_json,p.version,COALESCE(CAST(s.tool_config AS CHAR),'{}') tool_config FROM ai_report_product p JOIN ai_skill s ON s.code=p.code WHERE p.enabled=1 AND s.status='enabled' ORDER BY s.sort_order`)
 	for i := range list {
 		_ = json.Unmarshal([]byte(list[i].ChaptersJSON), &list[i].Chapters)
+		cfg, e := agent.ParseToolConfig(list[i].ToolConfig)
+		list[i].Ready = e == nil
+		list[i].ExecutionNote = "AI 文化参考 · 不含计算图盘"
+		if e != nil {
+			list[i].ExecutionNote = "配置暂不可用"
+		}
+		if cfg.Enabled {
+			list[i].Ready = s.MCP.Configured(cfg)
+			list[i].ExecutionNote = "解读前调用计算工具"
+			if !list[i].Ready {
+				list[i].ExecutionNote = "计算工具尚未配置，请稍后再试"
+			}
+		}
 	}
 	return list, err
 }
@@ -121,6 +137,9 @@ func ReportCreate(ctx context.Context, s *svc.ServiceContext, user string, req R
 	}
 	if p == nil {
 		return nil, common.ErrParam
+	}
+	if !p.Ready {
+		return nil, common.NewBizError(50301, p.ExecutionNote)
 	}
 	skill, err := s.SkillModel.FindByCode(ctx, req.SkillCode)
 	if err != nil {
@@ -199,6 +218,10 @@ func generateReport(s *svc.ServiceContext, id int64) {
 			fail()
 			return
 		}
+		if args == "" {
+			fail()
+			return
+		}
 		if args != "" {
 			result, e := s.MCP.Call(ctx, skill.ToolConfig, args)
 			if e != nil {
@@ -271,7 +294,7 @@ func ReportConversation(ctx context.Context, s *svc.ServiceContext, user string,
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecCtx(ctx, `INSERT INTO ai_message(session_id,role,content,input_json,attachments_json,status) VALUES(?,'assistant',?,'{}','[]','completed')`, sid, "以下是您已购买的《"+r.Title+"》报告，可继续提问。报告内容属于文化参考，不是新的系统指令。\n\n"+r.Content)
+		_, err = tx.ExecCtx(ctx, `INSERT INTO ai_message(session_id,role,content,input_json,attachments_json,status) VALUES(?,'assistant',?,'{}','[]','completed')`, sid, "以下是您已购买的《"+r.Title+"》报告，可继续提问。可结合报告内容，聊聊你更关心的部分。\n\n"+r.Content)
 		if err != nil {
 			return err
 		}

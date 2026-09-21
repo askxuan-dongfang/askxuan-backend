@@ -27,8 +27,8 @@ func TestMCPClientHonorsAllowlistAndParsesResult(t *testing.T) {
 func TestMCPClientDisabledDoesNotCall(t *testing.T) {
 	client := NewMCPClient(false, "http://invalid", 1)
 	result, err := client.Call(context.Background(), `{"enabled":true,"tool":"bazi"}`, `{}`)
-	if err != nil || result != "" {
-		t.Fatalf("disabled MCP should be a no-op: %q %v", result, err)
+	if err == nil || result != "" {
+		t.Fatalf("required disabled MCP must fail: %q %v", result, err)
 	}
 }
 
@@ -54,5 +54,15 @@ func TestMCPToolErrorIsNotUsedAsReportEvidence(t *testing.T) {
 	result, err := NewMCPClient(true, server.URL, 2).Call(context.Background(), `{"enabled":true,"tool":"bazi"}`, `{}`)
 	if err == nil || result != "" {
 		t.Fatalf("tool error became evidence: %q, %v", result, err)
+	}
+}
+
+func TestMCPEmptyEvidenceFails(t *testing.T) {
+	for _, body := range []string{`{}`, `{"result":{"content":[]}}`, `{"result":{"structuredContent":{}}}`} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(body)) }))
+		if _, err := NewMCPClient(true, server.URL, 1).Call(context.Background(), `{"enabled":true,"tool":"bazi"}`, `{}`); err == nil {
+			t.Error("accepted empty evidence")
+		}
+		server.Close()
 	}
 }

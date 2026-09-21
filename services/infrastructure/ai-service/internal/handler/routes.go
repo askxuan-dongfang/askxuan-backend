@@ -20,6 +20,7 @@ import (
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
 	registerReports(server, svcCtx)
+	registerExperiences(server, svcCtx)
 	registerProviderSettings(server, svcCtx)
 
 	server.AddRoutes([]rest.Route{

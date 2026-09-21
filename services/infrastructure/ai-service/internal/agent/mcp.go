@@ -48,8 +48,11 @@ func (c *MCPClient) Call(ctx context.Context, configJSON, argumentsJSON string) 
 	if err != nil {
 		return "", err
 	}
-	if !c.enabled || !config.Enabled {
+	if !config.Enabled {
 		return "", nil
+	}
+	if c == nil || !c.enabled {
+		return "", fmt.Errorf("required MCP capability is unavailable")
 	}
 	if c.baseURL == "" || config.Tool == "" {
 		return "", fmt.Errorf("MCP enabled without base URL or tool")
@@ -120,7 +123,12 @@ func (c *MCPClient) Call(ctx context.Context, configJSON, argumentsJSON string) 
 	}
 	if decoded.Result.StructuredContent != nil {
 		structured, _ := json.Marshal(decoded.Result.StructuredContent)
-		parts = append(parts, string(structured))
+		if string(structured) != "{}" && string(structured) != "[]" && string(structured) != "null" {
+			parts = append(parts, string(structured))
+		}
+	}
+	if len(parts) == 0 {
+		return "", fmt.Errorf("MCP tool returned no evidence")
 	}
 	return strings.Join(parts, "\n"), nil
 }
@@ -132,4 +140,9 @@ func firstSSEData(data []byte) []byte {
 		}
 	}
 	return data
+}
+
+// Configured reports configuration readiness, not remote tool health.
+func (c *MCPClient) Configured(cfg ToolConfig) bool {
+	return c != nil && c.enabled && c.baseURL != "" && cfg.Tool != ""
 }
