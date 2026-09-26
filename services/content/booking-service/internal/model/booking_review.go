@@ -83,7 +83,7 @@ func (m *defaultBookingReviewModel) Insert(ctx context.Context, data *BookingRev
 // FindOne 按预约单号查询评价
 func (m *defaultBookingReviewModel) FindOne(ctx context.Context, bookingId string) (*BookingReview, error) {
 	query := fmt.Sprintf(
-		"SELECT id, booking_id, user_id, rating, content, images, master_reply, create_time FROM %s WHERE booking_id = ?",
+		"SELECT id, booking_id, user_id, rating, content, images, master_reply, DATE_FORMAT(create_time,'%%Y-%%m-%%d %%H:%%i:%%s') create_time FROM %s WHERE booking_id = ?",
 		reviewTable)
 	var row bookingReviewRow
 	if err := m.conn.QueryRowCtx(ctx, &row, query, bookingId); err != nil {
