@@ -50,8 +50,33 @@ jobs:
           go-version-file: 'go.work'
           cache-dependency-path: '**/go.sum'
       - run: make vet
+  wallet-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: local-wallet-ci-only
+          MYSQL_DATABASE: wallet_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -plocal-wallet-ci-only"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    env:
+      WALLET_TEST_DSN: 'root:local-wallet-ci-only@tcp(127.0.0.1:3306)/wallet_test?charset=utf8mb4&parseTime=false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: 'go.work'
+          cache-dependency-path: '**/go.sum'
+      - run: go test ./internal/wallet -v
+        working-directory: services/commerce/payment-service
+      - run: go test ./internal/model ./internal/handler -run Wallet -v
+        working-directory: services/operation/finance-service
   deploy:
-    needs: [build, test, vet]
+    needs: [build, test, vet, wallet-mysql]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ECS_DEPLOY_ENABLED == 'true'
     environment: production
     runs-on: ubuntu-latest

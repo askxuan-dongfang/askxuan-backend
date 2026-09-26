@@ -16,6 +16,7 @@ import (
 // RegisterHandlers 注册 finance 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
+	registerWallet(server, svcCtx)
 
 	// JWT 鉴权配置（法师工作台接口需要登录）
 	authCfg := &middleware.AuthConfig{Secret: svcCtx.Config.AuthSecret}
