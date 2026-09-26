@@ -65,6 +65,9 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 		if existing.PaymentStatus == model.PaymentStatusSuccess {
 			return responseFromBooking(existing), nil
 		}
+		if req.ManualPayment {
+			return responseFromBooking(existing), nil
+		}
 		return l.autoPay(existing), nil
 	}
 
@@ -103,21 +106,21 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 		"masterCode": master.Code, "serviceCode": req.ServiceCode, "price": tagPrice,
 	})
 	created, err := l.svcCtx.BookingModel.InsertDirect(l.ctx, &model.Booking{
-		RequestId:   req.RequestId,
-		UserId:      userIDStr,
-		TempleId:    master.TempleCode,
-		TempleName:  master.TempleName,
-		MasterId:    master.Code,
-		MasterName:  master.DharmaName,
-		ServiceId:   req.ServiceCode,
-		ServiceName: req.ServiceCode,
-		BookingDate: req.BookingDate,
-		SlotCode:    "",
-		TimeSlot:    "待协商",
-		ServiceFee:  tagPrice,
-		TotalFee:    tagPrice,
+		RequestId:     req.RequestId,
+		UserId:        userIDStr,
+		TempleId:      master.TempleCode,
+		TempleName:    master.TempleName,
+		MasterId:      master.Code,
+		MasterName:    master.DharmaName,
+		ServiceId:     req.ServiceCode,
+		ServiceName:   req.ServiceCode,
+		BookingDate:   req.BookingDate,
+		SlotCode:      "",
+		TimeSlot:      "待协商",
+		ServiceFee:    tagPrice,
+		TotalFee:      tagPrice,
 		PriceSnapshot: string(snapshot),
-		Note:        req.Note,
+		Note:          req.Note,
 	})
 	if err != nil {
 		if existing, findErr := l.svcCtx.BookingModel.FindByRequest(l.ctx, userIDStr, req.RequestId); findErr == nil {
@@ -125,6 +128,9 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 		}
 		l.Errorf("创建大师直约单失败: %v", err)
 		return nil, common.ErrSystem
+	}
+	if req.ManualPayment {
+		return responseFromBooking(created), nil
 	}
 	return l.autoPay(created), nil
 }

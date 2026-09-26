@@ -33,6 +33,7 @@ type Booking struct {
 
 // CreateReq 创建预约请求
 type CreateReq struct {
+	ManualPayment  bool    `json:"manualPayment,optional"`
 	RequestId      string  `json:"requestId,optional"`
 	UserId         string  `json:"userId,optional"`
 	TempleId       string  `json:"templeId"`
@@ -196,9 +197,10 @@ type ConsultationQuoteResp struct {
 	ResponseMinutes int     `json:"responseMinutes"`
 }
 type ConsultationCreateReq struct {
-	RequestId string `json:"requestId"`
-	MasterId  string `json:"masterId"`
-	Question  string `json:"question,optional"`
+	ManualPayment bool   `json:"manualPayment,optional"`
+	RequestId     string `json:"requestId"`
+	MasterId      string `json:"masterId"`
+	Question      string `json:"question,optional"`
 }
 type Consultation struct {
 	Id              string  `json:"id"`
@@ -237,11 +239,12 @@ type ConsultationDetailReq struct {
 
 // DirectBookingReq 大师直约请求（先付费咨询后预约服务）
 type DirectBookingReq struct {
-	MasterCode  string `path:"id"` // 路径参数：法师编码
-	ServiceCode string `json:"serviceCode"`
-	BookingDate string `json:"bookingDate"` // YYYY-MM-DD
-	RequestId   string `json:"requestId"`   // 客户端幂等请求号
-	Note        string `json:"note,optional"`
+	ManualPayment bool   `json:"manualPayment,optional"`
+	MasterCode    string `path:"id"` // 路径参数：法师编码
+	ServiceCode   string `json:"serviceCode"`
+	BookingDate   string `json:"bookingDate"` // YYYY-MM-DD
+	RequestId     string `json:"requestId"`   // 客户端幂等请求号
+	Note          string `json:"note,optional"`
 }
 
 type ConsultationPayReq struct {

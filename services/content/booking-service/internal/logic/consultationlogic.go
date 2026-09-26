@@ -53,6 +53,9 @@ func (l *ConsultationLogic) Create(req *types.ConsultationCreateReq) (*types.Con
 	}
 	if existing, findErr := l.svcCtx.ConsultationModel.FindByRequest(l.ctx, userID, req.RequestId); findErr == nil {
 		if existing.Status == model.ConsultationStatusPendingPayment {
+			if req.ManualPayment {
+				return consultationResponse(existing), nil
+			}
 			return l.autoPay(existing), nil
 		}
 		return consultationResponse(existing), nil
@@ -76,6 +79,9 @@ func (l *ConsultationLogic) Create(req *types.ConsultationCreateReq) (*types.Con
 		}
 		l.Errorf("创建即时咨询订单失败: %v", err)
 		return nil, common.ErrSystem
+	}
+	if req.ManualPayment {
+		return consultationResponse(created), nil
 	}
 	return l.autoPay(created), nil
 }

@@ -17,6 +17,7 @@ import (
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
 	registerWallet(server, svcCtx)
+	registerCashier(server, svcCtx)
 	registerPoints(server, svcCtx)
 	registerReportPayment(server, svcCtx)
 	authCfg := &middleware.AuthConfig{Secret: svcCtx.Config.Auth.AccessSecret}
@@ -29,13 +30,13 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 
 	// ===== 回调路由（公开，无需鉴权） =====
 	server.AddRoutes([]rest.Route{
-		{Method: http.MethodPost, Path: "/api/v1/payments/callback/wechat", Handler: callbackWechatHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/api/v1/payments/callback/alipay", Handler: callbackAlipayHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/payments/callback/wechat", Handler: rechargeCallback(svcCtx, "wechat")},
+		{Method: http.MethodPost, Path: "/api/v1/payments/callback/alipay", Handler: rechargeCallback(svcCtx, "alipay")},
 	})
 
 	// ===== 退款路由（服务侧 JWT 鉴权 + 网关层 JWT 校验，纵深防御） =====
 	server.AddRoutes([]rest.Route{
-		{Method: http.MethodPost, Path: "/api/v1/payments/refund", Handler: refundHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/payments/refund", Handler: authCfg.AuthFunc((&middleware.AdminAuthConfig{AllowedRoles: []string{"platform_super"}}).AdminAuthFunc(refundHandler(svcCtx)))},
 	}, rest.WithJwt(svcCtx.Config.Auth.AccessSecret))
 }
 
@@ -63,38 +64,6 @@ func paymentQueryHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewPaymentQueryLogic(r.Context(), svcCtx).Query(&req)
-		if err != nil {
-			common.JsonError(w, err)
-		} else {
-			common.Ok(w, resp)
-		}
-	}
-}
-
-func callbackWechatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.CallbackWechatReq
-		if err := httpx.Parse(r, &req); err != nil {
-			common.JsonError(w, common.ErrParam)
-			return
-		}
-		resp, err := logic.NewCallbackWechatLogic(r.Context(), svcCtx).Callback(&req)
-		if err != nil {
-			common.JsonError(w, err)
-		} else {
-			common.Ok(w, resp)
-		}
-	}
-}
-
-func callbackAlipayHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.CallbackAlipayReq
-		if err := httpx.Parse(r, &req); err != nil {
-			common.JsonError(w, common.ErrParam)
-			return
-		}
-		resp, err := logic.NewCallbackAlipayLogic(r.Context(), svcCtx).Callback(&req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

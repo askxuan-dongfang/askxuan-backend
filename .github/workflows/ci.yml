@@ -75,8 +75,32 @@ jobs:
         working-directory: services/commerce/payment-service
       - run: go test ./internal/model ./internal/handler -run Wallet -v
         working-directory: services/operation/finance-service
+  cash-wallet-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: askxuan_payment
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: 'go.work'
+          cache-dependency-path: '**/go.sum'
+      - run: go test ./internal/cashier -run TestCashWalletMySQL -v
+        working-directory: services/commerce/payment-service
+        env:
+          WALLET_TEST_DSN: 'root@tcp(127.0.0.1:3306)/askxuan_payment?charset=utf8mb4'
+          WALLET_TEST_ISOLATED: '1'
   deploy:
-    needs: [build, test, vet, wallet-mysql]
+    needs: [build, test, vet, wallet-mysql, cash-wallet-mysql]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ECS_DEPLOY_ENABLED == 'true'
     environment: production
     runs-on: ubuntu-latest

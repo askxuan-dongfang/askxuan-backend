@@ -13,6 +13,7 @@ func TestValidatePaymentConfig(t *testing.T) {
 		provider string
 		wantErr  bool
 	}{
+		{name: "production live with channels disabled", env: "production", provider: "live"},
 		{name: "development mock", env: "development", provider: "mock"},
 		{name: "test mock", env: "test", provider: "MOCK"},
 		{name: "development unsupported", env: "development", provider: "wechat", wantErr: true},
