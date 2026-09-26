@@ -20,6 +20,7 @@ import (
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/rest"
 )
 
@@ -27,6 +28,7 @@ var configFile = flag.String("f", "etc/payment.yaml", "the config file")
 
 func main() {
 	flag.Parse()
+	sqlx.DisableLog()
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
@@ -51,6 +53,7 @@ func main() {
 	defer cancel()
 	startRefundRequestConsumer(ctx, c, svcCtx)
 	mq.StartOutbox(ctx, svcCtx.DB, svcCtx.MqProducer)
+	svcCtx.Cashier.Start(ctx)
 
 	// 优雅退出
 	go func() {
@@ -67,11 +70,17 @@ func main() {
 func validatePaymentConfig(c config.Config) error {
 	env := strings.ToLower(strings.TrimSpace(c.AppEnv))
 	provider := strings.ToLower(strings.TrimSpace(c.Provider))
-	if env == "prod" || env == "production" {
+	if (env == "prod" || env == "production") && provider == "mock" {
 		return fmt.Errorf("production payment provider is not implemented; mock is forbidden")
 	}
-	if provider != "mock" {
-		return fmt.Errorf("unsupported payment provider %q; only mock is implemented for local/test", provider)
+	if provider != "mock" && provider != "live" {
+		return fmt.Errorf("unsupported payment provider %q; use mock for demos or live for cash", provider)
+	}
+	if provider == "mock" && (c.Wallet.Wechat.Enabled || c.Wallet.Alipay.Enabled) {
+		return fmt.Errorf("real merchant channels cannot be enabled in mock mode")
+	}
+	if c.Wallet.Alipay.Sandbox && (env == "prod" || env == "production") {
+		return fmt.Errorf("sandbox funds cannot enter production wallets")
 	}
 	return nil
 }

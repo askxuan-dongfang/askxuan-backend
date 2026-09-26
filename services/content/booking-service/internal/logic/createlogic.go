@@ -117,6 +117,9 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 		return nil, common.ErrSystem
 	}
 	_ = l.svcCtx.StatusLogModel.Insert(l.ctx, &model.BookingStatusLog{BookingId: created.Id, FromStatus: "", ToStatus: model.StatusPendingPayment, OperatorId: req.UserId, OperatorType: model.OperatorTypeUser, Remark: "创建待支付预约"})
+	if req.ManualPayment {
+		return responseFromBooking(created), nil
+	}
 	paid := l.autoPay(created)
 	return responseFromBooking(paid), nil
 }

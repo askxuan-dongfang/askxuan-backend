@@ -56,6 +56,10 @@ func startPaymentSync(ctx context.Context, svcCtx *svc.ServiceContext) {
 		if err := json.Unmarshal(body, &event); err != nil {
 			return nil
 		}
+		if event.Action == "refunded" && event.OrderType == "booking" {
+			_, err := svcCtx.DB.ExecCtx(ctx, `UPDATE booking SET payment_status='refunded' WHERE booking_no=? AND status='cancelled' AND payment_status='refunding'`, event.OrderNo)
+			return err
+		}
 		if event.Action != "success" {
 			return nil
 		}

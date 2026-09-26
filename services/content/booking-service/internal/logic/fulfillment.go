@@ -18,6 +18,7 @@ import (
 	"github.com/askxuan/booking-service/internal/svc"
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/middleware"
+	"github.com/askxuan/common/mqoutbox"
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -401,6 +402,23 @@ func TransitionWithAudit(ctx context.Context, s *svc.ServiceContext, id, target,
 			return common.ErrBookingStatusInvalid
 		}
 		if target == model.StatusCancelled {
+			var paid struct {
+				No     string  `db:"payment_no"`
+				Amount float64 `db:"total_fee"`
+				State  string  `db:"payment_status"`
+			}
+			if err = tx.QueryRowCtx(ctx, &paid, `SELECT payment_no,total_fee,payment_status FROM booking WHERE booking_no=?`, id); err != nil {
+				return err
+			}
+			if paid.State == "success" {
+				body, _ := json.Marshal(map[string]any{"orderNo": id, "orderType": "booking", "paymentNo": paid.No, "amount": paid.Amount, "reason": "预约取消，退回原支付账户", "returnNo": "BOOKING-" + id})
+				if err = mqoutbox.Enqueue(ctx, tx, "booking:refund:"+id, "booking", id, "refund.request", "order.events", "", string(body)); err != nil {
+					return err
+				}
+				if _, err = tx.ExecCtx(ctx, `UPDATE booking SET payment_status='refunding' WHERE booking_no=?`, id); err != nil {
+					return err
+				}
+			}
 			var reserved int
 			if err = tx.QueryRowCtx(ctx, &reserved, "SELECT slot_reserved FROM booking WHERE booking_no=?", id); err != nil {
 				return err

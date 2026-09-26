@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/askxuan/payment-service/internal/paychannel"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/zrpc"
@@ -34,8 +35,13 @@ type AlipayConf struct {
 // Config payment 服务配置
 type Config struct {
 	rest.RestConf
-	AppEnv     string `json:",default=development"`
-	Provider   string `json:",default=mock"`
+	AppEnv   string `json:",default=development"`
+	Provider string `json:",default=mock"`
+	Wallet   struct {
+		Enabled bool              `json:",default=false"`
+		Wechat  paychannel.Config `json:",optional"`
+		Alipay  paychannel.Config `json:",optional"`
+	} `json:",optional"`
 	PaymentRpc zrpc.RpcServerConf
 	OrderRpc   zrpc.RpcClientConf
 	DataSource string // MySQL 数据源

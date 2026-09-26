@@ -196,9 +196,14 @@ func (m *defaultBookingModel) UpdateStatus(ctx context.Context, bookingNo, newSt
 			BookingDate  string `db:"booking_date"`
 			SlotCode     string `db:"slot_code"`
 			SlotReserved int    `db:"slot_reserved"`
+			Status       string `db:"status"`
+			Expired      int    `db:"expired"`
 		}
-		if err := session.QueryRowCtx(ctx, &b, `SELECT temple_code,service_code,booking_date,slot_code,slot_reserved FROM booking WHERE booking_no=? FOR UPDATE`, bookingNo); err != nil {
+		if err := session.QueryRowCtx(ctx, &b, `SELECT temple_code,service_code,booking_date,slot_code,slot_reserved,status,(payment_expire_time<=NOW()) expired FROM booking WHERE booking_no=? FOR UPDATE`, bookingNo); err != nil {
 			return err
+		}
+		if newStatus == StatusCancelled && (b.Status != StatusPendingPayment || b.Expired != 1) {
+			return fmt.Errorf("booking is no longer expired and unpaid")
 		}
 		if newStatus == StatusCancelled && b.SlotReserved == 1 {
 			if _, err := session.ExecCtx(ctx, `UPDATE booking_slot_inventory SET reserved_count=GREATEST(reserved_count-1,0) WHERE temple_code=? AND service_code=? AND booking_date=? AND slot_code=?`, b.TempleId, b.ServiceId, b.BookingDate, b.SlotCode); err != nil {
