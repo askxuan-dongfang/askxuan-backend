@@ -36,7 +36,7 @@ services:
         SERVICE: services/platform/gateway-service
         BINARY: gateway
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./.docker/etc/gateway:/app/etc:ro
     depends_on:
@@ -94,7 +94,7 @@ services:
         SERVICE: services/platform/auth-service
         BINARY: auth
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     volumes:
       - ./.docker/etc/auth:/app/etc:ro
 
@@ -108,7 +108,7 @@ services:
         SERVICE: services/platform/user-service
         BINARY: user
     ports:
-      - "8082:8082"
+      - "127.0.0.1:8082:8082"
     volumes:
       - ./.docker/etc/user:/app/etc:ro
 
@@ -122,8 +122,8 @@ services:
         SERVICE: services/content/temple-service
         BINARY: temple
     ports:
-      - "8083:8083"
-      - "9083:9083"
+      - "127.0.0.1:8083:8083"
+      - "127.0.0.1:9083:9083"
     volumes:
       - ./.docker/etc/temple:/app/etc:ro
 
@@ -137,8 +137,8 @@ services:
         SERVICE: services/content/master-service
         BINARY: master
     ports:
-      - "8084:8084"
-      - "9084:9084"
+      - "127.0.0.1:8084:8084"
+      - "127.0.0.1:9084:9084"
     volumes:
       - ./.docker/etc/master:/app/etc:ro
 
@@ -152,7 +152,7 @@ services:
         SERVICE: services/content/booking-service
         BINARY: booking
     ports:
-      - "8085:8085"
+      - "127.0.0.1:8085:8085"
     volumes:
       - ./.docker/etc/booking:/app/etc:ro
       - ./storage/chat:/var/lib/askxuan/chat
@@ -167,8 +167,8 @@ services:
         SERVICE: services/commerce/product-service
         BINARY: product
     ports:
-      - "8086:8086"
-      - "9086:9086"
+      - "127.0.0.1:8086:8086"
+      - "127.0.0.1:9086:9086"
     volumes:
       - ./.docker/etc/product:/app/etc:ro
 
@@ -182,8 +182,8 @@ services:
         SERVICE: services/commerce/diy-service
         BINARY: diy
     ports:
-      - "8088:8088"
-      - "9088:9088"
+      - "127.0.0.1:8088:8088"
+      - "127.0.0.1:9088:9088"
     volumes:
       - ./.docker/etc/diy:/app/etc:ro
 
@@ -197,8 +197,8 @@ services:
         SERVICE: services/commerce/order-service
         BINARY: order
     ports:
-      - "8089:8089"
-      - "9089:9089"
+      - "127.0.0.1:8089:8089"
+      - "127.0.0.1:9089:9089"
     volumes:
       - ./.docker/etc/order:/app/etc:ro
 
@@ -212,8 +212,8 @@ services:
         SERVICE: services/commerce/payment-service
         BINARY: payment
     ports:
-      - "8090:8090"
-      - "9090:9090"
+      - "127.0.0.1:8090:8090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./.docker/etc/payment:/app/etc:ro
 
@@ -227,7 +227,7 @@ services:
         SERVICE: services/operation/finance-service
         BINARY: finance
     ports:
-      - "8091:8091"
+      - "127.0.0.1:8091:8091"
     volumes:
       - ./.docker/etc/finance:/app/etc:ro
 
@@ -241,7 +241,7 @@ services:
         SERVICE: services/content/review-service
         BINARY: review
     ports:
-      - "8092:8092"
+      - "127.0.0.1:8092:8092"
     volumes:
       - ./.docker/etc/review:/app/etc:ro
 
@@ -255,7 +255,7 @@ services:
         SERVICE: services/operation/audit-service
         BINARY: audit
     ports:
-      - "8093:8093"
+      - "127.0.0.1:8093:8093"
     volumes:
       - ./.docker/etc/audit:/app/etc:ro
 
@@ -269,7 +269,7 @@ services:
         SERVICE: services/infrastructure/message-service
         BINARY: message
     ports:
-      - "8094:8094"
+      - "127.0.0.1:8094:8094"
     volumes:
       - ./.docker/etc/message:/app/etc:ro
 
@@ -283,7 +283,7 @@ services:
         SERVICE: services/operation/logistics-service
         BINARY: logistics
     ports:
-      - "8095:8095"
+      - "127.0.0.1:8095:8095"
     volumes:
       - ./.docker/etc/logistics:/app/etc:ro
 
@@ -297,7 +297,7 @@ services:
         SERVICE: services/operation/marketing-service
         BINARY: marketing
     ports:
-      - "8096:8096"
+      - "127.0.0.1:8096:8096"
     volumes:
       - ./.docker/etc/marketing:/app/etc:ro
 
@@ -311,7 +311,7 @@ services:
         SERVICE: services/infrastructure/file-service
         BINARY: file
     ports:
-      - "8097:8097"
+      - "127.0.0.1:8097:8097"
     volumes:
       - ./.docker/etc/file:/app/etc:ro
 
@@ -325,7 +325,7 @@ services:
         SERVICE: services/infrastructure/ai-service
         BINARY: ai
     ports:
-      - "8098:8098"
+      - "127.0.0.1:8098:8098"
     environment:
       AI_PROVIDER: ${AI_PROVIDER:-mock}
       AI_BASE_URL: ${AI_BASE_URL:-}
@@ -411,7 +411,7 @@ services:
         SERVICE: services/content/community-service
         BINARY: community
     ports:
-      - "8099:8099"
+      - "127.0.0.1:8099:8099"
     volumes:
       - ./.docker/etc/community:/app/etc:ro
 
@@ -425,7 +425,7 @@ services:
         SERVICE: services/infrastructure/media-service
         BINARY: media
     ports:
-      - "8100:8100"
+      - "127.0.0.1:8100:8100"
     environment:
       LIVE_ENABLED: "false"
       LIVE_PROVIDER: disabled

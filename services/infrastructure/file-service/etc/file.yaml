@@ -1,6 +1,7 @@
 Name: file-service
 Host: 0.0.0.0
 Port: 8097
+AuthSecret: "askxuan-access-secret-change-in-prod"
 
 # etcd 服务注册（供 gateway-service 动态发现）
 Etcd:

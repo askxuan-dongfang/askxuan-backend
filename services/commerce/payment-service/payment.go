@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/askxuan/common"
 	"os"
 	"os/signal"
 	"strings"
@@ -29,6 +30,9 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	if err := common.ValidateJWTSecret(c.Auth.AccessSecret); err != nil {
+		panic(err)
+	}
 	c.Provider = strings.ToLower(strings.TrimSpace(c.Provider))
 	if err := validatePaymentConfig(c); err != nil {
 		panic(err)

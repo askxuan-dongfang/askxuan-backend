@@ -21,11 +21,6 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 
 	server.AddRoutes([]rest.Route{
 		{
-			Method:  http.MethodGet,
-			Path:    "/api/v1/files/presigned",
-			Handler: presignedHandler(svcCtx),
-		},
-		{
 			Method:  http.MethodPost,
 			Path:    "/api/v1/files/upload",
 			Handler: uploadHandler(svcCtx),
@@ -37,20 +32,29 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	})
 }
 
-func requirePlatformSuper(w http.ResponseWriter, r *http.Request) bool {
-	roles := strings.Split(r.Header.Get("X-User-Roles"), ",")
-	for _, role := range roles {
-		if role == "platform_super" {
-			return true
-		}
+func requirePlatformSuper(w http.ResponseWriter, r *http.Request, secret string) bool {
+	claims := accessClaims(r, secret)
+	if claims != nil && claims.UserType == "admin" && claims.HasRole("platform_super") {
+		return true
 	}
 	common.JsonError(w, common.ErrRoleForbidden)
 	return false
 }
 
+func accessClaims(r *http.Request, secret string) *common.CustomClaims {
+	parts := strings.Fields(r.Header.Get("Authorization"))
+	if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+		claims, err := common.ParseToken(secret, parts[1])
+		if err == nil && claims.Type == "access" && claims.UserId > 0 {
+			return claims
+		}
+	}
+	return nil
+}
+
 func backupListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !requirePlatformSuper(w, r) {
+		if !requirePlatformSuper(w, r, svcCtx.Config.AuthSecret) {
 			return
 		}
 		resp, err := logic.ListBackups(r.Context(), svcCtx)
@@ -64,7 +68,7 @@ func backupListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 func backupCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !requirePlatformSuper(w, r) {
+		if !requirePlatformSuper(w, r, svcCtx.Config.AuthSecret) {
 			return
 		}
 		resp, err := logic.CreateBackup(r.Context(), svcCtx)
@@ -78,7 +82,7 @@ func backupCreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 func backupDownloadHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !requirePlatformSuper(w, r) {
+		if !requirePlatformSuper(w, r, svcCtx.Config.AuthSecret) {
 			return
 		}
 		var path struct {
@@ -99,7 +103,7 @@ func backupDownloadHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 func backupRestoreHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !requirePlatformSuper(w, r) {
+		if !requirePlatformSuper(w, r, svcCtx.Config.AuthSecret) {
 			return
 		}
 		var path struct {
@@ -123,28 +127,17 @@ func backupRestoreHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	}
 }
 
-func presignedHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.PresignReq
-		if err := httpx.Parse(r, &req); err != nil {
-			common.JsonError(w, common.ErrParam)
-			return
-		}
-		l := logic.NewPresignLogic(r.Context(), svcCtx)
-		resp, err := l.Presigned(&req)
-		if err != nil {
-			common.JsonError(w, err)
-		} else {
-			common.Ok(w, resp)
-		}
-	}
-}
-
 // uploadHandler 处理 multipart/form-data 上传
 // 表单字段名固定为 "file"
 func uploadHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 限制上传大小 32MB
+		claims := accessClaims(r, svcCtx.Config.AuthSecret)
+		if claims == nil || (claims.UserType != "user" && claims.UserType != "admin" && claims.UserType != "master") {
+			common.JsonError(w, common.ErrRoleForbidden)
+			return
+		}
+		// Enforce a real request body limit; ParseMultipartForm only limits memory use.
+		r.Body = http.MaxBytesReader(w, r.Body, 32<<20)
 		if err := r.ParseMultipartForm(32 << 20); err != nil {
 			common.JsonError(w, common.NewBizError(7002, "文件解析失败，最大 32MB"))
 			return

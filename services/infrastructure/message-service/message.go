@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/askxuan/common"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,6 +29,9 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	if err := common.ValidateJWTSecret(c.AuthSecret); err != nil {
+		panic(err)
+	}
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

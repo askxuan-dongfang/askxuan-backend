@@ -21,7 +21,7 @@ services:
     container_name: askxuan-mysql
     restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: "root123"
       MYSQL_DATABASE: "askxuan"
@@ -47,7 +47,7 @@ services:
     container_name: askxuan-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
@@ -65,8 +65,8 @@ services:
     container_name: askxuan-rabbitmq
     restart: unless-stopped
     ports:
-      - "5672:5672"    # AMQP 协议端口
-      - "15672:15672"  # 管理台 Web UI
+      - "127.0.0.1:5672:5672"    # AMQP 协议端口
+      - "127.0.0.1:15672:15672"  # 管理台 Web UI
     environment:
       RABBITMQ_DEFAULT_USER: "admin"
       RABBITMQ_DEFAULT_PASS: "admin"
@@ -87,8 +87,8 @@ services:
     container_name: askxuan-minio
     restart: unless-stopped
     ports:
-      - "9000:9000"  # S3 API 端口
-      - "9001:9001"  # Console Web UI
+      - "127.0.0.1:9000:9000"  # S3 API 端口
+      - "127.0.0.1:9001:9001"  # Console Web UI
     environment:
       MINIO_ROOT_USER: "minioadmin"
       MINIO_ROOT_PASSWORD: "minioadmin"
@@ -109,8 +109,8 @@ services:
     container_name: askxuan-etcd
     restart: unless-stopped
     ports:
-      - "2379:2379"  # 客户端通信端口（go-zero 服务注册/发现/配置读取）
-      - "2380:2380"  # 集群 peer 通信端口
+      - "127.0.0.1:2379:2379"  # 客户端通信端口（go-zero 服务注册/发现/配置读取）
+      - "127.0.0.1:2380:2380"  # 集群 peer 通信端口
     command:
       - etcd
       - --name=etcd-single

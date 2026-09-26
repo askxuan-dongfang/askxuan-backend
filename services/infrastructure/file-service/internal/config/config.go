@@ -30,6 +30,7 @@ type BackupConf struct {
 // Config file 服务配置
 type Config struct {
 	rest.RestConf
-	MinIO  MinIOConf
-	Backup BackupConf
+	AuthSecret string
+	MinIO      MinIOConf
+	Backup     BackupConf
 }

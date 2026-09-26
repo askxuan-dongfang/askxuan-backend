@@ -101,4 +101,36 @@ perl -pi -e '
 # stale host registrations in a shared local etcd from shadowing those targets.
 perl -ni -e 'print unless /^\s*ServiceName:/' "${OUT}/gateway/gateway.yaml"
 
+export ASKXUAN_DOCKER_CONFIG_DIR="${OUT}"
+python3 - <<'PY'
+import os
+import json
+import secrets
+from pathlib import Path
+
+out = Path(os.environ["ASKXUAN_DOCKER_CONFIG_DIR"])
+secret_path = out.parent / ".jwt-secret"
+secret = os.environ.get("ASKXUAN_JWT_SECRET", "")
+if not secret:
+    if secret_path.exists():
+        secret = secret_path.read_text().strip()
+    else:
+        secret = secrets.token_urlsafe(48)
+        fd = os.open(secret_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w") as saved:
+            saved.write(secret + "\n")
+if len(secret) < 32 or secret.strip() != secret or secret == "askxuan-access-secret-change-in-prod":
+    raise SystemExit("ASKXUAN_JWT_SECRET must be a non-placeholder value of at least 32 bytes")
+
+replaced = 0
+for path in out.glob("*/*.yaml"):
+    data = path.read_text()
+    count = data.count('"askxuan-access-secret-change-in-prod"')
+    if count:
+        path.write_text(data.replace('"askxuan-access-secret-change-in-prod"', json.dumps(secret)))
+        replaced += count
+if replaced < 13:
+    raise SystemExit(f"expected JWT secrets in 13 service configs, found {replaced}")
+PY
+
 echo "Rendered docker configs to ${OUT}"

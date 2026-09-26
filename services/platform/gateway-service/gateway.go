@@ -29,6 +29,9 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	if err := common.ValidateJWTSecret(c.Auth.AccessSecret); err != nil {
+		panic(err)
+	}
 
 	// 提取所有需要发现的服务名（对应各下游服务 yaml 中 Etcd.Key 的值）
 	// 仅用于动态发现；当前 rest 服务未注册到 etcd，主要走 Upstream.Target 静态路由。
@@ -87,8 +90,10 @@ func main() {
 
 	addr := fmt.Sprintf("%s:%d", c.Host, c.Port)
 	server := &http.Server{
-		Addr:    addr,
-		Handler: handler,
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		MaxHeaderBytes:    16 << 10,
 	}
 
 	// 优雅关闭：收到信号后停止接收新连接并释放 etcd 资源

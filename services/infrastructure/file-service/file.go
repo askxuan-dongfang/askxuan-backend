@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/askxuan/common"
 
 	"github.com/askxuan/file-service/internal/config"
 	"github.com/askxuan/file-service/internal/handler"
@@ -19,6 +20,9 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	if err := common.ValidateJWTSecret(c.AuthSecret); err != nil {
+		panic(err)
+	}
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

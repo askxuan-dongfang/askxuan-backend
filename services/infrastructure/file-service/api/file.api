@@ -2,27 +2,12 @@ syntax = "v1"
 
 info (
     title:   "File Service"
-    desc:    "问玄东方 文件服务 - MinIO 上传 / 预签名URL"
+    desc:    "问玄东方 文件服务 - MinIO 上传与备份"
     author:  "askxuan"
     version: "v1"
 )
 
 type (
-    // PresignReq 预签名请求
-    PresignReq {
-        FileName   string `form:"fileName"`             // 原始文件名（用于生成 objectName）
-        ObjectType string `form:"objectType,optional,default=temp"` // 业务目录 temples/masters/booking/temp
-        Operate    string `form:"operate,optional,default=upload"`  // upload / download
-        ObjectName string `form:"objectName,optional"`  // 下载时指定已存在的 objectName
-    }
-
-    // PresignResp 预签名响应
-    PresignResp {
-        UploadUrl  string `json:"uploadUrl"`  // 预签名上传/下载 URL
-        ObjectName string `json:"objectName"` // MinIO 对象名
-        ExpiresIn  int64  `json:"expiresIn"`  // 有效期（秒）
-    }
-
     // UploadResp 上传响应
     UploadResp {
         ObjectName string `json:"objectName"` // MinIO 对象名
@@ -71,9 +56,6 @@ type (
     prefix: /api/v1/files
 )
 service file-service {
-    @handler presigned
-    get /presigned (PresignReq) returns (PresignResp)
-
     @handler upload
     post /upload returns (UploadResp)
 }
