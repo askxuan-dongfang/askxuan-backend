@@ -21,21 +21,26 @@ const (
 )
 
 type Review struct {
-	Id         int64  `db:"id" json:"id"`
-	ReviewNo   string `db:"review_no" json:"reviewNo"`
-	UserId     string `db:"user_id" json:"userId"`
-	TargetType string `db:"target_type" json:"targetType"`
-	TargetId   string `db:"target_id" json:"targetId"`
-	MasterCode string `db:"master_code" json:"masterCode"`
-	Rating     int    `db:"rating" json:"rating"`
-	Content    string `db:"content" json:"content"`
-	Images     string `db:"images" json:"images"`
-	Status     string `db:"status" json:"status"`
-	CreateTime string `db:"create_time" json:"createTime"`
+	Id          int64  `db:"id" json:"id"`
+	ReviewNo    string `db:"review_no" json:"reviewNo"`
+	UserId      string `db:"user_id" json:"userId"`
+	TargetType  string `db:"target_type" json:"targetType"`
+	TargetId    string `db:"target_id" json:"targetId"`
+	MasterCode  string `db:"master_code" json:"masterCode"`
+	Rating      int    `db:"rating" json:"rating"`
+	Content     string `db:"content" json:"content"`
+	Images      string `db:"images" json:"images"`
+	Status      string `db:"status" json:"status"`
+	CreateTime  string `db:"create_time" json:"createTime"`
+	TempleCode  string `db:"temple_code" json:"templeCode"`
+	TempleName  string `db:"temple_name" json:"templeName"`
+	MasterName  string `db:"master_name" json:"masterName"`
+	ServiceName string `db:"service_name" json:"serviceName"`
+	MasterReply string `db:"master_reply" json:"masterReply"`
 }
 
 func ListReviews(ctx context.Context, targetType, targetId, userId string, rating int, status, masterCode string, page, size int) ([]Review, int64, error) {
-	where := " WHERE 1=1"
+	where := " WHERE (target_type<>'booking' OR target_id IN (SELECT booking_id FROM review_booking_context))"
 	args := make([]any, 0, 6)
 	for _, filter := range []struct{ value, clause string }{
 		{targetType, " AND target_type=?"}, {targetId, " AND target_id=?"}, {userId, " AND user_id=?"},
@@ -45,6 +50,10 @@ func ListReviews(ctx context.Context, targetType, targetId, userId string, ratin
 			where += filter.clause
 			args = append(args, filter.value)
 		}
+	}
+	if temple, _ := ctx.Value(templeScopeKey{}).(string); temple != "" {
+		where += " AND target_type='booking' AND target_id IN (SELECT booking_id FROM review_booking_context WHERE temple_code=?)"
+		args = append(args, temple)
 	}
 	if rating > 0 {
 		where += " AND rating=?"
@@ -62,13 +71,13 @@ func ListReviews(ctx context.Context, targetType, targetId, userId string, ratin
 	}
 	queryArgs := append(append([]any{}, args...), size, (page-1)*size)
 	var list []Review
-	err := db.QueryRowsCtx(ctx, &list, `SELECT id,review_no,user_id,target_type,target_id,master_code,rating,content,COALESCE(images,'[]') images,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time FROM review`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, queryArgs...)
+	err := db.QueryRowsCtx(ctx, &list, `SELECT id,review_no,user_id,target_type,target_id,master_code,rating,content,COALESCE(images,'[]') images,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time,COALESCE(c.temple_code,'') temple_code,COALESCE(c.temple_name,'') temple_name,COALESCE(c.master_name,'') master_name,COALESCE(c.service_name,'') service_name,COALESCE(c.master_reply,'') master_reply FROM review LEFT JOIN review_booking_context c ON review.target_type='booking' AND review.target_id=c.booking_id`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, queryArgs...)
 	return list, total, err
 }
 
 func FindReviewByID(ctx context.Context, id int64) (Review, error) {
 	var review Review
-	err := db.QueryRowCtx(ctx, &review, `SELECT id,review_no,user_id,target_type,target_id,master_code,rating,content,COALESCE(images,'[]') images,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time FROM review WHERE id=?`, id)
+	err := db.QueryRowCtx(ctx, &review, `SELECT id,review_no,user_id,target_type,target_id,master_code,rating,content,COALESCE(images,'[]') images,status,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time,COALESCE(c.temple_code,'') temple_code,COALESCE(c.temple_name,'') temple_name,COALESCE(c.master_name,'') master_name,COALESCE(c.service_name,'') service_name,COALESCE(c.master_reply,'') master_reply FROM review LEFT JOIN review_booking_context c ON review.target_type='booking' AND review.target_id=c.booking_id WHERE id=?`, id)
 	return review, err
 }
 
@@ -96,7 +105,7 @@ func UpsertBookingReview(ctx context.Context, bookingId, userId, masterCode stri
 	digest := sha256.Sum256([]byte(bookingId))
 	reviewNo := "BR" + hex.EncodeToString(digest[:10])
 	_, err := db.ExecCtx(ctx, `INSERT INTO review(review_no,user_id,target_type,target_id,master_code,rating,content,images,status)
-		VALUES(?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE master_code=VALUES(master_code),rating=VALUES(rating),content=VALUES(content),images=VALUES(images),status=VALUES(status)`,
+		VALUES(?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE master_code=VALUES(master_code),rating=VALUES(rating),content=VALUES(content),images=VALUES(images)`,
 		reviewNo, userId, TargetTypeBooking, bookingId, masterCode, rating, content, images, ReviewStatusNormal)
 	return err
 }

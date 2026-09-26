@@ -75,8 +75,29 @@ jobs:
         working-directory: services/commerce/payment-service
       - run: go test ./internal/model ./internal/handler -run Wallet -v
         working-directory: services/operation/finance-service
+  review-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: review-ci-test
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping -h localhost -proot" --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: 'go.work'
+          cache-dependency-path: '**/go.sum'
+      - run: docker exec ${{ job.services.mysql.id }} mysql -uroot -preview-ci-test -e 'CREATE DATABASE review_test_booking; CREATE DATABASE review_test_projection;'
+      - run: go test ./services/content/booking-service/internal/logic ./services/content/review-service/internal/model -run 'TestReviewTransactionIntegration|TestProjectionIntegration' -v
+        env:
+          REVIEW_BOOKING_TEST_DSN: root:review-ci-test@tcp(127.0.0.1:3306)/review_test_booking?charset=utf8mb4
+          REVIEW_TEST_DSN: root:review-ci-test@tcp(127.0.0.1:3306)/review_test_projection?charset=utf8mb4
   deploy:
-    needs: [build, test, vet, wallet-mysql]
+    needs: [build, test, vet, wallet-mysql, review-mysql]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ECS_DEPLOY_ENABLED == 'true'
     environment: production
     runs-on: ubuntu-latest

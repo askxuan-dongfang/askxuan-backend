@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/askxuan/temple-service/internal/model"
 	"net/http"
 	"strconv"
 
@@ -16,6 +17,25 @@ import (
 
 // RegisterHandlers 注册 temple 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
+	server.AddRoute(rest.Route{Method: http.MethodGet, Path: "/api/v1/temples/:id/favorite", Handler: func(w http.ResponseWriter, r *http.Request) {
+		userID, err := strconv.ParseInt(r.Header.Get("X-User-Id"), 10, 64)
+		if err != nil || userID <= 0 {
+			common.JsonError(w, common.ErrUnauthorized)
+			return
+		}
+		var req types.TempleFavoriteReq
+		if httpx.Parse(r, &req) != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		var count int64
+		if err = svcCtx.DB.QueryRowCtx(r.Context(), &count, "SELECT COUNT(*) FROM temple_favorite WHERE user_id=? AND temple_code=?", userID, req.Id); err != nil {
+			common.JsonError(w, common.ErrSystem)
+			return
+		}
+		common.Ok(w, map[string]bool{"favorited": count > 0})
+	}})
+
 	server.Use(middleware.CorsFunc)
 
 	// ============ C端分组（公开） ============
@@ -383,7 +403,7 @@ func templeFavoritesHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrUnauthorized)
 			return
 		}
-		resp, err := logic.ListFavoriteTemples(r.Context(), svcCtx, userId)
+		resp, err := logic.ListFavoriteTemples(model.WithFavoritePage(r.Context(), r.URL.Query().Get("page")), svcCtx, userId)
 		if err != nil {
 			common.JsonError(w, err)
 			return

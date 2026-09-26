@@ -2,17 +2,22 @@ package types
 
 // Review 评价
 type Review struct {
-	Id         int64  `json:"id"`
-	ReviewNo   string `json:"reviewNo"`
-	UserId     string `json:"userId"`
-	TargetType string `json:"targetType"`
-	TargetId   string `json:"targetId"`
-	MasterCode string `json:"masterCode"`
-	Rating     int    `json:"rating"`
-	Content    string `json:"content"`
-	Images     string `json:"images"`
-	Status     string `json:"status"`
-	CreateTime string `json:"createTime"`
+	Id          int64  `json:"id"`
+	ReviewNo    string `json:"reviewNo"`
+	UserId      string `json:"userId"`
+	TargetType  string `json:"targetType"`
+	TargetId    string `json:"targetId"`
+	MasterCode  string `json:"masterCode"`
+	Rating      int    `json:"rating"`
+	Content     string `json:"content"`
+	Images      string `json:"images"`
+	Status      string `json:"status"`
+	CreateTime  string `json:"createTime"`
+	TempleCode  string `json:"templeCode"`
+	TempleName  string `json:"templeName"`
+	MasterName  string `json:"masterName"`
+	ServiceName string `json:"serviceName"`
+	MasterReply string `json:"masterReply"`
 }
 
 // ReviewReply 评价回复
@@ -53,6 +58,8 @@ type CreateReviewResp struct {
 
 // C端 - 评价列表
 type ReviewListReq struct {
+	MasterCode string `form:"masterCode,optional"`
+	TempleCode string `form:"templeCode,optional"`
 	TargetType string `form:"targetType,optional"`
 	TargetId   string `form:"targetId,optional"`
 	UserId     string `form:"userId,optional"`

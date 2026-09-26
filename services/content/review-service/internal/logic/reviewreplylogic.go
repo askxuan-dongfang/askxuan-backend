@@ -2,6 +2,8 @@ package logic
 
 import (
 	"context"
+	"github.com/askxuan/common/middleware"
+	"net/url"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/review-service/internal/model"
@@ -28,15 +30,22 @@ func NewReviewReplyLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Revie
 
 // ReviewReply 寺院管理员/法师/平台回复评价
 func (l *ReviewReplyLogic) ReviewReply(req *types.ReviewReplyReq) (*types.ReviewReplyResp, error) {
-	reply, err := model.CreateReply(l.ctx, model.ReviewReply{
-		ReviewId:    req.Id,
-		ReplierType: req.ReplierType,
-		ReplierId:   req.ReplierId,
-		Content:     req.Content,
-	})
+	r, err := model.FindReviewByID(l.ctx, req.Id)
 	if err != nil {
-		l.Errorf("创建评价回复失败: %v", err)
-		return nil, common.ErrSystem
+		return nil, common.ErrReviewNotFound
 	}
-	return &types.ReviewReplyResp{Id: reply.Id}, nil
+	if err = ownsReview(l.ctx, r); err != nil {
+		return nil, err
+	}
+	if r.TargetType != model.TargetTypeBooking {
+		return nil, common.ErrForbidden
+	}
+	prefix := "/admin/bookings/"
+	if middleware.MasterIDFromCtx(l.ctx) > 0 {
+		prefix = "/admin/masters/bookings/"
+	}
+	if err = upstream(l.ctx, "PUT", prefix+url.PathEscape(r.TargetId)+"/review/reply", map[string]string{"masterReply": req.Content}, nil); err != nil {
+		return nil, err
+	}
+	return &types.ReviewReplyResp{Id: r.Id}, nil
 }

@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/askxuan/common/mqoutbox"
+	"strings"
+	"time"
 
 	"github.com/askxuan/booking-service/internal/model"
 	"github.com/askxuan/booking-service/internal/mq"
@@ -31,7 +34,8 @@ func NewCreateReviewLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Crea
 // CreateReview 用户创建评价
 // 1. 校验预约存在且为 completed 状态 2. 防重复评价 3. 落库评价 4. 状态流转 completed → reviewed 5. MQ 通知
 func (l *CreateReviewLogic) CreateReview(req *types.ReviewCreateReq) (*types.ReviewCreateResp, error) {
-	if req.Rating < 1 || req.Rating > 5 || req.Content == "" {
+	req.Content = strings.TrimSpace(req.Content)
+	if req.Rating < 1 || req.Rating > 5 || req.Content == "" || len([]rune(req.Content)) > 500 || len(req.Images) > 6 {
 		return nil, common.ErrParam
 	}
 
@@ -65,53 +69,46 @@ func (l *CreateReviewLogic) CreateReview(req *types.ReviewCreateReq) (*types.Rev
 		return nil, common.ErrSystem
 	}
 
-	// 3. 落库评价
-	r, err := l.svcCtx.ReviewModel.Insert(l.ctx, &model.BookingReview{
-		BookingId: req.Id,
-		UserId:    b.UserId,
-		Rating:    req.Rating,
-		Content:   req.Content,
-		Images:    req.Images,
+	// Persist review, state, audit and durable publication together. A failed
+	// transaction leaves the completed order eligible for retry.
+	images, _ := json.Marshal(req.Images)
+	var reviewID int64
+	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, tx sqlx.Session) error {
+		status, err := lockBooking(ctx, tx, req.Id)
+		if err != nil {
+			return err
+		}
+		if status != model.StatusCompleted {
+			return common.ErrBookingStatusInvalid
+		}
+		result, err := tx.ExecCtx(ctx, `INSERT INTO booking_review(booking_id,user_id,rating,content,images,master_reply,create_time) VALUES(?,?,?,?,?,'',NOW())`, req.Id, b.UserId, req.Rating, req.Content, string(images))
+		if err != nil {
+			return err
+		}
+		reviewID, err = result.LastInsertId()
+		if err != nil {
+			return err
+		}
+		if _, err = tx.ExecCtx(ctx, "UPDATE booking SET status=? WHERE booking_no=?", model.StatusReviewed, req.Id); err != nil {
+			return err
+		}
+		if _, err = tx.ExecCtx(ctx, "INSERT INTO booking_status_log(booking_id,from_status,to_status,operator_id,operator_type,remark,create_time) VALUES(?,?,?,?,?,?,NOW())", req.Id, model.StatusCompleted, model.StatusReviewed, b.UserId, model.OperatorTypeUser, "用户提交评价"); err != nil {
+			return err
+		}
+		body, err := json.Marshal(mq.BookingNotify{
+			BookingId: b.Id, UserId: b.UserId, TempleId: b.TempleId, TempleName: b.TempleName,
+			MasterId: b.MasterId, MasterName: b.MasterName, ServiceName: b.ServiceName,
+			Rating: req.Rating, ReviewContent: req.Content, ReviewImages: string(images), Action: "reviewed", Time: time.Now().Format("2006-01-02 15:04:05"),
+		})
+		if err != nil {
+			return err
+		}
+		return mqoutbox.Enqueue(ctx, tx, "booking:"+b.Id+":reviewed", "booking", b.Id, "booking.reviewed", mq.ExchangeBookingEvents, "", string(body))
 	})
 	if err != nil {
-		l.Errorf("创建评价失败: %v", err)
-		return nil, common.ErrSystem
+		return nil, err
 	}
-
-	// 4. 状态流转 completed → reviewed
-	if !model.CanTransit(b.Status, model.StatusReviewed) {
-		l.Errorf("预约状态流转非法: %s → reviewed", b.Status)
-	} else {
-		if _, updateErr := l.svcCtx.BookingModel.UpdateStatus(l.ctx, req.Id, model.StatusReviewed); updateErr != nil {
-			l.Errorf("更新预约为已评价状态失败: %v", updateErr)
-		} else if logErr := l.svcCtx.StatusLogModel.Insert(l.ctx, &model.BookingStatusLog{
-			BookingId:    req.Id,
-			FromStatus:   model.StatusCompleted,
-			ToStatus:     model.StatusReviewed,
-			OperatorId:   b.UserId,
-			OperatorType: model.OperatorTypeUser,
-			Remark:       "用户提交评价",
-		}); logErr != nil {
-			l.Errorf("记录状态变更日志失败: %v", logErr)
-		}
-	}
-
-	// 5. 发送 MQ 通知（失败不阻断主流程）
-	if l.svcCtx.MqProducer != nil {
-		images, _ := json.Marshal(req.Images)
-		if err := l.svcCtx.MqProducer.Publish(l.ctx, mq.BookingNotify{
-			BookingId: b.Id, UserId: b.UserId, TempleId: b.TempleId,
-			TempleName: b.TempleName, MasterId: b.MasterId, MasterName: b.MasterName,
-			ServiceName: b.ServiceName, BookingDate: b.BookingDate,
-			ServiceFee: b.ServiceFee, MeritMoney: b.MeritMoney, TotalFee: b.TotalFee,
-			Rating: req.Rating, ReviewContent: req.Content,
-			ReviewImages: string(images), Action: "reviewed",
-		}); err != nil {
-			l.Errorf("发送评价通知失败: %v", err)
-		}
-	}
-
-	return &types.ReviewCreateResp{ReviewId: r.Id}, nil
+	return &types.ReviewCreateResp{ReviewId: reviewID}, nil
 }
 
 // ReviewDetailLogic 查看评价

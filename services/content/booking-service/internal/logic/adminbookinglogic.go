@@ -2,7 +2,12 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"github.com/askxuan/booking-service/internal/mq"
+	"github.com/askxuan/common/mqoutbox"
+	"github.com/google/uuid"
+	"strings"
 	"time"
 
 	"github.com/askxuan/booking-service/internal/model"
@@ -199,6 +204,9 @@ func NewAdminReviewDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 func (l *AdminReviewDetailLogic) AdminReviewDetail(req *types.ReviewDetailReq) (*types.BookingReview, error) {
+	if _, _, _, err := BookingAccess(l.ctx, l.svcCtx, req.Id, true); err != nil {
+		return nil, err
+	}
 	r, err := l.svcCtx.ReviewModel.FindOne(l.ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
@@ -223,17 +231,41 @@ func NewAdminReviewReplyLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 }
 
 func (l *AdminReviewReplyLogic) AdminReviewReply(req *types.ReviewReplyReq) (*types.BookingReview, error) {
-	if req.MasterReply == "" {
+	req.MasterReply = strings.TrimSpace(req.MasterReply)
+	if req.MasterReply == "" || len([]rune(req.MasterReply)) > 500 {
 		return nil, common.ErrParam
 	}
-
-	r, err := l.svcCtx.ReviewModel.UpdateReply(l.ctx, req.Id, req.MasterReply)
+	b, _, _, err := BookingAccess(l.ctx, l.svcCtx, req.Id, true)
 	if err != nil {
-		if errors.Is(err, sqlx.ErrNotFound) {
-			return nil, common.ErrReviewNotFound
+		return nil, err
+	}
+	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, tx sqlx.Session) error {
+		if _, err := lockBooking(ctx, tx, req.Id); err != nil {
+			return err
 		}
-		l.Errorf("回复评价失败: %v", err)
-		return nil, common.ErrSystem
+		r, err := l.svcCtx.ReviewModel.FindOne(ctx, req.Id)
+		if err != nil {
+			return common.ErrReviewNotFound
+		}
+		if r.MasterReply != "" {
+			return common.ErrDuplicateOperation
+		}
+		if _, err = tx.ExecCtx(ctx, "UPDATE booking_review SET master_reply=? WHERE booking_id=?", req.MasterReply, req.Id); err != nil {
+			return err
+		}
+		images, _ := json.Marshal(r.Images)
+		body, err := json.Marshal(mq.BookingNotify{BookingId: b.Id, UserId: b.UserId, TempleId: b.TempleId, TempleName: b.TempleName, MasterId: b.MasterId, MasterName: b.MasterName, ServiceName: b.ServiceName, Rating: r.Rating, ReviewContent: r.Content, ReviewImages: string(images), MasterReply: req.MasterReply, Time: r.CreateTime, Action: "review_replied"})
+		if err != nil {
+			return err
+		}
+		return mqoutbox.Enqueue(ctx, tx, "booking:"+b.Id+":reply:"+uuid.NewString(), "booking", b.Id, "booking.review_replied", mq.ExchangeBookingEvents, "", string(body))
+	})
+	if err != nil {
+		return nil, err
+	}
+	r, err := l.svcCtx.ReviewModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		return nil, err
 	}
 	resp := types.BookingReview(*r)
 	return &resp, nil
@@ -272,7 +304,7 @@ func transitBookingStatus(
 	if err := TransitionWithAudit(ctx, svcCtx, bookingNo, targetStatus, operatorId, operatorType, remark); err != nil {
 		return nil, err
 	}
- return &types.StatusResp{Id:bookingNo,Status:targetStatus},nil
+	return &types.StatusResp{Id: bookingNo, Status: targetStatus}, nil
 }
 
 func StartTempleBooking(ctx context.Context, s *svc.ServiceContext, id, remark string) (*types.StatusResp, error) {

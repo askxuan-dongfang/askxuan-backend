@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/askxuan/temple-service/internal/types"
 )
@@ -23,8 +24,8 @@ func (m *defaultTempleModel) SetTempleFavorite(ctx context.Context, userId int64
 // ListFavoriteTemples 查询用户收藏的寺院列表（收藏时间倒序，上限 50）
 func (m *defaultTempleModel) ListFavoriteTemples(ctx context.Context, userId int64) ([]types.Temple, error) {
 	var rows []Temple
-	query := fmt.Sprintf(`SELECT t.id, t.code, t.name, t.region, t.type, t.belief_code, t.sect, t.status, t.address, t.cover_image, t.rating, t.description, t.create_time, t.update_time FROM %s t JOIN %s f ON f.temple_code = t.code WHERE f.user_id = ? ORDER BY f.create_time DESC LIMIT 50`, templeTable, templeFavoriteTable)
-	if err := m.conn.QueryRowsCtx(ctx, &rows, query, userId); err != nil {
+	query := fmt.Sprintf(`SELECT t.id, t.code, t.name, t.region, t.type, t.belief_code, t.sect, t.status, t.address, t.cover_image, t.rating, t.description, t.create_time, t.update_time FROM %s t JOIN %s f ON f.temple_code = t.code WHERE f.user_id = ? ORDER BY f.create_time DESC, f.temple_code DESC LIMIT 50 OFFSET ?`, templeTable, templeFavoriteTable)
+	if err := m.conn.QueryRowsCtx(ctx, &rows, query, userId, favoriteOffset(ctx)); err != nil {
 		return nil, err
 	}
 	list := make([]types.Temple, 0, len(rows))
@@ -47,3 +48,17 @@ func (m *defaultTempleModel) ListFavoriteTemples(ctx context.Context, userId int
 	}
 	return list, nil
 }
+
+type favoritePageKey struct{}
+
+func WithFavoritePage(ctx context.Context, page string) context.Context {
+	n, _ := strconv.Atoi(page)
+	if n < 1 {
+		n = 1
+	}
+	if n > 10000 {
+		n = 10000
+	}
+	return context.WithValue(ctx, favoritePageKey{}, (n-1)*50)
+}
+func favoriteOffset(ctx context.Context) int { n, _ := ctx.Value(favoritePageKey{}).(int); return n }

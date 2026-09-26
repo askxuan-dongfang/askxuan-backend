@@ -28,7 +28,11 @@ func NewReviewListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Review
 
 // ReviewList C端评价列表，按 target 查询，仅返回 normal 状态
 func (l *ReviewListLogic) ReviewList(req *types.ReviewListReq) (*types.ReviewListResp, error) {
-	list, total, err := model.ListReviews(l.ctx, req.TargetType, req.TargetId, req.UserId, req.Rating, model.ReviewStatusNormal, "", req.Page, req.Size)
+	if req.UserId != "" && req.UserId != callerID(l.ctx) {
+		return nil, common.ErrForbidden
+	}
+	ctx := model.WithTemple(l.ctx, req.TempleCode)
+	list, total, err := model.ListReviews(ctx, req.TargetType, req.TargetId, req.UserId, req.Rating, model.ReviewStatusNormal, req.MasterCode, req.Page, req.Size)
 	if err != nil {
 		l.Errorf("查询评价列表失败: %v", err)
 		return nil, common.ErrSystem
@@ -36,6 +40,11 @@ func (l *ReviewListLogic) ReviewList(req *types.ReviewListReq) (*types.ReviewLis
 
 	result := make([]types.Review, 0, len(list))
 	for _, r := range list {
+		if req.UserId == "" {
+			r.UserId = ""
+			r.TargetId = ""
+			r.ReviewNo = ""
+		}
 		result = append(result, types.Review{
 			Id:         r.Id,
 			ReviewNo:   r.ReviewNo,
@@ -47,7 +56,7 @@ func (l *ReviewListLogic) ReviewList(req *types.ReviewListReq) (*types.ReviewLis
 			Content:    r.Content,
 			Images:     r.Images,
 			Status:     r.Status,
-			CreateTime: r.CreateTime,
+			CreateTime: r.CreateTime, TempleCode: r.TempleCode, TempleName: r.TempleName, MasterName: r.MasterName, ServiceName: r.ServiceName, MasterReply: r.MasterReply,
 		})
 	}
 

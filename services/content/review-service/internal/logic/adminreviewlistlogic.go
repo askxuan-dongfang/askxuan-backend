@@ -28,7 +28,11 @@ func NewAdminReviewListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *A
 
 // AdminReviewList 管理台评价列表，支持按 status 筛选（含hidden）
 func (l *AdminReviewListLogic) AdminReviewList(req *types.AdminReviewListReq) (*types.AdminReviewListResp, error) {
-	list, total, err := model.ListReviews(l.ctx, req.TargetType, req.TargetId, "", req.Rating, req.Status, "", req.Page, req.Size)
+	ctx, code, err := providerScope(l.ctx)
+	if err != nil {
+		return nil, err
+	}
+	list, total, err := model.ListReviews(ctx, req.TargetType, req.TargetId, "", req.Rating, req.Status, code, req.Page, req.Size)
 	if err != nil {
 		l.Errorf("查询评价列表失败: %v", err)
 		return nil, common.ErrSystem
@@ -47,7 +51,7 @@ func (l *AdminReviewListLogic) AdminReviewList(req *types.AdminReviewListReq) (*
 			Content:    r.Content,
 			Images:     r.Images,
 			Status:     r.Status,
-			CreateTime: r.CreateTime,
+			CreateTime: r.CreateTime, TempleCode: r.TempleCode, TempleName: r.TempleName, MasterName: r.MasterName, ServiceName: r.ServiceName, MasterReply: r.MasterReply,
 		})
 	}
 

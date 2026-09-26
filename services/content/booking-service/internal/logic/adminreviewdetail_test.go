@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"github.com/askxuan/common/middleware"
 	"testing"
 
 	"github.com/askxuan/booking-service/internal/model"
@@ -29,7 +30,8 @@ func (s *adminReviewModelStub) UpdateReply(context.Context, string, string) (*mo
 }
 
 func TestAdminReviewDetail(t *testing.T) {
-	logic := NewAdminReviewDetailLogic(context.Background(), &svc.ServiceContext{
+	logic := NewAdminReviewDetailLogic(reviewAdminContext(), &svc.ServiceContext{
+		BookingModel: reviewAdminBookings{},
 		ReviewModel: &adminReviewModelStub{review: &model.BookingReview{
 			Id: 7, BookingId: "B001", UserId: "U001", Rating: 5, Content: "庄重圆满",
 		}},
@@ -45,12 +47,31 @@ func TestAdminReviewDetail(t *testing.T) {
 }
 
 func TestAdminReviewDetailNotFound(t *testing.T) {
-	logic := NewAdminReviewDetailLogic(context.Background(), &svc.ServiceContext{
-		ReviewModel: &adminReviewModelStub{err: sqlx.ErrNotFound},
+	logic := NewAdminReviewDetailLogic(reviewAdminContext(), &svc.ServiceContext{
+		BookingModel: reviewAdminBookings{},
+		ReviewModel:  &adminReviewModelStub{err: sqlx.ErrNotFound},
 	})
 
 	_, err := logic.AdminReviewDetail(&types.ReviewDetailReq{Id: "missing"})
 	if err != common.ErrReviewNotFound {
 		t.Fatalf("AdminReviewDetail() error = %v, want %v", err, common.ErrReviewNotFound)
+	}
+}
+
+type reviewAdminBookings struct{ model.BookingModel }
+
+func (reviewAdminBookings) FindOne(ctx context.Context, id string) (*model.Booking, error) {
+	return &model.Booking{Id: id, TempleId: "TTEST"}, nil
+}
+func reviewAdminContext() context.Context {
+	ctx := context.WithValue(context.Background(), middleware.CtxKeyUserID, int64(7))
+	ctx = context.WithValue(ctx, middleware.CtxKeyRoles, []string{"temple_admin"})
+	return context.WithValue(ctx, middleware.CtxKeyTempleCode, "TTEST")
+}
+func TestAdminReviewDetailCrossTemple(t *testing.T) {
+	ctx := context.WithValue(reviewAdminContext(), middleware.CtxKeyTempleCode, "OTHER")
+	_, err := NewAdminReviewDetailLogic(ctx, &svc.ServiceContext{BookingModel: reviewAdminBookings{}}).AdminReviewDetail(&types.ReviewDetailReq{Id: "B001"})
+	if err != common.ErrForbidden {
+		t.Fatalf("expected forbidden: %v", err)
 	}
 }

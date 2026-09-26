@@ -2,7 +2,6 @@ package logic
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/middleware"
@@ -36,7 +35,10 @@ func (l *MasterReviewListLogic) MasterReviewList(req *types.MasterReviewListReq)
 	}
 
 	// masterId (int64) 转为 masterCode (如 M001)
-	masterCode := fmt.Sprintf("M%03d", masterID)
+	masterCode, err := masterCode(l.ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	list, total, err := model.ListReviews(l.ctx, "", "", "", req.Rating, model.ReviewStatusNormal, masterCode, req.Page, req.Size)
 	if err != nil {
@@ -57,7 +59,7 @@ func (l *MasterReviewListLogic) MasterReviewList(req *types.MasterReviewListReq)
 			Content:    r.Content,
 			Images:     r.Images,
 			Status:     r.Status,
-			CreateTime: r.CreateTime,
+			CreateTime: r.CreateTime, TempleCode: r.TempleCode, TempleName: r.TempleName, MasterName: r.MasterName, ServiceName: r.ServiceName, MasterReply: r.MasterReply,
 		})
 	}
 

@@ -44,6 +44,7 @@ type BookingNotify struct {
 	MeritMoney    float64 `json:"meritMoney,omitempty"`
 	TotalFee      float64 `json:"totalFee,omitempty"`
 	Rating        int     `json:"rating,omitempty"`
+	MasterReply   string  `json:"masterReply,omitempty"`
 	ReviewContent string  `json:"reviewContent,omitempty"`
 	ReviewImages  string  `json:"reviewImages,omitempty"`
 	Action        string  `json:"action"` // created / confirmed / completed / reviewed / cancelled

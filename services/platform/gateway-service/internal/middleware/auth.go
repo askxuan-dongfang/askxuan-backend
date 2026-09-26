@@ -91,7 +91,7 @@ func roleAllowedForAdminPath(path string, claims *common.CustomClaims) bool {
 // - 校验 Authorization: Bearer <token>，解析后将用户信息注入请求头透传下游
 // - /api/v1/admin/* 路径额外校验管理台角色
 func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Context, *common.CustomClaims) error) func(http.Handler) http.Handler {
-	whitelist := append(append([]string{}, noAuthPaths...), "/api/v1/auth/options", "/api/v1/auth/captcha", "/api/v1/auth/email/code", "/api/v1/auth/email/register", "/api/v1/auth/password/reset", "/api/v1/auth/work/register", "/api/v1/auth/work/activate")
+	whitelist := append(append([]string{}, noAuthPaths...), "/api/v1/reviews", "/api/v1/auth/options", "/api/v1/auth/captcha", "/api/v1/auth/email/code", "/api/v1/auth/email/register", "/api/v1/auth/password/reset", "/api/v1/auth/work/register", "/api/v1/auth/work/activate")
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

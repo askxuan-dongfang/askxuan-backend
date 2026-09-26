@@ -168,6 +168,8 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		},
 	}...)...))
 
+	// Scoped reply route shares the booking domain source of truth.
+	server.AddRoute(rest.Route{Method: http.MethodPut, Path: "/api/v1/admin/masters/bookings/:id/review/reply", Handler: authCfg.AuthFunc(adminReviewReplyHandler(svcCtx))})
 	// ============ 法师工作台分组（需JWT） ============
 	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 		{

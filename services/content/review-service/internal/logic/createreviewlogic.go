@@ -2,7 +2,10 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
+	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/review-service/internal/model"
@@ -43,6 +46,44 @@ func (l *CreateReviewLogic) CreateReview(req *types.CreateReviewReq) (*types.Cre
 		return nil, common.ErrParam
 	}
 
+	req.Content = strings.TrimSpace(req.Content)
+	if req.UserId != callerID(l.ctx) || req.UserId == "0" {
+		return nil, common.ErrUnauthorized
+	}
+	if req.Content == "" || len([]rune(req.Content)) > 500 {
+		return nil, common.ErrParam
+	}
+	var images []string
+	if req.Images == "" {
+		req.Images = "[]"
+	}
+	if json.Unmarshal([]byte(req.Images), &images) != nil || len(images) > 6 {
+		return nil, common.ErrParam
+	}
+	path := "/orders/"
+	if req.TargetType == model.TargetTypeDiyOrder {
+		path = "/diy/orders/"
+	}
+	var order struct {
+		UserId string `json:"userId"`
+		Status string `json:"status"`
+	}
+	if err := upstream(l.ctx, "GET", path+url.PathEscape(req.TargetId), nil, &order); err != nil {
+		return nil, err
+	}
+	if order.UserId != req.UserId {
+		return nil, common.ErrForbidden
+	}
+	if order.Status != "completed" {
+		return nil, common.NewBizError(40034, "确认收货后才能评价")
+	}
+	existing, _, err := model.ListReviews(l.ctx, req.TargetType, req.TargetId, req.UserId, 0, "", "", 1, 1)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	if len(existing) > 0 {
+		return nil, common.ErrDuplicateOperation
+	}
 	// 写入评价记录
 	review, err := model.CreateReview(l.ctx, model.Review{
 		UserId:     req.UserId,

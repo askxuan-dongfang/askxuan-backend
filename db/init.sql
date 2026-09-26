@@ -1689,6 +1689,18 @@ WHERE o.status='shipped';
 CREATE DATABASE IF NOT EXISTS `askxuan_review` DEFAULT CHARACTER SET utf8mb4;
 USE `askxuan_review`;
 
+-- Run with the existing review-service database account before deploying.
+CREATE TABLE IF NOT EXISTS review_booking_context (
+ booking_id VARCHAR(64) NOT NULL PRIMARY KEY,
+ temple_code VARCHAR(64) NOT NULL DEFAULT '',
+ temple_name VARCHAR(255) NOT NULL DEFAULT '',
+ master_name VARCHAR(255) NOT NULL DEFAULT '',
+ service_name VARCHAR(255) NOT NULL DEFAULT '',
+ master_reply TEXT NOT NULL,
+ INDEX idx_review_temple (temple_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 CREATE TABLE IF NOT EXISTS `review` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `review_no` VARCHAR(32) NOT NULL COMMENT '评价单号',

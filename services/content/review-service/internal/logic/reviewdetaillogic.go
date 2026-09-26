@@ -38,6 +38,12 @@ func (l *ReviewDetailLogic) ReviewDetail(req *types.ReviewDetailReq) (*types.Rev
 		l.Errorf("查询评价详情失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	if r.Status != model.ReviewStatusNormal {
+		return nil, common.ErrReviewNotFound
+	}
+	r.UserId = ""
+	r.TargetId = ""
+	r.ReviewNo = ""
 	return &types.Review{
 		Id:         r.Id,
 		ReviewNo:   r.ReviewNo,
@@ -49,6 +55,6 @@ func (l *ReviewDetailLogic) ReviewDetail(req *types.ReviewDetailReq) (*types.Rev
 		Content:    r.Content,
 		Images:     r.Images,
 		Status:     r.Status,
-		CreateTime: r.CreateTime,
+		CreateTime: r.CreateTime, TempleCode: r.TempleCode, TempleName: r.TempleName, MasterName: r.MasterName, ServiceName: r.ServiceName, MasterReply: r.MasterReply,
 	}, nil
 }

@@ -16,6 +16,12 @@ const (
 )
 
 type BookingReviewed struct {
+	TempleId      string `json:"templeId"`
+	TempleName    string `json:"templeName"`
+	MasterName    string `json:"masterName"`
+	ServiceName   string `json:"serviceName"`
+	MasterReply   string `json:"masterReply"`
+	Time          string `json:"time"`
 	BookingId     string `json:"bookingId"`
 	UserId        string `json:"userId"`
 	MasterId      string `json:"masterId"`
@@ -89,11 +95,11 @@ func (c *Consumer) consume(ctx context.Context, handler func(context.Context, Bo
 				_ = msg.Nack(false, false)
 				continue
 			}
-			if event.Action != "reviewed" {
+			if event.Action != "reviewed" && event.Action != "review_replied" && event.Action != "review_synced" {
 				_ = msg.Ack(false)
 				continue
 			}
-			if event.BookingId == "" || event.UserId == "" || event.MasterId == "" || event.Rating < 1 || event.Rating > 5 {
+			if event.BookingId == "" || event.UserId == "" || event.Rating < 1 || event.Rating > 5 {
 				_ = msg.Nack(false, false)
 				continue
 			}

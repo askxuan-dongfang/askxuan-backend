@@ -38,6 +38,9 @@ func (l *AdminReviewDetailLogic) AdminReviewDetail(req *types.ReviewDetailReq) (
 		l.Errorf("查询评价详情失败: %v", err)
 		return nil, common.ErrSystem
 	}
+	if err := ownsReview(l.ctx, r); err != nil {
+		return nil, err
+	}
 	return &types.Review{
 		Id:         r.Id,
 		ReviewNo:   r.ReviewNo,
@@ -49,6 +52,6 @@ func (l *AdminReviewDetailLogic) AdminReviewDetail(req *types.ReviewDetailReq) (
 		Content:    r.Content,
 		Images:     r.Images,
 		Status:     r.Status,
-		CreateTime: r.CreateTime,
+		CreateTime: r.CreateTime, TempleCode: r.TempleCode, TempleName: r.TempleName, MasterName: r.MasterName, ServiceName: r.ServiceName, MasterReply: r.MasterReply,
 	}, nil
 }

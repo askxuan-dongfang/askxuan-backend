@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"github.com/askxuan/review-service/internal/model"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/middleware"
@@ -16,6 +19,24 @@ import (
 // RegisterHandlers 注册 review 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
+	server.Use(func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			r = r.WithContext(logic.WithAuthorization(r.Context(), r.Header.Get("Authorization")))
+			if r.Method != http.MethodGet || strings.HasPrefix(r.URL.Path, "/api/v1/admin/") || r.URL.Query().Get("userId") != "" {
+				svcCtx.AuthConfig.AuthFunc(next)(w, r)
+				return
+			}
+			next(w, r)
+		}
+	})
+	server.AddRoute(rest.Route{Method: http.MethodGet, Path: "/api/v1/reviews/ratings", Handler: func(w http.ResponseWriter, r *http.Request) {
+		data, err := model.Ratings(r.Context())
+		if err != nil {
+			common.JsonError(w, common.ErrSystem)
+			return
+		}
+		common.Ok(w, data)
+	}})
 
 	// C端评价接口
 	server.AddRoutes([]rest.Route{
@@ -91,9 +112,7 @@ func createReviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
-		if userId := r.Header.Get("X-User-Id"); userId != "" {
-			req.UserId = userId
-		}
+		req.UserId = strconv.FormatInt(middleware.UserIDFromCtx(r.Context()), 10)
 		l := logic.NewCreateReviewLogic(r.Context(), svcCtx)
 		resp, err := l.CreateReview(&req)
 		if err != nil {

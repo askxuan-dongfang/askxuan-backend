@@ -35,7 +35,7 @@ func main() {
 	defer cancel()
 	if svcCtx.MqConsumer != nil {
 		svcCtx.MqConsumer.Start(consumerCtx, func(ctx context.Context, event mq.BookingReviewed) error {
-			return model.UpsertBookingReview(ctx, event.BookingId, event.UserId, event.MasterId, event.Rating, event.ReviewContent, event.ReviewImages)
+			return model.SyncBookingReview(ctx, event)
 		})
 	}
 	handler.RegisterHandlers(server, svcCtx)
