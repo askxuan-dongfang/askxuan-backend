@@ -120,6 +120,10 @@ func handleBookingNotify(svcCtx *svc.ServiceContext) func([]byte) error {
 			logx.Errorf("解析 booking.notify 失败，丢弃: %v body=%s", err, string(body))
 			return nil
 		}
+		// Historical projection repair is not a new customer event.
+		if evt.Action == "review_synced" {
+			return nil
+		}
 		title, content := buildBookingMessage(evt.Action, evt.BookingId)
 		_, _ = svcCtx.MessageModel.Insert(context.Background(), &model.Message{
 			UserId:  evt.UserId,
@@ -274,6 +278,10 @@ func handleLogisticsSync(svcCtx *svc.ServiceContext) func([]byte) error {
 
 func buildBookingMessage(action, bookingId string) (string, string) {
 	switch action {
+	case "reviewed":
+		return "评价已提交", fmt.Sprintf("您的预约（单号 %s）评价已提交，可在我的评价中查看。", bookingId)
+	case "review_replied":
+		return "服务方回复了评价", fmt.Sprintf("您的预约（单号 %s）收到服务方回复，可在订单详情或我的评价中查看。", bookingId)
 	case "created":
 		return "预约已创建", fmt.Sprintf("您的预约（单号 %s）已提交，请等待寺院确认。", bookingId)
 	case "confirmed":
