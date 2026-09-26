@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"github.com/go-sql-driver/mysql"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"os"
 	"strings"
@@ -32,6 +33,28 @@ func TestMySQLProviderWalletAllocation(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
+	// Exercise the production column-level identity grant, rather than hiding
+	// permission regressions behind the root fixture connection.
+	grant, e := os.ReadFile("../../../../../scripts/db/20260926_wallet_identity_permissions.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, q := range []string{
+		`DROP USER IF EXISTS 'wallet_finance_test'@'%'`,
+		`CREATE USER 'wallet_finance_test'@'%' IDENTIFIED BY 'local-wallet-reader'`,
+		`GRANT SELECT ON wallet_test.* TO 'wallet_finance_test'@'%'`,
+		strings.ReplaceAll(string(grant), "'finance_user'", "'wallet_finance_test'"),
+	} {
+		if _, e := db.ExecCtx(ctx, q); e != nil {
+			t.Fatal(e)
+		}
+	}
+	config, e := mysql.ParseDSN(dsn)
+	if e != nil {
+		t.Fatal(e)
+	}
+	config.User, config.Passwd = "wallet_finance_test", "local-wallet-reader"
+	Configure(sqlx.NewMysql(config.FormatDSN()))
 	m, e := ReadProviderWallet(ctx, "master", "901", 1)
 	if e != nil {
 		t.Fatal(e)
