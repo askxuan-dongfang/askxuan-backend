@@ -57,6 +57,11 @@ func registerCashier(server *rest.Server, s *svc.ServiceContext) {
 	})
 	add("GET", "wallet/balance", func(w http.ResponseWriter, r *http.Request) {
 		a, e := balance.Read(r.Context(), s.DB, user(r))
+		ledgerTable, rechargeTable, mode := "wallet_ledger", "wallet_recharge", "cash"
+		if s.Cashier.DemoEnabled {
+			a, e = balance.ReadDemo(r.Context(), s.DB, user(r))
+			ledgerTable, rechargeTable, mode = "demo_wallet_ledger", "demo_wallet_recharge", "demo"
+		}
 		if e != nil {
 			cashError(w, e)
 			return
@@ -70,13 +75,13 @@ func registerCashier(server *rest.Server, s *svc.ServiceContext) {
 				return
 			}
 		}
-		e = s.DB.QueryRowsCtx(r.Context(), &entries, `SELECT id,kind,reference_no,available_delta,held_delta,available_after,DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') created_at FROM wallet_ledger WHERE user_id=? ORDER BY id DESC LIMIT 30 OFFSET ?`, user(r), (page-1)*30)
+		e = s.DB.QueryRowsCtx(r.Context(), &entries, `SELECT id,kind,reference_no,available_delta,held_delta,available_after,DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') created_at FROM `+ledgerTable+` WHERE user_id=? ORDER BY id DESC LIMIT 30 OFFSET ?`, user(r), (page-1)*30)
 		if e != nil {
 			cashError(w, e)
 			return
 		}
 		recharges := []cashier.Recharge{}
-		e = s.DB.QueryRowsCtx(r.Context(), &recharges, `SELECT recharge_no,user_id,request_id,channel,amount_cents,status,COALESCE(trade_no,'') trade_no,'' pay_url,refund_no,refund_cents,DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') created_at FROM wallet_recharge WHERE user_id=? ORDER BY created_at DESC LIMIT 30`, user(r))
+		e = s.DB.QueryRowsCtx(r.Context(), &recharges, `SELECT recharge_no,user_id,request_id,channel,amount_cents,status,COALESCE(trade_no,'') trade_no,'' pay_url,refund_no,refund_cents,DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') created_at FROM `+rechargeTable+` WHERE user_id=? ORDER BY created_at DESC LIMIT 30`, user(r))
 		if e != nil {
 			cashError(w, e)
 			return
@@ -85,7 +90,10 @@ func registerCashier(server *rest.Server, s *svc.ServiceContext) {
 		for _, name := range []string{"wechat", "alipay"} {
 			channels = append(channels, map[string]any{"id": name, "enabled": s.Cashier.Enabled && s.Cashier.Channels[name] != nil})
 		}
-		common.Ok(w, map[string]any{"availableCents": a.Available, "heldCents": a.Held, "enabled": s.Cashier.Enabled, "channels": channels, "entries": entries, "recharges": recharges, "page": page, "hasMore": len(entries) == 30})
+		if s.Cashier.DemoEnabled {
+			channels = []map[string]any{{"id": "demo", "enabled": true}}
+		}
+		common.Ok(w, map[string]any{"mode": mode, "demoEnabled": s.Cashier.DemoEnabled, "availableCents": a.Available, "heldCents": a.Held, "enabled": s.Cashier.Enabled || s.Cashier.DemoEnabled, "channels": channels, "entries": entries, "recharges": recharges, "page": page, "hasMore": len(entries) == 30})
 	})
 	add("POST", "wallet/recharges", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {

@@ -15,6 +15,7 @@ const (
 )
 
 type PaymentNotify struct {
+	Channel   string  `json:"channel"`
 	PaymentNo string  `json:"paymentNo"`
 	UserId    string  `json:"userId"`
 	OrderType string  `json:"orderType"`

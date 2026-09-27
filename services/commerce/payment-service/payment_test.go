@@ -32,3 +32,27 @@ func TestValidatePaymentConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestDemoWalletConfigurationIsolation(t *testing.T) {
+	var c config.Config
+	c.Provider = "mock"
+	c.AppEnv = "demo"
+	c.Wallet.DemoEnabled = true
+	if e := validatePaymentConfig(c); e != nil {
+		t.Fatal(e)
+	}
+	c.Wallet.Enabled = true
+	if validatePaymentConfig(c) == nil {
+		t.Fatal("cash and demo enabled together")
+	}
+	c.Wallet.Enabled = false
+	c.Provider = "live"
+	if validatePaymentConfig(c) == nil {
+		t.Fatal("live demo enabled")
+	}
+	c.Provider = "mock"
+	c.AppEnv = "production"
+	if validatePaymentConfig(c) == nil {
+		t.Fatal("production demo enabled")
+	}
+}

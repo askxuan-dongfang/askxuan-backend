@@ -29,6 +29,9 @@ func NewPaymentCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Pay
 
 // Create 创建支付单
 func (l *PaymentCreateLogic) Create(req *types.PaymentCreateReq) (*types.PaymentCreateResp, error) {
+	if l.svcCtx.Config.Wallet.DemoEnabled {
+		return nil, common.NewBizError(40903, "请更新客户端，使用模拟余额收银台支付")
+	}
 	if req.OrderNo == "" || req.Amount <= 0 {
 		return nil, common.ErrParam
 	}

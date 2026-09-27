@@ -60,11 +60,14 @@ func startPaymentSync(ctx context.Context, svcCtx *svc.ServiceContext) {
 			_, err := svcCtx.DB.ExecCtx(ctx, `UPDATE booking SET payment_status='refunded' WHERE booking_no=? AND status='cancelled' AND payment_status='refunding'`, event.OrderNo)
 			return err
 		}
+		if event.Channel == "" {
+			event.Channel = "mock"
+		}
 		if event.Action != "success" {
 			return nil
 		}
 		if event.OrderType == "consultation" {
-			updated, changed, err := svcCtx.ConsultationModel.Activate(ctx, event.OrderNo, event.PaymentNo, "mock")
+			updated, changed, err := svcCtx.ConsultationModel.Activate(ctx, event.OrderNo, event.PaymentNo, event.Channel)
 			if err == nil && changed {
 				NewConsultationPaymentPublisher(ctx, svcCtx).Publish(updated)
 			}
@@ -73,7 +76,7 @@ func startPaymentSync(ctx context.Context, svcCtx *svc.ServiceContext) {
 		if event.OrderType != "booking" {
 			return nil
 		}
-		updated, changed, err := svcCtx.BookingModel.UpdatePayment(ctx, event.OrderNo, event.PaymentNo, "mock", model.PaymentStatusSuccess, model.StatusPending)
+		updated, changed, err := svcCtx.BookingModel.UpdatePayment(ctx, event.OrderNo, event.PaymentNo, event.Channel, model.PaymentStatusSuccess, model.StatusPending)
 		if err == nil && changed {
 			recordRecoveredPayment(ctx, svcCtx, updated, "支付通知补偿确认")
 		}

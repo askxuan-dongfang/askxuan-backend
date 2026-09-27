@@ -38,9 +38,10 @@ type Config struct {
 	AppEnv   string `json:",default=development"`
 	Provider string `json:",default=mock"`
 	Wallet   struct {
-		Enabled bool              `json:",default=false"`
-		Wechat  paychannel.Config `json:",optional"`
-		Alipay  paychannel.Config `json:",optional"`
+		DemoEnabled bool              `json:",default=false"`
+		Enabled     bool              `json:",default=false"`
+		Wechat      paychannel.Config `json:",optional"`
+		Alipay      paychannel.Config `json:",optional"`
 	} `json:",optional"`
 	PaymentRpc zrpc.RpcServerConf
 	OrderRpc   zrpc.RpcClientConf

@@ -44,7 +44,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		}
 	}
 	return &ServiceContext{
-		Cashier:         &cashier.Store{DB: db, Enabled: c.Wallet.Enabled, Mock: c.Provider == "mock", Channels: channels},
+		Cashier:         &cashier.Store{DB: db, Enabled: c.Wallet.Enabled, DemoEnabled: c.Wallet.DemoEnabled, Mock: c.Provider == "mock", Channels: channels},
 		Config:          c,
 		DB:              db,
 		Redis:           redis.MustNewRedis(c.Redis),

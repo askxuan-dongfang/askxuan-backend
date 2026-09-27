@@ -46,6 +46,7 @@ type BookingSettlement struct {
 }
 
 type BookingSplit struct {
+	Simulated          bool
 	Rate               float64
 	Total              float64
 	Commission         float64
@@ -70,6 +71,7 @@ type ConsultationSettlement struct {
 }
 
 type ConsultationSplit struct {
+	Simulated          bool
 	Rate               float64
 	Total              float64
 	Commission         float64
@@ -129,20 +131,25 @@ func RecordPlatformReceipt(ctx context.Context, receipt PaymentReceipt) error {
 	if receipt.PaymentNo == "" || receipt.SourceType == "" || receipt.SourceNo == "" || receipt.Amount <= 0 {
 		return fmt.Errorf("平台收款事件字段不完整")
 	}
+	scoped, scopeErr := paymentLedgerContext(ctx, receipt.SourceType, receipt.SourceNo)
+	if scopeErr != nil {
+		return scopeErr
+	}
+	ctx = scoped
 	receipt.Amount = money(receipt.Amount)
 	return db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
 		transactionNo := deterministicNo("PAY", receipt.PaymentNo, 64)
-		res, err := session.ExecCtx(ctx, `INSERT IGNORE INTO finance_transaction
+		res, err := session.ExecCtx(ctx, financeQuery(ctx, `INSERT IGNORE INTO finance_transaction
 			(transaction_no,source_type,source_no,payment_no,event_type,total_amount,status)
-			VALUES(?,?,?,?,?,?,?)`, transactionNo, receipt.SourceType, receipt.SourceNo,
+			VALUES(?,?,?,?,?,?,?)`), transactionNo, receipt.SourceType, receipt.SourceNo,
 			receipt.PaymentNo, LedgerEventPaymentReceipt, receipt.Amount, "posted")
 		if err != nil {
 			return err
 		}
 		created, _ := res.RowsAffected()
 		var tx ledgerTransaction
-		if err := session.QueryRowCtx(ctx, &tx, `SELECT id,payment_no,total_amount FROM finance_transaction
-			WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`,
+		if err := session.QueryRowCtx(ctx, &tx, financeQuery(ctx, `SELECT id,payment_no,total_amount FROM finance_transaction
+			WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`),
 			receipt.SourceType, receipt.SourceNo, LedgerEventPaymentReceipt); err != nil {
 			return err
 		}
@@ -158,8 +165,8 @@ func RecordPlatformReceipt(ctx context.Context, receipt PaymentReceipt) error {
 		if err := insertLedgerEntry(ctx, session, tx.ID, LedgerAccountCustomerFunds, "", "credit", receipt.Amount); err != nil {
 			return err
 		}
-		_, err = session.ExecCtx(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description)
-			VALUES(0,?,'income',?)`, receipt.Amount,
+		_, err = session.ExecCtx(ctx, financeQuery(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description)
+			VALUES(0,?,'income',?)`), receipt.Amount,
 			fmt.Sprintf("平台总账收款:%s:%s:%s", receipt.SourceType, receipt.SourceNo, receipt.PaymentNo))
 		return err
 	})
@@ -174,18 +181,23 @@ func RecordPlatformRefund(ctx context.Context, receipt PaymentReceipt) error {
 	if receipt.PaymentNo == "" || receipt.SourceType == "" || receipt.SourceNo == "" || receipt.Amount <= 0 {
 		return fmt.Errorf("平台退款事件字段不完整")
 	}
+	scoped, scopeErr := paymentLedgerContext(ctx, receipt.SourceType, receipt.SourceNo)
+	if scopeErr != nil {
+		return scopeErr
+	}
+	ctx = scoped
 	receipt.Amount = money(receipt.Amount)
 	return db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
 		var original ledgerTransaction
-		if err := session.QueryRowCtx(ctx, &original, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`, receipt.SourceType, receipt.SourceNo, LedgerEventPaymentReceipt); err != nil {
+		if err := session.QueryRowCtx(ctx, &original, financeQuery(ctx, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`), receipt.SourceType, receipt.SourceNo, LedgerEventPaymentReceipt); err != nil {
 			return fmt.Errorf("退款对应的平台收款不存在: %w", err)
 		}
 		if original.PaymentNo != receipt.PaymentNo || receipt.Amount > original.TotalAmount {
 			return fmt.Errorf("退款金额或支付单与原收款不一致")
 		}
-		res, err := session.ExecCtx(ctx, `INSERT IGNORE INTO finance_transaction
+		res, err := session.ExecCtx(ctx, financeQuery(ctx, `INSERT IGNORE INTO finance_transaction
 			(transaction_no,source_type,source_no,payment_no,event_type,total_amount,status)
-			VALUES(?,?,?,?,?,?,?)`, deterministicNo("RFD", receipt.PaymentNo, 64), receipt.SourceType,
+			VALUES(?,?,?,?,?,?,?)`), deterministicNo("RFD", receipt.PaymentNo, 64), receipt.SourceType,
 			receipt.SourceNo, receipt.PaymentNo, LedgerEventRefund, receipt.Amount, "posted")
 		if err != nil {
 			return err
@@ -195,7 +207,7 @@ func RecordPlatformRefund(ctx context.Context, receipt PaymentReceipt) error {
 			return nil
 		}
 		var refundTx ledgerTransaction
-		if err := session.QueryRowCtx(ctx, &refundTx, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`, receipt.SourceType, receipt.SourceNo, LedgerEventRefund); err != nil {
+		if err := session.QueryRowCtx(ctx, &refundTx, financeQuery(ctx, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`), receipt.SourceType, receipt.SourceNo, LedgerEventRefund); err != nil {
 			return err
 		}
 		if err := insertLedgerEntry(ctx, session, refundTx.ID, LedgerAccountCustomerFunds, "", "debit", receipt.Amount); err != nil {
@@ -204,12 +216,17 @@ func RecordPlatformRefund(ctx context.Context, receipt PaymentReceipt) error {
 		if err := insertLedgerEntry(ctx, session, refundTx.ID, LedgerAccountPlatformCash, "", "credit", receipt.Amount); err != nil {
 			return err
 		}
-		_, err = session.ExecCtx(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description) VALUES(0,?,'refund',?)`, receipt.Amount, fmt.Sprintf("平台总账退款:%s:%s:%s", receipt.SourceType, receipt.SourceNo, receipt.PaymentNo))
+		_, err = session.ExecCtx(ctx, financeQuery(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description) VALUES(0,?,'refund',?)`), receipt.Amount, fmt.Sprintf("平台总账退款:%s:%s:%s", receipt.SourceType, receipt.SourceNo, receipt.PaymentNo))
 		return err
 	})
 }
 
 func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (BookingSplit, error) {
+	scoped, scopeErr := paymentLedgerContext(ctx, "booking", booking.BookingID)
+	if scopeErr != nil {
+		return BookingSplit{}, scopeErr
+	}
+	ctx = scoped
 	// MasterID 允许为空（全寺执行预约：服务费与功德全归寺院，大师分成为 0）
 	if booking.BookingID == "" || booking.BookingDate == "" {
 		return BookingSplit{}, fmt.Errorf("预约分账字段不完整")
@@ -227,10 +244,28 @@ func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (Bo
 	if err != nil {
 		return BookingSplit{}, err
 	}
+	if booking.MasterID == "" {
+		split.TempleGross += split.MasterGross
+		split.TempleCommission += split.MasterCommission
+		split.TempleNet += split.MasterNet
+		split.MasterGross = 0
+		split.MasterCommission = 0
+		split.MasterNet = 0
+	}
+	split.Simulated = isDemoLedger(ctx)
 	err = db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		if isDemoLedger(ctx) {
+			var status string
+			if err := session.QueryRowCtx(ctx, &status, `SELECT status FROM askxuan_payment.payment WHERE order_type=? AND order_no=? AND channel='demo_balance' ORDER BY id DESC LIMIT 1 FOR UPDATE`, "booking", booking.BookingID); err != nil {
+				return err
+			}
+			if status != "success" {
+				return fmt.Errorf("模拟支付已退款，不能结算")
+			}
+		}
 		var receipt ledgerTransaction
-		if err := session.QueryRowCtx(ctx, &receipt, `SELECT id,payment_no,total_amount FROM finance_transaction
-			WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`,
+		if err := session.QueryRowCtx(ctx, &receipt, financeQuery(ctx, `SELECT id,payment_no,total_amount FROM finance_transaction
+			WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`),
 			BizTypeBooking, booking.BookingID, LedgerEventPaymentReceipt); err != nil {
 			return fmt.Errorf("预约尚未进入平台总账: %w", err)
 		}
@@ -238,17 +273,17 @@ func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (Bo
 			return fmt.Errorf("平台收款与预约快照金额不一致")
 		}
 
-		res, err := session.ExecCtx(ctx, `INSERT IGNORE INTO finance_transaction
+		res, err := session.ExecCtx(ctx, financeQuery(ctx, `INSERT IGNORE INTO finance_transaction
 			(transaction_no,source_type,source_no,payment_no,event_type,total_amount,status)
-			VALUES(?,?,?,?,?,?,?)`, deterministicNo("BKS", booking.BookingID, 64), BizTypeBooking,
+			VALUES(?,?,?,?,?,?,?)`), deterministicNo("BKS", booking.BookingID, 64), BizTypeBooking,
 			booking.BookingID, receipt.PaymentNo, LedgerEventBookingSettlement, split.Total, "posted")
 		if err != nil {
 			return err
 		}
 		created, _ := res.RowsAffected()
 		var settlementTx ledgerTransaction
-		if err := session.QueryRowCtx(ctx, &settlementTx, `SELECT id,payment_no,total_amount FROM finance_transaction
-			WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`,
+		if err := session.QueryRowCtx(ctx, &settlementTx, financeQuery(ctx, `SELECT id,payment_no,total_amount FROM finance_transaction
+			WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`),
 			BizTypeBooking, booking.BookingID, LedgerEventBookingSettlement); err != nil {
 			return err
 		}
@@ -299,8 +334,8 @@ func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (Bo
 				return err
 			}
 		}
-		_, err = session.ExecCtx(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description)
-			VALUES(0,?,'allocation',?)`, split.Commission, fmt.Sprintf("预约平台分账:%s", booking.BookingID))
+		_, err = session.ExecCtx(ctx, financeQuery(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description)
+			VALUES(0,?,'allocation',?)`), split.Commission, fmt.Sprintf("预约平台分账:%s", booking.BookingID))
 		if err == nil {
 			split.Created = true
 		}
@@ -310,6 +345,11 @@ func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (Bo
 }
 
 func AccrueConsultationSettlement(ctx context.Context, consultation ConsultationSettlement) (ConsultationSplit, error) {
+	scoped, scopeErr := paymentLedgerContext(ctx, "consultation", consultation.ConsultationID)
+	if scopeErr != nil {
+		return ConsultationSplit{}, scopeErr
+	}
+	ctx = scoped
 	if consultation.ConsultationID == "" || consultation.MasterID == "" || consultation.PaidAt == "" {
 		return ConsultationSplit{}, fmt.Errorf("咨询分账字段不完整")
 	}
@@ -321,22 +361,32 @@ func AccrueConsultationSettlement(ctx context.Context, consultation Consultation
 	if err != nil {
 		return ConsultationSplit{}, err
 	}
+	split.Simulated = isDemoLedger(ctx)
 	err = db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		if isDemoLedger(ctx) {
+			var status string
+			if err := session.QueryRowCtx(ctx, &status, `SELECT status FROM askxuan_payment.payment WHERE order_type=? AND order_no=? AND channel='demo_balance' ORDER BY id DESC LIMIT 1 FOR UPDATE`, "consultation", consultation.ConsultationID); err != nil {
+				return err
+			}
+			if status != "success" {
+				return fmt.Errorf("模拟支付已退款，不能结算")
+			}
+		}
 		var receipt ledgerTransaction
-		if err := session.QueryRowCtx(ctx, &receipt, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`, BizTypeConsultation, consultation.ConsultationID, LedgerEventPaymentReceipt); err != nil {
+		if err := session.QueryRowCtx(ctx, &receipt, financeQuery(ctx, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`), BizTypeConsultation, consultation.ConsultationID, LedgerEventPaymentReceipt); err != nil {
 			return fmt.Errorf("咨询款尚未进入平台总账: %w", err)
 		}
 		if !sameMoney(receipt.TotalAmount, split.Total) {
 			return fmt.Errorf("平台收款与咨询价格快照不一致")
 		}
-		res, err := session.ExecCtx(ctx, `INSERT IGNORE INTO finance_transaction (transaction_no,source_type,source_no,payment_no,event_type,total_amount,status) VALUES(?,?,?,?,?,?,?)`,
+		res, err := session.ExecCtx(ctx, financeQuery(ctx, `INSERT IGNORE INTO finance_transaction (transaction_no,source_type,source_no,payment_no,event_type,total_amount,status) VALUES(?,?,?,?,?,?,?)`),
 			deterministicNo("CST", consultation.ConsultationID, 64), BizTypeConsultation, consultation.ConsultationID, receipt.PaymentNo, LedgerEventConsultationSettlement, split.Total, "posted")
 		if err != nil {
 			return err
 		}
 		created, _ := res.RowsAffected()
 		var settlementTx ledgerTransaction
-		if err := session.QueryRowCtx(ctx, &settlementTx, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`, BizTypeConsultation, consultation.ConsultationID, LedgerEventConsultationSettlement); err != nil {
+		if err := session.QueryRowCtx(ctx, &settlementTx, financeQuery(ctx, `SELECT id,payment_no,total_amount FROM finance_transaction WHERE source_type=? AND source_no=? AND event_type=? FOR UPDATE`), BizTypeConsultation, consultation.ConsultationID, LedgerEventConsultationSettlement); err != nil {
 			return err
 		}
 		if created == 0 {
@@ -370,7 +420,7 @@ func AccrueConsultationSettlement(ctx context.Context, consultation Consultation
 		if err != nil {
 			return err
 		}
-		_, err = session.ExecCtx(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description) VALUES(0,?,'allocation',?)`, split.Commission, fmt.Sprintf("即时咨询平台分账:%s", consultation.ConsultationID))
+		_, err = session.ExecCtx(ctx, financeQuery(ctx, `INSERT INTO finance_log(settlement_id,amount,type,description) VALUES(0,?,'allocation',?)`), split.Commission, fmt.Sprintf("即时咨询平台分账:%s", consultation.ConsultationID))
 		if err == nil {
 			split.Created = true
 		}
@@ -380,15 +430,15 @@ func AccrueConsultationSettlement(ctx context.Context, consultation Consultation
 }
 
 func insertLedgerEntry(ctx context.Context, session sqlx.Session, transactionID int64, account, target, direction string, amount float64) error {
-	_, err := session.ExecCtx(ctx, `INSERT INTO finance_ledger_entry(transaction_id,account_code,target_id,direction,amount)
-		VALUES(?,?,?,?,?)`, transactionID, account, target, direction, money(amount))
+	_, err := session.ExecCtx(ctx, financeQuery(ctx, `INSERT INTO finance_ledger_entry(transaction_id,account_code,target_id,direction,amount)
+		VALUES(?,?,?,?,?)`), transactionID, account, target, direction, money(amount))
 	return err
 }
 
 func insertSettlement(ctx context.Context, session sqlx.Session, settlementNo, sourceType, settleType, targetID, targetName, sourceNo, periodStart, periodEnd string, gross, rate, commission, net float64) (int64, error) {
-	res, err := session.ExecCtx(ctx, `INSERT INTO settlement
+	res, err := session.ExecCtx(ctx, financeQuery(ctx, `INSERT INTO settlement
 		(settlement_no,settle_type,target_id,target_name,period_start,period_end,order_count,total_amount,commission_rate,commission_amount,settle_amount,status,source_type,source_no)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, settlementNo, settleType, targetID, targetName,
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`), settlementNo, settleType, targetID, targetName,
 		periodStart, periodEnd, 1, gross, rate, commission, net, SettlementPending, sourceType, sourceNo)
 	if err != nil {
 		return 0, err
@@ -398,7 +448,7 @@ func insertSettlement(ctx context.Context, session sqlx.Session, settlementNo, s
 
 func findSettlementID(ctx context.Context, session sqlx.Session, sourceType, sourceNo, settleType, targetID string) int64 {
 	var id int64
-	_ = session.QueryRowCtx(ctx, &id, `SELECT id FROM settlement WHERE source_type=? AND source_no=? AND settle_type=? AND target_id=?`, sourceType, sourceNo, settleType, targetID)
+	_ = session.QueryRowCtx(ctx, &id, financeQuery(ctx, `SELECT id FROM settlement WHERE source_type=? AND source_no=? AND settle_type=? AND target_id=?`), sourceType, sourceNo, settleType, targetID)
 	return id
 }
 

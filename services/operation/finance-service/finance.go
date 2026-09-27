@@ -83,7 +83,7 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 				if err != nil {
 					return fmt.Errorf("即时咨询平台分账失败: %w", err)
 				}
-				if split.MasterNet > 0 && svcCtx.MqProducer != nil {
+				if !split.Simulated && split.MasterNet > 0 && svcCtx.MqProducer != nil {
 					if err := svcCtx.MqProducer.PublishSettlementAccrued(ctx, mq.SettlementAccrued{
 						SourceType: model.BizTypeConsultation, SourceNo: evt.ConsultationId,
 						TargetType: model.SettleTypeMaster, TargetId: evt.MasterId, UserId: evt.UserId,
@@ -119,7 +119,7 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 					if err != nil {
 						return fmt.Errorf("预约平台分账失败: %w", err)
 					}
-					if split.MasterNet > 0 && svcCtx.MqProducer != nil {
+					if !split.Simulated && split.MasterNet > 0 && svcCtx.MqProducer != nil {
 						if err := svcCtx.MqProducer.PublishSettlementAccrued(ctx, mq.SettlementAccrued{
 							SourceType: model.BizTypeBooking, SourceNo: evt.BookingId,
 							TargetType: model.SettleTypeMaster, TargetId: evt.MasterId,
@@ -147,6 +147,13 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 				logx.Infof("收到订单状态变更: orderId=%s action=%s userId=%s",
 					evt.OrderId, evt.Action, evt.UserId)
 				if evt.Action == "completed" && !common.IsExperienceOrder(evt.OrderId) {
+					demo, err := model.IsDemoPayment(ctx, "shop_order", evt.OrderId)
+					if err != nil {
+						return err
+					}
+					if demo {
+						return nil
+					}
 					model.InsertFinanceLog(model.FinanceLog{
 						Type:        "income",
 						Amount:      0,

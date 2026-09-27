@@ -120,6 +120,11 @@ jobs:
         env:
           WALLET_TEST_DSN: 'root@tcp(127.0.0.1:3306)/askxuan_payment?charset=utf8mb4'
           WALLET_TEST_ISOLATED: '1'
+      - run: go test ./internal/model -run TestDemoFinanceMySQL -v
+        working-directory: services/operation/finance-service
+        env:
+          FINANCE_DEMO_TEST_DSN: 'root@tcp(127.0.0.1:3306)/askxuan_payment?charset=utf8mb4'
+          WALLET_TEST_ISOLATED: '1'
   deploy:
     needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ECS_DEPLOY_ENABLED == 'true'

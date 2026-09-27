@@ -71,8 +71,14 @@ func ParseCents(s string) (int64, error) {
 	return n, nil
 }
 func Read(ctx context.Context, db sqlx.SqlConn, user string) (Account, error) {
+	return read(ctx, db, user, "wallet_account")
+}
+func ReadDemo(ctx context.Context, db sqlx.SqlConn, user string) (Account, error) {
+	return read(ctx, db, user, "demo_wallet_account")
+}
+func read(ctx context.Context, db sqlx.SqlConn, user, table string) (Account, error) {
 	var a Account
-	e := db.QueryRowCtx(ctx, &a, `SELECT available_cents,held_cents FROM wallet_account WHERE user_id=?`, user)
+	e := db.QueryRowCtx(ctx, &a, `SELECT available_cents,held_cents FROM `+table+` WHERE user_id=?`, user)
 	if errors.Is(e, sqlx.ErrNotFound) {
 		e = nil
 	}
@@ -82,14 +88,24 @@ func Read(ctx context.Context, db sqlx.SqlConn, user string) (Account, error) {
 // Change requires the caller's transaction. Idempotency and balance serialize on
 // the account row, including changes initiated by different orders/channels.
 func Change(ctx context.Context, tx sqlx.Session, user, key, kind, ref string, delta, held int64) error {
+	return change(ctx, tx, false, user, key, kind, ref, delta, held)
+}
+func ChangeDemo(ctx context.Context, tx sqlx.Session, user, key, kind, ref string, delta, held int64) error {
+	return change(ctx, tx, true, user, key, kind, ref, delta, held)
+}
+func change(ctx context.Context, tx sqlx.Session, demo bool, user, key, kind, ref string, delta, held int64) error {
+	account, ledger := "wallet_account", "wallet_ledger"
+	if demo {
+		account, ledger = "demo_wallet_account", "demo_wallet_ledger"
+	}
 	if user == "" || key == "" || delta > MaxCents || delta < -MaxCents || held > MaxCents || held < -MaxCents {
 		return common.ErrParam
 	}
-	if _, e := tx.ExecCtx(ctx, `INSERT INTO wallet_account(user_id) VALUES(?) ON DUPLICATE KEY UPDATE user_id=user_id`, user); e != nil {
+	if _, e := tx.ExecCtx(ctx, `INSERT INTO `+account+`(user_id) VALUES(?) ON DUPLICATE KEY UPDATE user_id=user_id`, user); e != nil {
 		return e
 	}
 	var a Account
-	if e := tx.QueryRowCtx(ctx, &a, `SELECT available_cents,held_cents FROM wallet_account WHERE user_id=? FOR UPDATE`, user); e != nil {
+	if e := tx.QueryRowCtx(ctx, &a, `SELECT available_cents,held_cents FROM `+account+` WHERE user_id=? FOR UPDATE`, user); e != nil {
 		return e
 	}
 	var old struct {
@@ -99,7 +115,7 @@ func Change(ctx context.Context, tx sqlx.Session, user, key, kind, ref string, d
 		Kind  string `db:"kind"`
 		Ref   string `db:"reference_no"`
 	}
-	e := tx.QueryRowCtx(ctx, &old, `SELECT user_id,available_delta,held_delta,kind,reference_no FROM wallet_ledger WHERE event_key=?`, key)
+	e := tx.QueryRowCtx(ctx, &old, `SELECT user_id,available_delta,held_delta,kind,reference_no FROM `+ledger+` WHERE event_key=?`, key)
 	if e == nil {
 		if old.User != user || old.Delta != delta || old.Held != held || old.Kind != kind || old.Ref != ref {
 			return ErrConflict
@@ -115,9 +131,9 @@ func Change(ctx context.Context, tx sqlx.Session, user, key, kind, ref string, d
 	if a.Available > math.MaxInt64-MaxCents || a.Held > math.MaxInt64-MaxCents {
 		return ErrConflict
 	}
-	if _, e = tx.ExecCtx(ctx, `UPDATE wallet_account SET available_cents=available_cents+?,held_cents=held_cents+? WHERE user_id=?`, delta, held, user); e != nil {
+	if _, e = tx.ExecCtx(ctx, `UPDATE `+account+` SET available_cents=available_cents+?,held_cents=held_cents+? WHERE user_id=?`, delta, held, user); e != nil {
 		return e
 	}
-	_, e = tx.ExecCtx(ctx, `INSERT INTO wallet_ledger(user_id,event_key,kind,reference_no,available_delta,held_delta,available_after,held_after) VALUES(?,?,?,?,?,?,?,?)`, user, key, kind, ref, delta, held, a.Available+delta, a.Held+held)
+	_, e = tx.ExecCtx(ctx, `INSERT INTO `+ledger+`(user_id,event_key,kind,reference_no,available_delta,held_delta,available_after,held_after) VALUES(?,?,?,?,?,?,?,?)`, user, key, kind, ref, delta, held, a.Available+delta, a.Held+held)
 	return e
 }

@@ -52,6 +52,7 @@ func TestCashWalletMySQL(t *testing.T) {
 			}
 		}
 	}
+	t.Run("demo wallet isolation", func(t *testing.T) { checkDemoWallet(t, db) })
 	s := Store{DB: db, Enabled: true, Mock: true, Channels: map[string]paychannel.Gateway{}}
 	_, e = db.ExecCtx(ctx, `INSERT INTO wallet_recharge(recharge_no,user_id,request_id,channel,amount_cents,pay_url) VALUES('W-test','10','request-test-123456','wechat',10000,'')`)
 	if e != nil {

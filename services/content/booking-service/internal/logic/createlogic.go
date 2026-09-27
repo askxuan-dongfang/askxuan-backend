@@ -166,5 +166,5 @@ func mapTempleRpcError(err error) error {
 	return common.ErrDependencyUnavailable
 }
 func responseFromBooking(b *model.Booking) *types.CreateResp {
-	return &types.CreateResp{Id: b.Id, Status: b.Status, PaymentStatus: b.PaymentStatus, PaymentNo: b.PaymentNo, ServiceFee: b.ServiceFee, MeritMoney: b.MeritMoney, TotalFee: b.TotalFee, Simulated: b.PaymentChannel == "mock"}
+	return &types.CreateResp{Id: b.Id, Status: b.Status, PaymentStatus: b.PaymentStatus, PaymentNo: b.PaymentNo, ServiceFee: b.ServiceFee, MeritMoney: b.MeritMoney, TotalFee: b.TotalFee, Simulated: (b.PaymentChannel == "mock" || b.PaymentChannel == "demo_balance")}
 }

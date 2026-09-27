@@ -21,6 +21,8 @@ type OrderRequest struct {
 	Channel       string `json:"channel"`
 }
 type Quote struct {
+	Mode           string         `json:"mode"`
+	BalanceChannel string         `json:"balanceChannel"`
 	Payment        *model.Payment `json:"payment,omitempty"`
 	Cents          int64          `json:"amountCents"`
 	Available      int64          `json:"availableCents"`
@@ -89,14 +91,18 @@ func (s *Store) Quote(ctx context.Context, user string, r OrderRequest) (Quote, 
 		return Quote{}, balance.ErrConflict
 	}
 	a, e := balance.Read(ctx, s.DB, user)
+	if s.DemoEnabled {
+		a, e = balance.ReadDemo(ctx, s.DB, user)
+		return Quote{Mode: "demo", BalanceChannel: "demo_balance", Cents: o.Cents, Available: a.Available, BalanceEnabled: s.Mock, Experience: common.IsExperienceOrder(r.OrderNo)}, e
+	}
 	experience := common.IsExperienceOrder(r.OrderNo)
-	return Quote{Cents: o.Cents, Available: a.Available, BalanceEnabled: s.Enabled && !experience, MockEnabled: s.Mock, Experience: experience}, e
+	return Quote{Mode: "cash", BalanceChannel: "balance", Cents: o.Cents, Available: a.Available, BalanceEnabled: s.Enabled && !experience, MockEnabled: s.Mock, Experience: experience}, e
 }
 func (s *Store) Pay(ctx context.Context, user string, r OrderRequest) (*model.Payment, error) {
-	if (r.Channel != "balance" || !s.Enabled) && (r.Channel != "mock" || !s.Mock) {
+	if (r.Channel != "balance" || !s.Enabled || s.DemoEnabled) && (r.Channel != "mock" || !s.Mock || s.DemoEnabled) && (r.Channel != "demo_balance" || !s.DemoEnabled || !s.Mock) {
 		return nil, balance.ErrUnavailable
 	}
-	if common.IsExperienceOrder(r.OrderNo) && r.Channel != "mock" {
+	if common.IsExperienceOrder(r.OrderNo) && r.Channel == "balance" {
 		return nil, common.NewBizError(40904, "体验订单不能使用真实余额")
 	}
 	var p model.Payment
@@ -134,7 +140,11 @@ func (s *Store) Pay(ctx context.Context, user string, r OrderRequest) (*model.Pa
 				return e
 			}
 		}
-		if e = points.Award(ctx, tx, id); e != nil {
+		if r.Channel == "demo_balance" {
+			if e = balance.ChangeDemo(ctx, tx, user, "pay:"+no, "payment", no, -o.Cents, 0); e != nil {
+				return e
+			}
+		} else if e = points.Award(ctx, tx, id); e != nil {
 			return e
 		}
 		// Commit authoritative business status with cash. No paid-but-cancellable gap.

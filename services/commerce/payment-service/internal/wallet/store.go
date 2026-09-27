@@ -48,9 +48,9 @@ func (s Store) Read(ctx context.Context, user, mode, filter string, page int) (P
 	if user == "" || user == "0" || page < 1 || page > 100000 || (mode != "mock" && mode != "channel") || (filter != "all" && filter != "refunds") {
 		return out, fmt.Errorf("invalid wallet query")
 	}
-	where := "p.user_id=? AND p.channel='mock'"
+	where := "p.user_id=? AND p.channel IN ('mock','demo_balance')"
 	if mode == "channel" {
-		where = "p.user_id=? AND p.channel<>'mock'"
+		where = "p.user_id=? AND p.channel NOT IN ('mock','demo_balance')"
 	}
 	// Aggregate each table separately: multiple refunds must not multiply payments.
 	err := s.DB.QueryRowCtx(ctx, &out.Summary.PaidCents, `SELECT COALESCE(SUM(CAST(p.amount*100 AS SIGNED)),0) FROM payment p WHERE `+where+` AND p.status IN ('success','refunding','refunded')`, user)

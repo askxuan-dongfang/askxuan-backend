@@ -73,6 +73,9 @@ func validatePaymentConfig(c config.Config) error {
 	if (env == "prod" || env == "production") && provider == "mock" {
 		return fmt.Errorf("production payment provider is not implemented; mock is forbidden")
 	}
+	if c.Wallet.DemoEnabled && (provider != "mock" || c.Wallet.Enabled || c.Wallet.Wechat.Enabled || c.Wallet.Alipay.Enabled || (env != "development" && env != "demo" && env != "test")) {
+		return fmt.Errorf("demo wallet requires a demo environment, mock provider and disabled cash channels")
+	}
 	if provider != "mock" && provider != "live" {
 		return fmt.Errorf("unsupported payment provider %q; use mock for demos or live for cash", provider)
 	}

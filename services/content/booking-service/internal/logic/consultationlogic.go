@@ -196,5 +196,5 @@ func consultationResponse(row *model.Consultation) *types.Consultation {
 		ConsultFee: row.ConsultFee, ValidHours: row.ValidHours, ResponseMinutes: row.ResponseMinutes,
 		Question: row.Question, PaymentNo: row.PaymentNo, PaymentStatus: row.PaymentStatus,
 		Status: row.Status, ValidFrom: row.ValidFrom, ExpiresAt: row.ExpiresAt,
-		Simulated: row.PaymentChannel == "mock", ConversationId: row.Id, CreatedAt: row.CreateTime}
+		Simulated: (row.PaymentChannel == "mock" || row.PaymentChannel == "demo_balance"), ConversationId: row.Id, CreatedAt: row.CreateTime}
 }

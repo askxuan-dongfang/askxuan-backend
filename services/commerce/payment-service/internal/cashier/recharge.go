@@ -14,9 +14,9 @@ import (
 )
 
 type Store struct {
-	DB            sqlx.SqlConn
-	Enabled, Mock bool
-	Channels      map[string]paychannel.Gateway
+	DB                         sqlx.SqlConn
+	Enabled, Mock, DemoEnabled bool
+	Channels                   map[string]paychannel.Gateway
 }
 type Recharge struct {
 	No          string `db:"recharge_no" json:"rechargeNo"`
@@ -35,6 +35,9 @@ type Recharge struct {
 const rechargeSelect = `SELECT recharge_no,user_id,request_id,channel,amount_cents,status,COALESCE(trade_no,'') trade_no,pay_url,refund_no,refund_cents,DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') created_at FROM wallet_recharge`
 
 func (s *Store) CreateRecharge(ctx context.Context, user, channel, request, ip string, cents int64) (Recharge, error) {
+	if channel == "demo" {
+		return s.DemoRecharge(ctx, user, request, cents)
+	}
 	var f Recharge
 	g := s.Channels[channel]
 	if !s.Enabled || g == nil {
@@ -95,6 +98,9 @@ func (s *Store) Apply(ctx context.Context, channel string, r paychannel.Result) 
 	})
 }
 func (s *Store) Get(ctx context.Context, user, no string) (Recharge, error) {
+	if s.DemoEnabled {
+		return s.demoGet(ctx, user, no)
+	}
 	var f Recharge
 	e := s.DB.QueryRowCtx(ctx, &f, rechargeSelect+` WHERE recharge_no=? AND user_id=?`, no, user)
 	if errors.Is(e, sqlx.ErrNotFound) {
@@ -109,6 +115,9 @@ func (s *Store) Get(ctx context.Context, user, no string) (Recharge, error) {
 	return f, nil
 }
 func (s *Store) RefundRecharge(ctx context.Context, user, no string, cents int64) (Recharge, error) {
+	if s.DemoEnabled {
+		return s.demoRefund(ctx, user, no, cents)
+	}
 	if !s.Enabled {
 		return Recharge{}, balance.ErrUnavailable
 	}
