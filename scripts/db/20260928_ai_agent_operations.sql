@@ -1,0 +1,39 @@
+-- Additive migration. Apply to the AI database before enabling AI_AGENT_OPERATIONS_ENABLED.
+CREATE TABLE IF NOT EXISTS ai_agent_workspace (
+  id TINYINT PRIMARY KEY,
+  revision BIGINT NOT NULL DEFAULT 0,
+  draft_json LONGTEXT NULL,
+  active_version BIGINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT IGNORE INTO ai_agent_workspace(id) VALUES(1);
+
+CREATE TABLE IF NOT EXISTS ai_agent_version (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  definition_json LONGTEXT NOT NULL,
+  actor VARCHAR(64) NOT NULL,
+  note VARCHAR(500) NOT NULL,
+  create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ai_agent_audit (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  action VARCHAR(20) NOT NULL,
+  version_id BIGINT NOT NULL DEFAULT 0,
+  actor VARCHAR(64) NOT NULL,
+  note VARCHAR(500) NOT NULL,
+  create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ai_agent_debug (
+  id VARCHAR(36) PRIMARY KEY,
+  actor VARCHAR(64) NOT NULL,
+  revision BIGINT NOT NULL,
+  provider_revision BIGINT NOT NULL,
+  kind VARCHAR(16) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  payload LONGTEXT NOT NULL,
+  create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  update_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX idx_agent_debug_revision(revision,provider_revision,kind,status),
+  INDEX idx_agent_debug_created(create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

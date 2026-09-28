@@ -96,7 +96,14 @@ func New(initial config.AIConf, dir, key string) (*Manager, error) {
 	return m, nil
 }
 func (m *Manager) Snapshot() *Snapshot { m.mu.RLock(); defer m.mu.RUnlock(); return m.active }
-func (m *Manager) Public() Public      { m.mu.RLock(); defer m.mu.RUnlock(); return m.publicLocked() }
+
+// VersionedSnapshot captures the configuration and its audit revision atomically.
+func (m *Manager) VersionedSnapshot() (*Snapshot, int64) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.active, m.record.Revision
+}
+func (m *Manager) Public() Public { m.mu.RLock(); defer m.mu.RUnlock(); return m.publicLocked() }
 func (m *Manager) publicLocked() Public {
 	r := m.record
 	v := r.Values

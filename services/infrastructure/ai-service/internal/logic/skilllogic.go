@@ -26,6 +26,11 @@ func NewSkillListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SkillLi
 
 // SkillList 返回平台启用的动态智能体技能目录。
 func (l *SkillListLogic) SkillList(req *types.SkillListReq) (*types.SkillListResp, error) {
+	var runtimeErr error
+	l.svcCtx, runtimeErr = l.svcCtx.AskRuntime(l.ctx)
+	if runtimeErr != nil {
+		return nil, common.NewBizError(50301, "问事配置暂不可用，请稍后重试")
+	}
 	skills, err := l.svcCtx.SkillModel.List(l.ctx, req.Status)
 	if err != nil {
 		l.Errorf("查询AI技能失败: %v", err)

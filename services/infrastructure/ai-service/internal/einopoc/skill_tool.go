@@ -80,7 +80,23 @@ func (t *SkillTool) InvokableRun(ctx context.Context, args string, _ ...tool.Opt
 	}
 	validated, err := t.guard.Validate(t.skill.InputSchema, t.question, inputs)
 	if err != nil {
-		return "", tool.Interrupt(ctx, "请补充或更正资料："+err.Error())
+		var schema agent.InputSchema
+		_ = json.Unmarshal([]byte(t.skill.InputSchema), &schema)
+		missing := []string{}
+		for _, field := range schema.Fields {
+			value, exists := inputs[field.Key]
+			if field.Required && (!exists || value == nil || value == "") {
+				label := field.Label
+				if label == "" {
+					label = field.Key
+				}
+				missing = append(missing, label)
+			}
+		}
+		if len(missing) > 0 {
+			return "", tool.Interrupt(ctx, "请补充："+strings.Join(missing, "、"))
+		}
+		return "", tool.Interrupt(ctx, "请检查资料的格式与可选值，修正后继续。")
 	}
 	arguments, err := agent.BuildToolArguments(t.skill.Code, t.question, validated, t.now)
 	if err != nil || arguments == "" {

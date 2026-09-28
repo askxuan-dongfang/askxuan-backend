@@ -36,6 +36,9 @@ func selectChatModel(ctx context.Context, s *svc.ServiceContext, sessionID int64
 		}
 	}
 	catalog := s.Models
+	if id == "" && !images && s.AgentDefaultModel != "" {
+		id = s.AgentDefaultModel
+	}
 	if catalog == nil {
 		catalog = provider.NewCatalog(s.Provider)
 	}

@@ -29,6 +29,11 @@ func NewMessageSendLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Messa
 	return &MessageSendLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 func (l *MessageSendLogic) Send(req *types.MessageSendReq) (*types.MessageSendResp, error) {
+	var runtimeErr error
+	l.svcCtx, runtimeErr = l.svcCtx.AskRuntime(l.ctx)
+	if runtimeErr != nil {
+		return nil, common.NewBizError(50301, "问事配置暂不可用，请稍后重试")
+	}
 	if req.Id == 0 || req.UserId == "" || (strings.TrimSpace(req.Content) == "" && len(req.Attachments) == 0) {
 		return nil, common.ErrParam
 	}
@@ -50,6 +55,9 @@ func (l *MessageSendLogic) Send(req *types.MessageSendReq) (*types.MessageSendRe
 		return nil, common.ErrSystem
 	}
 	schemaJSON := skill.InputSchema
+	if skill.Status != model.SkillStatusEnabled {
+		return nil, common.NewBizError(40001, "该技能已停用，请新建其他问事")
+	}
 	if len(req.Inputs) == 0 {
 		// 结构化资料只要求在技能会话首轮提交；后续追问可以只发自然语言。
 		schemaJSON = `{"fields":[]}`
@@ -144,6 +152,11 @@ func NewMessageRetryLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Mess
 	return &MessageRetryLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx.Runtime()}
 }
 func (l *MessageRetryLogic) Retry(req *types.MessageRetryReq) (*types.MessageSendResp, error) {
+	var runtimeErr error
+	l.svcCtx, runtimeErr = l.svcCtx.AskRuntime(l.ctx)
+	if runtimeErr != nil {
+		return nil, common.NewBizError(50301, "问事配置暂不可用，请稍后重试")
+	}
 	if req.Id == 0 || req.MessageId == 0 || req.UserId == "" {
 		return nil, common.ErrParam
 	}
@@ -163,6 +176,9 @@ func (l *MessageRetryLogic) Retry(req *types.MessageRetryReq) (*types.MessageSen
 	pending, err := l.svcCtx.ConversationModel.FindMessageForUser(l.ctx, req.Id, req.MessageId, req.UserId)
 	if err != nil {
 		return nil, common.ErrParamInvalid
+	}
+	if skill, skillErr := l.svcCtx.SkillModel.FindByCode(l.ctx, session.SkillCode); skillErr != nil || skill.Status != model.SkillStatusEnabled {
+		return nil, common.NewBizError(40001, "该技能已停用，请新建其他问事")
 	}
 	if _, err = selectChatModel(l.ctx, l.svcCtx, req.Id, pending.Model, false); err != nil {
 		return nil, err
@@ -209,7 +225,12 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 		return err
 	}
 	requestTemplate := provider.Request{Model: pending.Model, ThinkingEnabled: svcCtx.AIConfig.ThinkingEnabled, ReasoningEffort: svcCtx.AIConfig.ReasoningEffort}
-	run, err := svcCtx.RunModel.Start(ctx, *s, messageId, svcCtx.Provider.Name(), svcCtx.Provider.ModelFor(requestTemplate))
+	if skill.Status != model.SkillStatusEnabled {
+		return errors.New("技能已停用，请新建其他问事")
+	}
+	runSession := *s
+	runSession.SkillVersion = skill.Version
+	run, err := svcCtx.RunModel.Start(ctx, runSession, messageId, svcCtx.Provider.Name(), svcCtx.Provider.ModelFor(requestTemplate))
 	if err != nil {
 		return err
 	}

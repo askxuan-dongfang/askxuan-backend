@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/askxuan/ai-service/internal/agent"
+	"github.com/askxuan/ai-service/internal/agentops"
 	"github.com/askxuan/ai-service/internal/config"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
@@ -29,6 +30,8 @@ type ServiceContext struct {
 	ImageLoader       *agent.ImageLoader
 	AIConfig          config.AIConf
 	Settings          *settings.Manager
+	AgentOps          *agentops.Manager
+	AgentDefaultModel string
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -42,6 +45,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		panic(err)
 	}
 	snapshot := manager.Snapshot()
+	mcp := agent.NewMCPClient(runtimeAI.MCP.Enabled, runtimeAI.MCP.BaseURL, runtimeAI.MCP.Timeout)
+	skills := model.NewSkillModel(db)
 	conversationModel := model.NewConversationModel(db)
 	if err := conversationModel.RecoverPending(context.Background()); err != nil {
 		logx.Errorf("恢复AI待处理消息失败: %v", err)
@@ -49,21 +54,48 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:            c,
 		DB:                db,
-		SkillModel:        model.NewSkillModel(db),
+		SkillModel:        skills,
 		ConversationModel: conversationModel,
 		UsageModel:        model.NewUsageModel(db),
 		RunModel:          model.NewRunModel(db),
 		Provider:          snapshot.Provider,
 		Models:            snapshot.Models,
 		Guard:             agent.NewGuard(runtimeAI.MaxInputChars, runtimeAI.BlockedTerms),
-		MCP:               agent.NewMCPClient(runtimeAI.MCP.Enabled, runtimeAI.MCP.BaseURL, runtimeAI.MCP.Timeout),
+		MCP:               mcp,
 		ImageLoader:       agent.NewImageLoader(runtimeAI.AllowedImageHosts, runtimeAI.ImageMaxBytes),
 		AIConfig:          snapshot.Config,
 		Settings:          manager,
+		AgentOps:          agentops.New(&agentops.SQLRepository{DB: db}, skills, manager.VersionedSnapshot, mcp, os.Getenv("AI_AGENT_OPERATIONS_ENABLED") == "true"),
 	}
 }
 
 // Each request retains one immutable provider/config snapshot, including async work.
+
+// AskRuntime pins published skills before accepting a chat turn. An unavailable
+// store fails the turn instead of silently reverting an active policy.
+func (s *ServiceContext) AskRuntime(ctx context.Context) (*ServiceContext, error) {
+	if s.AgentOps == nil {
+		return s, nil
+	}
+	f, version, err := s.AgentOps.Active(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if f == nil {
+		return s, nil
+	}
+	result := *s
+	for i := range f.Skills {
+		f.Skills[i].PromptTemplate = f.Config.Instruction + "\n" + f.Skills[i].PromptTemplate
+	}
+	result.SkillModel = &agentops.SkillView{Frozen: *f, Version: version}
+	result.AgentDefaultModel = f.Config.Model
+	if result.AIConfig.MaxOutputTokens <= 0 || f.Config.MaxOutputTokens < result.AIConfig.MaxOutputTokens {
+		result.AIConfig.MaxOutputTokens = f.Config.MaxOutputTokens
+	}
+	return &result, nil
+}
+
 func (s *ServiceContext) Runtime() *ServiceContext {
 	if s.Settings == nil {
 		return s

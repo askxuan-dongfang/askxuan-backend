@@ -22,6 +22,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	registerReports(server, svcCtx)
 	registerExperiences(server, svcCtx)
 	registerProviderSettings(server, svcCtx)
+	registerAgentOperations(server, svcCtx)
 
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/ai/models", Handler: modelListHandler(svcCtx)},
