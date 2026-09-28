@@ -92,7 +92,15 @@ type SessionDetailReq struct {
 }
 
 // AIMessage 对话消息
+type AIAgentState struct {
+	Runtime       string          `json:"runtime"`
+	ModelCalls    int             `json:"modelCalls"`
+	ToolCalls     int             `json:"toolCalls"`
+	Clarification json.RawMessage `json:"clarification,omitempty"`
+}
+
 type AIMessage struct {
+	Agent            *AIAgentState          `json:"agent,omitempty"`
 	Id               int64                  `json:"id"`
 	SessionId        int64                  `json:"sessionId"`
 	Role             string                 `json:"role"` // user/assistant

@@ -58,6 +58,12 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 		// The reviewed skill prompt asks for the missing fields before any tool runs.
 		schemaJSON = `{"fields":[]}`
 	}
+	if l.svcCtx.AIConfig.HarnessEnabled {
+		schemaJSON, err = liveInputSchema(l.ctx, l.svcCtx)
+		if err != nil {
+			return nil, common.ErrSystem
+		}
+	}
 	inputJSON, err := l.svcCtx.Guard.Validate(schemaJSON, req.Question, req.Inputs)
 	if err != nil {
 		if errors.Is(err, agent.ErrUnsafeContent) || errors.Is(err, agent.ErrInvalidInputs) || errors.Is(err, agent.ErrInputTooLong) {
@@ -191,8 +197,16 @@ func toTypesMessage(m model.AIMessage) types.AIMessage {
 	_ = json.Unmarshal([]byte(m.InputJSON), &inputs)
 	attachments := []types.AIImageAttachment{}
 	_ = json.Unmarshal([]byte(m.AttachmentsJSON), &attachments)
+	var metadata struct {
+		Agent *types.AIAgentState `json:"_agent"`
+	}
+	if m.Role == model.RoleAssistant {
+		_ = json.Unmarshal([]byte(m.InputJSON), &metadata)
+		inputs = map[string]interface{}{}
+	}
 	return types.AIMessage{
-		Id: m.Id, SessionId: m.SessionId, Role: m.Role, Content: m.Content, Inputs: inputs, Attachments: attachments, RunId: m.RunId, Stage: m.Stage,
+		Agent: metadata.Agent,
+		Id:    m.Id, SessionId: m.SessionId, Role: m.Role, Content: m.Content, Inputs: inputs, Attachments: attachments, RunId: m.RunId, Stage: m.Stage,
 		Tokens: m.Tokens, PromptTokens: m.PromptTokens, CompletionTokens: m.CompletionTokens,
 		Provider: m.Provider, Model: m.Model, CostMicros: m.CostMicros, FinishReason: m.FinishReason,
 		Status: m.Status, ErrorMessage: m.ErrorMessage,

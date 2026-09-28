@@ -53,7 +53,16 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	if err := conversationModel.RecoverPending(context.Background()); err != nil {
 		logx.Errorf("恢复AI待处理消息失败: %v", err)
 	}
-	ops := agentops.New(&agentops.SQLRepository{DB: db}, skills, manager.VersionedSnapshot, mcp, os.Getenv("AI_AGENT_OPERATIONS_ENABLED") == "true")
+	ops := agentops.New(&agentops.SQLRepository{DB: db, RuntimeMode: func() string {
+		if runtimeAI.HarnessEnabled {
+			return "harness"
+		}
+		return "classic"
+	}()}, skills, manager.VersionedSnapshot, mcp, os.Getenv("AI_AGENT_OPERATIONS_ENABLED") == "true")
+	ops.RuntimeMode = "classic"
+	if runtimeAI.HarnessEnabled {
+		ops.RuntimeMode = "harness"
+	}
 	if err := ops.EnablePersistence(os.Getenv("AI_SETTINGS_ENCRYPTION_KEY")); err != nil {
 		panic(err)
 	}

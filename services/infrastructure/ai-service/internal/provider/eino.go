@@ -9,15 +9,14 @@ import (
 )
 
 // NewEinoModel adapts an immutable provider snapshot without exporting its key or
-// replacing its secure HTTP client. The experimental harness is the only caller;
-// the production Complete/Stream path remains unchanged.
+// replacing its secure HTTP client. Both live tasks and admin evaluations use this adapter.
 func NewEinoModel(ctx context.Context, source Provider, req Request) (model.BaseChatModel, error) {
 	p, ok := source.(*OpenAICompatible)
 	if !ok {
 		return nil, errors.New("Eino requires an OpenAI-compatible provider")
 	}
-	if req.MaxTokens < 1 || req.MaxTokens > 2048 {
-		return nil, errors.New("Eino probe output limit must be between 1 and 2048 tokens")
+	if req.MaxTokens < 1 || req.MaxTokens > 32768 {
+		return nil, errors.New("Eino output limit must be between 1 and 32768 tokens")
 	}
 	c := &openai.ChatModelConfig{
 		APIKey: p.apiKey, BaseURL: p.baseURL, Model: p.ModelFor(req),
@@ -34,4 +33,14 @@ func NewEinoModel(ctx context.Context, source Provider, req Request) (model.Base
 		c.ExtraFields = map[string]any{"thinking": map[string]string{"type": mode}}
 	}
 	return openai.NewChatModel(ctx, c)
+}
+
+// ReasoningFallbackOptions permits one bounded non-thinking retry on adapters
+// that explicitly support the thinking parameter. It never increases token limits.
+func ReasoningFallbackOptions(source Provider, enabled bool) []model.Option {
+	p, ok := source.(*OpenAICompatible)
+	if !enabled || !ok || p.standardParameters {
+		return nil
+	}
+	return []model.Option{openai.WithExtraFields(map[string]any{"thinking": map[string]string{"type": "disabled"}})}
 }

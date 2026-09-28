@@ -7,7 +7,10 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
-type SQLRepository struct{ DB sqlx.SqlConn }
+type SQLRepository struct {
+	DB          sqlx.SqlConn
+	RuntimeMode string
+}
 
 func (r *SQLRepository) State(ctx context.Context) (State, error) {
 	var s State
@@ -37,11 +40,15 @@ func (r *SQLRepository) Save(ctx context.Context, revision int64, definition, ac
 	})
 }
 func (r *SQLRepository) Tested(ctx context.Context, revision, providerRevision int64) (bool, error) {
-	return tested(ctx, r.DB, revision, providerRevision)
+	return tested(ctx, r.DB, revision, providerRevision, r.RuntimeMode)
 }
-func tested(ctx context.Context, tx sqlx.Session, revision, providerRevision int64) (bool, error) {
+func tested(ctx context.Context, tx sqlx.Session, revision, providerRevision int64, engine ...string) (bool, error) {
 	var n int
-	err := tx.QueryRowCtx(ctx, &n, `SELECT COUNT(*) FROM ai_agent_evaluation WHERE revision=? AND provider_revision=? AND status='passed' AND create_time>DATE_SUB(NOW(),INTERVAL 1 DAY)`, revision, providerRevision)
+	mode := ""
+	if len(engine) > 0 {
+		mode = engine[0]
+	}
+	err := tx.QueryRowCtx(ctx, &n, `SELECT COUNT(*) FROM ai_agent_evaluation WHERE revision=? AND provider_revision=? AND status='passed' AND create_time>DATE_SUB(NOW(),INTERVAL 1 DAY)`+engineFilter(mode), revision, providerRevision)
 	return n > 0, err
 }
 func (r *SQLRepository) Publish(ctx context.Context, revision, providerRevision int64, actor, note string) (int64, error) {
@@ -57,7 +64,7 @@ func (r *SQLRepository) Publish(ctx context.Context, revision, providerRevision 
 		if s.Draft == "" {
 			return ErrUntested
 		}
-		ok, err := tested(ctx, tx, revision, providerRevision)
+		ok, err := tested(ctx, tx, revision, providerRevision, r.RuntimeMode)
 		if err != nil {
 			return err
 		}
@@ -75,10 +82,10 @@ func (r *SQLRepository) Publish(ctx context.Context, revision, providerRevision 
 			ID   string `db:"id"`
 			Hash string `db:"suite_hash"`
 		}
-		if err = tx.QueryRowCtx(ctx, &approval, `SELECT id,suite_hash FROM ai_agent_evaluation WHERE revision=? AND provider_revision=? AND status='passed' AND create_time>DATE_SUB(NOW(),INTERVAL 1 DAY) ORDER BY create_time DESC LIMIT 1`, revision, providerRevision); err != nil {
+		if err = tx.QueryRowCtx(ctx, &approval, `SELECT id,suite_hash FROM ai_agent_evaluation WHERE revision=? AND provider_revision=? AND status='passed' AND create_time>DATE_SUB(NOW(),INTERVAL 1 DAY)`+engineFilter(r.RuntimeMode)+` ORDER BY create_time DESC LIMIT 1`, revision, providerRevision); err != nil {
 			return err
 		}
-		f.Approval = &EvaluationApproval{ID: approval.ID, ProviderRevision: providerRevision, SuiteHash: approval.Hash}
+		f.Approval = &EvaluationApproval{Engine: r.RuntimeMode, ID: approval.ID, ProviderRevision: providerRevision, SuiteHash: approval.Hash}
 		raw, _ := json.Marshal(f)
 		result, err := tx.ExecCtx(ctx, `INSERT INTO ai_agent_version(definition_json,actor,note) VALUES(?,?,?)`, string(raw), actor, note)
 		if err != nil {
@@ -226,4 +233,11 @@ func (r *SQLRepository) ProductionTools(ctx context.Context, id int64) ([]ToolTr
 	out := []ToolTrace{}
 	err := r.DB.QueryRowsCtx(ctx, &out, `SELECT tool_name,status,latency_ms,create_time FROM ai_tool_call WHERE run_id=? ORDER BY id LIMIT 100`, id)
 	return out, err
+}
+
+func engineFilter(mode string) string {
+	if mode == "harness" {
+		return " AND JSON_UNQUOTE(JSON_EXTRACT(payload,'$.engine'))='harness'"
+	}
+	return ""
 }

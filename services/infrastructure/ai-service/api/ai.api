@@ -95,7 +95,15 @@ type (
         UserId string `form:"userId,optional"`
     }
 
+    AIAgentState {
+        Runtime string `json:"runtime"`
+        ModelCalls int `json:"modelCalls"`
+        ToolCalls int `json:"toolCalls"`
+        Clarification interface{} `json:"clarification,omitempty"`
+    }
+
     AIMessage {
+        Agent *AIAgentState `json:"agent,omitempty"`
         Id        int64  `json:"id"`
         SessionId int64  `json:"sessionId"`
         Role      string `json:"role"` // user/assistant

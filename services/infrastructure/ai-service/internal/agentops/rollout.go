@@ -70,8 +70,8 @@ func (m *Manager) SetRollout(ctx context.Context, revision int64, percentage int
 			if err != nil {
 				return err
 			}
-			if f.Approval == nil || f.Approval.ProviderRevision != pr {
-				return invalid("模型配置已变化，请重新评测并发布后再扩大范围")
+			if f.Approval == nil || f.Approval.ProviderRevision != pr || (m.RuntimeMode == "harness" && f.Approval.Engine != "harness") {
+				return invalid("模型或执行引擎已变化，请重新评测并发布后再扩大范围")
 			}
 		}
 		if err := affected(tx.ExecCtx(ctx, `UPDATE ai_agent_rollout SET percentage=?,revision=revision+1 WHERE id=1 AND revision=?`, percentage, revision)); err != nil {

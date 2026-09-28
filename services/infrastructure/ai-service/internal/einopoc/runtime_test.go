@@ -162,7 +162,7 @@ func TestMultiStepMCPStreamingAndRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Text != "依据工具结果，资料已核验。" || len(deltas) != 2 || models.Load() != 3 || tools.Load() != 2 {
+	if result.Text != "依据工具结果，资料已核验。" || strings.Join(deltas, "") != result.Text || models.Load() != 3 || tools.Load() != 2 {
 		t.Fatalf("result=%+v deltas=%v models=%d tools=%d", result, deltas, models.Load(), tools.Load())
 	}
 }

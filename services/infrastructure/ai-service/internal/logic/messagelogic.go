@@ -62,6 +62,12 @@ func (l *MessageSendLogic) Send(req *types.MessageSendReq) (*types.MessageSendRe
 		// 结构化资料只要求在技能会话首轮提交；后续追问可以只发自然语言。
 		schemaJSON = `{"fields":[]}`
 	}
+	if l.svcCtx.AIConfig.HarnessEnabled {
+		schemaJSON, err = liveInputSchema(l.ctx, l.svcCtx)
+		if err != nil {
+			return nil, common.ErrSystem
+		}
+	}
 	inputJSON, err := l.svcCtx.Guard.Validate(schemaJSON, req.Content, req.Inputs)
 	if err != nil {
 		if errors.Is(err, agent.ErrUnsafeContent) || errors.Is(err, agent.ErrInvalidInputs) || errors.Is(err, agent.ErrInputTooLong) {
@@ -230,6 +236,9 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 	}
 	runSession := *s
 	runSession.SkillVersion = skill.Version
+	if svcCtx.AIConfig.HarnessEnabled {
+		runSession.SelectionMode = "harness"
+	}
 	run, err := svcCtx.RunModel.Start(ctx, runSession, messageId, svcCtx.Provider.Name(), svcCtx.Provider.ModelFor(requestTemplate))
 	if err != nil {
 		return err
@@ -245,6 +254,9 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 	messages, err := svcCtx.ConversationModel.ListAllMessages(ctx, sessionId)
 	if err != nil {
 		return err
+	}
+	if svcCtx.AIConfig.HarnessEnabled {
+		return executeLiveTurn(ctx, svcCtx, s, pending, run, messages, startedAt)
 	}
 	history := make([]*model.AIMessage, 0, len(messages))
 	for _, m := range messages {

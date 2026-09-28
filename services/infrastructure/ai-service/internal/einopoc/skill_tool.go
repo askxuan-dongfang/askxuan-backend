@@ -53,9 +53,9 @@ func NewSkillTool(skill model.AISkill, inputs map[string]any, question string, c
 		return nil, errors.New("skill is disabled")
 	}
 	switch skill.Code {
-	case "bazi", "ziwei", "qimen":
+	case "bazi", "ziwei", "qimen", "tarot", "liuyao":
 	default:
-		return nil, errors.New("skill is outside the read-only probe allowlist")
+		return nil, errors.New("skill is outside the read-only tool allowlist")
 	}
 	c, err := agent.ParseToolConfig(skill.ToolConfig)
 	if err != nil || !c.Enabled || c.Tool == "" {
@@ -77,7 +77,7 @@ func NewSkillTool(skill model.AISkill, inputs map[string]any, question string, c
 
 func (t *SkillTool) Info(context.Context) (*schema.ToolInfo, error) {
 	return &schema.ToolInfo{
-		Name: "calculate_" + t.skill.Code, Desc: "使用用户已确认的结构化资料进行计算；缺少或无效资料时暂停并请求用户补充。不得猜测资料。", ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{}),
+		Name: "calculate_" + t.skill.Code, Desc: t.skill.Name + "：" + t.skill.Description + "。使用用户已确认的结构化资料进行计算；缺少或无效资料时暂停并请求用户补充。不得猜测资料。", ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{}),
 	}, nil
 }
 

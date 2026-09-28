@@ -22,6 +22,7 @@ type Config struct {
 }
 
 type AIConf struct {
+	HarnessEnabled       bool `json:",optional"`
 	Provider             string
 	BaseURL              string
 	APIKey               string `json:",optional"`
@@ -61,6 +62,7 @@ type MCPConf struct {
 func (c AIConf) Runtime() AIConf {
 	c.Provider = envString("AI_PROVIDER", c.Provider)
 	c.BaseURL = envString("AI_BASE_URL", c.BaseURL)
+	c.HarnessEnabled = envBool("AI_HARNESS_ENABLED", true)
 	c.APIKey = envString("AI_API_KEY", c.APIKey)
 	c.Model = envString("AI_MODEL", c.Model)
 	c.VisionModel = envString("AI_VISION_MODEL", c.VisionModel)

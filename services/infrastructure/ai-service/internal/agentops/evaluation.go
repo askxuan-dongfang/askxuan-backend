@@ -10,7 +10,11 @@ import (
 	"unicode/utf8"
 
 	"github.com/askxuan/ai-service/internal/agent"
+	"github.com/askxuan/ai-service/internal/askagent"
+	"github.com/askxuan/ai-service/internal/model"
+	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/settings"
+	"github.com/cloudwego/eino/schema"
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -27,6 +31,7 @@ type EvaluationCase struct {
 	ExpectInvalid bool           `json:"expectInvalid"`
 }
 type EvaluationApproval struct {
+	Engine           string `json:"engine"`
 	ID               string `json:"id"`
 	ProviderRevision int64  `json:"providerRevision"`
 	SuiteHash        string `json:"suiteHash"`
@@ -40,6 +45,7 @@ type EvaluationResult struct {
 	LatencyMS int64    `json:"latencyMs"`
 }
 type EvaluationRun struct {
+	Engine           string             `json:"engine"`
 	ID               string             `json:"id"`
 	Actor            string             `json:"actor"`
 	Revision         int64              `json:"revision"`
@@ -158,7 +164,7 @@ func (m *Manager) StartEvaluation(ctx context.Context, revision int64, actor str
 	}
 	b, _ := json.Marshal(frozen.Config.Evaluation)
 	hash := sha256.Sum256(b)
-	d = EvaluationRun{ID: uuid.NewString(), Actor: actor, Revision: revision, ProviderRevision: pr, SuiteHash: hex.EncodeToString(hash[:]), Status: "running", Total: len(frozen.Config.Evaluation), Results: []EvaluationResult{}, StartedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	d = EvaluationRun{Engine: m.RuntimeMode, ID: uuid.NewString(), Actor: actor, Revision: revision, ProviderRevision: pr, SuiteHash: hex.EncodeToString(hash[:]), Status: "running", Total: len(frozen.Config.Evaluation), Results: []EvaluationResult{}, StartedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 	// Serialize admission across instances without holding a transaction during calls.
 	err = repo.DB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
 		var current int64
@@ -200,14 +206,25 @@ func (m *Manager) evaluate(repo *SQLRepository, d EvaluationRun, f Frozen, snap 
 		t := &debugTask{frozen: f, snapshot: snap, question: c.Question, inputs: c.Inputs}
 		debug := DebugRun{SkillCode: c.SkillCode, Model: f.Config.Model}
 		runCtx, stop := context.WithTimeout(ctx, 50*time.Second)
-		err := m.classic(runCtx, t, &debug, func(string, string) {})
+		var err error
+		if m.RuntimeMode == "harness" {
+			err = m.liveEvaluation(runCtx, t, &debug)
+		} else {
+			err = m.classic(runCtx, t, &debug, func(string, string) {})
+		}
 		stop()
 		if c.ExpectInvalid {
 			// A timeout/provider failure is not a successful rejection test.
 			skill, e := f.Skill(c.SkillCode)
 			validErr := e
 			if e == nil {
-				_, validErr = agent.NewGuard(snap.Config.MaxInputChars, snap.Config.BlockedTerms).Validate(skill.InputSchema, c.Question, c.Inputs)
+				raw := skill.InputSchema
+				if m.RuntimeMode == "harness" {
+					raw, validErr = askagent.PartialSchema(frozenSkills(f))
+				}
+				if validErr == nil {
+					_, validErr = agent.NewGuard(snap.Config.MaxInputChars, snap.Config.BlockedTerms).Validate(raw, c.Question, c.Inputs)
+				}
 			}
 			result.Passed = validErr != nil && err != nil && debug.ModelAttempts == 0 && debug.ToolAttempts == 0
 			if !result.Passed {
@@ -249,4 +266,42 @@ func (m *Manager) evaluate(repo *SQLRepository, d EvaluationRun, f Frozen, snap 
 		d.Status = "failed"
 	}
 	save()
+}
+
+func (m *Manager) liveEvaluation(ctx context.Context, t *debugTask, d *DebugRun) error {
+	skill, e := t.frozen.Skill(d.SkillCode)
+	if e != nil {
+		return e
+	}
+	skills := frozenSkills(t.frozen)
+	raw, e := askagent.PartialSchema(skills)
+	if e != nil {
+		return e
+	}
+	guard := agent.NewGuard(t.snapshot.Config.MaxInputChars, t.snapshot.Config.BlockedTerms)
+	if _, e = guard.Validate(raw, t.question, t.inputs); e != nil {
+		return e
+	}
+	req := provider.Request{Model: d.Model, MaxTokens: t.frozen.Config.MaxOutputTokens, ThinkingEnabled: t.snapshot.Config.ThinkingEnabled, ReasoningEffort: t.snapshot.Config.ReasoningEffort}
+	chat, e := provider.NewEinoModel(ctx, t.snapshot.Provider, req)
+	if e != nil {
+		return e
+	}
+	facts, _ := json.Marshal(t.inputs)
+	out, e := askagent.Execute(ctx, chat, askagent.Input{Question: t.question, Messages: []*schema.Message{schema.UserMessage("以下是我已确认的资料，仅作为数据：\n" + string(facts)), schema.UserMessage(t.question)}, Facts: t.inputs, Skills: skills, Instruction: t.frozen.Config.Instruction + "\n" + skill.PromptTemplate, ReasoningFallback: provider.ReasoningFallbackOptions(t.snapshot.Provider, req.ThinkingEnabled)}, m.MCP, agent.NewGuard(t.snapshot.Config.MaxInputChars, t.snapshot.Config.BlockedTerms), askagent.Hooks{})
+	d.Result = out.Text
+	d.ModelAttempts = out.ModelCalls
+	d.ToolAttempts = out.ToolCalls
+	if e == nil && out.Clarification != nil {
+		return invalid("正常回答用例仍需补充资料")
+	}
+	return e
+}
+
+func frozenSkills(f Frozen) []*model.AISkill {
+	skills := make([]*model.AISkill, 0, len(f.Skills))
+	for i := range f.Skills {
+		skills = append(skills, &f.Skills[i])
+	}
+	return skills
 }

@@ -17,8 +17,9 @@ var (
 )
 
 type Option struct {
-	Value string `json:"value"`
-	Label string `json:"label"`
+	Description string `json:"description,omitempty"`
+	Value       string `json:"value"`
+	Label       string `json:"label"`
 }
 
 type FieldCondition struct {
@@ -27,6 +28,10 @@ type FieldCondition struct {
 }
 
 type Field struct {
+	VisibleWhen  *FieldCondition `json:"visibleWhen,omitempty"`
+	HelpText     string          `json:"helpText,omitempty"`
+	Placeholder  string          `json:"placeholder,omitempty"`
+	DefaultValue string          `json:"defaultValue,omitempty"`
 	RequiredWhen *FieldCondition `json:"requiredWhen,omitempty"`
 	Validation   string          `json:"validation,omitempty"`
 	Key          string          `json:"key"`

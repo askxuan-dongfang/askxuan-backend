@@ -76,6 +76,7 @@ type SkillInfo struct {
 	EinoSupported bool            `json:"einoSupported"`
 }
 type Workspace struct {
+	RuntimeMode string `json:"runtimeMode"`
 	State
 	DraftSaved         bool        `json:"draftSaved"`
 	Draft              Config      `json:"draft"`
