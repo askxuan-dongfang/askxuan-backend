@@ -26,6 +26,7 @@ type Manager struct {
 	LiveEnabled bool
 	mu          sync.Mutex
 	tasks       map[string]*debugTask
+	checkpoints *checkpointStore
 }
 type debugTask struct {
 	mu       sync.Mutex
@@ -33,6 +34,8 @@ type debugTask struct {
 	created  time.Time
 	run      DebugRun
 	harness  *einopoc.Harness
+	bound    *einopoc.SkillTool
+	lease    string
 	trace    *tracedMCP
 	frozen   Frozen
 	snapshot *settings.Snapshot
@@ -52,7 +55,7 @@ func (m *Manager) Workspace(ctx context.Context) (Workspace, error) {
 	if err != nil {
 		return Workspace{}, ErrUnavailable
 	}
-	w := Workspace{State: s, Draft: Default(catalog), Catalog: []SkillInfo{}, LiveEnabled: m.LiveEnabled}
+	w := Workspace{State: s, Draft: Default(catalog), Catalog: []SkillInfo{}, LiveEnabled: m.LiveEnabled, PersistentRecovery: m.checkpoints != nil}
 	w.DraftSaved = s.Draft != ""
 	if s.Draft != "" {
 		f, e := Decode(s.Draft)
@@ -85,6 +88,12 @@ func (m *Manager) Workspace(ctx context.Context) (Workspace, error) {
 	}
 	if w.Audit, err = m.Repo.Audit(ctx); err != nil {
 		return w, ErrUnavailable
+	}
+	if repo, ok := m.Repo.(*SQLRepository); ok {
+		w.Rollout, err = repo.Rollout(ctx)
+		if err != nil {
+			return w, ErrUnavailable
+		}
 	}
 	_, pr := m.Snapshot()
 	w.Tested, err = m.Repo.Tested(ctx, s.Revision, pr)
@@ -135,18 +144,24 @@ func (m *Manager) Rollback(ctx context.Context, revision, version int64, actor, 
 	}
 	return m.Repo.Rollback(ctx, revision, version, actor, note)
 }
-func (m *Manager) Active(ctx context.Context) (*Frozen, int64, error) {
+func (m *Manager) Active(ctx context.Context) (*Frozen, int64, error) { return m.ActiveFor(ctx, "") }
+func (m *Manager) ActiveFor(ctx context.Context, subject string) (*Frozen, int64, error) {
 	if !m.LiveEnabled {
 		return nil, 0, nil
 	}
-	s, err := m.Repo.State(ctx)
+	repo, ok := m.Repo.(*SQLRepository)
+	if !ok {
+		return nil, 0, ErrUnavailable
+	}
+	r, err := repo.Rollout(ctx)
 	if err != nil {
 		return nil, 0, ErrUnavailable
 	}
-	if s.ActiveVersion == 0 {
+	id := r.Select(subject)
+	if id == 0 {
 		return nil, 0, nil
 	}
-	v, err := m.Repo.Version(ctx, s.ActiveVersion)
+	v, err := m.Repo.Version(ctx, id)
 	if err != nil {
 		return nil, 0, ErrUnavailable
 	}
@@ -212,6 +227,7 @@ func (m *Manager) StartDebug(ctx context.Context, actor string, req DebugRequest
 		if e != nil {
 			return d, invalid("此技能暂不支持 Eino 调试，请使用原流程")
 		}
+		t.bound = bound
 		cap := f.Config.MaxOutputTokens
 		if cap > 512 {
 			cap = 512
@@ -235,6 +251,16 @@ func (m *Manager) StartDebug(ctx context.Context, actor string, req DebugRequest
 		other.mu.Lock()
 		busy := other.run.Actor == actor && (other.running || other.run.Status == "awaiting_input")
 		other.mu.Unlock()
+		if busy && m.checkpoints != nil {
+			current, e := m.Repo.Debug(ctx, id)
+			if e != nil {
+				return d, ErrUnavailable
+			}
+			if current.Status != "running" && current.Status != "awaiting_input" {
+				delete(m.tasks, id)
+				busy = false
+			}
+		}
 		if busy {
 			return d, invalid("请先完成当前调试，或等待其过期")
 		}
@@ -250,6 +276,9 @@ func (m *Manager) StartDebug(ctx context.Context, actor string, req DebugRequest
 	return d, nil
 }
 func (m *Manager) ResumeDebug(ctx context.Context, actor, id, interrupt string, inputs map[string]any) error {
+	if m.checkpoints != nil {
+		return m.resumePersistent(ctx, actor, id, interrupt, inputs)
+	}
 	m.mu.Lock()
 	t := m.tasks[id]
 	m.mu.Unlock()
@@ -283,6 +312,9 @@ func (m *Manager) Debug(ctx context.Context, id string) (DebugRun, error) {
 	m.mu.Lock()
 	t := m.tasks[id]
 	m.mu.Unlock()
+	if m.checkpoints != nil && (d.Status == "running" || d.Status == "awaiting_input") {
+		return m.inspectPersistent(ctx, d, t != nil)
+	}
 	if (d.Status == "running" || d.Status == "awaiting_input") && (t == nil || time.Since(t.created) > 10*time.Minute) {
 		d.Status = "expired"
 		d.Error = ErrExpired.Error()
@@ -309,6 +341,15 @@ func (m *Manager) DebugList(ctx context.Context) ([]DebugRun, error) {
 	return list, nil
 }
 func (m *Manager) CancelDebug(ctx context.Context, actor, id string) error {
+	if m.checkpoints != nil {
+		err := m.checkpoints.cancel(ctx, id, actor)
+		if err == nil {
+			m.mu.Lock()
+			delete(m.tasks, id)
+			m.mu.Unlock()
+		}
+		return err
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	t := m.tasks[id]
@@ -339,7 +380,11 @@ func (m *Manager) execute(t *debugTask, interrupt, reply string) {
 	persist := func() {
 		c, stop := context.WithTimeout(context.Background(), 3*time.Second)
 		defer stop()
-		_ = m.Repo.PutDebug(c, d)
+		if t.lease != "" {
+			_ = m.checkpoints.progress(c, d, t.lease)
+		} else {
+			_ = m.Repo.PutDebug(c, d)
+		}
 	}
 	event := func(stage, label string) {
 		d.Events = append(d.Events, Event{Stage: stage, Label: label, At: time.Now().UTC().Format(time.RFC3339Nano)})
@@ -362,7 +407,7 @@ func (m *Manager) execute(t *debugTask, interrupt, reply string) {
 		d.InterruptID = result.InterruptID
 		if result.InterruptID != "" && err == nil {
 			d.Status = "awaiting_input"
-			event("awaiting_input", "等待补充资料")
+			d.Events = append(d.Events, Event{Stage: "awaiting_input", Label: "等待补充资料", At: time.Now().UTC().Format(time.RFC3339Nano)})
 		}
 	} else {
 		err = m.classic(ctx, t, &d, event)
@@ -378,7 +423,24 @@ func (m *Manager) execute(t *debugTask, interrupt, reply string) {
 		d.InterruptID = ""
 		event("completed", "执行完成")
 	}
-	persist()
+	finalCtx, finalCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer finalCancel()
+	if m.checkpoints != nil && d.Status == "awaiting_input" {
+		if e := m.checkpoints.save(finalCtx, t, d); e != nil {
+			d.Status = "failed"
+			d.InterruptID = ""
+			d.Error = "恢复状态保存失败，请重新调试"
+			if t.lease != "" {
+				_ = m.checkpoints.finish(finalCtx, d, t.lease)
+			} else {
+				_ = m.Repo.PutDebug(ctx, d)
+			}
+		}
+	} else if t.lease != "" {
+		_ = m.checkpoints.finish(finalCtx, d, t.lease)
+	} else {
+		persist()
+	}
 	t.mu.Lock()
 	t.run = d
 	t.running = false
@@ -441,6 +503,9 @@ func (m *Manager) classic(ctx context.Context, t *debugTask, d *DebugRun, event 
 		}
 		d.ToolAttempts++
 		event("tool_running", "正在调用计算工具："+tc.Tool)
+		if m.MCP == nil {
+			return invalid("tool unavailable")
+		}
 		result, e := m.MCP.Call(ctx, skill.ToolConfig, args)
 		if e != nil {
 			return invalid("tool unavailable")

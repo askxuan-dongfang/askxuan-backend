@@ -25,7 +25,7 @@ func TestAskRuntimePinsPublishedVersionAndFailsClosed(t *testing.T) {
 	expect := func(id int64, instruction string) {
 		f := agentops.Frozen{Config: agentops.Config{Name: "问事", Model: "fixture-model", Instruction: instruction, MaxOutputTokens: 512}, Skills: []model.AISkill{{Code: "general", Status: "enabled", Version: "1.0.0", PromptTemplate: "skill prompt"}}}
 		raw, _ := json.Marshal(f)
-		mock.ExpectQuery("SELECT revision").WillReturnRows(sqlmock.NewRows([]string{"revision", "draft_json", "active_version"}).AddRow(9, "", id))
+		mock.ExpectQuery("SELECT version_id").WillReturnRows(sqlmock.NewRows([]string{"version_id", "stable_version", "percentage", "revision"}).AddRow(id, 0, 100, 9))
 		mock.ExpectQuery("SELECT id,definition_json").WithArgs(id).WillReturnRows(sqlmock.NewRows([]string{"id", "definition_json", "actor", "note", "create_time"}).AddRow(id, string(raw), "1", "test", "2026-09-28"))
 	}
 	expect(1, "first version")
@@ -46,7 +46,7 @@ func TestAskRuntimePinsPublishedVersionAndFailsClosed(t *testing.T) {
 	if first.AIConfig.MaxOutputTokens != 512 || source.AIConfig.MaxOutputTokens != 2048 || first.AgentDefaultModel != "fixture-model" {
 		t.Fatal("request limits not isolated")
 	}
-	mock.ExpectQuery("SELECT revision").WillReturnError(errors.New("storage outage"))
+	mock.ExpectQuery("SELECT version_id").WillReturnError(errors.New("storage outage"))
 	if v, e := source.AskRuntime(context.Background()); e == nil || v != nil {
 		t.Fatal("silently fell back after active-store failure")
 	}

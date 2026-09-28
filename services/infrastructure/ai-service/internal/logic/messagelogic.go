@@ -30,7 +30,7 @@ func NewMessageSendLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Messa
 }
 func (l *MessageSendLogic) Send(req *types.MessageSendReq) (*types.MessageSendResp, error) {
 	var runtimeErr error
-	l.svcCtx, runtimeErr = l.svcCtx.AskRuntime(l.ctx)
+	l.svcCtx, runtimeErr = l.svcCtx.AskRuntimeFor(l.ctx, req.UserId)
 	if runtimeErr != nil {
 		return nil, common.NewBizError(50301, "问事配置暂不可用，请稍后重试")
 	}
@@ -153,7 +153,7 @@ func NewMessageRetryLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Mess
 }
 func (l *MessageRetryLogic) Retry(req *types.MessageRetryReq) (*types.MessageSendResp, error) {
 	var runtimeErr error
-	l.svcCtx, runtimeErr = l.svcCtx.AskRuntime(l.ctx)
+	l.svcCtx, runtimeErr = l.svcCtx.AskRuntimeFor(l.ctx, req.UserId)
 	if runtimeErr != nil {
 		return nil, common.NewBizError(50301, "问事配置暂不可用，请稍后重试")
 	}

@@ -91,3 +91,18 @@ func TestReportCapabilityDisclosure(t *testing.T) {
 		db.Close()
 	}
 }
+
+func TestReportAgentVersionFitsSchemaAndChangesOnRetry(t *testing.T) {
+	for _, id := range []int64{1, 999999, 9223372036854775807} {
+		v := reportAgentVersion("12345678901234567890", id)
+		if len(v) > 20 {
+			t.Fatal("version overflows report schema", v)
+		}
+	}
+	if v := reportAgentVersion("1.0@a2", 3); v != "1.0@a3" {
+		t.Fatal("retry retained wrong version", v)
+	}
+	if v := reportAgentVersion("1.0@a2", 0); v != "1.0" {
+		t.Fatal("baseline retry marked as managed", v)
+	}
+}

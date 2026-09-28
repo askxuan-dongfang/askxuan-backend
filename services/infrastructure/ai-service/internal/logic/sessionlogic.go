@@ -26,7 +26,7 @@ func NewSessionCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ses
 }
 func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.SessionCreateResp, error) {
 	var runtimeErr error
-	l.svcCtx, runtimeErr = l.svcCtx.AskRuntime(l.ctx)
+	l.svcCtx, runtimeErr = l.svcCtx.AskRuntimeFor(l.ctx, req.UserId)
 	if runtimeErr != nil {
 		return nil, common.NewBizError(50301, "问事配置暂不可用，请稍后重试")
 	}

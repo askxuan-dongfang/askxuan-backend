@@ -41,7 +41,7 @@ func (r *SQLRepository) Tested(ctx context.Context, revision, providerRevision i
 }
 func tested(ctx context.Context, tx sqlx.Session, revision, providerRevision int64) (bool, error) {
 	var n int
-	err := tx.QueryRowCtx(ctx, &n, `SELECT COUNT(*) FROM ai_agent_debug WHERE revision=? AND provider_revision=? AND kind='classic' AND status='completed' AND create_time>DATE_SUB(NOW(),INTERVAL 1 DAY)`, revision, providerRevision)
+	err := tx.QueryRowCtx(ctx, &n, `SELECT COUNT(*) FROM ai_agent_evaluation WHERE revision=? AND provider_revision=? AND status='passed' AND create_time>DATE_SUB(NOW(),INTERVAL 1 DAY)`, revision, providerRevision)
 	return n > 0, err
 }
 func (r *SQLRepository) Publish(ctx context.Context, revision, providerRevision int64, actor, note string) (int64, error) {
@@ -64,7 +64,23 @@ func (r *SQLRepository) Publish(ctx context.Context, revision, providerRevision 
 		if !ok {
 			return ErrUntested
 		}
-		result, err := tx.ExecCtx(ctx, `INSERT INTO ai_agent_version(definition_json,actor,note) VALUES(?,?,?)`, s.Draft, actor, note)
+		f, err := Decode(s.Draft)
+		if err != nil {
+			return err
+		}
+		if err = validateCases(f.Config.Evaluation, f.Config.Skills, true); err != nil {
+			return err
+		}
+		var approval struct {
+			ID   string `db:"id"`
+			Hash string `db:"suite_hash"`
+		}
+		if err = tx.QueryRowCtx(ctx, &approval, `SELECT id,suite_hash FROM ai_agent_evaluation WHERE revision=? AND provider_revision=? AND status='passed' AND create_time>DATE_SUB(NOW(),INTERVAL 1 DAY) ORDER BY create_time DESC LIMIT 1`, revision, providerRevision); err != nil {
+			return err
+		}
+		f.Approval = &EvaluationApproval{ID: approval.ID, ProviderRevision: providerRevision, SuiteHash: approval.Hash}
+		raw, _ := json.Marshal(f)
+		result, err := tx.ExecCtx(ctx, `INSERT INTO ai_agent_version(definition_json,actor,note) VALUES(?,?,?)`, string(raw), actor, note)
 		if err != nil {
 			return err
 		}
@@ -73,6 +89,9 @@ func (r *SQLRepository) Publish(ctx context.Context, revision, providerRevision 
 			return err
 		}
 		if err = affected(tx.ExecCtx(ctx, `UPDATE ai_agent_workspace SET active_version=?,revision=revision+1 WHERE id=1 AND revision=?`, id, revision)); err != nil {
+			return err
+		}
+		if err = affected(tx.ExecCtx(ctx, `UPDATE ai_agent_rollout SET stable_version=IF(percentage=100,version_id,stable_version),version_id=?,percentage=0,revision=revision+1 WHERE id=1`, id)); err != nil {
 			return err
 		}
 		_, err = tx.ExecCtx(ctx, `INSERT INTO ai_agent_audit(action,version_id,actor,note) VALUES('publish',?,?,?)`, id, actor, note)
@@ -89,6 +108,9 @@ func (r *SQLRepository) Rollback(ctx context.Context, revision, version int64, a
 			}
 		}
 		if err := affected(tx.ExecCtx(ctx, `UPDATE ai_agent_workspace SET active_version=?,revision=revision+1 WHERE id=1 AND revision=?`, version, revision)); err != nil {
+			return err
+		}
+		if err := affected(tx.ExecCtx(ctx, `UPDATE ai_agent_rollout SET version_id=?,stable_version=?,percentage=100,revision=revision+1 WHERE id=1`, version, version)); err != nil {
 			return err
 		}
 		_, err := tx.ExecCtx(ctx, `INSERT INTO ai_agent_audit(action,version_id,actor,note) VALUES('rollback',?,?,?)`, version, actor, note)
@@ -116,6 +138,12 @@ func (r *SQLRepository) Audit(ctx context.Context) ([]Audit, error) {
 func (r *SQLRepository) PutDebug(ctx context.Context, d DebugRun) error {
 	// Retain diagnostic content for 30 days; new runs perform bounded cleanup.
 	if d.Status == "running" && len(d.Events) == 0 {
+		if _, err := r.DB.ExecCtx(ctx, `DELETE FROM ai_agent_checkpoint WHERE expires_at<NOW(3) LIMIT 1000`); err != nil {
+			return err
+		}
+		if _, err := r.DB.ExecCtx(ctx, `DELETE FROM ai_agent_evaluation WHERE create_time<DATE_SUB(NOW(),INTERVAL 30 DAY) LIMIT 1000`); err != nil {
+			return err
+		}
 		if _, err := r.DB.ExecCtx(ctx, `DELETE FROM ai_agent_debug WHERE create_time<DATE_SUB(NOW(),INTERVAL 30 DAY) LIMIT 1000`); err != nil {
 			return err
 		}

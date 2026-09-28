@@ -21,6 +21,7 @@ func registerAgentOperations(server *rest.Server, s *svc.ServiceContext) {
 		{"GET", "/debug", "debug-list"}, {"POST", "/debug", "debug-start"}, {"GET", "/debug/:id", "debug-get"}, {"POST", "/debug/:id/resume", "debug-resume"}, {"POST", "/debug/:id/cancel", "debug-cancel"},
 		{"GET", "/runs", "runs"}, {"GET", "/runs/:id/tools", "tools"},
 		{"GET", "/versions/:id", "version-get"},
+		{"POST", "/rollout", "rollout"}, {"GET", "/evaluations", "evaluation-list"}, {"POST", "/evaluations", "evaluation-start"}, {"GET", "/evaluations/:id", "evaluation-get"},
 	} {
 		server.AddRoute(rest.Route{Method: op.method, Path: "/api/v1/ai/admin/agent" + op.path, Handler: agentOperationsHandler(s, op.action)})
 	}
@@ -79,13 +80,45 @@ func agentOperationsHandler(s *svc.ServiceContext, action string) http.HandlerFu
 		var path struct {
 			ID string `path:"id"`
 		}
-		if strings.HasPrefix(action, "debug-") && action != "debug-start" && action != "debug-list" || action == "tools" || action == "version-get" {
+		if strings.HasPrefix(action, "debug-") && action != "debug-start" && action != "debug-list" || action == "tools" || action == "version-get" || action == "evaluation-get" {
 			if httpx.ParsePath(r, &path) != nil || path.ID == "" || len(path.ID) > 64 {
 				common.JsonError(w, common.ErrParam)
 				return
 			}
 		}
 		switch action {
+		case "rollout":
+			var req struct {
+				Revision   int64  `json:"revision"`
+				Percentage int    `json:"percentage"`
+				Note       string `json:"note"`
+			}
+			if !read(&req) {
+				return
+			}
+			finish(nil, m.SetRollout(r.Context(), req.Revision, req.Percentage, actor, req.Note))
+		case "evaluation-start":
+			var req struct {
+				Revision int64 `json:"revision"`
+			}
+			if !read(&req) {
+				return
+			}
+			v, err := m.StartEvaluation(r.Context(), req.Revision, actor)
+			finish(v, err)
+		case "evaluation-list", "evaluation-get":
+			repo, ok := m.Repo.(*agentops.SQLRepository)
+			if !ok {
+				finish(nil, agentops.ErrUnavailable)
+				return
+			}
+			if action == "evaluation-get" {
+				v, err := repo.Evaluation(r.Context(), path.ID)
+				finish(v, err)
+			} else {
+				v, err := repo.Evaluations(r.Context())
+				finish(map[string]any{"list": v}, err)
+			}
 		case "workspace":
 			v, err := m.Workspace(r.Context())
 			finish(v, err)

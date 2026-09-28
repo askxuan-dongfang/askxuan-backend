@@ -32,6 +32,8 @@ type ServiceContext struct {
 	Settings          *settings.Manager
 	AgentOps          *agentops.Manager
 	AgentDefaultModel string
+	AgentVersion      int64
+	AgentSubject      string
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -51,6 +53,10 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	if err := conversationModel.RecoverPending(context.Background()); err != nil {
 		logx.Errorf("恢复AI待处理消息失败: %v", err)
 	}
+	ops := agentops.New(&agentops.SQLRepository{DB: db}, skills, manager.VersionedSnapshot, mcp, os.Getenv("AI_AGENT_OPERATIONS_ENABLED") == "true")
+	if err := ops.EnablePersistence(os.Getenv("AI_SETTINGS_ENCRYPTION_KEY")); err != nil {
+		panic(err)
+	}
 	return &ServiceContext{
 		Config:            c,
 		DB:                db,
@@ -65,7 +71,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		ImageLoader:       agent.NewImageLoader(runtimeAI.AllowedImageHosts, runtimeAI.ImageMaxBytes),
 		AIConfig:          snapshot.Config,
 		Settings:          manager,
-		AgentOps:          agentops.New(&agentops.SQLRepository{DB: db}, skills, manager.VersionedSnapshot, mcp, os.Getenv("AI_AGENT_OPERATIONS_ENABLED") == "true"),
+		AgentOps:          ops,
 	}
 }
 
@@ -74,10 +80,13 @@ func NewServiceContext(c config.Config) *ServiceContext {
 // AskRuntime pins published skills before accepting a chat turn. An unavailable
 // store fails the turn instead of silently reverting an active policy.
 func (s *ServiceContext) AskRuntime(ctx context.Context) (*ServiceContext, error) {
+	return s.AskRuntimeFor(ctx, s.AgentSubject)
+}
+func (s *ServiceContext) AskRuntimeFor(ctx context.Context, subject string) (*ServiceContext, error) {
 	if s.AgentOps == nil {
 		return s, nil
 	}
-	f, version, err := s.AgentOps.Active(ctx)
+	f, version, err := s.AgentOps.ActiveFor(ctx, subject)
 	if err != nil {
 		return nil, err
 	}
@@ -90,6 +99,7 @@ func (s *ServiceContext) AskRuntime(ctx context.Context) (*ServiceContext, error
 	}
 	result.SkillModel = &agentops.SkillView{Frozen: *f, Version: version}
 	result.AgentDefaultModel = f.Config.Model
+	result.AgentVersion = version
 	if result.AIConfig.MaxOutputTokens <= 0 || f.Config.MaxOutputTokens < result.AIConfig.MaxOutputTokens {
 		result.AIConfig.MaxOutputTokens = f.Config.MaxOutputTokens
 	}

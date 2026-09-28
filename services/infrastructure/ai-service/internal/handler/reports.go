@@ -21,6 +21,13 @@ func registerReports(server *rest.Server, s *svc.ServiceContext) {
 				respond(w, nil, err)
 				return
 			}
+			if action == "topics" || action == "create" || action == "retry" || action == "conversation" {
+				s, err = s.AskRuntimeFor(r.Context(), user)
+				if err != nil {
+					respond(w, nil, common.NewBizError(50301, "问事配置暂不可用，请稍后重试"))
+					return
+				}
+			}
 			var data interface{}
 			switch action {
 			case "topics":

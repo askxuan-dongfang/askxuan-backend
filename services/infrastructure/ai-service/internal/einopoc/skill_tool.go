@@ -29,6 +29,22 @@ type SkillTool struct {
 	now      time.Time
 }
 
+type ToolState struct {
+	Inputs string    `json:"inputs"`
+	At     time.Time `json:"at"`
+}
+
+// Only call between runner executions; the tool is task-local and sequential.
+func (t *SkillTool) State() ToolState { return ToolState{Inputs: t.inputs, At: t.now} }
+func (t *SkillTool) Restore(s ToolState) error {
+	if len(s.Inputs) > 8000 || !json.Valid([]byte(s.Inputs)) || s.At.IsZero() {
+		return errors.New("invalid tool state")
+	}
+	t.inputs = s.Inputs
+	t.now = s.At
+	return nil
+}
+
 func NewSkillTool(skill model.AISkill, inputs map[string]any, question string, client MCPCaller, guard *agent.Guard) (*SkillTool, error) {
 	if client == nil || guard == nil {
 		return nil, errors.New("missing skill dependencies")

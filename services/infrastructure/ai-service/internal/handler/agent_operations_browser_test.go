@@ -63,6 +63,11 @@ func TestAgentOperationsBrowserFixture(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
+	extra, e := os.ReadFile("../../../../../scripts/db/20260928_ai_agent_runtime.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	migration = append(migration, extra...)
 	for _, stmt := range strings.Split(string(migration), ";") {
 		if strings.TrimSpace(stmt) != "" {
 			if _, e = db.ExecCtx(ctx, stmt); e != nil {
@@ -119,6 +124,9 @@ func TestAgentOperationsBrowserFixture(t *testing.T) {
 	p.SetHTTPClient(upstream.Client())
 	snap := &settings.Snapshot{Provider: p, Models: provider.NewCatalog(p), Config: config.AIConf{Provider: "openai_compatible", MaxInputChars: 2000, MaxOutputTokens: 1024}}
 	m := agentops.New(&agentops.SQLRepository{DB: db}, browserSkills{}, func() (*settings.Snapshot, int64) { return snap, 0 }, browserMCP{}, true)
+	if err := m.EnablePersistence(base64.StdEncoding.EncodeToString(make([]byte, 32))); err != nil {
+		t.Fatal(err)
+	}
 	server, e := rest.NewServer(rest.RestConf{Host: "127.0.0.1", Port: 19085, Timeout: 10000})
 	if e != nil {
 		t.Fatal(e)

@@ -85,6 +85,11 @@ func TestOperationsMySQLLifecycle(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
+	extra, e := os.ReadFile("../../../../../scripts/db/20260928_ai_agent_runtime.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	migration = append(migration, extra...)
 	for _, stmt := range strings.Split(string(migration), ";") {
 		if strings.TrimSpace(stmt) != "" {
 			if _, e = db.ExecCtx(ctx, stmt); e != nil {
@@ -92,12 +97,16 @@ func TestOperationsMySQLLifecycle(t *testing.T) {
 			}
 		}
 	}
-	for _, table := range []string{"ai_agent_debug", "ai_agent_version", "ai_agent_audit"} {
+	for _, table := range []string{"ai_agent_debug", "ai_agent_version", "ai_agent_audit", "ai_agent_checkpoint", "ai_agent_evaluation"} {
 		if _, e = db.ExecCtx(ctx, "DELETE FROM "+table); e != nil {
 			t.Fatal(e)
 		}
 	}
 	if _, e = db.ExecCtx(ctx, "UPDATE ai_agent_workspace SET revision=0,draft_json=NULL,active_version=0 WHERE id=1"); e != nil {
+		t.Fatal(e)
+	}
+	_, e = db.ExecCtx(ctx, "UPDATE ai_agent_rollout SET version_id=0,stable_version=0,percentage=0,revision=0 WHERE id=1")
+	if e != nil {
 		t.Fatal(e)
 	}
 	repo := &SQLRepository{DB: db}
@@ -114,6 +123,7 @@ func TestOperationsMySQLLifecycle(t *testing.T) {
 	if _, e = m.Publish(ctx, 0, "1", "without test"); !errors.Is(e, ErrUntested) {
 		t.Fatal("untested draft published", e)
 	}
+	w.Draft.Evaluation = []EvaluationCase{{ID: "general-normal", Name: "日常正常回答", SkillCode: "general", Question: "合成测试问题", Inputs: map[string]any{}, MinChars: 20}}
 	var success, conflict atomic.Int32
 	var wg sync.WaitGroup
 	for i := 0; i < 2; i++ {
@@ -162,6 +172,30 @@ func TestOperationsMySQLLifecycle(t *testing.T) {
 	if _, e = repo.Publish(ctx, s.Revision, 1, "1", "provider changed"); !errors.Is(e, ErrUntested) {
 		t.Fatal("test from another provider revision accepted", e)
 	}
+	if _, e = m.Publish(ctx, s.Revision, "1", "single debug is insufficient"); !errors.Is(e, ErrUntested) {
+		t.Fatal("single debug bypassed suite", e)
+	}
+	ev, e := m.StartEvaluation(ctx, s.Revision, "1")
+	if e != nil {
+		t.Fatal(e)
+	}
+	deadline = time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		ev, e = repo.Evaluation(ctx, ev.ID)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if ev.Status != "running" {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if ev.Status != "passed" {
+		t.Fatalf("suite failed: %+v", ev)
+	}
+	if _, e = repo.Publish(ctx, s.Revision, 1, "1", "wrong provider"); !errors.Is(e, ErrUntested) {
+		t.Fatal("provider gate", e)
+	}
 	var versions [2]int64
 	success.Store(0)
 	conflict.Store(0)
@@ -183,6 +217,19 @@ func TestOperationsMySQLLifecycle(t *testing.T) {
 	wg.Wait()
 	if success.Load() != 1 || conflict.Load() != 1 {
 		t.Fatal("duplicate concurrent publish")
+	}
+	if f, _, e := m.Active(ctx); e != nil || f != nil {
+		t.Fatal("zero percent leaked new release", e)
+	}
+	rollout, e := repo.Rollout(ctx)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = m.SetRollout(ctx, rollout.Revision, 100, "1", "verified rollout"); e != nil {
+		t.Fatal(e)
+	}
+	if e = m.SetRollout(ctx, rollout.Revision, 50, "1", "stale rollout"); !errors.Is(e, ErrConflict) {
+		t.Fatal("stale rollout overwrote latest", e)
 	}
 	active, version, e := m.Active(ctx)
 	if e != nil || active == nil || version <= 0 {
@@ -215,7 +262,7 @@ func TestOperationsMySQLLifecycle(t *testing.T) {
 		t.Fatal(e)
 	}
 	w, e = m.Workspace(ctx)
-	if e != nil || len(w.Versions) != 1 || len(w.Audit) != 5 {
+	if e != nil || len(w.Versions) != 1 || len(w.Audit) != 6 {
 		t.Fatalf("audit/version integrity: %+v %v", w, e)
 	}
 	// Pending records survive restarts but must not promise resumability without
@@ -245,6 +292,36 @@ func TestOperationsMySQLLifecycle(t *testing.T) {
 	if e = m.CancelDebug(ctx, "1", pending.ID); e != nil {
 		t.Fatal(e)
 	}
+	// A failed assertion must never be mistaken for successful execution.
+	state, _ := repo.State(ctx)
+	bad := w.Draft
+	bad.Evaluation[0].Contains = []string{"this-phrase-must-never-occur-in-fixture-output"}
+	if e = m.Save(ctx, state.Revision, bad, "1"); e != nil {
+		t.Fatal(e)
+	}
+	state, _ = repo.State(ctx)
+	failed, e := m.StartEvaluation(ctx, state.Revision, "1")
+	if e != nil {
+		t.Fatal(e)
+	}
+	deadline = time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		failed, e = repo.Evaluation(ctx, failed.ID)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if failed.Status != "running" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if failed.Status != "failed" {
+		t.Fatal("failed assertion passed", failed)
+	}
+	if _, e = m.Publish(ctx, state.Revision, "1", "bad case"); !errors.Is(e, ErrUntested) {
+		t.Fatal("failed suite published", e)
+	}
+	checkpointLifecycle(t, repo)
 	raw, _ := json.Marshal(w)
 	if strings.Contains(string(raw), "definition_json") || strings.Contains(string(raw), "apiKey") {
 		t.Fatal("private persistence data exposed")

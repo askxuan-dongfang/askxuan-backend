@@ -63,7 +63,9 @@ func skillListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
-		resp, err := logic.NewSkillListLogic(r.Context(), svcCtx).SkillList(&req)
+		runtime := *svcCtx
+		runtime.AgentSubject = r.Header.Get("X-User-Id")
+		resp, err := logic.NewSkillListLogic(r.Context(), &runtime).SkillList(&req)
 		respond(w, resp, err)
 	}
 }

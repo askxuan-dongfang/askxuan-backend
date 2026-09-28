@@ -34,7 +34,7 @@ type Result struct {
 }
 
 // Harness retains the same model/config snapshot and budget across clarification.
-// Checkpoints are memory-only in this PoC; process-restart recovery is not claimed.
+// Hosts may encrypt and persist Checkpoint values while the runner is paused.
 type Harness struct {
 	runner      *adk.Runner
 	guard       *agent.Guard
@@ -206,6 +206,41 @@ func (h *Harness) consume(ctx context.Context, iter *adk.AsyncIterator[*adk.Agen
 
 func (h *Harness) Counts() (models, tools int) {
 	return int(h.budget.models.Load()), int(h.budget.tools.Load())
+}
+
+// Checkpoint contains conversation/tool data; never expose it in public APIs.
+type Checkpoint struct {
+	Data        []byte `json:"data"`
+	InterruptID string `json:"interruptId"`
+	Models      int    `json:"models"`
+	Tools       int    `json:"tools"`
+}
+
+func (h *Harness) Checkpoint() (Checkpoint, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	data, ok, err := h.store.Get(context.Background(), "probe")
+	if err != nil || !ok || h.interruptID == "" {
+		return Checkpoint{}, errors.New("runner is not paused")
+	}
+	m, t := h.Counts()
+	return Checkpoint{Data: data, InterruptID: h.interruptID, Models: m, Tools: t}, nil
+}
+
+func (h *Harness) Restore(c Checkpoint) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.started || len(c.Data) == 0 || len(c.Data) > 2*1024*1024 || c.InterruptID == "" || c.Models < 1 || c.Models > h.limits.ModelCalls || c.Tools < 1 || c.Tools > h.limits.ToolCalls {
+		return errors.New("invalid checkpoint")
+	}
+	if err := h.store.Set(context.Background(), "probe", c.Data); err != nil {
+		return err
+	}
+	h.budget.models.Store(int32(c.Models))
+	h.budget.tools.Store(int32(c.Tools))
+	h.interruptID = c.InterruptID
+	h.started = true
+	return nil
 }
 
 type budgetModel struct {

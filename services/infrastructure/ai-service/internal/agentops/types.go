@@ -14,7 +14,7 @@ import (
 
 var (
 	ErrConflict    = errors.New("配置已变更，请重新加载后操作")
-	ErrUntested    = errors.New("请先对当前已保存草稿完成一次原流程调试，再发布")
+	ErrUntested    = errors.New("请先运行当前草稿的评测集，全部通过后再发布")
 	ErrUnavailable = errors.New("智能体管理暂不可用，请确认数据库迁移已完成")
 	ErrExpired     = errors.New("调试已过期或服务已重启，请重新开始")
 )
@@ -31,17 +31,19 @@ type SkillPolicy struct {
 	UseTool bool   `json:"useTool"`
 }
 type Config struct {
-	Name            string        `json:"name"`
-	Instruction     string        `json:"instruction"`
-	Model           string        `json:"model"`
-	MaxOutputTokens int           `json:"maxOutputTokens"`
-	Skills          []SkillPolicy `json:"skills"`
+	Name            string           `json:"name"`
+	Instruction     string           `json:"instruction"`
+	Model           string           `json:"model"`
+	MaxOutputTokens int              `json:"maxOutputTokens"`
+	Skills          []SkillPolicy    `json:"skills"`
+	Evaluation      []EvaluationCase `json:"evaluation"`
 }
 
 // Frozen includes the reviewed input/tool contracts, not just editable prompts.
 type Frozen struct {
-	Config Config          `json:"config"`
-	Skills []model.AISkill `json:"skills"`
+	Config   Config              `json:"config"`
+	Skills   []model.AISkill     `json:"skills"`
+	Approval *EvaluationApproval `json:"approval,omitempty"`
 }
 type State struct {
 	Revision      int64  `db:"revision" json:"revision"`
@@ -75,14 +77,16 @@ type SkillInfo struct {
 }
 type Workspace struct {
 	State
-	DraftSaved  bool        `json:"draftSaved"`
-	Draft       Config      `json:"draft"`
-	Catalog     []SkillInfo `json:"catalog"`
-	Active      *Config     `json:"active"`
-	Versions    []Version   `json:"versions"`
-	Audit       []Audit     `json:"audit"`
-	Tested      bool        `json:"tested"`
-	LiveEnabled bool        `json:"liveEnabled"`
+	DraftSaved         bool        `json:"draftSaved"`
+	Draft              Config      `json:"draft"`
+	Catalog            []SkillInfo `json:"catalog"`
+	Active             *Config     `json:"active"`
+	Versions           []Version   `json:"versions"`
+	Audit              []Audit     `json:"audit"`
+	Tested             bool        `json:"tested"`
+	LiveEnabled        bool        `json:"liveEnabled"`
+	PersistentRecovery bool        `json:"persistentRecovery"`
+	Rollout            Rollout     `json:"rollout"`
 }
 type Event struct {
 	Stage string `json:"stage"`
@@ -143,6 +147,9 @@ func Freeze(c Config, catalog []*model.AISkill) (Frozen, error) {
 		byCode[s.Code] = s
 	}
 	f := Frozen{Config: c, Skills: []model.AISkill{}}
+	if err := validateCases(c.Evaluation, c.Skills, false); err != nil {
+		return Frozen{}, err
+	}
 	seen := map[string]bool{}
 	enabled := 0
 	for _, p := range c.Skills {

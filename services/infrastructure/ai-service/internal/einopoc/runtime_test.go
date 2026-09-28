@@ -274,3 +274,38 @@ func TestSnapshotModelAllowlist(t *testing.T) {
 		t.Fatalf("model allowlist bypassed: %v", err)
 	}
 }
+
+func TestCheckpointRestoresAcrossHarnessInstances(t *testing.T) {
+	reply := func(w http.ResponseWriter, r *http.Request, n int, req wireRequest) {
+		b, _ := json.Marshal(req.Messages)
+		if strings.Contains(string(b), "fixture-calculation-evidence") {
+			answer(w, "恢复后的有据参考")
+		} else {
+			call(w, "calculate_bazi", "{}")
+		}
+	}
+	first, _, firstTools := setup(t, `{}`, defaults(), reply, false)
+	out, err := first.Run(context.Background(), "合成资料测试", nil)
+	if err != nil || out.InterruptID == "" {
+		t.Fatalf("pause: %+v %v", out, err)
+	}
+	cp, err := first.Checkpoint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, _, secondTools := setup(t, `{}`, defaults(), reply, false)
+	if err = second.Restore(cp); err != nil {
+		t.Fatal(err)
+	}
+	out, err = second.Resume(context.Background(), cp.InterruptID, sampleInputs, nil)
+	if err != nil || out.InterruptID != "" || out.Text != "恢复后的有据参考" || firstTools.Load() != 0 || secondTools.Load() != 1 {
+		t.Fatalf("restore: %+v %v", out, err)
+	}
+	mc, tc := second.Counts()
+	if mc < cp.Models || tc < cp.Tools {
+		t.Fatal("restored budget reset")
+	}
+	if err = second.Restore(cp); err == nil {
+		t.Fatal("overwrote started runtime")
+	}
+}

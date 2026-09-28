@@ -12,7 +12,7 @@ import (
 )
 
 func TestAgentOperationsAdminGate(t *testing.T) {
-	for _, action := range []string{"workspace", "save", "publish", "rollback", "debug-start", "debug-get", "debug-list", "debug-resume", "debug-cancel", "runs", "tools", "version-get"} {
+	for _, action := range []string{"evaluation-start", "evaluation-list", "evaluation-get", "rollout", "workspace", "save", "publish", "rollback", "debug-start", "debug-get", "debug-list", "debug-resume", "debug-cancel", "runs", "tools", "version-get"} {
 		for _, role := range []struct{ kind, roles, id string }{{"user", "customer", "1"}, {"admin", "platform_service", "1"}, {"admin", "shop_admin", "1"}, {"master", "platform_super", "1"}, {"admin", "platform_super", "0"}, {"admin", "platform_super", ""}} {
 			t.Run(action+"/"+role.kind+"/"+role.roles+"/"+role.id, func(t *testing.T) {
 				r := httptest.NewRequest("POST", "/api/v1/ai/admin/agent", strings.NewReader(`{}`))
