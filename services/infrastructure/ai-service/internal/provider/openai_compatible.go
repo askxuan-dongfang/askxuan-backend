@@ -139,7 +139,8 @@ func (p *OpenAICompatible) Stream(ctx context.Context, req Request, onDelta func
 				} `json:"delta"`
 				FinishReason string `json:"finish_reason"`
 			} `json:"choices"`
-			Usage struct {
+			Error json.RawMessage `json:"error"`
+			Usage *struct {
 				PromptTokens           int `json:"prompt_tokens"`
 				CompletionTokens       int `json:"completion_tokens"`
 				PromptCacheHitTokens   int `json:"prompt_cache_hit_tokens"`
@@ -153,11 +154,17 @@ func (p *OpenAICompatible) Stream(ctx context.Context, req Request, onDelta func
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			return nil, fmt.Errorf("decode provider stream: %w", err)
 		}
-		result.PromptTokens = chunk.Usage.PromptTokens
-		result.CompletionTokens = chunk.Usage.CompletionTokens
-		result.PromptCacheHitTokens = chunk.Usage.PromptCacheHitTokens
-		result.PromptCacheMissTokens = chunk.Usage.PromptCacheMissTokens
-		result.ReasoningTokens = chunk.Usage.CompletionTokenDetails.ReasoningTokens
+		if len(chunk.Error) > 0 && string(chunk.Error) != "null" {
+			return result, fmt.Errorf("provider returned a stream error")
+		}
+		// Most deltas have no usage. Do not erase the last authoritative counts.
+		if chunk.Usage != nil {
+			result.PromptTokens = chunk.Usage.PromptTokens
+			result.CompletionTokens = chunk.Usage.CompletionTokens
+			result.PromptCacheHitTokens = chunk.Usage.PromptCacheHitTokens
+			result.PromptCacheMissTokens = chunk.Usage.PromptCacheMissTokens
+			result.ReasoningTokens = chunk.Usage.CompletionTokenDetails.ReasoningTokens
+		}
 		if chunk.Model != "" {
 			result.Model = chunk.Model
 		}
@@ -186,7 +193,7 @@ func (p *OpenAICompatible) Stream(ctx context.Context, req Request, onDelta func
 		result.Model = model
 	}
 	if strings.TrimSpace(result.Content) == "" {
-		return nil, fmt.Errorf("provider returned empty streamed content")
+		return result, fmt.Errorf("provider returned empty streamed content (finish_reason=%s, completion_tokens=%d, reasoning_tokens=%d)", result.FinishReason, result.CompletionTokens, result.ReasoningTokens)
 	}
 	if result.FinishReason == "" {
 		result.FinishReason = "stop"

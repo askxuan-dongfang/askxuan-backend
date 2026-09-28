@@ -367,11 +367,20 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 		return svcCtx.ConversationModel.UpdateMessageContent(ctx, messageId, streamed.String())
 	})
 	if err != nil {
-		_ = svcCtx.UsageModel.Record(context.Background(), model.UsageRecord{
+		usage := model.UsageRecord{
 			UserID: s.UserId, SessionID: sessionId, MessageID: messageId, SkillCode: s.SkillCode,
 			Provider: svcCtx.Provider.Name(), Model: svcCtx.Provider.Model(), Status: model.MessageStatusFailed,
 			LatencyMS: int(time.Since(startedAt).Milliseconds()), ErrorMessage: err.Error(),
-		})
+		}
+		// A reasoning-only response can consume tokens even when no answer is produced.
+		if resp != nil {
+			usage.PromptTokens, usage.CompletionTokens = resp.PromptTokens, resp.CompletionTokens
+			usage.CostMicros = calculateCostMicros(*resp, svcCtx.AIConfig, time.Now().UTC())
+			if resp.Model != "" {
+				usage.Model = resp.Model
+			}
+		}
+		_ = svcCtx.UsageModel.Record(context.Background(), usage)
 		return err
 	}
 	if err := svcCtx.Guard.ValidateOutput(resp.Content); err != nil {

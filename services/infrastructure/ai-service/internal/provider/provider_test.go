@@ -72,3 +72,42 @@ func TestProviderConfigValidation(t *testing.T) {
 		t.Fatal("unknown provider accepted")
 	}
 }
+
+func TestStreamPreservesUsageAfterMetadataOnlyChunks(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"answer\"}}],\"usage\":{\"prompt_tokens\":11,\"completion_tokens\":9,\"completion_tokens_details\":{\"reasoning_tokens\":4}}}\n\ndata: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
+	}))
+	defer server.Close()
+	resp, err := NewOpenAICompatible(server.URL, "key", "model", "").Stream(context.Background(), Request{}, func(StreamDelta) error { return nil })
+	if err != nil || resp.TotalTokens() != 20 || resp.ReasoningTokens != 4 {
+		t.Fatalf("lost usage: %#v %v", resp, err)
+	}
+}
+
+func TestReasoningOnlyStreamReportsBudgetAndUsage(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"private reasoning\"}}]}\n\ndata: {\"choices\":[{\"delta\":{},\"finish_reason\":\"length\"}],\"usage\":{\"prompt_tokens\":37,\"completion_tokens\":2048,\"completion_tokens_details\":{\"reasoning_tokens\":2048}}}\n\ndata: [DONE]\n\n"))
+	}))
+	defer server.Close()
+	var exposed strings.Builder
+	resp, err := NewOpenAICompatible(server.URL, "key", "model", "").Stream(context.Background(), Request{ThinkingEnabled: true}, func(d StreamDelta) error { exposed.WriteString(d.Content); return nil })
+	if err == nil || !strings.Contains(err.Error(), "finish_reason=length") || resp == nil || resp.CompletionTokens != 2048 || resp.ReasoningTokens != 2048 || exposed.Len() != 0 {
+		t.Fatalf("invalid reasoning-only handling: %#v %v", resp, err)
+	}
+	if strings.Contains(err.Error(), "private reasoning") {
+		t.Fatal("reasoning leaked")
+	}
+}
+
+func TestStreamErrorDoesNotExposeUpstreamDetails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("data: {\"error\":{\"message\":\"private upstream details\"}}\n\n"))
+	}))
+	defer server.Close()
+	_, err := NewOpenAICompatible(server.URL, "key", "model", "").Stream(context.Background(), Request{}, func(StreamDelta) error { return nil })
+	if err == nil || err.Error() != "provider returned a stream error" {
+		t.Fatalf("unexpected stream error: %v", err)
+	}
+}
