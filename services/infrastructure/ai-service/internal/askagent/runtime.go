@@ -39,6 +39,7 @@ type Clarification struct {
 	Values    map[string]any `json:"values"`
 }
 type Input struct {
+	RequestedSkill              string // Explicit first-turn calculation entry; never inferred from model prose.
 	ContextWindow, OutputTokens int
 	Timeout                     time.Duration
 	ReasoningFallback           []model.Option
@@ -66,6 +67,34 @@ type Outcome struct {
 func Execute(ctx context.Context, chat model.BaseChatModel, input Input, mcp einopoc.MCPCaller, guard *agent.Guard, hooks Hooks) (out Outcome, err error) {
 	if chat == nil || guard == nil {
 		return out, errors.New("agent dependencies unavailable")
+	}
+	if input.RequestedSkill != "" {
+		for _, selected := range input.Skills {
+			if selected.Code != input.RequestedSkill || selected.Status != business.SkillStatusEnabled || !agent.IsReadOnlyTool(selected.Code) {
+				continue
+			}
+			cfg, parseErr := agent.ParseToolConfig(selected.ToolConfig)
+			if parseErr != nil {
+				return out, parseErr
+			}
+			if !cfg.Enabled {
+				continue
+			}
+			raw := agent.GuidedInputSchema(selected.Code, selected.InputSchema)
+			values := FilterFacts(raw, input.Facts)
+			if _, validationErr := guard.Validate(raw, input.Question, values); validationErr != nil {
+				var fields agent.InputSchema
+				if parseErr := json.Unmarshal([]byte(raw), &fields); parseErr != nil {
+					return out, parseErr
+				}
+				out.Text = "请确认以下资料后继续" + selected.Name + "，不确定的信息请勿猜测。"
+				out.Clarification = &Clarification{SkillCode: selected.Code, Question: out.Text, Fields: fields.Fields, Values: values}
+				if hooks.Text != nil {
+					err = hooks.Text(out.Text)
+				}
+				return out, err
+			}
+		}
 	}
 	window, output := input.ContextWindow, input.OutputTokens
 	if window <= 0 {

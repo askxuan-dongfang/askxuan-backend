@@ -261,3 +261,20 @@ func TestLargeToolResultReachesModelWithinConfiguredContext(t *testing.T) {
 		t.Fatalf("large result lost: %+v %v", out, err)
 	}
 }
+
+func TestExplicitCalculationEntryAlwaysShowsMissingFactsForm(t *testing.T) {
+	in := fixtureInput()
+	in.RequestedSkill = "bazi"
+	in.Facts = map[string]any{}
+	m := &mcpStub{}
+	out, err := runFixture(t, in, m, nil)
+	if err != nil || out.Clarification == nil || out.Clarification.SkillCode != "bazi" || out.ModelCalls != 0 || m.calls != 0 {
+		t.Fatalf("first entry missing form: %+v %v", out, err)
+	}
+	in = fixtureInput()
+	in.RequestedSkill = "bazi"
+	out, err = runFixture(t, in, m, []map[string]any{toolCall("calculate_bazi", "{}"), {"role": "assistant", "content": "已完成计算。"}})
+	if err != nil || out.Clarification != nil || out.ModelCalls != 2 || m.calls != 1 {
+		t.Fatalf("confirmed facts blocked: %+v %v", out, err)
+	}
+}

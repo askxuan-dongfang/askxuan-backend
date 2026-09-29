@@ -111,6 +111,15 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 	if e != nil {
 		return e
 	}
+	// A user-selected calculation entry always opens its form on the first turn.
+	// Later conversation remains model-directed, including changing goals.
+	in.RequestedSkill = session.SkillCode
+	for _, message := range messages {
+		if message.Id < pending.Id && message.Role == model.RoleAssistant && message.Status == model.MessageStatusCompleted {
+			in.RequestedSkill = ""
+			break
+		}
+	}
 	// Frozen published skill prompts remain authoritative for this request snapshot.
 	in.Instruction = "当前北京时间：" + time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02") + "。当前入口技能：" + session.SkillCode + "。\n"
 	for _, skill := range in.Skills {
