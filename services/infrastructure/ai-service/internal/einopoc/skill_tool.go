@@ -75,7 +75,7 @@ func NewSkillTool(skill model.AISkill, inputs map[string]any, question string, c
 
 func (t *SkillTool) Info(context.Context) (*schema.ToolInfo, error) {
 	return &schema.ToolInfo{
-		Name: "calculate_" + t.skill.Code, Desc: t.skill.Name + "：" + t.skill.Description + "。使用用户已确认的结构化资料进行计算；缺少或无效资料时暂停并请求用户补充。不得猜测资料。", ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{}),
+		Name: "calculate_" + t.skill.Code, Desc: t.skill.Name + "：" + t.skill.Description + "。使用用户已确认的结构化资料进行计算；缺少或无效资料时暂停并请求用户补充。不得猜测资料。调用参数必须是空对象 {}，不要传入任何字段；平台会自动绑定用户确认的资料。", ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{}),
 	}, nil
 }
 

@@ -116,11 +116,23 @@ func TestToolFailureCanRecoverWithoutLeakingDetails(t *testing.T) {
 	}
 }
 func TestModelCannotInventFactsOrCallUnavailableTool(t *testing.T) {
-	for _, call := range []map[string]any{toolCall("calculate_bazi", `{"birthDate":"2099-01-01"}`), toolCall("send_email", `{}`)} {
+	m := &mcpStub{}
+	bad := toolCall("calculate_bazi", `{"birthDate":"2099-01-01"}`)
+	_, err := runFixture(t, fixtureInput(), m, []map[string]any{bad, bad, bad, bad})
+	if err == nil || m.calls != 0 {
+		t.Fatal("invented facts reached MCP or retries escaped budget")
+	}
+	_, err = runFixture(t, fixtureInput(), m, []map[string]any{toolCall("send_email", `{}`)})
+	if err == nil || m.calls != 0 {
+		t.Fatal("unavailable tool accepted")
+	}
+}
+func TestInvalidModelArgumentsCanRecoverUsingConfirmedFacts(t *testing.T) {
+	for _, args := range []string{`{"birthDate":"2099-01-01"}`, ``, `null`} {
 		m := &mcpStub{}
-		_, e := runFixture(t, fixtureInput(), m, []map[string]any{call})
-		if e == nil || m.calls != 0 {
-			t.Fatal("unauthorized tool arguments accepted")
+		out, err := runFixture(t, fixtureInput(), m, []map[string]any{toolCall("calculate_bazi", args), toolCall("calculate_bazi", "{}"), {"role": "assistant", "content": "使用确认资料完成计算。"}})
+		if err != nil || m.calls != 1 || out.ModelCalls != 3 || out.ToolCalls != 2 {
+			t.Fatalf("bounded argument correction failed: %+v %v", out, err)
 		}
 	}
 }

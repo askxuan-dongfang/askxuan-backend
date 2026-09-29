@@ -212,7 +212,7 @@ func (t *calculation) InvokableRun(ctx context.Context, args string, opts ...too
 	// Validate every model call, including cache hits.
 	var supplied map[string]any
 	if json.Unmarshal([]byte(args), &supplied) != nil || supplied == nil || len(supplied) != 0 {
-		return "", errors.New("skill arguments must be supplied by the user, not the model")
+		return `{"ok":false,"error":"invalid_model_arguments","message":"本次未执行计算。此工具无参数，请仅用空对象 {} 重试；平台自动绑定用户确认的资料，缺资料时会请求用户补充。不得根据本次被拒绝的参数给出计算结论。"}`, nil
 	}
 	// A repeated random draw must not silently replace the first result in the same task.
 	if t.cached != "" {
