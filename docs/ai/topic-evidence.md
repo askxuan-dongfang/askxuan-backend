@@ -40,3 +40,7 @@ AI service 模块 `go test -race ./...` 通过；新增五类真实内置实现�
 模型与远程 MCP 传输使用本地 HTTP fixture；不是生产 DeepSeek 或线上 taibu 验收。未设置隔离 MySQL DSN 时的数据库生命周期测试按原规则跳过，本次迁移尚未在数据库执行。现有 PDF 未重新导出。
 
 本地 2026-09-30 扩展：`internal/knowledge` 为 MySQL 片段存储与可配置嵌入检索；`deploy/ai-embedding` 提供 FastEmbed 中文模型。新表迁移 `20260930_ai_knowledge_memory.sql` 未在生产执行。来源与许可证见 `internal/agent/data/SOURCES.md`。
+
+## 2026-09-30 后续发布
+
+上述本地验证描述为早期快照。现已应用三份 AI 迁移，部署 AI/H5/管理台；当前源目录 23 项技能完成真实 Harness 回归，文档检索使用 WeKnora v0.8.2。真实问答 run 52 的 search_knowledge 调用和原文出处已核对。原生 iOS 本轮未新增构建验收；第三方重名/商标数据仍未接通。详见 deploy/weknora/README.md。
