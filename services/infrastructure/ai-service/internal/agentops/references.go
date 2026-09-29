@@ -17,7 +17,7 @@ func (m *Manager) bindReferences(in *askagent.Input, c Config, actor string) {
 	in.References = func(ctx context.Context, name string) (string, error) {
 		kind, owner := "knowledge", "platform"
 		if name == "recall_memory" && in.MemoryEnabled {
-			kind, owner = "memory", actor
+			kind, owner = "memory", "admin:"+actor
 		} else if name != "search_knowledge" || !in.KnowledgeEnabled {
 			return "", errors.New("reference disabled")
 		}

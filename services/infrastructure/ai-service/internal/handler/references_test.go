@@ -36,3 +36,19 @@ func TestReferenceAuthorizationAndConfirmation(t *testing.T) {
 		}
 	}
 }
+
+func TestCustomerAIDataRejectsSameNumericAdministrator(t *testing.T) {
+	for _, path := range []string{"/api/v1/ai/memory/search", "/api/v1/ai/sessions/7/messages", "/api/v1/ai/reports/7"} {
+		r := httptest.NewRequest("GET", path, nil)
+		r.Header.Set("X-User-Id", "7")
+		r.Header.Set("X-User-Type", "admin")
+		r.Header.Set("X-User-Roles", "master,platform_super")
+		if _, e := resolveUserID(r, ""); e == nil {
+			t.Fatal("cross-domain identity accepted", path)
+		}
+		r.Header.Set("X-User-Type", "user")
+		if id, e := resolveUserID(r, ""); e != nil || id != "7" {
+			t.Fatal("customer rejected", path)
+		}
+	}
+}

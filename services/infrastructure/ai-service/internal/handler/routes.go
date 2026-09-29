@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/askxuan/ai-service/internal/logic"
@@ -312,6 +313,12 @@ func writeSSE(w http.ResponseWriter, flusher http.Flusher, event string, payload
 }
 
 func resolveUserID(r *http.Request, requested string) (string, error) {
+	// Customer-owned AI data must not collide with administrator/master numeric IDs.
+	for _, base := range []string{"/api/v1/ai/sessions", "/api/v1/ai/reports", "/api/v1/ai/memory"} {
+		if (r.URL.Path == base || strings.HasPrefix(r.URL.Path, base+"/")) && r.Header.Get("X-User-Type") != "user" {
+			return "", common.ErrRoleForbidden
+		}
+	}
 	trusted := r.Header.Get("X-User-Id")
 	if trusted == "" {
 		return "", common.ErrForbidden
