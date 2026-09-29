@@ -58,9 +58,14 @@ type EvaluationRun struct {
 	Error            string             `json:"error"`
 }
 
+// Scale the suite deadline with coverage while keeping each run bounded.
+func evaluationTimeout(cases int) time.Duration {
+	return time.Duration(min(30, max(3, cases))) * time.Minute
+}
+
 func validateCases(cases []EvaluationCase, skills []SkillPolicy, coverage bool) error {
-	if len(cases) > 20 {
-		return invalid("评测集最多 20 条用例")
+	if len(cases) > 100 {
+		return invalid("评测集最多 100 条用例")
 	}
 	enabled := map[string]bool{}
 	for _, s := range skills {
@@ -115,7 +120,7 @@ func (r *SQLRepository) Evaluation(ctx context.Context, id string) (EvaluationRu
 	err = json.Unmarshal([]byte(raw), &d)
 	if err == nil && d.Status == "running" {
 		start, _ := time.Parse(time.RFC3339Nano, d.StartedAt)
-		if time.Since(start) > 4*time.Minute {
+		if time.Since(start) > evaluationTimeout(d.Total)+time.Minute {
 			d.Status = "failed"
 			d.Error = "评测超时或执行被中断，请重新运行"
 			_ = r.PutEvaluation(ctx, d)
@@ -192,7 +197,7 @@ func (m *Manager) StartEvaluation(ctx context.Context, revision int64, actor str
 	return d, nil
 }
 func (m *Manager) evaluate(repo *SQLRepository, d EvaluationRun, f Frozen, snap *settings.Snapshot) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), evaluationTimeout(len(f.Config.Evaluation)))
 	defer cancel()
 	all := true
 	save := func() {
