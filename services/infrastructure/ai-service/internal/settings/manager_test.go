@@ -256,3 +256,27 @@ func TestContextBudgetsAndLegacyUpdatePreserveLimits(t *testing.T) {
 		}
 	}
 }
+
+func TestBudgetOnlySavePreservesProviderCredential(t *testing.T) {
+	m, dir, key := fixture(t)
+	before := m.Snapshot().Config.APIKey
+	req := update(m)
+	req.MaxOutputTokens = 8192
+	req.ComplexOutputTokens = 16384
+	req.ContextWindow = 1048576
+	req.MaxInputChars = 20000
+	req.TaskTimeoutSeconds = 180
+	if _, err := m.Save(context.Background(), req, "42"); err != nil {
+		t.Fatal(err)
+	}
+	if m.Snapshot().Config.APIKey != before {
+		t.Fatal("budget-only update changed the credential")
+	}
+	restarted, err := New(m.original, dir, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restarted.Snapshot().Config.APIKey != before {
+		t.Fatal("persisted credential was changed by budget-only update")
+	}
+}

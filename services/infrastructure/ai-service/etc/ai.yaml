@@ -30,9 +30,12 @@ AI:
   ReasoningEffort: low
   MinuteRequestLimit: 12
   DailyRequestLimit: 100
-  MaxInputChars: 2000
+  MaxInputChars: 20000
   MaxHistoryMessages: 30
-  MaxOutputTokens: 2048
+  MaxOutputTokens: 8192
+  ComplexOutputTokens: 16384
+  ContextWindow: 1048576
+  TaskTimeoutSeconds: 180
   InputCostPerMillion: 0
   OutputCostPerMillion: 0
   BlockedTerms: []

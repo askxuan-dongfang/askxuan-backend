@@ -22,9 +22,9 @@ type Config struct {
 }
 
 type AIConf struct {
-	ComplexOutputTokens int
-	ContextWindow       int
-	TaskTimeoutSeconds  int
+	ComplexOutputTokens int `json:",optional"`
+	ContextWindow       int `json:",optional"`
+	TaskTimeoutSeconds  int `json:",optional"`
 
 	HarnessEnabled       bool `json:",optional"`
 	Provider             string
