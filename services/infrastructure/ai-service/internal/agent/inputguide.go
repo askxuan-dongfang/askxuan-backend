@@ -26,7 +26,9 @@ func GuidedInputSchema(code, raw string) string {
 			}
 		case "partnerBirthDate":
 			help = "选填对方的公历生日；只填写您已知的信息。"
-			f["visibleWhen"] = map[string]string{"key": "mode", "value": "matching"}
+			if f["helpText"] == nil { // Legacy personal/matching forms only.
+				f["visibleWhen"] = map[string]string{"key": "mode", "value": "matching"}
+			}
 		case "birthTime":
 			help = "填写出生记录中的时、分；不确定时不要随意猜测，可返回直接问事。"
 		case "calendarType":
@@ -37,6 +39,9 @@ func GuidedInputSchema(code, raw string) string {
 		case "birthplace":
 			help = "例如：浙江省杭州市西湖区；填写城市和区县即可，无需详细地址。"
 		case "mode":
+			if code != "marriage" {
+				break
+			}
 			initial = "personal"
 			descriptions = map[string]string{"personal": "梳理自己的关系期待与相处模式", "matching": "结合双方背景，讨论相处与沟通"}
 			help = "关系背景是本专题的主要依据，生日为补充资料。"

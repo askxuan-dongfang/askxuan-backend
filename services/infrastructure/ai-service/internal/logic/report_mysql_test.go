@@ -3,25 +3,21 @@ package logic
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/askxuan/ai-service/internal/agent"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/types"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 	"time"
 )
 
-type reportFixtureProvider struct{ provider.Mock }
-
-func (reportFixtureProvider) Complete(context.Context, provider.Request) (*provider.Response, error) {
-	content := "## 资料与分析边界\n" + strings.Repeat("这是隔离数据库验收内容，不代表真实模型质量。", 12) + "\n## 个人优势\n梳理已有经验，结合现实情况。\n## 行动建议\n记录一周行动并复盘。"
-	raw, _ := json.Marshal(reportBody{Summary: strings.Repeat("基于提供资料梳理问题，明确文化参考边界。", 3), Content: content})
-	return &provider.Response{Content: string(raw), Model: "integration-fixture", FinishReason: "stop", PromptTokens: 100, CompletionTokens: 200}, nil
-}
 func reportTestContext(t *testing.T) *svc.ServiceContext {
 	t.Helper()
 	dsn := os.Getenv("AI_REPORT_TEST_DSN")
@@ -29,18 +25,25 @@ func reportTestContext(t *testing.T) *svc.ServiceContext {
 		t.Skip("isolated AI_REPORT_TEST_DSN not set")
 	}
 	db := sqlx.NewMysql(dsn)
-	return &svc.ServiceContext{DB: db, ConversationModel: model.NewConversationModel(db), SkillModel: model.NewSkillModel(db), UsageModel: model.NewUsageModel(db), Guard: agent.NewGuard(2000, nil), Provider: reportFixtureProvider{}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		content := "## 梦境线索\n" + strings.Repeat("这是隔离数据库验收内容，不代表真实模型质量。", 20) + "\n## 意象整理\n| 意象 | 解释 |\n| --- | --- |\n| 道路 | 个人联想 |\n## 行动建议\n记录与复盘。"
+		raw, _ := json.Marshal(reportBody{Summary: strings.Repeat("依据梦境描述整理线索。", 6), Content: content})
+		event, _ := json.Marshal(map[string]any{"id": "fixture", "object": "chat.completion.chunk", "choices": []any{map[string]any{"index": 0, "delta": map[string]any{"role": "assistant", "content": string(raw)}, "finish_reason": "stop"}}})
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", event)
+	}))
+	t.Cleanup(server.Close)
+	p := provider.NewOpenAICompatible(server.URL, "fixture", "fixture", "")
+	p.SetHTTPClient(server.Client())
+	p.UseStandardParameters()
+	return &svc.ServiceContext{DB: db, ConversationModel: model.NewConversationModel(db), SkillModel: model.NewSkillModel(db), UsageModel: model.NewUsageModel(db), Guard: agent.NewGuard(2000, nil), Provider: p}
 }
 func TestMySQLReportGenerate(t *testing.T) {
 	s := reportTestContext(t)
 	s.AIConfig.MinuteRequestLimit = 30
 	s.AIConfig.DailyRequestLimit = 100
 	ctx := context.Background()
-	_, e := s.DB.ExecCtx(ctx, `UPDATE ai_skill SET tool_config='{"enabled":false}' WHERE code='bazi'`)
-	if e != nil {
-		t.Fatal(e)
-	}
-	req := ReportRequest{SkillCode: "bazi", Question: "梳理职业方向", Inputs: map[string]interface{}{"birthDate": "1995-06-15", "calendarType": "solar", "gender": "male", "birthplace": "上海"}, RequestKey: "mysql-report-case"}
+	req := ReportRequest{SkillCode: "dream", Question: "整理梦境中的道路", Inputs: map[string]interface{}{"dream": "在一条长路上散步"}, RequestKey: "mysql-report-case"}
 	r, e := ReportCreate(ctx, s, "9501", req)
 	if e != nil {
 		t.Fatal(e)
@@ -59,7 +62,7 @@ func TestMySQLReportGenerate(t *testing.T) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	if r.Title != "八字命理" || r.Status != "ready" || r.Content != "" || r.Unlocked {
+	if r.Title != "周公解梦" || r.Status != "ready" || r.Content != "" || r.Unlocked {
 		t.Fatalf("preview boundary %+v", r)
 	}
 	if _, e = ReportGet(ctx, s, "9502", r.ID); e == nil {
@@ -78,6 +81,9 @@ func TestMySQLReportReadPaid(t *testing.T) {
 	ctx := context.Background()
 	var id int64
 	if e := s.DB.QueryRowCtx(ctx, &id, `SELECT id FROM ai_report WHERE user_id='9501' AND request_key='mysql-report-case'`); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := s.DB.ExecCtx(ctx, `UPDATE ai_report SET points_paid=1 WHERE id=? AND user_id='9501'`, id); e != nil {
 		t.Fatal(e)
 	}
 	r, e := ReportGet(ctx, s, "9501", id)

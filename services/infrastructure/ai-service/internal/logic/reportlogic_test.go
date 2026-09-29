@@ -22,7 +22,7 @@ func TestReportPaidContentBoundary(t *testing.T) {
 				t.Fatal(e)
 			}
 			defer db.Close()
-			row := sqlmock.NewRows(strings.Split(reportCols, ",")).AddRow(1, "AR1", "100", "bazi", "八字", "1", "问题", "{}", "[\"资料\"]", 990, 10, "ready", "摘要", "SECRET CONTENT", "", tc.points, "2026-09-09")
+			row := sqlmock.NewRows(strings.Split(reportCols, ",")).AddRow(`{"version":1,"blocks":[{"kind":"pillars","title":"PRIVATE CHART"}],"evidence":[{"tool":"bazi","text":"PRIVATE RAW EVIDENCE"}]}`, "complete", 1, "AR1", "100", "bazi", "八字", "1", "问题", "{}", "[\"资料\"]", 990, 10, "ready", "摘要", "SECRET CONTENT", "", tc.points, "2026-09-09")
 			mock.ExpectQuery("SELECT .* FROM ai_report WHERE id=\\? AND user_id=\\?").WithArgs(int64(1), "100").WillReturnRows(row)
 			mock.ExpectQuery("SELECT COUNT.*askxuan_payment.payment").WithArgs("AR1", "100", int64(990)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(tc.cash))
 			r, e := ReportGet(context.Background(), &svc.ServiceContext{DB: sqlx.NewSqlConnFromDB(db)}, "100", 1)
@@ -32,6 +32,9 @@ func TestReportPaidContentBoundary(t *testing.T) {
 			data, _ := json.Marshal(r)
 			if strings.Contains(string(data), "SECRET CONTENT") != tc.want || r.Unlocked != tc.want {
 				t.Fatalf("unexpected entitlement: %s", data)
+			}
+			if strings.Contains(string(data), "PRIVATE CHART") != tc.want || strings.Contains(string(data), "PRIVATE RAW EVIDENCE") {
+				t.Fatal("chart or raw evidence entitlement failure")
 			}
 			if e := mock.ExpectationsWereMet(); e != nil {
 				t.Fatal(e)
@@ -83,7 +86,7 @@ func TestReportCapabilityDisclosure(t *testing.T) {
 		{`invalid`, false, "配置暂不可用"},
 	} {
 		db, m, _ := sqlmock.New()
-		m.ExpectQuery("SELECT p.code").WillReturnRows(sqlmock.NewRows([]string{"code", "title", "subtitle", "price_cents", "points_price", "chapters_json", "version", "tool_config"}).AddRow("bazi", "八字", "介绍", 990, 10, `["资料"]`, "1", tc.config))
+		m.ExpectQuery("SELECT p.code").WillReturnRows(sqlmock.NewRows([]string{"code", "title", "subtitle", "price_cents", "points_price", "chapters_json", "version", "tool_config"}).AddRow("fengshui", "空间", "介绍", 990, 10, `["资料"]`, "1", tc.config))
 		rows, e := ReportProducts(context.Background(), &svc.ServiceContext{DB: sqlx.NewSqlConnFromDB(db)})
 		if e != nil || len(rows) != 1 || rows[0].Ready != tc.ready || !strings.Contains(rows[0].ExecutionNote, tc.note) {
 			t.Fatalf("capability not disclosed: %+v %v", rows, e)

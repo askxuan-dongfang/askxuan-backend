@@ -123,7 +123,7 @@ func (g *Guard) Validate(schemaJSON, content string, inputs map[string]interface
 			return "", fmt.Errorf("%w: %s option", ErrInvalidInputs, field.Key)
 		}
 		validType := isValidFieldValue(value, field.Type)
-		if field.Key == "birthDate" && inputs["calendarType"] == "lunar" {
+		if (field.Key == "birthDate" && inputs["calendarType"] == "lunar") || (field.Key == "partnerBirthDate" && inputs["partnerCalendarType"] == "lunar") {
 			_, _, _, err := ParseBirthDate(stringValue(value), "lunar")
 			validType = err == nil
 		}
