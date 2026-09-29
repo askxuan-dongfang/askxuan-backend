@@ -286,7 +286,10 @@ func (m *budgetModel) check(messages []*schema.Message) error {
 			size += len(c.Function.Arguments)
 		}
 	}
-	if size > 65536 || m.budget.models.Add(1) > m.budget.modelLimit {
+	// This is a hard allocation ceiling, not a model token budget. Live calls
+	// apply their configured context window in meteredModel before sending.
+	// Full tool results and 1M contexts must not hit the old 64 KiB probe cap.
+	if size > 8*1024*1024 || m.budget.models.Add(1) > m.budget.modelLimit {
 		return ErrBudget
 	}
 	return nil

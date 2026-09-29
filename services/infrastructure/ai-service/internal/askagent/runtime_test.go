@@ -20,8 +20,9 @@ import (
 var bazi = &business.AISkill{Code: "bazi", Name: "八字", Status: "enabled", InputSchema: `{"fields":[{"key":"birthDate","label":"出生日期","type":"date","required":true},{"key":"birthTime","label":"出生时间","type":"time","required":true},{"key":"gender","label":"性别","type":"select","required":true,"options":[{"value":"male","label":"男"},{"value":"female","label":"女"}]}]}`, ToolConfig: `{"enabled":true,"server":"fixture","tool":"bazi"}`}
 
 type mcpStub struct {
-	calls int
-	fail  int
+	calls  int
+	fail   int
+	result string
 }
 
 func (m *mcpStub) Call(_ context.Context, _, args string) (string, error) {
@@ -31,6 +32,9 @@ func (m *mcpStub) Call(_ context.Context, _, args string) (string, error) {
 	}
 	if m.calls <= m.fail {
 		return "", errors.New("private upstream error")
+	}
+	if m.result != "" {
+		return m.result, nil
 	}
 	return `{"yearPillar":"fixture-evidence"}`, nil
 }
@@ -233,5 +237,15 @@ func TestConditionalToolFieldsArePreservedForClarification(t *testing.T) {
 	field := out.Clarification.Fields[1]
 	if field.RequiredWhen == nil || field.VisibleWhen == nil || field.Validation != "divination-numbers" {
 		t.Fatalf("lost form contract: %+v", field)
+	}
+}
+
+func TestLargeToolResultReachesModelWithinConfiguredContext(t *testing.T) {
+	in := fixtureInput()
+	in.ContextWindow = 1048576
+	m := &mcpStub{result: strings.Repeat("大运流年依据。", 6000)}
+	out, err := runFixture(t, in, m, []map[string]any{toolCall("calculate_bazi", "{}"), {"role": "assistant", "content": "已根据完整工具结果回答。"}})
+	if err != nil || out.ModelCalls != 2 || out.ToolCalls != 1 || out.Text == "" {
+		t.Fatalf("large result lost: %+v %v", out, err)
 	}
 }
