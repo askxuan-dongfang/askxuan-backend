@@ -1,0 +1,1292 @@
+[
+  {
+    "code": "bazi",
+    "name": "八字命盘",
+    "description": "读取四柱、十神与命盘关系；涉及大运流年时继续调用八字大运。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "calendarType",
+          "label": "历法",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "solar",
+              "label": "公历"
+            },
+            {
+              "value": "lunar",
+              "label": "农历"
+            }
+          ],
+          "defaultValue": "solar"
+        },
+        {
+          "key": "birthDate",
+          "label": "出生日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "birthTime",
+          "label": "出生时间",
+          "type": "time",
+          "required": true
+        },
+        {
+          "key": "gender",
+          "label": "性别",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "male",
+              "label": "男"
+            },
+            {
+              "value": "female",
+              "label": "女"
+            }
+          ]
+        },
+        {
+          "key": "birthplace",
+          "label": "出生地",
+          "type": "text",
+          "required": false,
+          "helpText": "城市和区县即可；地点校正以工具实际返回状态为准。"
+        }
+      ]
+    },
+    "keywords": [
+      "八字",
+      "四柱",
+      "十神"
+    ],
+    "group": "命盘与运限"
+  },
+  {
+    "code": "bazi_dayun",
+    "name": "八字大运",
+    "description": "计算起运、大运、小运与流年链路，解释实际返回的数据。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "calendarType",
+          "label": "历法",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "solar",
+              "label": "公历"
+            },
+            {
+              "value": "lunar",
+              "label": "农历"
+            }
+          ],
+          "defaultValue": "solar"
+        },
+        {
+          "key": "birthDate",
+          "label": "出生日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "birthTime",
+          "label": "出生时间",
+          "type": "time",
+          "required": true
+        },
+        {
+          "key": "gender",
+          "label": "性别",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "male",
+              "label": "男"
+            },
+            {
+              "value": "female",
+              "label": "女"
+            }
+          ]
+        }
+      ]
+    },
+    "keywords": [
+      "八字大运",
+      "大运",
+      "起运",
+      "小运"
+    ],
+    "group": "命盘与运限"
+  },
+  {
+    "code": "bazi_pillars_resolve",
+    "name": "四柱反推",
+    "description": "根据已知四柱查找出生时间候选；候选结果不作为用户已确认的出生资料。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "yearPillar",
+          "label": "年柱",
+          "type": "text",
+          "required": true,
+          "validation": "pillar",
+          "helpText": "填写一个有效干支，例如甲子。"
+        },
+        {
+          "key": "monthPillar",
+          "label": "月柱",
+          "type": "text",
+          "required": true,
+          "validation": "pillar",
+          "helpText": "填写一个有效干支，例如甲子。"
+        },
+        {
+          "key": "dayPillar",
+          "label": "日柱",
+          "type": "text",
+          "required": true,
+          "validation": "pillar",
+          "helpText": "填写一个有效干支，例如甲子。"
+        },
+        {
+          "key": "hourPillar",
+          "label": "时柱",
+          "type": "text",
+          "required": true,
+          "validation": "pillar",
+          "helpText": "填写一个有效干支，例如甲子。"
+        }
+      ]
+    },
+    "keywords": [
+      "四柱反推",
+      "反推出生"
+    ],
+    "group": "命盘与运限"
+  },
+  {
+    "code": "ziwei",
+    "name": "紫微命盘",
+    "description": "查看紫微十二宫位与星曜；运限和四化飞星使用对应工具。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "calendarType",
+          "label": "历法",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "solar",
+              "label": "公历"
+            },
+            {
+              "value": "lunar",
+              "label": "农历"
+            }
+          ],
+          "defaultValue": "solar"
+        },
+        {
+          "key": "birthDate",
+          "label": "出生日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "birthTime",
+          "label": "出生时间",
+          "type": "time",
+          "required": true
+        },
+        {
+          "key": "gender",
+          "label": "性别",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "male",
+              "label": "男"
+            },
+            {
+              "value": "female",
+              "label": "女"
+            }
+          ]
+        },
+        {
+          "key": "birthplace",
+          "label": "出生地",
+          "type": "text",
+          "required": false,
+          "helpText": "城市和区县即可；地点校正以工具实际返回状态为准。"
+        }
+      ]
+    },
+    "keywords": [
+      "紫微",
+      "斗数"
+    ],
+    "group": "命盘与运限"
+  },
+  {
+    "code": "ziwei_horoscope",
+    "name": "紫微运限",
+    "description": "按指定日期读取大限、小限、流年、流月、流日与流时。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "calendarType",
+          "label": "历法",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "solar",
+              "label": "公历"
+            },
+            {
+              "value": "lunar",
+              "label": "农历"
+            }
+          ],
+          "defaultValue": "solar"
+        },
+        {
+          "key": "birthDate",
+          "label": "出生日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "birthTime",
+          "label": "出生时间",
+          "type": "time",
+          "required": true
+        },
+        {
+          "key": "gender",
+          "label": "性别",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "male",
+              "label": "男"
+            },
+            {
+              "value": "female",
+              "label": "女"
+            }
+          ]
+        },
+        {
+          "key": "birthplace",
+          "label": "出生地",
+          "type": "text",
+          "required": false,
+          "helpText": "城市和区县即可；地点校正以工具实际返回状态为准。"
+        },
+        {
+          "key": "targetDate",
+          "label": "要查看的日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "targetTimeIndex",
+          "label": "流时时段序号",
+          "type": "number",
+          "required": false,
+          "min": 0,
+          "max": 12,
+          "validation": "integer"
+        }
+      ]
+    },
+    "keywords": [
+      "紫微运限",
+      "紫微流年",
+      "大限",
+      "流月",
+      "流时"
+    ],
+    "group": "命盘与运限"
+  },
+  {
+    "code": "ziwei_flying_star",
+    "name": "紫微飞星",
+    "description": "查看指定宫位的四化落宫、自化、飞入及三方四正。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "calendarType",
+          "label": "历法",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "solar",
+              "label": "公历"
+            },
+            {
+              "value": "lunar",
+              "label": "农历"
+            }
+          ],
+          "defaultValue": "solar"
+        },
+        {
+          "key": "birthDate",
+          "label": "出生日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "birthTime",
+          "label": "出生时间",
+          "type": "time",
+          "required": true
+        },
+        {
+          "key": "gender",
+          "label": "性别",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "male",
+              "label": "男"
+            },
+            {
+              "value": "female",
+              "label": "女"
+            }
+          ]
+        },
+        {
+          "key": "birthplace",
+          "label": "出生地",
+          "type": "text",
+          "required": false,
+          "helpText": "城市和区县即可；地点校正以工具实际返回状态为准。"
+        },
+        {
+          "key": "queryType",
+          "label": "查询内容",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "mutagedPlaces",
+              "label": "四化落宫"
+            },
+            {
+              "value": "selfMutaged",
+              "label": "自化"
+            },
+            {
+              "value": "surroundedPalaces",
+              "label": "三方四正"
+            },
+            {
+              "value": "fliesTo",
+              "label": "宫位飞入"
+            }
+          ],
+          "defaultValue": "mutagedPlaces"
+        },
+        {
+          "key": "palace",
+          "label": "查询宫位",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "命宫",
+              "label": "命宫"
+            },
+            {
+              "value": "兄弟",
+              "label": "兄弟"
+            },
+            {
+              "value": "夫妻",
+              "label": "夫妻"
+            },
+            {
+              "value": "子女",
+              "label": "子女"
+            },
+            {
+              "value": "财帛",
+              "label": "财帛"
+            },
+            {
+              "value": "疾厄",
+              "label": "疾厄"
+            },
+            {
+              "value": "迁移",
+              "label": "迁移"
+            },
+            {
+              "value": "仆役",
+              "label": "仆役"
+            },
+            {
+              "value": "官禄",
+              "label": "官禄"
+            },
+            {
+              "value": "田宅",
+              "label": "田宅"
+            },
+            {
+              "value": "福德",
+              "label": "福德"
+            },
+            {
+              "value": "父母",
+              "label": "父母"
+            }
+          ],
+          "defaultValue": "命宫"
+        },
+        {
+          "key": "toPalace",
+          "label": "目标宫位",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "命宫",
+              "label": "命宫"
+            },
+            {
+              "value": "兄弟",
+              "label": "兄弟"
+            },
+            {
+              "value": "夫妻",
+              "label": "夫妻"
+            },
+            {
+              "value": "子女",
+              "label": "子女"
+            },
+            {
+              "value": "财帛",
+              "label": "财帛"
+            },
+            {
+              "value": "疾厄",
+              "label": "疾厄"
+            },
+            {
+              "value": "迁移",
+              "label": "迁移"
+            },
+            {
+              "value": "仆役",
+              "label": "仆役"
+            },
+            {
+              "value": "官禄",
+              "label": "官禄"
+            },
+            {
+              "value": "田宅",
+              "label": "田宅"
+            },
+            {
+              "value": "福德",
+              "label": "福德"
+            },
+            {
+              "value": "父母",
+              "label": "父母"
+            }
+          ],
+          "visibleWhen": {
+            "key": "queryType",
+            "value": "fliesTo"
+          },
+          "requiredWhen": {
+            "key": "queryType",
+            "value": "fliesTo"
+          }
+        }
+      ]
+    },
+    "keywords": [
+      "紫微飞星",
+      "四化",
+      "自化",
+      "三方四正"
+    ],
+    "group": "命盘与运限"
+  },
+  {
+    "code": "astrology",
+    "name": "西方占星",
+    "description": "计算本命盘与指定时刻的流运盘；宫位计算使用用户确认的坐标。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "astroBirthDate",
+          "label": "当地公历出生日期",
+          "type": "date",
+          "required": true,
+          "helpText": "填写出生地当地公历日期；不要直接复用农历日期。"
+        },
+        {
+          "key": "astroBirthTime",
+          "label": "当地出生时间",
+          "type": "time",
+          "required": true,
+          "helpText": "填写出生地当地时间；工具根据你确认的经纬度确定时区。"
+        },
+        {
+          "key": "latitude",
+          "label": "出生地纬度",
+          "type": "number",
+          "required": true,
+          "min": -90,
+          "max": 90,
+          "validation": "number"
+        },
+        {
+          "key": "longitude",
+          "label": "出生地经度",
+          "type": "number",
+          "required": true,
+          "min": -180,
+          "max": 180,
+          "validation": "number"
+        },
+        {
+          "key": "transitDateTime",
+          "label": "流运时刻",
+          "type": "datetime",
+          "required": true,
+          "helpText": "按北京时间填写；地点坐标必须来自你确认的信息。"
+        }
+      ]
+    },
+    "keywords": [
+      "西方占星",
+      "星盘",
+      "本命盘",
+      "流运盘"
+    ],
+    "group": "命盘与运限"
+  },
+  {
+    "code": "qimen",
+    "name": "奇门遁甲",
+    "description": "按时间排出奇门九宫、九星、八门和八神。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "eventTime",
+          "label": "起局时间",
+          "type": "datetime",
+          "required": true,
+          "helpText": "按北京时间（UTC+8）填写。"
+        },
+        {
+          "key": "location",
+          "label": "所在地",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    "keywords": [
+      "奇门",
+      "遁甲"
+    ],
+    "group": "问事与起卦"
+  },
+  {
+    "code": "tarot",
+    "name": "塔罗牌",
+    "description": "按选择的牌阵抽牌并解释牌面。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "spread",
+          "label": "牌阵",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "single",
+              "label": "单牌"
+            },
+            {
+              "value": "three",
+              "label": "三牌阵"
+            },
+            {
+              "value": "love",
+              "label": "爱情牌阵"
+            },
+            {
+              "value": "decision",
+              "label": "抉择牌阵"
+            },
+            {
+              "value": "celtic-cross",
+              "label": "凯尔特十字"
+            },
+            {
+              "value": "horseshoe",
+              "label": "马蹄牌阵"
+            },
+            {
+              "value": "mind-body-spirit",
+              "label": "身心灵"
+            },
+            {
+              "value": "situation",
+              "label": "处境牌阵"
+            },
+            {
+              "value": "yes-no",
+              "label": "是否牌阵"
+            }
+          ],
+          "defaultValue": "single"
+        }
+      ]
+    },
+    "keywords": [
+      "塔罗",
+      "抽牌"
+    ],
+    "group": "问事与起卦"
+  },
+  {
+    "code": "liuyao",
+    "name": "六爻排卦",
+    "description": "通过自动、时间、数字或指定卦起卦，读取六爻盘面。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "method",
+          "label": "起卦方式",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "auto",
+              "label": "自动起卦"
+            },
+            {
+              "value": "time",
+              "label": "时间起卦"
+            },
+            {
+              "value": "number",
+              "label": "数字起卦"
+            },
+            {
+              "value": "select",
+              "label": "指定卦"
+            }
+          ],
+          "defaultValue": "auto"
+        },
+        {
+          "key": "numbers",
+          "label": "起卦数字",
+          "type": "text",
+          "required": false,
+          "validation": "divination-numbers",
+          "visibleWhen": {
+            "key": "method",
+            "value": "number"
+          },
+          "requiredWhen": {
+            "key": "method",
+            "value": "number"
+          }
+        },
+        {
+          "key": "hexagramName",
+          "label": "本卦卦名或卦码",
+          "type": "text",
+          "required": false,
+          "visibleWhen": {
+            "key": "method",
+            "value": "select"
+          },
+          "requiredWhen": {
+            "key": "method",
+            "value": "select"
+          }
+        },
+        {
+          "key": "changedHexagramName",
+          "label": "变卦卦名或卦码",
+          "type": "text",
+          "required": false,
+          "visibleWhen": {
+            "key": "method",
+            "value": "select"
+          },
+          "requiredWhen": null
+        },
+        {
+          "key": "yongShenTarget",
+          "label": "关注事项",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "官鬼",
+              "label": "官鬼"
+            },
+            {
+              "value": "妻财",
+              "label": "妻财"
+            },
+            {
+              "value": "子孙",
+              "label": "子孙"
+            },
+            {
+              "value": "父母",
+              "label": "父母"
+            },
+            {
+              "value": "兄弟",
+              "label": "兄弟"
+            }
+          ]
+        },
+        {
+          "key": "eventTime",
+          "label": "起局时间",
+          "type": "datetime",
+          "required": false,
+          "helpText": "按北京时间（UTC+8）填写。",
+          "visibleWhen": {
+            "key": "method",
+            "value": "time"
+          },
+          "requiredWhen": {
+            "key": "method",
+            "value": "time"
+          }
+        }
+      ]
+    },
+    "keywords": [
+      "六爻",
+      "排卦"
+    ],
+    "group": "问事与起卦"
+  },
+  {
+    "code": "meihua",
+    "name": "梅花易数",
+    "description": "按时间、数字、字占、物数、尺寸或类象起卦，读取体用关系。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "meihuaMethod",
+          "label": "起卦方式",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "time",
+              "label": "时间起卦"
+            },
+            {
+              "value": "number_pair",
+              "label": "两个数字"
+            },
+            {
+              "value": "number_triplet",
+              "label": "三个数字"
+            },
+            {
+              "value": "text_split",
+              "label": "字占"
+            },
+            {
+              "value": "count_with_time",
+              "label": "物数或声数"
+            },
+            {
+              "value": "measure",
+              "label": "尺寸起卦"
+            },
+            {
+              "value": "classifier_pair",
+              "label": "类象起卦"
+            },
+            {
+              "value": "select",
+              "label": "指定卦"
+            }
+          ],
+          "defaultValue": "time"
+        },
+        {
+          "key": "eventTime",
+          "label": "起局时间",
+          "type": "datetime",
+          "required": true,
+          "helpText": "按北京时间（UTC+8）填写。"
+        },
+        {
+          "key": "pairNumbers",
+          "label": "两个数字",
+          "type": "text",
+          "required": false,
+          "validation": "pair-numbers",
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "number_pair"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "number_pair"
+          }
+        },
+        {
+          "key": "tripleNumbers",
+          "label": "三个数字",
+          "type": "text",
+          "required": false,
+          "validation": "triple-numbers",
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "number_triplet"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "number_triplet"
+          }
+        },
+        {
+          "key": "divinationText",
+          "label": "字占文本",
+          "type": "text",
+          "required": false,
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "text_split"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "text_split"
+          }
+        },
+        {
+          "key": "count",
+          "label": "数量",
+          "type": "number",
+          "required": false,
+          "min": 1,
+          "max": 999999,
+          "validation": "integer",
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "count_with_time"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "count_with_time"
+          }
+        },
+        {
+          "key": "countCategory",
+          "label": "数量来源",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "item",
+              "label": "物数"
+            },
+            {
+              "value": "sound",
+              "label": "声数"
+            }
+          ],
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "count_with_time"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "count_with_time"
+          }
+        },
+        {
+          "key": "measureKind",
+          "label": "量法",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "丈尺",
+              "label": "丈尺"
+            },
+            {
+              "value": "尺寸",
+              "label": "尺寸"
+            }
+          ],
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "measure"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "measure"
+          }
+        },
+        {
+          "key": "majorValue",
+          "label": "大单位数值",
+          "type": "number",
+          "required": false,
+          "min": 0,
+          "max": 999999,
+          "validation": "integer",
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "measure"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "measure"
+          }
+        },
+        {
+          "key": "minorValue",
+          "label": "小单位数值",
+          "type": "number",
+          "required": false,
+          "min": 0,
+          "max": 999999,
+          "validation": "integer",
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "measure"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "measure"
+          }
+        },
+        {
+          "key": "upperCue",
+          "label": "上卦类象",
+          "type": "text",
+          "required": false,
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "classifier_pair"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "classifier_pair"
+          }
+        },
+        {
+          "key": "lowerCue",
+          "label": "下卦类象",
+          "type": "text",
+          "required": false,
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "classifier_pair"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "classifier_pair"
+          }
+        },
+        {
+          "key": "hexagramName",
+          "label": "本卦卦名或卦码",
+          "type": "text",
+          "required": false,
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "select"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "select"
+          }
+        },
+        {
+          "key": "movingLine",
+          "label": "动爻",
+          "type": "number",
+          "required": false,
+          "min": 1,
+          "max": 6,
+          "validation": "integer",
+          "visibleWhen": {
+            "key": "meihuaMethod",
+            "value": "select"
+          },
+          "requiredWhen": {
+            "key": "meihuaMethod",
+            "value": "select"
+          }
+        }
+      ]
+    },
+    "keywords": [
+      "梅花",
+      "梅花易数"
+    ],
+    "group": "问事与起卦"
+  },
+  {
+    "code": "taiyi",
+    "name": "太乙九星",
+    "description": "按选定尺度查看太乙九星时空底盘。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "taiyiMode",
+          "label": "观测尺度",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "year",
+              "label": "年"
+            },
+            {
+              "value": "month",
+              "label": "月"
+            },
+            {
+              "value": "day",
+              "label": "日"
+            },
+            {
+              "value": "hour",
+              "label": "时"
+            },
+            {
+              "value": "minute",
+              "label": "分钟"
+            }
+          ],
+          "defaultValue": "day"
+        },
+        {
+          "key": "eventTime",
+          "label": "起局时间",
+          "type": "datetime",
+          "required": true,
+          "helpText": "按北京时间（UTC+8）填写。"
+        }
+      ]
+    },
+    "keywords": [
+      "太乙",
+      "九星观测"
+    ],
+    "group": "问事与起卦"
+  },
+  {
+    "code": "daliuren",
+    "name": "大六壬",
+    "description": "按指定时间起课，读取天地盘、四课、三传和神将。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "eventTime",
+          "label": "起局时间",
+          "type": "datetime",
+          "required": true,
+          "helpText": "按北京时间（UTC+8）填写。"
+        }
+      ]
+    },
+    "keywords": [
+      "大六壬"
+    ],
+    "group": "问事与起卦"
+  },
+  {
+    "code": "xiaoliuren",
+    "name": "小六壬",
+    "description": "按农历月日与明确的时辰起课。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "lunarMonth",
+          "label": "农历月份",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "max": 12,
+          "validation": "integer"
+        },
+        {
+          "key": "lunarDay",
+          "label": "农历日期",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "max": 30,
+          "validation": "integer"
+        },
+        {
+          "key": "hourIndex",
+          "label": "时辰",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "1",
+              "label": "子时"
+            },
+            {
+              "value": "2",
+              "label": "丑时"
+            },
+            {
+              "value": "3",
+              "label": "寅时"
+            },
+            {
+              "value": "4",
+              "label": "卯时"
+            },
+            {
+              "value": "5",
+              "label": "辰时"
+            },
+            {
+              "value": "6",
+              "label": "巳时"
+            },
+            {
+              "value": "7",
+              "label": "午时"
+            },
+            {
+              "value": "8",
+              "label": "未时"
+            },
+            {
+              "value": "9",
+              "label": "申时"
+            },
+            {
+              "value": "10",
+              "label": "酉时"
+            },
+            {
+              "value": "11",
+              "label": "戌时"
+            },
+            {
+              "value": "12",
+              "label": "亥时"
+            }
+          ]
+        }
+      ]
+    },
+    "keywords": [
+      "小六壬"
+    ],
+    "group": "问事与起卦"
+  },
+  {
+    "code": "almanac",
+    "name": "黄历查询",
+    "description": "查看指定日期的黄历、宜忌和时辰信息。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "targetDate",
+          "label": "查询日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "dayMaster",
+          "label": "日主天干（已知时填写）",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "甲",
+              "label": "甲"
+            },
+            {
+              "value": "乙",
+              "label": "乙"
+            },
+            {
+              "value": "丙",
+              "label": "丙"
+            },
+            {
+              "value": "丁",
+              "label": "丁"
+            },
+            {
+              "value": "戊",
+              "label": "戊"
+            },
+            {
+              "value": "己",
+              "label": "己"
+            },
+            {
+              "value": "庚",
+              "label": "庚"
+            },
+            {
+              "value": "辛",
+              "label": "辛"
+            },
+            {
+              "value": "壬",
+              "label": "壬"
+            },
+            {
+              "value": "癸",
+              "label": "癸"
+            }
+          ]
+        }
+      ]
+    },
+    "keywords": [
+      "黄历",
+      "宜忌"
+    ],
+    "group": "生活参考"
+  }
+]

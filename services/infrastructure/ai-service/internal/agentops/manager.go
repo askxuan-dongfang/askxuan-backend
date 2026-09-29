@@ -67,11 +67,11 @@ func (m *Manager) Workspace(ctx context.Context) (Workspace, error) {
 	}
 	for _, skill := range catalog {
 		tc, _ := agent.ParseToolConfig(skill.ToolConfig)
-		raw := json.RawMessage(skill.InputSchema)
+		raw := json.RawMessage(agent.GuidedInputSchema(skill.Code, skill.InputSchema))
 		if !json.Valid(raw) {
 			raw = json.RawMessage(`{"fields":[]}`)
 		}
-		w.Catalog = append(w.Catalog, SkillInfo{Code: skill.Code, Name: skill.Name, Version: skill.Version, Description: skill.Description, InputSchema: raw, ToolName: tc.Tool, ToolAvailable: tc.Enabled, EinoSupported: skill.Code == "bazi" || skill.Code == "ziwei" || skill.Code == "qimen" || skill.Code == "tarot" || skill.Code == "liuyao"})
+		w.Catalog = append(w.Catalog, SkillInfo{Code: skill.Code, Name: skill.Name, Version: skill.Version, Description: skill.Description, InputSchema: raw, ToolName: tc.Tool, ToolAvailable: tc.Enabled, EinoSupported: agent.IsReadOnlyTool(skill.Code) && tc.Tool == skill.Code})
 	}
 	if s.ActiveVersion > 0 {
 		v, e := m.Repo.Version(ctx, s.ActiveVersion)

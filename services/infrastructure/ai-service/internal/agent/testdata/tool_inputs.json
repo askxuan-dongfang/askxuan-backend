@@ -1,0 +1,78 @@
+{
+  "bazi": {
+    "birthDate": "1990-01-02",
+    "birthTime": "08:30",
+    "calendarType": "solar",
+    "gender": "male"
+  },
+  "bazi_dayun": {
+    "birthDate": "1990-01-02",
+    "birthTime": "08:30",
+    "calendarType": "solar",
+    "gender": "male"
+  },
+  "bazi_pillars_resolve": {
+    "yearPillar": "己巳",
+    "monthPillar": "丙子",
+    "dayPillar": "丁卯",
+    "hourPillar": "甲辰"
+  },
+  "ziwei": {
+    "birthDate": "1990-01-02",
+    "birthTime": "08:30",
+    "calendarType": "solar",
+    "gender": "male"
+  },
+  "ziwei_horoscope": {
+    "birthDate": "1990-01-02",
+    "birthTime": "08:30",
+    "calendarType": "solar",
+    "gender": "male",
+    "targetDate": "2026-09-29"
+  },
+  "ziwei_flying_star": {
+    "birthDate": "1990-01-02",
+    "birthTime": "08:30",
+    "calendarType": "solar",
+    "gender": "male",
+    "queryType": "mutagedPlaces",
+    "palace": "命宫"
+  },
+  "astrology": {
+    "astroBirthDate": "1990-01-02",
+    "astroBirthTime": "08:30",
+    "latitude": "31.23",
+    "longitude": "121.47",
+    "transitDateTime": "2026-09-29T12:30"
+  },
+  "qimen": {
+    "eventTime": "2026-09-29T12:30"
+  },
+  "tarot": {
+    "spread": "single"
+  },
+  "liuyao": {
+    "method": "number",
+    "numbers": "12 34 56",
+    "yongShenTarget": "父母"
+  },
+  "meihua": {
+    "eventTime": "2026-09-29T12:30",
+    "meihuaMethod": "time"
+  },
+  "taiyi": {
+    "eventTime": "2026-09-29T12:30",
+    "taiyiMode": "day"
+  },
+  "daliuren": {
+    "eventTime": "2026-09-29T12:30"
+  },
+  "xiaoliuren": {
+    "lunarMonth": "8",
+    "lunarDay": "19",
+    "hourIndex": "7"
+  },
+  "almanac": {
+    "targetDate": "2026-09-29"
+  }
+}

@@ -19,7 +19,7 @@ type MCPCaller interface {
 
 // SkillTool binds a server-reviewed skill and user-supplied facts. Model-supplied
 // arguments cannot invent missing birth data, change the endpoint, or select an
-// arbitrary remote tool. This probe supports deterministic, read-only tools only.
+// arbitrary remote tool. Only reviewed read-only calculation tools are permitted.
 type SkillTool struct {
 	skill    model.AISkill
 	inputs   string
@@ -52,13 +52,11 @@ func NewSkillTool(skill model.AISkill, inputs map[string]any, question string, c
 	if skill.Status != model.SkillStatusEnabled {
 		return nil, errors.New("skill is disabled")
 	}
-	switch skill.Code {
-	case "bazi", "ziwei", "qimen", "tarot", "liuyao":
-	default:
+	if !agent.IsReadOnlyTool(skill.Code) {
 		return nil, errors.New("skill is outside the read-only tool allowlist")
 	}
 	c, err := agent.ParseToolConfig(skill.ToolConfig)
-	if err != nil || !c.Enabled || c.Tool == "" {
+	if err != nil || !c.Enabled || c.Tool != skill.Code {
 		return nil, errors.New("skill MCP tool is not enabled")
 	}
 	var parsed agent.InputSchema
@@ -129,7 +127,7 @@ func (t *SkillTool) InvokableRun(ctx context.Context, args string, _ ...tool.Opt
 		// Do not forward upstream response bodies, addresses or credentials to the model.
 		return `{"ok":false,"error":"calculation_unavailable","message":"尚无计算依据，可在预算内重试；不能编造结果"}`, nil
 	}
-	if strings.TrimSpace(result) == "" || len(result) > 16384 {
+	if strings.TrimSpace(result) == "" || len(result) > 256<<10 {
 		return `{"ok":false,"error":"invalid_tool_result"}`, nil
 	}
 	encoded, err := json.Marshal(map[string]any{"ok": true, "evidence": result})

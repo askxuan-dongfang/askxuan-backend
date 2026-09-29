@@ -221,6 +221,7 @@ func TestConditionalToolFieldsArePreservedForClarification(t *testing.T) {
 	in := fixtureInput()
 	s := *bazi
 	s.Code = "liuyao"
+	s.ToolConfig = `{"enabled":true,"server":"taibu","tool":"liuyao"}`
 	s.InputSchema = `{"fields":[{"key":"method","type":"select","required":true,"options":[{"value":"number","label":"数字"},{"value":"auto","label":"自动"}]},{"key":"numbers","type":"text"}]}`
 	in.Skills = []*business.AISkill{&s}
 	in.Facts = map[string]any{"method": "number"}

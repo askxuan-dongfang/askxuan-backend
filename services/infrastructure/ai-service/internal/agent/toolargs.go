@@ -22,7 +22,7 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 	}
 	var args map[string]interface{}
 	switch skillCode {
-	case "bazi", "ziwei":
+	case "bazi", "ziwei", "bazi_dayun", "ziwei_horoscope", "ziwei_flying_star":
 		if stringValue(inputs["birthDate"]) == "" || stringValue(inputs["birthTime"]) == "" || stringValue(inputs["gender"]) == "" {
 			return "", nil
 		}
@@ -36,10 +36,39 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 		}
 		args = map[string]interface{}{
 			"gender": stringValue(inputs["gender"]), "birthYear": year, "birthMonth": month, "birthDay": day,
-			"birthHour": hour, "birthMinute": minute, "calendarType": defaultString(stringValue(inputs["calendarType"]), "solar"), "detailLevel": "default",
+			"birthHour": hour, "birthMinute": minute, "calendarType": defaultString(stringValue(inputs["calendarType"]), "solar"), "detailLevel": "full",
 		}
-		if skillCode == "bazi" && stringValue(inputs["birthplace"]) != "" {
+		if skillCode != "bazi_dayun" && stringValue(inputs["birthplace"]) != "" {
 			args["birthPlace"] = stringValue(inputs["birthplace"])
+		}
+		if skillCode == "ziwei_horoscope" {
+			date := stringValue(inputs["targetDate"])
+			if _, _, _, err := ParseBirthDate(date, "solar"); err != nil {
+				return "", err
+			}
+			args["targetDate"] = date
+			if stringValue(inputs["targetTimeIndex"]) != "" {
+				n, e := boundedNumber(inputs, "targetTimeIndex", 0, 12, true)
+				if e != nil {
+					return "", e
+				}
+				args["targetTimeIndex"] = n
+			}
+		}
+		if skillCode == "ziwei_flying_star" {
+			kind, palace := stringValue(inputs["queryType"]), stringValue(inputs["palace"])
+			if !oneOf(kind, "mutagedPlaces", "selfMutaged", "surroundedPalaces", "fliesTo") || !validPalace(palace) {
+				return "", fmt.Errorf("invalid flying-star query")
+			}
+			query := map[string]any{"type": kind, "palace": palace}
+			if kind == "fliesTo" {
+				to := stringValue(inputs["toPalace"])
+				if !validPalace(to) {
+					return "", fmt.Errorf("target palace required")
+				}
+				query = map[string]any{"type": kind, "from": palace, "to": to, "mutagens": []string{"禄", "权", "科", "忌"}}
+			}
+			args["queries"] = []any{query}
 		}
 	case "qimen":
 		if stringValue(inputs["eventTime"]) == "" {
@@ -51,19 +80,37 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 		}
 		args = map[string]interface{}{
 			"year": eventTime.Year(), "month": int(eventTime.Month()), "day": eventTime.Day(), "hour": eventTime.Hour(), "minute": eventTime.Minute(),
-			"timezone": "Asia/Shanghai", "question": question, "panType": "zhuan", "juMethod": "chaibu", "zhiFuJiGong": "ji_liuyi", "detailLevel": "default",
+			"timezone": "Asia/Shanghai", "question": question, "panType": "zhuan", "juMethod": "chaibu", "zhiFuJiGong": "ji_liuyi", "detailLevel": "full",
 		}
 	case "tarot":
-		spread := map[string]string{"single": "single", "three": "three-card", "love": "love", "decision": "decision"}[stringValue(inputs["spread"])]
+		spread := map[string]string{"single": "single", "three": "three-card", "love": "love", "decision": "decision", "celtic-cross": "celtic-cross", "horseshoe": "horseshoe", "mind-body-spirit": "mind-body-spirit", "situation": "situation", "yes-no": "yes-no"}[stringValue(inputs["spread"])]
 		if spread == "" {
 			spread = "single"
 		}
-		args = map[string]interface{}{"spreadType": spread, "question": question, "allowReversed": true, "detailLevel": "default"}
+		args = map[string]interface{}{"spreadType": spread, "question": question, "allowReversed": true, "detailLevel": "full"}
 	case "liuyao":
 		method := defaultString(stringValue(inputs["method"]), "auto")
 		args = map[string]interface{}{
 			"question": question, "method": method, "yongShenTargets": []string{defaultString(stringValue(inputs["yongShenTarget"]), inferYongShen(question))},
-			"date": defaultString(stringValue(inputs["eventTime"]), now.In(time.FixedZone("CST", 8*3600)).Format("2006-01-02T15:04:05")), "detailLevel": "default",
+			"date": defaultString(stringValue(inputs["eventTime"]), now.In(time.FixedZone("CST", 8*3600)).Format("2006-01-02T15:04:05")), "detailLevel": "full",
+		}
+		if !oneOf(method, "auto", "time", "number", "select") {
+			return "", fmt.Errorf("invalid method")
+		}
+		if method == "time" {
+			if _, e := parseLocalDateTime(stringValue(inputs["eventTime"])); e != nil {
+				return "", e
+			}
+		}
+		if method == "select" {
+			name := stringValue(inputs["hexagramName"])
+			if name == "" {
+				return "", fmt.Errorf("hexagram required")
+			}
+			args["hexagramName"] = name
+			if changed := stringValue(inputs["changedHexagramName"]); changed != "" {
+				args["changedHexagramName"] = changed
+			}
 		}
 		if method == "number" {
 			numbers, err := ParseDivinationNumbers(stringValue(inputs["numbers"]))
@@ -73,7 +120,14 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 			args["numbers"] = numbers
 		}
 	default:
-		return "", nil
+		var err error
+		args, err = extendedToolArguments(skillCode, question, inputs)
+		if err != nil {
+			return "", err
+		}
+		if args == nil {
+			return "", nil
+		}
 	}
 	encoded, err := json.Marshal(args)
 	return string(encoded), err
@@ -104,7 +158,7 @@ func RedactToolArguments(argumentsJSON string) string {
 	if json.Unmarshal([]byte(argumentsJSON), &values) != nil {
 		return `{}`
 	}
-	for _, key := range []string{"birthPlace", "location", "question"} {
+	for _, key := range []string{"birthPlace", "location", "question", "latitude", "longitude", "text", "upperCue", "lowerCue"} {
 		if _, ok := values[key]; ok {
 			values[key] = "[已提供]"
 		}

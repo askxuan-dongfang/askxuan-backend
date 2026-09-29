@@ -79,7 +79,7 @@ func GuidedInputSchema(code, raw string) string {
 				f["requiredWhen"] = map[string]string{"key": "method", "value": "time"}
 			}
 		}
-		if help != "" {
+		if help != "" && f["helpText"] == nil {
 			f["helpText"] = help
 		}
 		options, _ := f["options"].([]interface{})

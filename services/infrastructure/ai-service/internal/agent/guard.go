@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -28,6 +30,8 @@ type FieldCondition struct {
 }
 
 type Field struct {
+	Min          *float64        `json:"min,omitempty"`
+	Max          *float64        `json:"max,omitempty"`
 	VisibleWhen  *FieldCondition `json:"visibleWhen,omitempty"`
 	HelpText     string          `json:"helpText,omitempty"`
 	Placeholder  string          `json:"placeholder,omitempty"`
@@ -79,6 +83,12 @@ func (g *Guard) Validate(schemaJSON, content string, inputs map[string]interface
 	for _, field := range schema.Fields {
 		known[field.Key] = field
 		value, present := inputs[field.Key]
+		if field.VisibleWhen != nil && inputs[field.VisibleWhen.Key] != field.VisibleWhen.Value {
+			if present && !isEmpty(value) {
+				return "", fmt.Errorf("%w: %s is not applicable", ErrInvalidInputs, field.Key)
+			}
+			continue
+		}
 		required := field.Required || (field.RequiredWhen != nil && inputs[field.RequiredWhen.Key] == field.RequiredWhen.Value)
 		if required && (!present || isEmpty(value)) {
 			return "", fmt.Errorf("%w: %s required", ErrInvalidInputs, field.Key)
@@ -86,6 +96,27 @@ func (g *Guard) Validate(schemaJSON, content string, inputs map[string]interface
 		if present && !isEmpty(value) && field.Validation == "divination-numbers" {
 			if _, err := ParseDivinationNumbers(stringValue(value)); err != nil {
 				return "", fmt.Errorf("%w: %s", ErrInvalidInputs, err)
+			}
+		}
+		if present && !isEmpty(value) {
+			if field.Type == "number" {
+				n, e := strconv.ParseFloat(stringValue(value), 64)
+				if e != nil || math.IsNaN(n) || math.IsInf(n, 0) || (field.Min != nil && n < *field.Min) || (field.Max != nil && n > *field.Max) || (field.Validation == "integer" && n != math.Trunc(n)) {
+					return "", fmt.Errorf("%w: %s number", ErrInvalidInputs, field.Key)
+				}
+			}
+			if field.Validation == "pillar" && !validPillar(stringValue(value)) {
+				return "", fmt.Errorf("%w: %s pillar", ErrInvalidInputs, field.Key)
+			}
+			if field.Validation == "pair-numbers" || field.Validation == "triple-numbers" {
+				ns, e := ParseDivinationNumbers(stringValue(value))
+				count := 2
+				if field.Validation == "triple-numbers" {
+					count = 3
+				}
+				if e != nil || len(ns) != count {
+					return "", fmt.Errorf("%w: %s numbers", ErrInvalidInputs, field.Key)
+				}
 			}
 		}
 		if present && field.Type == "select" && !isAllowedOption(value, field.Options) {
@@ -182,6 +213,9 @@ func isValidFieldValue(value interface{}, fieldType string) bool {
 	}
 	text = strings.TrimSpace(text)
 	switch fieldType {
+	case "number":
+		n, err := strconv.ParseFloat(text, 64)
+		return err == nil && !math.IsNaN(n) && !math.IsInf(n, 0)
 	case "date":
 		_, err := time.Parse("2006-01-02", text)
 		return err == nil
@@ -200,4 +234,14 @@ func isValidFieldValue(value interface{}, fieldType string) bool {
 	default:
 		return false
 	}
+}
+
+func validPillar(value string) bool {
+	stems, branches := []rune("甲乙丙丁戊己庚辛壬癸"), []rune("子丑寅卯辰巳午未申酉戌亥")
+	for i := 0; i < 60; i++ {
+		if value == string([]rune{stems[i%10], branches[i%12]}) {
+			return true
+		}
+	}
+	return false
 }
