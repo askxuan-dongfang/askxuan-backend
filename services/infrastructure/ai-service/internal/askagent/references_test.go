@@ -2,6 +2,7 @@ package askagent
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -9,7 +10,7 @@ func TestReferenceToolCannotChooseAnotherUser(t *testing.T) {
 	calls := 0
 	r := referenceTool{name: "recall_memory", read: func(context.Context, string) (string, error) { calls++; return "owned", nil }}
 	for _, args := range []string{`{"userId":"other"}`, `null`, `[]`} {
-		if _, e := r.InvokableRun(context.Background(), args); e == nil {
+		if v, e := r.InvokableRun(context.Background(), args); e != nil || !strings.Contains(v, `"ok":false`) {
 			t.Fatal("unscoped args accepted")
 		}
 	}
