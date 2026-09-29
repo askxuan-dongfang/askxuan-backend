@@ -19,6 +19,9 @@ var ErrModelNeedsVision = errors.New("当前会话含图片，请选择支持图
 var modelID = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,99}$`)
 
 type ModelOption struct {
+	ContextWindow   int `json:"contextWindow"`
+	MaxOutputTokens int `json:"maxOutputTokens"`
+
 	ID             string `json:"id"`
 	Name           string `json:"name"`
 	Description    string `json:"description"`
@@ -70,7 +73,9 @@ func (p *OpenAICompatible) listModels(ctx context.Context) ([]ModelOption, error
 	}
 	var body struct {
 		Data []struct {
-			ID string `json:"id"`
+			ID              string `json:"id"`
+			ContextWindow   int    `json:"context_window"`
+			MaxOutputTokens int    `json:"max_output_tokens"`
 		} `json:"data"`
 	}
 	if err = json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&body); err != nil {
@@ -83,7 +88,7 @@ func (p *OpenAICompatible) listModels(ctx context.Context) ([]ModelOption, error
 			continue
 		}
 		seen[row.ID] = true
-		option := ModelOption{ID: row.ID, Name: row.ID, Description: "文字对话", SupportsVision: row.ID == p.visionModel}
+		option := ModelOption{ContextWindow: row.ContextWindow, MaxOutputTokens: row.MaxOutputTokens, ID: row.ID, Name: row.ID, Description: "文字对话", SupportsVision: row.ID == p.visionModel}
 		switch row.ID {
 		case "deepseek-flash", "deepseek-v4-flash", "deepseek-v4-flash-vision-exp":
 			option.Name = "DeepSeek Flash"
@@ -173,4 +178,35 @@ func (c *Catalog) Select(ctx context.Context, id string, images bool) (string, e
 		}
 	}
 	return "", ErrModelUnavailable
+}
+
+// Limits fails closed if discovery fails; unknown metadata uses a conservative
+// window instead of assuming every compatible model supports DeepSeek's 1M.
+func (c *Catalog) Limits(ctx context.Context, id string, platform, output int) (int, int, error) {
+	list, err := c.List(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, m := range list.List {
+		if m.ID != id {
+			continue
+		}
+		window := m.ContextWindow
+		if window <= 0 {
+			window = 32768
+		}
+		window = min(window, 1048576)
+		if platform > 0 {
+			window = min(window, platform)
+		}
+		if m.MaxOutputTokens > 0 {
+			output = min(output, m.MaxOutputTokens)
+		}
+		output = min(output, window/2)
+		if output < 64 {
+			return 0, 0, errors.New("model token limits unavailable")
+		}
+		return window, output, nil
+	}
+	return 0, 0, ErrModelUnavailable
 }

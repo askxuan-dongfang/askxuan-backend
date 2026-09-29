@@ -33,6 +33,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id/messages", Handler: messageListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions/:id/messages", Handler: messageSendHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions/:id/messages/:messageId/retry", Handler: messageRetryHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/ai/sessions/:id/messages/:messageId/cancel", Handler: messageCancelHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id/messages/:messageId/stream", Handler: messageStreamHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/sessions/:id/messages/:messageId/trace", Handler: messageTraceHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/usage", Handler: usageSummaryHandler(svcCtx)},
@@ -323,5 +324,31 @@ func respond(w http.ResponseWriter, resp interface{}, err error) {
 		common.JsonError(w, err)
 	} else {
 		common.Ok(w, resp)
+	}
+}
+
+func messageCancelHandler(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.MessageRetryReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		user, err := resolveUserID(r, req.UserId)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
+		msg, err := s.ConversationModel.FindMessageForUser(r.Context(), req.Id, req.MessageId, user)
+		if err != nil {
+			common.JsonError(w, common.ErrSessionNotFound)
+			return
+		}
+		if msg.Role != "assistant" {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		stopped := logic.CancelMessage(req.MessageId)
+		respond(w, map[string]any{"accepted": stopped}, nil)
 	}
 }

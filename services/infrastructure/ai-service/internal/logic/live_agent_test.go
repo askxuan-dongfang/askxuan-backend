@@ -20,7 +20,7 @@ func TestLiveContextKeepsUserFactsAndReportAcrossTurns(t *testing.T) {
 		{Id: 6, Role: "user", Status: "completed", Content: "未来消息不得影响重试", InputJSON: `{"birthTime":"00:00"}`},
 	}
 	in, e := liveContext(messages, 5, 2, &Report{Title: "报告", Content: "已购内容", InputsJSON: `{"birthDate":"1990-01-02","gender":"male"}`})
-	if e != nil || in.Facts["birthDate"] != "1991-03-04" || in.Facts["birthTime"] != "12:30" || in.Facts["gender"] != "male" || in.Question != "请结合今年再分析" || len(in.Messages) != 2 {
+	if e != nil || in.Facts["birthDate"] != "1991-03-04" || in.Facts["birthTime"] != "12:30" || in.Facts["gender"] != "male" || in.Question != "请结合今年再分析" || len(in.Messages) != 3 {
 		t.Fatalf("lost/mixed context: %+v %v", in, e)
 	}
 	if strings.Contains(in.Messages[0].Content, "报告正文") {

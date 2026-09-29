@@ -80,29 +80,6 @@ func liveContext(messages []*model.AIMessage, pendingID int64, limit int, report
 	if strings.TrimSpace(in.Question) == "" {
 		return in, errors.New("missing user question")
 	}
-	if limit <= 0 {
-		limit = 20
-	}
-	if len(history) > limit {
-		history = history[len(history)-limit:]
-	}
-	// Keep newest messages under a deterministic context budget, without cutting
-	// the latest question or changing its role.
-	size := 0
-	start := len(history) - 1
-	for ; start >= 0; start-- {
-		size += len(history[start].Content)
-		if size > 40000 {
-			start++
-			break
-		}
-	}
-	if start > 0 {
-		history = history[start:]
-	}
-	if len(history) == 0 {
-		return in, errors.New("agent context too large")
-	}
 	in.Messages = history
 	return in, nil
 }
@@ -174,7 +151,12 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 		for _, u := range loaded {
 			msg.MultiContent = append(msg.MultiContent, schema.ChatMessagePart{Type: schema.ChatMessagePartTypeImageURL, ImageURL: &schema.ChatMessageImageURL{URL: u, Detail: schema.ImageURLDetailAuto}})
 		}
-		in.Messages = append(in.Messages[:len(in.Messages)-1], msg, in.Messages[len(in.Messages)-1])
+		for j := len(in.Messages) - 1; j >= 0; j-- {
+			if in.Messages[j].Role == schema.User && in.Messages[j].Content == m.Content {
+				in.Messages[j] = msg
+				break
+			}
+		}
 		break
 	}
 	hooks := askagent.Hooks{}
@@ -206,7 +188,20 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 		}
 		return result, nil
 	}
-	req := provider.Request{Model: pending.Model, MaxTokens: s.AIConfig.MaxOutputTokens, ThinkingEnabled: s.AIConfig.ThinkingEnabled, ReasoningEffort: s.AIConfig.ReasoningEffort}
+	output := s.AIConfig.MaxOutputTokens
+	if report != nil || session.SkillCode != "general" || len(in.Facts) > 0 || strings.Contains(in.Question, "详细") || strings.Contains(in.Question, "深入") || strings.Contains(in.Question, "分析") {
+		output = max(output, s.AIConfig.ComplexOutputTokens)
+	}
+	if output <= 0 {
+		output = 8192
+	}
+	window, output, e := s.Models.Limits(ctx, pending.Model, s.AIConfig.ContextWindow, output)
+	if e != nil {
+		return e
+	}
+	in.ContextWindow, in.OutputTokens = window, output
+	in.Timeout = time.Duration(max(60, s.AIConfig.TaskTimeoutSeconds)) * time.Second
+	req := provider.Request{Model: pending.Model, MaxTokens: output, ThinkingEnabled: s.AIConfig.ThinkingEnabled, ReasoningEffort: s.AIConfig.ReasoningEffort}
 	chat, e := provider.NewEinoModel(ctx, s.Provider, req)
 	if e != nil {
 		return e
@@ -228,7 +223,7 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 	if e != nil {
 		return e
 	}
-	metadata, _ := json.Marshal(map[string]any{"_agent": map[string]any{"runtime": "harness", "modelCalls": out.ModelCalls, "toolCalls": out.ToolCalls, "clarification": out.Clarification}})
+	metadata, _ := json.Marshal(map[string]any{"_agent": map[string]any{"runtime": "harness", "modelCalls": out.ModelCalls, "toolCalls": out.ToolCalls, "clarification": out.Clarification, "context": out.Context}})
 	if _, e = s.DB.ExecCtx(ctx, "UPDATE ai_message SET input_json=CAST(? AS JSON) WHERE id=? AND session_id=? AND role='assistant'", string(metadata), pending.Id, session.Id); e != nil {
 		return e
 	}

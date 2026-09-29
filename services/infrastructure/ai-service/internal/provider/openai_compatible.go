@@ -19,7 +19,7 @@ type OpenAICompatible struct {
 }
 
 func NewOpenAICompatible(baseURL, apiKey, model, visionModel string) *OpenAICompatible {
-	return &OpenAICompatible{baseURL: strings.TrimRight(baseURL, "/"), apiKey: apiKey, model: model, visionModel: visionModel, client: &http.Client{Timeout: 60 * time.Second}}
+	return &OpenAICompatible{baseURL: strings.TrimRight(baseURL, "/"), apiKey: apiKey, model: model, visionModel: visionModel, client: &http.Client{Timeout: 600 * time.Second}}
 }
 
 // SetHTTPClient is only called while constructing an unpublished provider snapshot.

@@ -206,16 +206,6 @@ func (l *MessageRetryLogic) Retry(req *types.MessageRetryReq) (*types.MessageSen
 	return &types.MessageSendResp{SessionId: req.Id, MessageId: req.MessageId, Status: model.MessageStatusPending}, nil
 }
 
-func processAsync(svcCtx *svc.ServiceContext, sessionId, messageId int64) {
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancel()
-		if err := processMessage(ctx, svcCtx, sessionId, messageId); err != nil {
-			logx.Errorf("AI Provider处理失败 session=%d message=%d: %v", sessionId, messageId, err)
-			_ = svcCtx.ConversationModel.FailMessage(context.Background(), messageId, err.Error())
-		}
-	}()
-}
 func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, messageId int64) (processErr error) {
 	startedAt := time.Now()
 	s, err := svcCtx.ConversationModel.FindSession(ctx, sessionId)

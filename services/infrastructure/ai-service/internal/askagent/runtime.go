@@ -39,13 +39,15 @@ type Clarification struct {
 	Values    map[string]any `json:"values"`
 }
 type Input struct {
-	ReasoningFallback []model.Option
-	Messages          []*schema.Message
-	Question          string
-	Skills            []*business.AISkill
-	Facts             map[string]any
-	Report            *Report
-	Instruction       string
+	ContextWindow, OutputTokens int
+	Timeout                     time.Duration
+	ReasoningFallback           []model.Option
+	Messages                    []*schema.Message
+	Question                    string
+	Skills                      []*business.AISkill
+	Facts                       map[string]any
+	Report                      *Report
+	Instruction                 string
 }
 type Hooks struct {
 	Stage func(string) error
@@ -54,6 +56,7 @@ type Hooks struct {
 	Text func(string) error
 }
 type Outcome struct {
+	Context               ContextStats
 	Text                  string
 	Clarification         *Clarification
 	Usage                 provider.Response
@@ -64,7 +67,18 @@ func Execute(ctx context.Context, chat model.BaseChatModel, input Input, mcp ein
 	if chat == nil || guard == nil {
 		return out, errors.New("agent dependencies unavailable")
 	}
-	meter := &meteredModel{BaseChatModel: chat, stage: hooks.Stage}
+	window, output := input.ContextWindow, input.OutputTokens
+	if window <= 0 {
+		window = 32768
+	}
+	if output <= 0 {
+		output = 8192
+	}
+	timeout := input.Timeout
+	if timeout <= 0 {
+		timeout = 180 * time.Second
+	}
+	meter := &meteredModel{BaseChatModel: chat, stage: hooks.Stage, window: window, output: output}
 	var clarification *Clarification
 	tools := []tool.BaseTool{}
 	for _, configured := range input.Skills {
@@ -96,6 +110,17 @@ func Execute(ctx context.Context, chat model.BaseChatModel, input Input, mcp ein
 	if input.Report != nil {
 		tools = append(tools, &reportTool{report: *input.Report, hooks: hooks})
 	}
+	for _, t := range tools {
+		info, err := t.Info(ctx)
+		if err != nil {
+			return out, err
+		}
+		raw, err := json.Marshal(info)
+		if err != nil {
+			return out, err
+		}
+		meter.toolReserve += len(raw) + 128
+	}
 	var retry *adk.ModelRetryConfig
 	if len(input.ReasoningFallback) > 0 {
 		retry = &adk.ModelRetryConfig{MaxRetries: 1, ShouldRetry: func(ctx context.Context, r *adk.RetryContext) *adk.RetryDecision {
@@ -110,13 +135,14 @@ func Execute(ctx context.Context, chat model.BaseChatModel, input Input, mcp ein
 			return &adk.RetryDecision{Retry: true, AdditionalOptions: input.ReasoningFallback}
 		}}
 	}
-	h, e := einopoc.NewConfiguredRetry(ctx, meter, tools, guard, einopoc.Limits{ModelCalls: 4, ToolCalls: 4, Timeout: 55 * time.Second}, input.Instruction+"\n"+Instruction, retry)
+	h, e := einopoc.NewConfiguredRetry(ctx, meter, tools, guard, einopoc.Limits{ModelCalls: 4, ToolCalls: 4, Timeout: timeout}, input.Instruction+"\n"+Instruction, retry)
 	if e != nil {
 		return out, e
 	}
 	result, e := h.RunMessages(ctx, input.Messages, hooks.Text)
 	out.ModelCalls, out.ToolCalls = h.Counts()
 	out.Usage = meter.usage()
+	out.Context = meter.contextStats
 	out.Text = result.Text
 	if e != nil {
 		return out, e
@@ -243,6 +269,8 @@ func (t *reportTool) InvokableRun(ctx context.Context, args string, _ ...tool.Op
 var ErrReasoningBudget = errors.New("agent reasoning exhausted output budget before answering")
 
 type meteredModel struct {
+	window, output, toolReserve int
+	contextStats                ContextStats
 	model.BaseChatModel
 	mu    sync.Mutex
 	total provider.Response
@@ -269,7 +297,12 @@ func (m *meteredModel) Generate(ctx context.Context, in []*schema.Message, opts 
 			return nil, e
 		}
 	}
-	out, e := m.BaseChatModel.Generate(ctx, in, opts...)
+	prepared, stats, e := fitContext(in, m.window, m.output, m.toolReserve)
+	m.contextStats = stats
+	if e != nil {
+		return nil, e
+	}
+	out, e := m.BaseChatModel.Generate(ctx, prepared, opts...)
 	if out != nil && out.ResponseMeta != nil {
 		m.add(out.ResponseMeta.Usage, &schema.TokenUsage{})
 	}
@@ -281,7 +314,12 @@ func (m *meteredModel) Stream(ctx context.Context, in []*schema.Message, opts ..
 			return nil, e
 		}
 	}
-	stream, e := m.BaseChatModel.Stream(ctx, in, opts...)
+	prepared, stats, e := fitContext(in, m.window, m.output, m.toolReserve)
+	m.contextStats = stats
+	if e != nil {
+		return nil, e
+	}
+	stream, e := m.BaseChatModel.Stream(ctx, prepared, opts...)
 	if e != nil {
 		return nil, e
 	}

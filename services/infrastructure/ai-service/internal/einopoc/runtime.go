@@ -60,7 +60,7 @@ func NewConfigured(ctx context.Context, chat model.BaseChatModel, tools []tool.B
 }
 
 func NewConfiguredRetry(ctx context.Context, chat model.BaseChatModel, tools []tool.BaseTool, guard *agent.Guard, limits Limits, instruction string, retry *adk.ModelRetryConfig) (*Harness, error) {
-	if chat == nil || guard == nil || limits.ModelCalls < 1 || limits.ModelCalls > 8 || limits.ToolCalls < 1 || limits.ToolCalls > 8 || limits.Timeout <= 0 || limits.Timeout > time.Minute {
+	if chat == nil || guard == nil || limits.ModelCalls < 1 || limits.ModelCalls > 8 || limits.ToolCalls < 1 || limits.ToolCalls > 8 || limits.Timeout <= 0 || limits.Timeout > 10*time.Minute {
 		return nil, errors.New("invalid bounded harness configuration")
 	}
 	b := &budget{modelLimit: int32(limits.ModelCalls), toolLimit: int32(limits.ToolCalls)}

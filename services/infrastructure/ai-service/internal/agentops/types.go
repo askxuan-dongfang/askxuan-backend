@@ -129,7 +129,7 @@ type Repository interface {
 }
 
 func Default(skills []*model.AISkill) Config {
-	c := Config{Name: "问事助手", Instruction: "根据用户已确认的资料和工具依据提供清晰、审慎的文化与生活参考。缺少资料时先补问。", MaxOutputTokens: 512, Skills: []SkillPolicy{}}
+	c := Config{Name: "问事助手", Instruction: "根据用户已确认的资料和工具依据提供清晰、审慎的文化与生活参考。缺少资料时先补问。", MaxOutputTokens: 16384, Skills: []SkillPolicy{}}
 	for _, s := range skills {
 		tc, _ := agent.ParseToolConfig(s.ToolConfig)
 		c.Skills = append(c.Skills, SkillPolicy{Code: s.Code, Enabled: s.Status == model.SkillStatusEnabled, Prompt: s.PromptTemplate, UseTool: tc.Enabled})
@@ -140,7 +140,7 @@ func Freeze(c Config, catalog []*model.AISkill) (Frozen, error) {
 	c.Name = strings.TrimSpace(c.Name)
 	c.Instruction = strings.TrimSpace(c.Instruction)
 	c.Model = strings.TrimSpace(c.Model)
-	if c.Name == "" || len([]rune(c.Name)) > 40 || c.Instruction == "" || len(c.Instruction) > 8000 || len(c.Model) > 100 || c.MaxOutputTokens < 64 || c.MaxOutputTokens > 4096 || len(c.Skills) == 0 || len(c.Skills) > 100 {
+	if c.Name == "" || len([]rune(c.Name)) > 40 || c.Instruction == "" || len(c.Instruction) > 8000 || len(c.Model) > 100 || c.MaxOutputTokens < 64 || c.MaxOutputTokens > 32768 || len(c.Skills) == 0 || len(c.Skills) > 100 {
 		return Frozen{}, invalid("请检查名称、职责、输出上限与技能配置")
 	}
 	byCode := map[string]*model.AISkill{}

@@ -22,6 +22,10 @@ type Config struct {
 }
 
 type AIConf struct {
+	ComplexOutputTokens int
+	ContextWindow       int
+	TaskTimeoutSeconds  int
+
 	HarnessEnabled       bool `json:",optional"`
 	Provider             string
 	BaseURL              string
@@ -60,6 +64,9 @@ type MCPConf struct {
 }
 
 func (c AIConf) Runtime() AIConf {
+	c.ComplexOutputTokens = envInt("AI_COMPLEX_OUTPUT_TOKENS", c.ComplexOutputTokens, 16384)
+	c.ContextWindow = envInt("AI_CONTEXT_WINDOW", c.ContextWindow, 1048576)
+	c.TaskTimeoutSeconds = envInt("AI_TASK_TIMEOUT_SECONDS", c.TaskTimeoutSeconds, 180)
 	c.Provider = envString("AI_PROVIDER", c.Provider)
 	c.BaseURL = envString("AI_BASE_URL", c.BaseURL)
 	c.HarnessEnabled = envBool("AI_HARNESS_ENABLED", true)
@@ -70,9 +77,9 @@ func (c AIConf) Runtime() AIConf {
 	c.ReasoningEffort = envString("AI_REASONING_EFFORT", c.ReasoningEffort)
 	c.MinuteRequestLimit = envInt("AI_MINUTE_REQUEST_LIMIT", c.MinuteRequestLimit, 12)
 	c.DailyRequestLimit = envInt("AI_DAILY_REQUEST_LIMIT", c.DailyRequestLimit, 100)
-	c.MaxInputChars = envInt("AI_MAX_INPUT_CHARS", c.MaxInputChars, 2000)
+	c.MaxInputChars = envInt("AI_MAX_INPUT_CHARS", c.MaxInputChars, 20000)
 	c.MaxHistoryMessages = envInt("AI_MAX_HISTORY_MESSAGES", c.MaxHistoryMessages, 30)
-	c.MaxOutputTokens = envInt("AI_MAX_OUTPUT_TOKENS", c.MaxOutputTokens, 2048)
+	c.MaxOutputTokens = envInt("AI_MAX_OUTPUT_TOKENS", c.MaxOutputTokens, 8192)
 	c.InputCostPerMillion = envFloat("AI_INPUT_COST_PER_MILLION", c.InputCostPerMillion)
 	c.OutputCostPerMillion = envFloat("AI_OUTPUT_COST_PER_MILLION", c.OutputCostPerMillion)
 	if raw := strings.TrimSpace(os.Getenv("AI_BLOCKED_TERMS")); raw != "" {

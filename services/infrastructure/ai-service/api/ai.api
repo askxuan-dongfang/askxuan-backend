@@ -8,7 +8,12 @@ info (
 )
 
 type (
+ CancelResp {
+ Accepted bool `json:"accepted"`
+ }
     AIModelOption {
+ ContextWindow int `json:"contextWindow"`
+ MaxOutputTokens int `json:"maxOutputTokens"`
         Id string `json:"id"`
         Name string `json:"name"`
         Description string `json:"description"`
@@ -96,6 +101,7 @@ type (
     }
 
     AIAgentState {
+ Context interface{} `json:"context,omitempty"`
         Runtime string `json:"runtime"`
         ModelCalls int `json:"modelCalls"`
         ToolCalls int `json:"toolCalls"`
@@ -262,6 +268,9 @@ service ai-service {
     @handler messageRetry
     post /sessions/:id/messages/:messageId/retry (MessageRetryReq) returns (MessageSendResp)
 
+    @handler messageCancel
+    post /sessions/:id/messages/:messageId/cancel (MessageRetryReq) returns (CancelResp)
+
     @handler messageStream
     get /sessions/:id/messages/:messageId/stream (MessageStreamReq)
 
@@ -278,6 +287,10 @@ service ai-service {
 // Provider administration: platform_super only; credentials are write-only.
 type (
  AIProviderUpdateReq {
+ ComplexOutputTokens int `json:"complexOutputTokens,optional"`
+ ContextWindow int `json:"contextWindow,optional"`
+ MaxInputChars int `json:"maxInputChars,optional"`
+ TaskTimeoutSeconds int `json:"taskTimeoutSeconds,optional"`
   Revision int64 `json:"revision"`
   Provider string `json:"provider"`
   BaseUrl string `json:"baseUrl"`
@@ -296,6 +309,10 @@ type (
   Fields []string `json:"fields"`
  }
  AIProviderSettingsResp {
+ ComplexOutputTokens int `json:"complexOutputTokens"`
+ ContextWindow int `json:"contextWindow"`
+ MaxInputChars int `json:"maxInputChars"`
+ TaskTimeoutSeconds int `json:"taskTimeoutSeconds"`
   Revision int64 `json:"revision"`
   Provider string `json:"provider"`
   BaseUrl string `json:"baseUrl"`

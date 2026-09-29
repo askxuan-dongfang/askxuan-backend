@@ -18,6 +18,11 @@ var ErrConflict = errors.New("配置已被其他管理员更新，请重新加�
 var validModel = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,99}$`)
 
 type Values struct {
+	ComplexOutputTokens int `json:"complexOutputTokens"`
+	ContextWindow       int `json:"contextWindow"`
+	MaxInputChars       int `json:"maxInputChars"`
+	TaskTimeoutSeconds  int `json:"taskTimeoutSeconds"`
+
 	Provider        string   `json:"provider"`
 	BaseURL         string   `json:"baseUrl"`
 	DefaultModel    string   `json:"defaultModel"`
@@ -75,7 +80,7 @@ func New(initial config.AIConf, dir, key string) (*Manager, error) {
 	if u, e := url.Parse(initial.BaseURL); e == nil && u.Hostname() == "api.deepseek.com" {
 		kind = "deepseek"
 	}
-	r := record{Values: Values{Provider: kind, BaseURL: initial.BaseURL, DefaultModel: initial.Model, VisionModel: initial.VisionModel, ThinkingEnabled: initial.ThinkingEnabled, ReasoningEffort: initial.ReasoningEffort, MaxOutputTokens: initial.MaxOutputTokens}, APIKey: initial.APIKey, History: []Audit{}}
+	r := record{Values: Values{Provider: kind, BaseURL: initial.BaseURL, DefaultModel: initial.Model, VisionModel: initial.VisionModel, ThinkingEnabled: initial.ThinkingEnabled, ReasoningEffort: initial.ReasoningEffort, MaxOutputTokens: initial.MaxOutputTokens, ComplexOutputTokens: initial.ComplexOutputTokens, ContextWindow: initial.ContextWindow, MaxInputChars: initial.MaxInputChars, TaskTimeoutSeconds: initial.TaskTimeoutSeconds}, APIKey: initial.APIKey, History: []Audit{}}
 	m := &Manager{original: initial, store: st}
 	m.build = m.buildSnapshot
 	if st != nil {
@@ -87,6 +92,7 @@ func New(initial config.AIConf, dir, key string) (*Manager, error) {
 			r = *saved
 		}
 	}
+	r.Values = normalized(r.Values)
 	snap, err := m.build(r)
 	if err != nil {
 		return nil, errors.New("AI settings initialization failed")
@@ -121,6 +127,19 @@ func (m *Manager) prepare(req Update) (record, error) {
 	if req.Revision != old.Revision {
 		return record{}, ErrConflict
 	}
+	if req.ComplexOutputTokens == 0 {
+		req.ComplexOutputTokens = max(old.ComplexOutputTokens, req.MaxOutputTokens)
+	}
+	if req.ContextWindow == 0 {
+		req.ContextWindow = old.ContextWindow
+	}
+	if req.MaxInputChars == 0 {
+		req.MaxInputChars = old.MaxInputChars
+	}
+	if req.TaskTimeoutSeconds == 0 {
+		req.TaskTimeoutSeconds = old.TaskTimeoutSeconds
+	}
+	req.Values = normalized(req.Values)
 	req.BaseURL = strings.TrimSpace(req.BaseURL)
 	base, err := normalizeURL(req.BaseURL)
 	if err != nil {
@@ -139,6 +158,9 @@ func (m *Manager) prepare(req Update) (record, error) {
 	}
 	if req.MaxOutputTokens < 64 || req.MaxOutputTokens > 32768 {
 		return record{}, errors.New("最大输出 Token 应为 64–32768")
+	}
+	if req.ComplexOutputTokens < req.MaxOutputTokens || req.ComplexOutputTokens > 32768 || req.ContextWindow < 32768 || req.ContextWindow > 1048576 || req.ContextWindow <= req.ComplexOutputTokens+8192 || req.MaxInputChars < 2000 || req.MaxInputChars > 100000 || req.TaskTimeoutSeconds < 60 || req.TaskTimeoutSeconds > 600 {
+		return record{}, errors.New("请核对复杂输出、上下文、输入字符和任务时限；上下文必须预留工具与输出空间")
 	}
 	if req.ReasoningEffort != "low" && req.ReasoningEffort != "medium" && req.ReasoningEffort != "high" {
 		return record{}, errors.New("推理强度必须为 low、medium 或 high")
@@ -181,6 +203,10 @@ func (m *Manager) buildSnapshot(r record) (*Snapshot, error) {
 	c.ThinkingEnabled = r.ThinkingEnabled
 	c.ReasoningEffort = r.ReasoningEffort
 	c.MaxOutputTokens = r.MaxOutputTokens
+	c.ComplexOutputTokens = r.ComplexOutputTokens
+	c.ContextWindow = r.ContextWindow
+	c.MaxInputChars = r.MaxInputChars
+	c.TaskTimeoutSeconds = r.TaskTimeoutSeconds
 	c.Provider = "openai_compatible"
 	if r.Provider == "mock" {
 		c.Provider = "mock"
@@ -204,6 +230,7 @@ func (m *Manager) buildSnapshot(r record) (*Snapshot, error) {
 	return &Snapshot{Config: c, Provider: p, Models: provider.NewCatalogWithAllowed(p, r.EnabledModels)}, nil
 }
 func (m *Manager) check(ctx context.Context, r record, strict bool) (*Snapshot, provider.ModelList, error) {
+	r.Values = normalized(r.Values)
 	snap, err := m.build(r)
 	if err != nil {
 		return nil, provider.ModelList{}, errors.New("无法创建模型连接")
@@ -282,4 +309,22 @@ func (m *Manager) Save(ctx context.Context, req Update, actor string) (Public, e
 	m.record = r
 	m.active = snap
 	return m.publicLocked(), nil
+}
+
+// Older records/clients omitted these fields. Fill them without overwriting an
+// explicitly stored output budget; production upgrades still use the audited API.
+func normalized(v Values) Values {
+	if v.ComplexOutputTokens == 0 {
+		v.ComplexOutputTokens = max(16384, v.MaxOutputTokens)
+	}
+	if v.ContextWindow == 0 {
+		v.ContextWindow = 1048576
+	}
+	if v.MaxInputChars == 0 {
+		v.MaxInputChars = 20000
+	}
+	if v.TaskTimeoutSeconds == 0 {
+		v.TaskTimeoutSeconds = 180
+	}
+	return v
 }

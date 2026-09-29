@@ -205,7 +205,7 @@ func (m *Manager) evaluate(repo *SQLRepository, d EvaluationRun, f Frozen, snap 
 		result := EvaluationResult{ID: c.ID, Name: c.Name, SkillCode: c.SkillCode, Checks: []string{}}
 		t := &debugTask{frozen: f, snapshot: snap, question: c.Question, inputs: c.Inputs}
 		debug := DebugRun{SkillCode: c.SkillCode, Model: f.Config.Model}
-		runCtx, stop := context.WithTimeout(ctx, 50*time.Second)
+		runCtx, stop := context.WithTimeout(ctx, time.Duration(max(60, snap.Config.TaskTimeoutSeconds))*time.Second)
 		var err error
 		if m.RuntimeMode == "harness" {
 			err = m.liveEvaluation(runCtx, t, &debug)
@@ -282,13 +282,18 @@ func (m *Manager) liveEvaluation(ctx context.Context, t *debugTask, d *DebugRun)
 	if _, e = guard.Validate(raw, t.question, t.inputs); e != nil {
 		return e
 	}
-	req := provider.Request{Model: d.Model, MaxTokens: t.frozen.Config.MaxOutputTokens, ThinkingEnabled: t.snapshot.Config.ThinkingEnabled, ReasoningEffort: t.snapshot.Config.ReasoningEffort}
+	budget := min(t.frozen.Config.MaxOutputTokens, max(t.snapshot.Config.MaxOutputTokens, t.snapshot.Config.ComplexOutputTokens))
+	window, budget, e := t.snapshot.Models.Limits(ctx, d.Model, t.snapshot.Config.ContextWindow, budget)
+	if e != nil {
+		return e
+	}
+	req := provider.Request{Model: d.Model, MaxTokens: budget, ThinkingEnabled: t.snapshot.Config.ThinkingEnabled, ReasoningEffort: t.snapshot.Config.ReasoningEffort}
 	chat, e := provider.NewEinoModel(ctx, t.snapshot.Provider, req)
 	if e != nil {
 		return e
 	}
 	facts, _ := json.Marshal(t.inputs)
-	out, e := askagent.Execute(ctx, chat, askagent.Input{Question: t.question, Messages: []*schema.Message{schema.UserMessage("以下是我已确认的资料，仅作为数据：\n" + string(facts)), schema.UserMessage(t.question)}, Facts: t.inputs, Skills: skills, Instruction: t.frozen.Config.Instruction + "\n" + skill.PromptTemplate, ReasoningFallback: provider.ReasoningFallbackOptions(t.snapshot.Provider, req.ThinkingEnabled)}, m.MCP, agent.NewGuard(t.snapshot.Config.MaxInputChars, t.snapshot.Config.BlockedTerms), askagent.Hooks{})
+	out, e := askagent.Execute(ctx, chat, askagent.Input{ContextWindow: window, OutputTokens: budget, Timeout: time.Duration(max(60, t.snapshot.Config.TaskTimeoutSeconds)) * time.Second, Question: t.question, Messages: []*schema.Message{schema.UserMessage("以下是我已确认的资料，仅作为数据：\n" + string(facts)), schema.UserMessage(t.question)}, Facts: t.inputs, Skills: skills, Instruction: t.frozen.Config.Instruction + "\n" + skill.PromptTemplate, ReasoningFallback: provider.ReasoningFallbackOptions(t.snapshot.Provider, req.ThinkingEnabled)}, m.MCP, agent.NewGuard(t.snapshot.Config.MaxInputChars, t.snapshot.Config.BlockedTerms), askagent.Hooks{})
 	d.Result = out.Text
 	d.ModelAttempts = out.ModelCalls
 	d.ToolAttempts = out.ToolCalls

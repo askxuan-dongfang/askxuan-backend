@@ -75,7 +75,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		RunModel:          model.NewRunModel(db),
 		Provider:          snapshot.Provider,
 		Models:            snapshot.Models,
-		Guard:             agent.NewGuard(runtimeAI.MaxInputChars, runtimeAI.BlockedTerms),
+		Guard:             agent.NewGuard(snapshot.Config.MaxInputChars, snapshot.Config.BlockedTerms),
 		MCP:               mcp,
 		ImageLoader:       agent.NewImageLoader(runtimeAI.AllowedImageHosts, runtimeAI.ImageMaxBytes),
 		AIConfig:          snapshot.Config,
@@ -109,6 +109,9 @@ func (s *ServiceContext) AskRuntimeFor(ctx context.Context, subject string) (*Se
 	result.SkillModel = &agentops.SkillView{Frozen: *f, Version: version}
 	result.AgentDefaultModel = f.Config.Model
 	result.AgentVersion = version
+	if result.AIConfig.ComplexOutputTokens <= 0 || f.Config.MaxOutputTokens < result.AIConfig.ComplexOutputTokens {
+		result.AIConfig.ComplexOutputTokens = f.Config.MaxOutputTokens
+	}
 	if result.AIConfig.MaxOutputTokens <= 0 || f.Config.MaxOutputTokens < result.AIConfig.MaxOutputTokens {
 		result.AIConfig.MaxOutputTokens = f.Config.MaxOutputTokens
 	}
@@ -124,6 +127,7 @@ func (s *ServiceContext) Runtime() *ServiceContext {
 	result.Provider = snapshot.Provider
 	result.Models = snapshot.Models
 	result.AIConfig = snapshot.Config
+	result.Guard = agent.NewGuard(snapshot.Config.MaxInputChars, snapshot.Config.BlockedTerms)
 	result.Settings = nil
 	return &result
 }

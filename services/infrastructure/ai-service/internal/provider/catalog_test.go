@@ -125,3 +125,24 @@ func TestStandardProviderDoesNotSendDeepSeekOnlyParameters(t *testing.T) {
 		t.Fatal("standard reasoning parameter missing")
 	}
 }
+
+func TestModelDeclaredAndUnknownContextLimits(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"data":[{"id":"large","context_window":1048576,"max_output_tokens":393216},{"id":"unknown"},{"id":"small","context_window":16384,"max_output_tokens":2048}]}`))
+	}))
+	defer server.Close()
+	c := NewCatalog(NewOpenAICompatible(server.URL, "fixture", "large", ""))
+	for _, v := range []struct {
+		id   string
+		w, o int
+	}{{"large", 1048576, 16384}, {"unknown", 32768, 16384}, {"small", 16384, 2048}} {
+		w, o, e := c.Limits(context.Background(), v.id, 1048576, 16384)
+		if e != nil || w != v.w || o != v.o {
+			t.Fatalf("%s: %d %d %v", v.id, w, o, e)
+		}
+	}
+	w, _, e := c.Limits(context.Background(), "large", 65536, 8192)
+	if e != nil || w != 65536 {
+		t.Fatal(w, e)
+	}
+}

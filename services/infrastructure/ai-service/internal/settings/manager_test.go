@@ -231,3 +231,28 @@ func mustRead(t *testing.T, p string) []byte {
 	}
 	return b
 }
+
+func TestContextBudgetsAndLegacyUpdatePreserveLimits(t *testing.T) {
+	m, _, _ := fixture(t)
+	m.mu.Lock()
+	m.record.Values.ContextWindow = 262144
+	m.record.Values.TaskTimeoutSeconds = 300
+	m.record.Values.MaxInputChars = 40000
+	m.mu.Unlock()
+	req := update(m)
+	req.ContextWindow = 0
+	req.TaskTimeoutSeconds = 0
+	req.MaxInputChars = 0
+	req.ComplexOutputTokens = 0
+	r, e := m.prepare(req)
+	if e != nil || r.ContextWindow != 262144 || r.TaskTimeoutSeconds != 300 || r.MaxInputChars != 40000 {
+		t.Fatalf("legacy overwrite: %+v %v", r.Values, e)
+	}
+	for _, mutate := range []func(*Update){func(v *Update) { v.ContextWindow = 2000000 }, func(v *Update) { v.TaskTimeoutSeconds = 601 }, func(v *Update) { v.MaxInputChars = 100001 }, func(v *Update) { v.MaxOutputTokens = 16384; v.ComplexOutputTokens = 8192 }} {
+		v := update(m)
+		mutate(&v)
+		if _, e := m.prepare(v); e == nil {
+			t.Fatal("accepted invalid limits")
+		}
+	}
+}

@@ -72,5 +72,5 @@ func secureClient() *http.Client {
 		}
 		return nil, errors.New("接口连接失败")
 	}
-	return &http.Client{Transport: transport, Timeout: 60 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return errors.New("接口不允许跳转") }}
+	return &http.Client{Transport: transport, Timeout: 600 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return errors.New("接口不允许跳转") }}
 }
