@@ -125,6 +125,9 @@ func ReportProducts(ctx context.Context, s *svc.ServiceContext) ([]ReportProduct
 		}
 		if list[i].Ready && len(reportTools(list[i].Code)) > 0 {
 			list[i].ExecutionNote = "排盘图表 + AI 专题解读"
+			if agent.IsTopicTool(list[i].Code) {
+				list[i].ExecutionNote = "工具核验依据 + AI 专题解读"
+			}
 		}
 		if list[i].Code == "face_palm" {
 			if _, e := reportVisionModel(ctx, s); e != nil {

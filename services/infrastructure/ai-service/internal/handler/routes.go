@@ -23,6 +23,9 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	registerExperiences(server, svcCtx)
 	registerProviderSettings(server, svcCtx)
 	registerAgentOperations(server, svcCtx)
+	registerReferences(server, svcCtx)
+	registerWeKnora(server, svcCtx)
+	registerFloorPlan(server, svcCtx)
 
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/ai/models", Handler: modelListHandler(svcCtx)},

@@ -59,9 +59,6 @@ func (m *reportMCP) Call(ctx context.Context, config, args string) (string, erro
 	return result, nil
 }
 func reportTools(code string) []string {
-	if code == "date_select" || code == "fortune" {
-		return []string{"almanac"}
-	}
 	if code == "marriage" {
 		return []string{"bazi"}
 	}
@@ -173,26 +170,6 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 			return empty, doc, usage, e
 		}
 	}
-	if r.SkillCode == "date_select" {
-		for _, key := range []string{"secondDate", "thirdDate"} {
-			date, _ := facts[key].(string)
-			if date == "" {
-				continue
-			}
-			for _, s2 := range skills {
-				if s2.Code == "almanac" {
-					raw, _ := json.Marshal(map[string]any{"targetDate": date})
-					args, e := agent.BuildToolArguments("almanac", r.Question, string(raw), time.Now())
-					if e != nil {
-						return empty, doc, usage, e
-					}
-					if _, e = mcp.Call(ctx, s2.ToolConfig, args); e != nil {
-						return empty, doc, usage, e
-					}
-				}
-			}
-		}
-	}
 	selected := s.Provider.ModelFor(provider.Request{Model: s.AgentDefaultModel})
 	var imageURLs []string
 	if r.SkillCode == "face_palm" {
@@ -240,6 +217,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 	if err = stage("writing"); err != nil {
 		return empty, doc, usage, err
 	}
+	bindReferences(s, &input, r.UserID, func(name, raw string) { mcp.doc.Add(name, raw) })
 	out, err := askagent.Execute(ctx, chat, input, mcp, s.Guard, askagent.Hooks{})
 	doc = mcp.doc
 	doc.ModelCalls = out.ModelCalls

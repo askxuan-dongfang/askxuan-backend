@@ -1,0 +1,16 @@
+-- Run against askxuan_ai. Only portal-registered resources may be retrieved.
+CREATE TABLE IF NOT EXISTS ai_knowledge_base (
+ id VARCHAR(36) PRIMARY KEY, name VARCHAR(120) NOT NULL, description TEXT NOT NULL,
+ enabled BOOLEAN NOT NULL DEFAULT FALSE, revision BIGINT NOT NULL DEFAULT 1,
+ create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS ai_knowledge_document (
+ id VARCHAR(36) PRIMARY KEY, base_id VARCHAR(36) NOT NULL, source TEXT NOT NULL,
+ enabled BOOLEAN NOT NULL DEFAULT FALSE, revision BIGINT NOT NULL DEFAULT 1,
+ create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_base(base_id)
+);
+CREATE TABLE IF NOT EXISTS ai_knowledge_audit (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, actor VARCHAR(64) NOT NULL,
+ action VARCHAR(64) NOT NULL, resource_id VARCHAR(36) NOT NULL,
+ create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

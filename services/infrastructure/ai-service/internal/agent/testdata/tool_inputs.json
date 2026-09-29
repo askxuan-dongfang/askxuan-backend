@@ -74,5 +74,25 @@
   },
   "almanac": {
     "targetDate": "2026-09-29"
+  },
+  "naming": {
+    "mode": "review",
+    "surname": "李",
+    "name": "李明，李铭"
+  },
+  "fengshui": {
+    "scene": "home",
+    "daylight": "dim"
+  },
+  "dream": {
+    "dream": "梦见赶车",
+    "feeling": "着急"
+  },
+  "date_select": {
+    "event": "嫁娶",
+    "targetDate": "2026-09-29"
+  },
+  "fortune": {
+    "targetDate": "2026-09-29"
   }
 }

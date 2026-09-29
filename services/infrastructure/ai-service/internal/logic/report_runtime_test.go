@@ -152,3 +152,63 @@ func reportToolSchema(code string) string {
 	}
 	return `{"fields":[]}`
 }
+
+// Exercise the real report -> builtin -> evidence -> Eino model path. The model
+// transport is synthetic; the builtin algorithms and chart normalizer are real.
+func TestTopicReportsRequireAndReadToolEvidence(t *testing.T) {
+	for _, tc := range []struct{ code, input string }{
+		{"naming", `{"mode":"review","surname":"李","name":"李明，李铭"}`},
+		{"fengshui", `{"scene":"home","daylight":"dim"}`},
+		{"dream", `{"dream":"梦见赶车","feeling":"着急"}`},
+		{"date_select", `{"event":"嫁娶","targetDate":"2026-09-29"}`},
+		{"fortune", `{"targetDate":"2026-09-29"}`},
+	} {
+		t.Run(tc.code, func(t *testing.T) {
+			var calls atomic.Int32
+			body := reportBody{Summary: "依据用户已确认资料和工具返回结果整理，区分实际计算依据与待补充的信息。", Content: "## 核验依据\n" + strings.Repeat("这里只解释工具实际返回的信息，缺失资料保留待确认。", 12) + "\n## 结果对照\n" + strings.Repeat("依据来源与用户原述分开呈现，不添加未经验证的计算结果。", 12) + "\n## 下一步\n补充尚未确认的信息后再继续分析。"}
+			encoded, _ := json.Marshal(body)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var req map[string]any
+				_ = json.NewDecoder(r.Body).Decode(&req)
+				var delta map[string]any
+				reason := "stop"
+				if calls.Add(1) == 1 {
+					reason = "tool_calls"
+					delta = map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "read", "type": "function", "function": map[string]any{"name": "read_report", "arguments": "{}"}}}}
+				} else {
+					raw, _ := json.Marshal(req["messages"])
+					if !strings.Contains(string(raw), "20260929.1") {
+						t.Error("model never read versioned tool evidence")
+					}
+					delta = map[string]any{"role": "assistant", "content": string(encoded)}
+				}
+				w.Header().Set("Content-Type", "text/event-stream")
+				event, _ := json.Marshal(map[string]any{"id": "fixture", "choices": []any{map[string]any{"index": 0, "delta": delta, "finish_reason": reason}}})
+				fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", event)
+			}))
+			defer server.Close()
+			mcp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, `{"result":{"structuredContent":{"基础与个性化坐标":{"日期":"2026-09-29","日干支":"丙午"},"择日宜忌":{"宜":["嫁娶"],"忌":[]}}}}`)
+			}))
+			defer mcp.Close()
+			p := provider.NewOpenAICompatible(server.URL, "fixture", "fixture", "")
+			p.SetHTTPClient(server.Client())
+			p.UseStandardParameters()
+			db, m, _ := sqlmock.New()
+			defer db.Close()
+			for _, stage := range []string{"checking", "calculating", "writing"} {
+				m.ExpectExec("UPDATE ai_report SET generation_stage").WithArgs(stage, int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
+			}
+			skill := &model.AISkill{Code: tc.code, Name: tc.code, Status: "enabled", InputSchema: reportToolSchema(tc.code), ToolConfig: `{"enabled":true,"server":"builtin","tool":"` + tc.code + `"}`}
+			s := &svc.ServiceContext{DB: sqlx.NewSqlConnFromDB(db), SkillModel: reportSkills{skill}, Guard: agent.NewGuard(20000, nil), Provider: p, MCP: agent.NewMCPClient(true, mcp.URL, 1)}
+			s.AIConfig.ContextWindow = 1048576
+			result, doc, _, e := executeReport(context.Background(), s, &Report{ID: 1, SkillCode: tc.code, Question: "整理专题", InputsJSON: tc.input, ChaptersJSON: `["核验依据"]`})
+			if e != nil || result.Content != body.Content || len(doc.Blocks) == 0 || doc.Blocks[0].Kind != "table" || doc.Blocks[0].Source != tc.code || calls.Load() != 2 {
+				t.Fatalf("topic %s evidence pipeline: %+v %v", tc.code, doc, e)
+			}
+			if e = m.ExpectationsWereMet(); e != nil {
+				t.Fatal(e)
+			}
+		})
+	}
+}

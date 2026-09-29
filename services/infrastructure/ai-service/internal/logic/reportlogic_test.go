@@ -86,7 +86,7 @@ func TestReportCapabilityDisclosure(t *testing.T) {
 		{`invalid`, false, "配置暂不可用"},
 	} {
 		db, m, _ := sqlmock.New()
-		m.ExpectQuery("SELECT p.code").WillReturnRows(sqlmock.NewRows([]string{"code", "title", "subtitle", "price_cents", "points_price", "chapters_json", "version", "tool_config"}).AddRow("fengshui", "空间", "介绍", 990, 10, `["资料"]`, "1", tc.config))
+		m.ExpectQuery("SELECT p.code").WillReturnRows(sqlmock.NewRows([]string{"code", "title", "subtitle", "price_cents", "points_price", "chapters_json", "version", "tool_config"}).AddRow("culture_only", "文化解读", "介绍", 990, 10, `["资料"]`, "1", tc.config))
 		rows, e := ReportProducts(context.Background(), &svc.ServiceContext{DB: sqlx.NewSqlConnFromDB(db)})
 		if e != nil || len(rows) != 1 || rows[0].Ready != tc.ready || !strings.Contains(rows[0].ExecutionNote, tc.note) {
 			t.Fatalf("capability not disclosed: %+v %v", rows, e)

@@ -7,6 +7,7 @@ require (
 	github.com/askxuan/common v0.0.0
 	github.com/cloudwego/eino v0.9.21
 	github.com/cloudwego/eino-ext/components/model/openai v0.1.13
+	github.com/mozillazg/go-pinyin v0.21.0
 	github.com/google/uuid v1.6.0
 	github.com/zeromicro/go-zero v1.7.2
 )

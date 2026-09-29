@@ -20,6 +20,9 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 			return "", fmt.Errorf("decode tool inputs: %w", err)
 		}
 	}
+	if IsTopicTool(skillCode) {
+		return topicArguments(skillCode, question, inputs)
+	}
 	var args map[string]interface{}
 	switch skillCode {
 	case "bazi", "ziwei", "bazi_dayun", "ziwei_horoscope", "ziwei_flying_star":

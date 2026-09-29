@@ -1,0 +1,14 @@
+services:
+  ai-embedding:
+    build: .
+    environment:
+      AI_EMBEDDING_KEY: ${AI_EMBEDDING_KEY:?Set a private embedding key}
+    ports:
+      - "127.0.0.1:9981:9981"
+    volumes:
+      - embedding-models:/data/models
+    mem_limit: 768m
+    cpus: 2
+    restart: unless-stopped
+volumes:
+  embedding-models:

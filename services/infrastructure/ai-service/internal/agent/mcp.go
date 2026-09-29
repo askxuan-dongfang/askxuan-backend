@@ -51,6 +51,12 @@ func (c *MCPClient) Call(ctx context.Context, configJSON, argumentsJSON string) 
 	if !config.Enabled {
 		return "", nil
 	}
+	if config.Server == "builtin" {
+		if !IsTopicTool(config.Tool) {
+			return "", fmt.Errorf("unknown builtin tool")
+		}
+		return c.callTopic(ctx, config.Tool, argumentsJSON)
+	}
 	if c == nil || !c.enabled {
 		return "", fmt.Errorf("required MCP capability is unavailable")
 	}
@@ -144,5 +150,13 @@ func firstSSEData(data []byte) []byte {
 
 // Configured reports configuration readiness, not remote tool health.
 func (c *MCPClient) Configured(cfg ToolConfig) bool {
+	if cfg.Server == "builtin" {
+		if !cfg.Enabled || !IsTopicTool(cfg.Tool) {
+			return false
+		}
+		if cfg.Tool != "date_select" && cfg.Tool != "fortune" {
+			return true
+		}
+	}
 	return c != nil && c.enabled && c.baseURL != "" && cfg.Tool != ""
 }

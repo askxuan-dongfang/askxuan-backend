@@ -190,6 +190,9 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 			return "", err
 		}
 		summary := result
+		if name == "recall_memory" {
+			summary = "已检索当前用户明确保存的记忆"
+		}
 		if name == "read_report" {
 			summary = "已读取本会话关联的已解锁报告"
 		}
@@ -217,6 +220,7 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 		return e
 	}
 	in.ReasoningFallback = provider.ReasoningFallbackOptions(s.Provider, req.ThinkingEnabled)
+	bindReferences(s, &in, session.UserId, nil)
 	out, e := askagent.Execute(ctx, chat, in, liveMCP{s, run.Id, hooks}, s.Guard, hooks)
 	out.Usage.Model = s.Provider.ModelFor(req)
 	status := model.MessageStatusCompleted

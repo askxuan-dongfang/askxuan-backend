@@ -1,0 +1,13 @@
+builtin_models:
+  - id: askxuan-embedding
+    type: Embedding
+    source: remote
+    is_default: true
+    name: BAAI/bge-small-zh-v1.5
+    parameters:
+      base_url: http://embedding:9981/v1
+      api_key: ${AI_EMBEDDING_KEY}
+      provider: openai
+      embedding_parameters:
+        dimension: 512
+        truncate_prompt_tokens: 0

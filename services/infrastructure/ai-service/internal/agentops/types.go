@@ -31,12 +31,15 @@ type SkillPolicy struct {
 	UseTool bool   `json:"useTool"`
 }
 type Config struct {
-	Name            string           `json:"name"`
-	Instruction     string           `json:"instruction"`
-	Model           string           `json:"model"`
-	MaxOutputTokens int              `json:"maxOutputTokens"`
-	Skills          []SkillPolicy    `json:"skills"`
-	Evaluation      []EvaluationCase `json:"evaluation"`
+	KnowledgeBaseIDs []string         `json:"knowledgeBaseIds"`
+	KnowledgeEnabled bool             `json:"knowledgeEnabled"`
+	MemoryEnabled    bool             `json:"memoryEnabled"`
+	Name             string           `json:"name"`
+	Instruction      string           `json:"instruction"`
+	Model            string           `json:"model"`
+	MaxOutputTokens  int              `json:"maxOutputTokens"`
+	Skills           []SkillPolicy    `json:"skills"`
+	Evaluation       []EvaluationCase `json:"evaluation"`
 }
 
 // Frozen includes the reviewed input/tool contracts, not just editable prompts.
@@ -66,6 +69,10 @@ type Audit struct {
 	CreatedAt string `db:"create_time" json:"createdAt"`
 }
 type SkillInfo struct {
+	DefaultPrompt string          `json:"defaultPrompt"`
+	SourceStatus  string          `json:"sourceStatus"`
+	SourceRef     string          `json:"sourceRef"`
+	ToolServer    string          `json:"toolServer"`
 	Code          string          `json:"code"`
 	Name          string          `json:"name"`
 	Version       string          `json:"version"`
@@ -140,6 +147,14 @@ func Freeze(c Config, catalog []*model.AISkill) (Frozen, error) {
 	c.Name = strings.TrimSpace(c.Name)
 	c.Instruction = strings.TrimSpace(c.Instruction)
 	c.Model = strings.TrimSpace(c.Model)
+	if len(c.KnowledgeBaseIDs) > 32 {
+		return Frozen{}, invalid("最多绑定 32 个知识库")
+	}
+	for _, id := range c.KnowledgeBaseIDs {
+		if len(id) != 36 {
+			return Frozen{}, invalid("知识库标识无效")
+		}
+	}
 	if c.Name == "" || len([]rune(c.Name)) > 40 || c.Instruction == "" || len(c.Instruction) > 8000 || len(c.Model) > 100 || c.MaxOutputTokens < 64 || c.MaxOutputTokens > 32768 || len(c.Skills) == 0 || len(c.Skills) > 100 {
 		return Frozen{}, invalid("请检查名称、职责、输出上限与技能配置")
 	}

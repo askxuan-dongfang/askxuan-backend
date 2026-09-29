@@ -13,13 +13,14 @@ type Item struct {
 	Detail string `json:"detail,omitempty"`
 }
 type Block struct {
-	Kind    string     `json:"kind"`
-	Title   string     `json:"title"`
-	Source  string     `json:"source"`
-	Note    string     `json:"note,omitempty"`
-	Items   []Item     `json:"items,omitempty"`
-	Columns []string   `json:"columns,omitempty"`
-	Rows    [][]string `json:"rows,omitempty"`
+	Geometry json.RawMessage `json:"geometry,omitempty"`
+	Kind     string          `json:"kind"`
+	Title    string          `json:"title"`
+	Source   string          `json:"source"`
+	Note     string          `json:"note,omitempty"`
+	Items    []Item          `json:"items,omitempty"`
+	Columns  []string        `json:"columns,omitempty"`
+	Rows     [][]string      `json:"rows,omitempty"`
 }
 type Evidence struct {
 	Tool string `json:"tool"`
@@ -74,6 +75,9 @@ func Structured(raw string) map[string]any {
 	return nil
 }
 func (d *Document) Add(tool, raw string) {
+	if tool == "recall_memory" {
+		return
+	}
 	for _, e := range d.Evidence {
 		if e.Tool == tool && e.Text == raw {
 			return
@@ -101,6 +105,143 @@ func (d *Document) Add(tool, raw string) {
 		d.Blocks = append(d.Blocks, b)
 	}
 	switch tool {
+	case "search_knowledge":
+		b := Block{Kind: "citations", Title: "知识依据", Source: tool, Note: "检索到的资料原文；引用仅在对应版本有效。"}
+		for _, v := range list(m["hits"]) {
+			r := obj(v)
+			b.Items = append(b.Items, Item{scalar(r["id"]), scalar(r["text"]), scalar(r["title"]) + " · " + scalar(r["source"]) + " · " + scalar(r["locator"]) + " · v" + scalar(r["revision"]) + " · SHA256 " + scalar(r["sha256"])})
+		}
+		if len(b.Items) > 0 {
+			d.Blocks = append(d.Blocks, b)
+		}
+	case "recall_memory":
+		// Private memory is usable by the owner but is not copied into a report artifact.
+		return
+
+	case "naming", "fengshui", "dream", "date_select", "fortune":
+		if scalar(m["version"]) != "20260929.1" {
+			return
+		}
+		for _, v := range list(m["charts"]) {
+			raw, _ := json.Marshal(v)
+			var b Block
+			if json.Unmarshal(raw, &b) == nil {
+				switch b.Kind {
+				case "table", "pairs", "ninepalaces", "floorplan":
+					b.Source = tool
+					d.Blocks = append(d.Blocks, b)
+				}
+			}
+		}
+		columns := []string{}
+		for _, v := range list(m["columns"]) {
+			columns = append(columns, scalar(v))
+		}
+		rows := [][]string{}
+		for _, r := range list(m["rows"]) {
+			row := []string{}
+			for _, v := range list(r) {
+				row = append(row, scalar(v))
+			}
+			if len(row) == len(columns) {
+				rows = append(rows, row)
+			}
+		}
+		if len(columns) > 0 && len(rows) > 0 {
+			d.Blocks = append(d.Blocks, Block{Kind: "table", Title: scalar(m["title"]), Source: tool, Note: scalar(m["source"]) + " · " + scalar(m["note"]), Columns: columns, Rows: rows})
+		}
+		for _, raw := range list(m["calculations"]) {
+			c := obj(raw)
+			name := scalar(c["tool"])
+			if name != "bazi" && name != "almanac" {
+				continue
+			}
+			if tool == "date_select" {
+				continue
+			}
+			data, _ := json.Marshal(c["data"])
+			child := New()
+			child.Add(name, string(data))
+			d.Blocks = append(d.Blocks, child.Blocks...)
+		}
+
+	case "bazi_pillars_resolve":
+		table("四柱对应的出生时间候选", []string{"候选序号", "公历", "农历", "出生时间", "是否闰月"}, list(m["候选列表"]))
+	case "ziwei_horoscope":
+		b := Block{Kind: "timeline", Title: "紫微运限叠宫", Source: tool, Note: "运限与本命宫位对应，不等同于事件预测。"}
+		for _, v := range list(m["运限叠宫"]) {
+			r := obj(v)
+			b.Items = append(b.Items, Item{scalar(r["层次"]), scalar(r["落入本命宫位"]), scalar(r["时间段备注"]) + " · " + scalar(r["干支"]) + " · " + scalar(r["运限四化"])})
+		}
+		if len(b.Items) > 0 {
+			d.Blocks = append(d.Blocks, b)
+		}
+		table("十二宫重排依据", []string{"层次", "十二宫重排", "运限四化"}, list(m["运限叠宫"]))
+	case "ziwei_flying_star":
+		for _, v := range list(m["查询结果"]) {
+			r := obj(v)
+			b := Block{Kind: "connections", Title: "紫微四化关系", Source: tool}
+			for _, key := range []string{"实际飞化", "四化落宫"} {
+				for _, v := range list(r[key]) {
+					o := obj(v)
+					b.Items = append(b.Items, Item{scalar(r["发射宫位"]) + " → " + scalar(o["宫位"]), scalar(o["四化"]), scalar(o["星曜"])})
+				}
+			}
+			if len(b.Items) > 0 {
+				d.Blocks = append(d.Blocks, b)
+			}
+		}
+		table("四化查询", []string{"查询类型", "判断目标", "结果", "本宫"}, list(m["查询结果"]))
+	case "astrology":
+		b := Block{Kind: "zodiac", Title: "本命星体位置", Source: tool, Note: "只使用已计算的黄经、宫位和星座；坐标不足时不补造宫位。"}
+		for _, v := range list(m["本命主星"]) {
+			r := obj(v)
+			b.Items = append(b.Items, Item{scalar(r["因素"]), scalar(r["星座"]), scalar(r["黄经"]) + " · " + scalar(r["宫位"]) + " · " + scalar(r["逆行"])})
+		}
+		if len(b.Items) > 0 {
+			d.Blocks = append(d.Blocks, b)
+		}
+		table("本命相位", []string{"起点", "终点", "相位", "容许度", "实际夹角"}, list(obj(obj(m["扩展信息"])["完整相位矩阵"])["本命"]))
+		table("宫位宫头", []string{"宫位", "宫头星座", "宫头黄经"}, list(obj(m["扩展信息"])["宫位宫头"]))
+		table("流运触发", []string{"流运星体", "星座", "黄经", "宫位", "触发相位"}, list(m["当前流运触发"]))
+	case "meihua":
+		b := Block{Kind: "pairs", Title: "梅花本卦、互卦与变卦", Source: tool}
+		plate := obj(m["卦盘"])
+		for _, k := range []string{"本卦", "互卦", "变卦"} {
+			r := obj(plate[k])
+			if len(r) > 0 {
+				b.Items = append(b.Items, Item{k, scalar(r["卦名"]), "上卦 " + scalar(r["上卦"]) + " · 下卦 " + scalar(r["下卦"])})
+			}
+		}
+		if len(b.Items) > 0 {
+			b.Note = "动爻：" + scalar(plate["动爻"])
+			d.Blocks = append(d.Blocks, b)
+		}
+		table("阶段推演", []string{"阶段", "落点", "关系", "表达式"}, list(m["阶段推演"]))
+	case "daliuren":
+		b := Block{Kind: "palaces", Title: "六壬天地盘", Source: tool}
+		for _, v := range list(m["天地盘"]) {
+			r := obj(v)
+			b.Items = append(b.Items, Item{scalar(r["地盘"]), scalar(r["天盘"]), scalar(r["天将"]) + " · " + scalar(r["遁干"])})
+		}
+		if len(b.Items) > 0 {
+			d.Blocks = append(d.Blocks, b)
+		}
+		table("四课", []string{"课别", "乘将", "上神", "下神"}, list(m["四课"]))
+		table("三传", []string{"传序", "地支", "天将", "六亲", "遁干"}, list(m["三传"]))
+	case "xiaoliuren":
+		b := Block{Kind: "timeline", Title: "小六壬推演链", Source: tool}
+		for _, k := range []string{"月上起", "日上落", "时上落"} {
+			if v, ok := obj(m["推演链"])[k]; ok {
+				b.Items = append(b.Items, Item{k, scalar(v), ""})
+			}
+		}
+		if len(b.Items) > 0 {
+			b.Note = "落宫：" + scalar(obj(m["结果"])["落宫"])
+			d.Blocks = append(d.Blocks, b)
+		}
+	case "taiyi":
+		table("太乙九星阵列", []string{"观测层级", "太乙名", "北斗名", "五行", "方位", "宫位"}, list(m["九星阵列"]))
 	case "bazi":
 		rows := list(m["四柱"])
 		b := Block{Kind: "pillars", Title: "四柱命盘", Source: tool, Note: "干支、十神与纳音来自本次排盘。"}

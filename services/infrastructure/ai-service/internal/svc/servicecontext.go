@@ -7,9 +7,11 @@ import (
 	"github.com/askxuan/ai-service/internal/agent"
 	"github.com/askxuan/ai-service/internal/agentops"
 	"github.com/askxuan/ai-service/internal/config"
+	"github.com/askxuan/ai-service/internal/knowledge"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/settings"
+	"github.com/askxuan/ai-service/internal/weknora"
 
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -17,6 +19,11 @@ import (
 
 // ServiceContext ai 服务依赖容器
 type ServiceContext struct {
+	KnowledgeBases    []string
+	WeKnora           *weknora.Service
+	Knowledge         *knowledge.Store
+	KnowledgeEnabled  bool
+	MemoryEnabled     bool
 	Config            config.Config
 	DB                sqlx.SqlConn
 	SkillModel        model.SkillModel
@@ -66,7 +73,16 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	if err := ops.EnablePersistence(os.Getenv("AI_SETTINGS_ENCRYPTION_KEY")); err != nil {
 		panic(err)
 	}
+	references := &knowledge.Store{DB: db, Embedder: knowledge.EmbeddingFromEnv()}
+	var wk *weknora.Service
+	if client := weknora.FromEnv(); client != nil {
+		wk = &weknora.Service{DB: db, Client: client}
+		references.Remote = wk
+	}
+	ops.References = references
 	return &ServiceContext{
+		Knowledge:         references,
+		WeKnora:           wk,
 		Config:            c,
 		DB:                db,
 		SkillModel:        skills,
@@ -109,6 +125,9 @@ func (s *ServiceContext) AskRuntimeFor(ctx context.Context, subject string) (*Se
 	result.SkillModel = &agentops.SkillView{Frozen: *f, Version: version}
 	result.AgentDefaultModel = f.Config.Model
 	result.AgentVersion = version
+	result.KnowledgeEnabled = f.Config.KnowledgeEnabled
+	result.KnowledgeBases = append([]string(nil), f.Config.KnowledgeBaseIDs...)
+	result.MemoryEnabled = f.Config.MemoryEnabled
 	if result.AIConfig.ComplexOutputTokens <= 0 || f.Config.MaxOutputTokens < result.AIConfig.ComplexOutputTokens {
 		result.AIConfig.ComplexOutputTokens = f.Config.MaxOutputTokens
 	}

@@ -1,0 +1,557 @@
+[
+  {
+    "code": "naming",
+    "name": "姓名字典与五格",
+    "description": "核对候选名字的读音、康熙笔画、现代笔画与五格计算；重名及商标按用户选择调用已配置的授权数据源，未接通不假造结果。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "mode",
+          "label": "使用方式",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "review",
+              "label": "比较已有名字"
+            },
+            {
+              "value": "create",
+              "label": "起名建议"
+            }
+          ],
+          "defaultValue": "review"
+        },
+        {
+          "key": "surname",
+          "label": "姓氏或品牌主体",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "name",
+          "label": "完整名字或候选名字",
+          "type": "text",
+          "required": false,
+          "requiredWhen": {
+            "key": "mode",
+            "value": "review"
+          },
+          "helpText": "最多 8 个完整名字，用逗号、顿号或换行分隔；多音字读音需本人确认。"
+        },
+        {
+          "key": "avoidChars",
+          "label": "避用字",
+          "type": "text",
+          "required": false,
+          "helpText": "只填写需要排除的字，例如：伟强。"
+        },
+        {
+          "key": "preferences",
+          "label": "偏好",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "nameSearch",
+          "label": "外部资料查询",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "none",
+              "label": "仅查字典与五格"
+            },
+            {
+              "value": "duplicate",
+              "label": "重名查询"
+            },
+            {
+              "value": "trademark",
+              "label": "商标查询"
+            }
+          ],
+          "defaultValue": "none"
+        },
+        {
+          "key": "searchRegion",
+          "label": "查询地区",
+          "type": "text",
+          "required": false,
+          "helpText": "外部接口覆盖范围以实际返回为准。"
+        },
+        {
+          "key": "trademarkClass",
+          "label": "商标类别",
+          "type": "text",
+          "required": false,
+          "visibleWhen": {
+            "key": "nameSearch",
+            "value": "trademark"
+          }
+        }
+      ]
+    },
+    "keywords": [
+      "姓名读音核验"
+    ],
+    "group": "专题核验"
+  },
+  {
+    "code": "fengshui",
+    "name": "空间观察核对",
+    "description": "空间观察、校准户型面积与周长、玄空下卦三盘。依据用户确认的比例尺、元运和朝向计算；不把图纸估算称为实测，不支持兼向替星。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "scene",
+          "label": "空间用途",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "home",
+              "label": "住宅"
+            },
+            {
+              "value": "office",
+              "label": "办公"
+            },
+            {
+              "value": "shop",
+              "label": "商铺"
+            }
+          ],
+          "defaultValue": "home"
+        },
+        {
+          "key": "location",
+          "label": "城市",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "orientation",
+          "label": "已知朝向",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "daylight",
+          "label": "白天自然采光",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "unknown",
+              "label": "还未观察"
+            },
+            {
+              "value": "adequate",
+              "label": "日常使用足够"
+            },
+            {
+              "value": "dim",
+              "label": "感觉偏暗"
+            },
+            {
+              "value": "glare",
+              "label": "有明显眩光"
+            }
+          ],
+          "defaultValue": "unknown"
+        },
+        {
+          "key": "ventilation",
+          "label": "通风情况",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "unknown",
+              "label": "还未观察"
+            },
+            {
+              "value": "openable",
+              "label": "可开窗通风"
+            },
+            {
+              "value": "stuffy",
+              "label": "感觉闷或气味滞留"
+            }
+          ],
+          "defaultValue": "unknown"
+        },
+        {
+          "key": "circulation",
+          "label": "主要通道",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "unknown",
+              "label": "还未观察"
+            },
+            {
+              "value": "clear",
+              "label": "行走顺畅"
+            },
+            {
+              "value": "blocked",
+              "label": "物品占道或经常绕行"
+            }
+          ],
+          "defaultValue": "unknown"
+        },
+        {
+          "key": "noise",
+          "label": "噪声影响",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "unknown",
+              "label": "还未观察"
+            },
+            {
+              "value": "quiet",
+              "label": "不影响使用"
+            },
+            {
+              "value": "disturbing",
+              "label": "影响休息或专注"
+            }
+          ],
+          "defaultValue": "unknown"
+        },
+        {
+          "key": "spaceConcern",
+          "label": "最想改善的问题",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "floorPlan",
+          "label": "户型标注与比例尺",
+          "type": "floorplan",
+          "required": false,
+          "helpText": "上传户型底图并标注房间轮廓、校准比例尺；也可手动录入。计算前需确认。"
+        },
+        {
+          "key": "spatialMode",
+          "label": "传统排盘",
+          "type": "select",
+          "required": false,
+          "defaultValue": "observation",
+          "options": [
+            {
+              "value": "observation",
+              "label": "空间观察"
+            },
+            {
+              "value": "flying",
+              "label": "玄空下卦"
+            }
+          ]
+        },
+        {
+          "key": "period",
+          "label": "已确认元运",
+          "type": "number",
+          "min": 1,
+          "max": 9,
+          "validation": "integer",
+          "required": false,
+          "requiredWhen": {
+            "key": "spatialMode",
+            "value": "flying"
+          },
+          "visibleWhen": {
+            "key": "spatialMode",
+            "value": "flying"
+          },
+          "helpText": "请确认建成/换运口径，系统不自行推断。"
+        },
+        {
+          "key": "facingDegrees",
+          "label": "已实测朝向角度",
+          "type": "number",
+          "min": 0,
+          "max": 359.99,
+          "required": false,
+          "requiredWhen": {
+            "key": "spatialMode",
+            "value": "flying"
+          },
+          "visibleWhen": {
+            "key": "spatialMode",
+            "value": "flying"
+          },
+          "helpText": "正北 0°、正东 90°；填写向而非坐。兼向和边界将要求专业复核。"
+        }
+      ]
+    },
+    "keywords": [
+      "空间观察核对"
+    ],
+    "group": "专题核验"
+  },
+  {
+    "code": "dream",
+    "name": "梦境线索整理",
+    "description": "逐字保留梦境原述、感受和现实线索，区分已记录与待确认；提供版本化反思问题，不将象征与现实因果绑定。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "dream",
+          "label": "梦境原述",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "feeling",
+          "label": "醒来后的感受",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "recentContext",
+          "label": "近期相关经历",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "recurrence",
+          "label": "是否重复出现",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "unknown",
+              "label": "不确定"
+            },
+            {
+              "value": "once",
+              "label": "首次记录"
+            },
+            {
+              "value": "repeated",
+              "label": "曾重复出现"
+            }
+          ],
+          "defaultValue": "unknown"
+        }
+      ]
+    },
+    "keywords": [
+      "梦境线索整理"
+    ],
+    "group": "专题核验"
+  },
+  {
+    "code": "date_select",
+    "name": "日期范围对照",
+    "description": "查询 1–14 天范围或最多三个备选日，依据黄历实际宜忌逐日匹配指定事项；未知事项不代为匹配，不作吉日评分。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "dateMode",
+          "label": "对照方式",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "compare",
+              "label": "比较备选日期"
+            },
+            {
+              "value": "range",
+              "label": "查看一段日期"
+            }
+          ],
+          "defaultValue": "compare"
+        },
+        {
+          "key": "event",
+          "label": "事项",
+          "type": "text",
+          "required": true,
+          "helpText": "按黄历条目核对，例如嫁娶、开市、搬家；未识别的事项仍展示原始宜忌。"
+        },
+        {
+          "key": "targetDate",
+          "label": "首个日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "secondDate",
+          "label": "备选日期二",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "thirdDate",
+          "label": "备选日期三",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "endDate",
+          "label": "结束日期",
+          "type": "date",
+          "required": false,
+          "visibleWhen": {
+            "key": "dateMode",
+            "value": "range"
+          },
+          "requiredWhen": {
+            "key": "dateMode",
+            "value": "range"
+          },
+          "helpText": "含首尾日期，最多 14 天。"
+        },
+        {
+          "key": "weekdayOnly",
+          "label": "工作日偏好",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部日期"
+            },
+            {
+              "value": "weekdays",
+              "label": "仅星期一至五"
+            }
+          ],
+          "defaultValue": "all"
+        }
+      ]
+    },
+    "keywords": [
+      "日期范围对照"
+    ],
+    "group": "专题核验"
+  },
+  {
+    "code": "fortune",
+    "name": "黄历与个人流日",
+    "description": "先查指定日期黄历；选择个人参考时，先排本人八字，取真实日主再查流日十神。无吉凶分数，不等于完整大运分析。",
+    "inputSchema": {
+      "fields": [
+        {
+          "key": "targetDate",
+          "label": "查看日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "focus",
+          "label": "今天最关心的事",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "fortuneMode",
+          "label": "参考方式",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "general",
+              "label": "黄历与日常计划"
+            },
+            {
+              "value": "personal",
+              "label": "结合本人日主"
+            }
+          ],
+          "defaultValue": "general"
+        },
+        {
+          "key": "calendarType",
+          "label": "历法",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "solar",
+              "label": "公历"
+            },
+            {
+              "value": "lunar",
+              "label": "农历"
+            }
+          ],
+          "defaultValue": "solar",
+          "visibleWhen": {
+            "key": "fortuneMode",
+            "value": "personal"
+          },
+          "requiredWhen": {
+            "key": "fortuneMode",
+            "value": "personal"
+          }
+        },
+        {
+          "key": "birthDate",
+          "label": "出生日期",
+          "type": "date",
+          "required": false,
+          "visibleWhen": {
+            "key": "fortuneMode",
+            "value": "personal"
+          },
+          "requiredWhen": {
+            "key": "fortuneMode",
+            "value": "personal"
+          }
+        },
+        {
+          "key": "birthTime",
+          "label": "出生时间",
+          "type": "time",
+          "required": false,
+          "visibleWhen": {
+            "key": "fortuneMode",
+            "value": "personal"
+          },
+          "requiredWhen": {
+            "key": "fortuneMode",
+            "value": "personal"
+          }
+        },
+        {
+          "key": "gender",
+          "label": "性别",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "male",
+              "label": "男"
+            },
+            {
+              "value": "female",
+              "label": "女"
+            }
+          ],
+          "visibleWhen": {
+            "key": "fortuneMode",
+            "value": "personal"
+          },
+          "requiredWhen": {
+            "key": "fortuneMode",
+            "value": "personal"
+          }
+        }
+      ]
+    },
+    "keywords": [
+      "黄历与个人流日"
+    ],
+    "group": "专题核验"
+  }
+]

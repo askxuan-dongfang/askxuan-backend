@@ -16,8 +16,8 @@ func TestReviewedCatalogArguments(t *testing.T) {
 	if e = json.Unmarshal(raw, &fixtures); e != nil {
 		t.Fatal(e)
 	}
-	if len(ReviewedTools()) != 15 || len(fixtures) != 15 {
-		t.Fatal("catalog must cover all 15 reviewed MCP tools")
+	if len(ReviewedTools()) != 20 || len(fixtures) != 20 {
+		t.Fatal("catalog must cover 15 MCP and 5 platform tools")
 	}
 	export := map[string]json.RawMessage{}
 	for _, def := range ReviewedTools() {

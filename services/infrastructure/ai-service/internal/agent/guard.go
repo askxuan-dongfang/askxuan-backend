@@ -229,6 +229,8 @@ func isValidFieldValue(value interface{}, fieldType string) bool {
 			}
 		}
 		return false
+	case "floorplan":
+		return len(text) <= 20000 && json.Valid([]byte(text))
 	case "text", "select", "":
 		return utf8.RuneCountInString(text) <= 500
 	default:
