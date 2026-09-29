@@ -33,7 +33,7 @@ add('daliuren','大六壬','按指定时间起课，读取天地盘、四课、�
 add('xiaoliuren','小六壬','按农历月日与明确的时辰起课。',[num('lunarMonth','农历月份',1,12),num('lunarDay','农历日期',1,30),select('hourIndex','时辰',[(str(i+1),s+'时') for i,s in enumerate('子丑寅卯辰巳午未申酉戌亥')])],['小六壬'],'问事与起卦')
 add('almanac','黄历查询','查看指定日期的黄历、宜忌和时辰信息。',[f('targetDate','查询日期','date'),select('dayMaster','日主天干（已知时填写）',[(x,x) for x in '甲乙丙丁戊己庚辛壬癸'],required=False)],['黄历','宜忌'],'生活参考')
 p=root/'services/infrastructure/ai-service/internal/agent/tool_catalog.json';p.write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n')
-def q(v):return "CONVERT(0x"+v.encode().hex()+" USING utf8mb4)"
+def q(v):return "CONVERT(0x"+v.encode().hex()+" USING utf8mb4)" if v else "''"
 lines=['-- Reviewed taibu tool catalog. No schema or financial data changes.','USE askxuan_ai;','START TRANSACTION;']
 cols=['code','category','name','version','description','icon','source_type','source_ref','prompt_template','input_schema','routing_keywords','capabilities','tool_config','risk_level','sort_order','status']
 for i,r in enumerate(rows):
