@@ -387,6 +387,11 @@ func (s *Service) Search(ctx context.Context, q string, ids []string) (knowledge
 		}
 		selected[id] = true
 	}
+	// Rank all authorized bases in one upstream request. Per-base RRF scores
+	// cannot be compared: every base's first result receives the same rank score.
+	scope := []string{}
+	allowed := []string{}
+	owners := map[string]string{}
 	for _, b := range bases {
 		if !b.Enabled || !selected[b.ID] {
 			continue
@@ -395,45 +400,65 @@ func (s *Service) Search(ctx context.Context, q string, ids []string) (knowledge
 		if e != nil {
 			return out, e
 		}
-		allowed := []string{}
+		count := 0
 		for id, p := range ps {
 			if p.Enabled {
 				allowed = append(allowed, id)
+				owners[id] = b.ID
+				count++
 			}
 		}
-		if len(allowed) == 0 {
-			continue
-		}
-		hits, e := decode[[]searchHit](s.Client.json(ctx, "POST", "/knowledge-bases/"+b.ID+"/hybrid-search", map[string]any{"query_text": q, "match_count": 8, "vector_threshold": 0.35, "keyword_threshold": 0, "knowledge_ids": allowed, "skip_context_enrichment": true}))
-		if e != nil {
-			return out, e
-		}
-		// Recheck current policy after remote retrieval; never emit out-of-scope chunks.
-		current, e := s.base(ctx, b.ID)
-		if e != nil {
-			return out, e
-		}
-		if !current.Enabled {
-			continue
-		}
-		ps, e = s.policies(ctx, b.ID)
-		if e != nil {
-			return out, e
-		}
-		for _, h := range hits {
-			p, ok := ps[h.KnowledgeID]
-			if !ok || !p.Enabled || h.Content == "" || h.ID == "" {
-				continue
-			}
-			txt := []rune(h.Content)
-			if len(txt) > 3000 {
-				txt = txt[:3000]
-			}
-			text := string(txt)
-			hash := sha256.Sum256([]byte(text))
-			out.Hits = append(out.Hits, knowledge.Hit{ID: "weknora:" + h.ID, Title: h.Title, Text: text, Source: p.Source, Locator: fmt.Sprintf("知识库 %s · 文档 %s · 分块 %d", b.Name, h.KnowledgeID, h.Index+1), Revision: p.Revision, Hash: hex.EncodeToString(hash[:]), Score: h.Score})
+		if count > 0 {
+			scope = append(scope, b.ID)
 		}
 	}
+	if len(allowed) == 0 {
+		return out, nil
+	}
+	sort.Strings(allowed)
+	hits, e := decode[[]searchHit](s.Client.json(ctx, "POST", "/knowledge-bases/"+scope[0]+"/hybrid-search", map[string]any{
+		"query_text": q, "match_count": 12, "vector_threshold": 0.35,
+		"keyword_threshold": 0, "knowledge_ids": allowed, "knowledge_base_ids": scope,
+		"skip_context_enrichment": true,
+	}))
+	if e != nil {
+		return out, e
+	}
+	// Recheck every base and document after retrieval. New approvals must not
+	// widen the original request, and revocations must take effect immediately.
+	currentBases := map[string]Base{}
+	currentPolicies := map[string]map[string]Policy{}
+	for _, id := range scope {
+		b, e := s.base(ctx, id)
+		if e != nil {
+			return out, e
+		}
+		if !b.Enabled {
+			continue
+		}
+		ps, e := s.policies(ctx, id)
+		if e != nil {
+			return out, e
+		}
+		currentBases[id] = b
+		currentPolicies[id] = ps
+	}
+	for _, h := range hits {
+		baseID, originallyAllowed := owners[h.KnowledgeID]
+		b, enabledBase := currentBases[baseID]
+		p, approved := currentPolicies[baseID][h.KnowledgeID]
+		if !originallyAllowed || !enabledBase || !approved || !p.Enabled || h.Content == "" || h.ID == "" {
+			continue
+		}
+		txt := []rune(h.Content)
+		if len(txt) > 3000 {
+			txt = txt[:3000]
+		}
+		text := string(txt)
+		hash := sha256.Sum256([]byte(text))
+		out.Hits = append(out.Hits, knowledge.Hit{ID: "weknora:" + h.ID, Title: h.Title, Text: text, Source: p.Source, Locator: fmt.Sprintf("知识库 %s · 文档 %s · 分块 %d", b.Name, h.KnowledgeID, h.Index+1), Revision: p.Revision, Hash: hex.EncodeToString(hash[:]), Score: h.Score})
+	}
+
 	sort.SliceStable(out.Hits, func(i, j int) bool { return out.Hits[i].Score > out.Hits[j].Score })
 	if len(out.Hits) > 5 {
 		out.Hits = out.Hits[:5]

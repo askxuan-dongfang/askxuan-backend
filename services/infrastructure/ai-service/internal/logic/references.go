@@ -15,7 +15,7 @@ func bindReferences(s *svc.ServiceContext, in *askagent.Input, user string, obse
 	}
 	in.KnowledgeEnabled = s.KnowledgeEnabled
 	in.MemoryEnabled = s.MemoryEnabled
-	in.References = func(ctx context.Context, name string) (string, error) {
+	in.References = func(ctx context.Context, name, query string) (string, error) {
 		kind, owner := "knowledge", "platform"
 		if name == "recall_memory" && in.MemoryEnabled {
 			kind, owner = "memory", user
@@ -25,7 +25,10 @@ func bindReferences(s *svc.ServiceContext, in *askagent.Input, user string, obse
 		var r knowledge.Result
 		var e error
 		if kind == "knowledge" {
-			r, e = s.Knowledge.SearchKnowledge(ctx, in.Question, s.KnowledgeBases)
+			if query == "" {
+				query = in.Question
+			}
+			r, e = s.Knowledge.SearchKnowledge(ctx, query, s.KnowledgeBases)
 		} else {
 			r, e = s.Knowledge.Search(ctx, kind, owner, in.Question)
 		}

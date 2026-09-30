@@ -93,3 +93,66 @@ func TestUnregisteredDocumentNeverReachesUpstream(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestMultipleBasesShareOneRankingAndRemainScoped(t *testing.T) {
+	const second = "44444444-4444-4444-8444-444444444444"
+	const secondDoc = "55555555-5555-4555-8555-555555555555"
+	const disabled = "66666666-6666-4666-8666-666666666666"
+	for _, revoke := range []bool{false, true} {
+		t.Run(map[bool]string{false: "global-ranking", true: "base-revoked"}[revoke], func(t *testing.T) {
+			calls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				var q struct {
+					Bases []string `json:"knowledge_base_ids"`
+					Docs  []string `json:"knowledge_ids"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
+					t.Error(err)
+				}
+				if len(q.Bases) != 2 || q.Bases[0] != kbID || q.Bases[1] != second || len(q.Docs) != 2 || q.Docs[0] != docID || q.Docs[1] != secondDoc {
+					t.Errorf("unbounded scope: %+v", q)
+				}
+				json.NewEncoder(w).Encode(map[string]any{"success": true, "data": []map[string]any{
+					{"id": "specific", "knowledge_id": secondDoc, "content": "九二見龍在田", "score": .03},
+					{"id": "generic", "knowledge_id": docID, "content": "一般导读", "score": .01},
+					{"id": "newly-approved", "knowledge_id": "new-doc", "content": "not in request", "score": 1},
+					{"id": "foreign", "knowledge_id": "foreign", "content": "private", "score": 1},
+				}})
+			}))
+			defer server.Close()
+			c, _ := New(server.URL, "private", "embedding")
+			db, m, _ := sqlmock.New()
+			defer db.Close()
+			s := &Service{DB: sqlx.NewSqlConnFromDB(db), Client: c}
+			m.ExpectQuery("SELECT id,name,description,enabled,revision FROM ai_knowledge_base ORDER").WillReturnRows(sqlmock.NewRows(baseCols).AddRow(kbID, "导读", "", true, 1).AddRow(second, "原文", "", true, 1).AddRow(disabled, "停用", "", false, 1))
+			for _, pair := range [][2]string{{kbID, docID}, {second, secondDoc}} {
+				m.ExpectQuery("SELECT id,base_id,source,enabled,revision").WithArgs(pair[0]).WillReturnRows(sqlmock.NewRows(docCols).AddRow(pair[1], pair[0], "source", true, 1))
+			}
+			for _, pair := range [][2]string{{kbID, docID}, {second, secondDoc}} {
+				enabled := !revoke || pair[0] != second
+				m.ExpectQuery("SELECT id,name,description,enabled,revision FROM ai_knowledge_base WHERE").WithArgs(pair[0]).WillReturnRows(sqlmock.NewRows(baseCols).AddRow(pair[0], "name", "", enabled, 1))
+				if enabled {
+					m.ExpectQuery("SELECT id,base_id,source,enabled,revision").WithArgs(pair[0]).WillReturnRows(sqlmock.NewRows(docCols).AddRow(pair[1], pair[0], "source", true, 1).AddRow("new-doc", pair[0], "new", true, 1))
+				}
+			}
+			result, err := s.Search(context.Background(), "乾 九二", []string{kbID, second, disabled})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if calls != 1 {
+				t.Fatalf("per-base rank fusion returned: %d calls", calls)
+			}
+			if revoke {
+				if len(result.Hits) != 1 || result.Hits[0].ID != "weknora:generic" {
+					t.Fatalf("revoked base leaked: %+v", result)
+				}
+			} else if len(result.Hits) != 2 || result.Hits[0].ID != "weknora:specific" {
+				t.Fatalf("lost global ranking: %+v", result)
+			}
+			if err = m.ExpectationsWereMet(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
