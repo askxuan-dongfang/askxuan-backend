@@ -91,11 +91,15 @@ jobs:
         with:
           go-version-file: 'go.work'
           cache-dependency-path: '**/go.sum'
-      - run: docker exec ${{ job.services.mysql.id }} mysql -uroot -preview-ci-test -e 'CREATE DATABASE review_test_booking; CREATE DATABASE review_test_projection;'
+      - run: docker exec ${{ job.services.mysql.id }} mysql -uroot -preview-ci-test -e 'CREATE DATABASE review_test_booking; CREATE DATABASE review_test_projection; CREATE DATABASE ai_runtime_test_ci;'
       - run: go test ./services/content/booking-service/internal/logic ./services/content/review-service/internal/model -run 'TestReviewTransactionIntegration|TestProjectionIntegration' -v
         env:
           REVIEW_BOOKING_TEST_DSN: root:review-ci-test@tcp(127.0.0.1:3306)/review_test_booking?charset=utf8mb4
           REVIEW_TEST_DSN: root:review-ci-test@tcp(127.0.0.1:3306)/review_test_projection?charset=utf8mb4
+      - run: go test ./internal/model -run TestRepeatedToolCallsIntegration -v
+        working-directory: services/infrastructure/ai-service
+        env:
+          AI_RUNTIME_TEST_DSN: root:review-ci-test@tcp(127.0.0.1:3306)/ai_runtime_test_ci?charset=utf8mb4
   cash-wallet-mysql:
     runs-on: ubuntu-latest
     timeout-minutes: 15

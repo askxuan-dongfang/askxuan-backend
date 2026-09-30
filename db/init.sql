@@ -2137,7 +2137,7 @@ CREATE TABLE IF NOT EXISTS `ai_tool_call` (
 	`error_message` VARCHAR(255) NOT NULL DEFAULT '',
 	`create_time` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 	`complete_time` DATETIME(3) NULL,
-	PRIMARY KEY (`id`), UNIQUE KEY `uk_run_tool` (`run_id`,`tool_name`), KEY `idx_status_time` (`status`,`create_time`)
+	PRIMARY KEY (`id`), KEY `idx_run_tool` (`run_id`,`tool_name`), KEY `idx_status_time` (`status`,`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI受控工具调用轨迹';
 
 INSERT INTO `ai_message` (`session_id`,`role`,`content`,`tokens`,`status`,`create_time`) VALUES
