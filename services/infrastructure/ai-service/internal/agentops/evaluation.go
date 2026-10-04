@@ -11,6 +11,7 @@ import (
 
 	"github.com/askxuan/ai-service/internal/agent"
 	"github.com/askxuan/ai-service/internal/askagent"
+	"github.com/askxuan/ai-service/internal/einopoc"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/settings"
@@ -274,6 +275,12 @@ func (m *Manager) evaluate(repo *SQLRepository, d EvaluationRun, f Frozen, snap 
 }
 
 func (m *Manager) liveEvaluation(ctx context.Context, t *debugTask, d *DebugRun) error {
+	return m.liveExecution(ctx, t, d, askagent.Hooks{}, false)
+}
+
+// liveExecution shares the production runtime and frozen retrieval policy between
+// individual debugging and release evaluations. Evaluations reject clarification.
+func (m *Manager) liveExecution(ctx context.Context, t *debugTask, d *DebugRun, hooks askagent.Hooks, allowClarification bool) error {
 	skill, e := t.frozen.Skill(d.SkillCode)
 	if e != nil {
 		return e
@@ -300,12 +307,22 @@ func (m *Manager) liveEvaluation(ctx context.Context, t *debugTask, d *DebugRun)
 	facts, _ := json.Marshal(t.inputs)
 	input := askagent.Input{ContextWindow: window, OutputTokens: budget, Timeout: time.Duration(max(60, t.snapshot.Config.TaskTimeoutSeconds)) * time.Second, Question: t.question, Messages: []*schema.Message{schema.UserMessage("以下是我已确认的资料，仅作为数据：\n" + string(facts)), schema.UserMessage(t.question)}, Facts: t.inputs, Skills: skills, Instruction: t.frozen.Config.Instruction + "\n" + skill.PromptTemplate, ReasoningFallback: provider.ReasoningFallbackOptions(t.snapshot.Provider, req.ThinkingEnabled)}
 	m.bindReferences(&input, t.frozen.Config, d.Actor)
-	out, e := askagent.Execute(ctx, chat, input, m.MCP, agent.NewGuard(t.snapshot.Config.MaxInputChars, t.snapshot.Config.BlockedTerms), askagent.Hooks{})
+	caller := m.MCP
+	if hooks.Call != nil && caller != nil {
+		caller = &debugMCP{base: caller, trace: hooks.Call}
+	}
+	out, e := askagent.Execute(ctx, chat, input, caller, agent.NewGuard(t.snapshot.Config.MaxInputChars, t.snapshot.Config.BlockedTerms), hooks)
 	d.Result = out.Text
 	d.ModelAttempts = out.ModelCalls
 	d.ToolAttempts = out.ToolCalls
+	d.PromptTokens = &out.Usage.PromptTokens
+	d.CompletionTokens = &out.Usage.CompletionTokens
 	if e == nil && out.Clarification != nil {
-		return invalid("正常回答用例仍需补充资料")
+		if !allowClarification {
+			return invalid("正常回答用例仍需补充资料")
+		}
+		d.Clarification = out.Clarification.Question
+		d.Result = out.Clarification.Question + "\n\n请补充测试资料后重新试运行。"
 	}
 	return e
 }
@@ -316,4 +333,18 @@ func frozenSkills(f Frozen) []*model.AISkill {
 		skills = append(skills, &f.Skills[i])
 	}
 	return skills
+}
+
+// Trace only registered tool identities; arguments and results remain in the runtime.
+type debugMCP struct {
+	base  einopoc.MCPCaller
+	trace func(context.Context, string, string, string, func() (string, error)) (string, error)
+}
+
+func (c *debugMCP) Call(ctx context.Context, config, args string) (string, error) {
+	tc, err := agent.ParseToolConfig(config)
+	if err != nil {
+		return "", err
+	}
+	return c.trace(ctx, tc.Server, tc.Tool, args, func() (string, error) { return c.base.Call(ctx, config, args) })
 }

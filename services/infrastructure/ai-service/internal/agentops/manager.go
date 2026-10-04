@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/askxuan/ai-service/internal/agent"
+	"github.com/askxuan/ai-service/internal/askagent"
 	"github.com/askxuan/ai-service/internal/einopoc"
 	"github.com/askxuan/ai-service/internal/knowledge"
 	"github.com/askxuan/ai-service/internal/model"
@@ -195,7 +196,7 @@ type DebugRequest struct {
 }
 
 func (m *Manager) StartDebug(ctx context.Context, actor string, req DebugRequest) (DebugRun, error) {
-	if req.Kind != "classic" && req.Kind != "eino" {
+	if req.Kind != "classic" && req.Kind != "eino" && req.Kind != "harness" {
 		return DebugRun{}, invalid("不支持的调试模式")
 	}
 	s, err := m.Repo.State(ctx)
@@ -392,7 +393,11 @@ func (m *Manager) execute(t *debugTask, interrupt, reply string) {
 	d := t.run
 	d.Events = append([]Event{}, d.Events...)
 	t.mu.Unlock()
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
+	timeout := 50 * time.Second
+	if d.Kind == "harness" {
+		timeout = time.Duration(max(60, t.snapshot.Config.TaskTimeoutSeconds)) * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	persist := func() {
 		c, stop := context.WithTimeout(context.Background(), 3*time.Second)
@@ -403,13 +408,31 @@ func (m *Manager) execute(t *debugTask, interrupt, reply string) {
 			_ = m.Repo.PutDebug(c, d)
 		}
 	}
+	var eventMu sync.Mutex
 	event := func(stage, label string) {
+		eventMu.Lock()
+		defer eventMu.Unlock()
 		d.Events = append(d.Events, Event{Stage: stage, Label: label, At: time.Now().UTC().Format(time.RFC3339Nano)})
 		persist()
 	}
 	event("accepted", "已固定草稿与模型配置")
 	var err error
-	if d.Kind == "eino" {
+	if d.Kind == "harness" {
+		event("running", "用户端 Harness 执行中 · 使用草稿的技能、知识库与检索策略")
+		err = m.liveExecution(ctx, t, &d, askagent.Hooks{
+			Stage: func(stage string) error { event(stage, "Harness："+stage); return nil },
+			Call: func(_ context.Context, server, name, _ string, call func() (string, error)) (string, error) {
+				event("tool_running", "正在调用："+server+" / "+name)
+				result, e := call()
+				if e != nil {
+					event("tool_failed", "工具未完成："+name)
+				} else {
+					event("tool_completed", "工具完成："+name)
+				}
+				return result, e
+			},
+		}, true)
+	} else if d.Kind == "eino" {
 		var result einopoc.Result
 		event("running", "智能体执行中 · 最多 4 次模型调用")
 		if interrupt == "" {
