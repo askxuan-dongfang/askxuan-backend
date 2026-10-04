@@ -10,7 +10,7 @@ import (
 )
 
 func TestWeKnoraAdminBoundary(t *testing.T) {
-	for _, action := range []string{"list", "create", "update", "delete", "documents", "manual", "upload", "chunks", "policy", "delete_doc", "reparse", "search"} {
+	for _, action := range []string{"list", "create", "update", "delete", "documents", "manual", "upload", "chunks", "policy", "delete_doc", "reparse", "search", "wiki_status", "wiki_read", "wiki_models", "wiki_config"} {
 		for _, typ := range []string{"", "user", "master", "temple", "admin"} {
 			r := httptest.NewRequest("POST", "/", strings.NewReader(`{}`))
 			r.Header.Set("X-User-Id", "7")

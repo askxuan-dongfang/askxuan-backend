@@ -19,7 +19,7 @@ services:
       LOCAL_STORAGE_BASE_DIR: /data/files
       DOCREADER_ADDR: docreader:50051
       BUILTIN_MODELS_CONFIG: /app/config/builtin_models.yaml
-      SSRF_WHITELIST: embedding
+      SSRF_WHITELIST: embedding,api.deepseek.com
       SSRF_DNS_WHITELIST_ONLY: "true"
       WEKNORA_SANDBOX_DOCKER_ENABLED: "false"
       WEKNORA_MODEL_MAX_CONCURRENCY: 2

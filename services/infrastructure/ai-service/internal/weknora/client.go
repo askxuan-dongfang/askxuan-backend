@@ -49,6 +49,19 @@ func FromEnv() *Client {
 }
 func (c *Client) call(ctx context.Context, method, path string, body io.Reader, contentType string) (Envelope, error) {
 	var out Envelope
+	b, e := c.raw(ctx, method, path, body, contentType)
+	if e != nil {
+		return out, e
+	}
+	if json.Unmarshal(b, &out) != nil || !out.Success {
+		return out, ErrUnavailable
+	}
+	return out, nil
+}
+
+// raw also supports Wiki endpoints, whose responses are not envelopes.
+func (c *Client) raw(ctx context.Context, method, path string, body io.Reader, contentType string) (json.RawMessage, error) {
+	var out json.RawMessage
 	req, e := http.NewRequestWithContext(ctx, method, c.base+"/api/v1"+path, body)
 	if e != nil {
 		return out, ErrInput
@@ -66,10 +79,10 @@ func (c *Client) call(ctx context.Context, method, path string, body io.Reader, 
 		return out, fmt.Errorf("%w (HTTP %d)", ErrUnavailable, r.StatusCode)
 	}
 	b, e := io.ReadAll(io.LimitReader(r.Body, 4*1024*1024+1))
-	if e != nil || len(b) > 4*1024*1024 || json.Unmarshal(b, &out) != nil || !out.Success {
+	if e != nil || len(b) > 4*1024*1024 || !json.Valid(b) {
 		return out, ErrUnavailable
 	}
-	return out, nil
+	return b, nil
 }
 func (c *Client) json(ctx context.Context, method, path string, payload any) (Envelope, error) {
 	var body io.Reader

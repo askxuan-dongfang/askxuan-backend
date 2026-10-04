@@ -21,6 +21,7 @@ func registerWeKnora(server *rest.Server, s *svc.ServiceContext) {
 		{"GET", "/:kb/documents", "documents"}, {"POST", "/:kb/documents", "manual"}, {"POST", "/:kb/upload", "upload"},
 		{"GET", "/:kb/documents/:doc/chunks", "chunks"}, {"PUT", "/:kb/documents/:doc", "policy"}, {"DELETE", "/:kb/documents/:doc", "delete_doc"}, {"POST", "/:kb/documents/:doc/reparse", "reparse"},
 		{"POST", "/:kb/search", "search"},
+		{"PUT", "/:kb/wiki", "wiki_config"}, {"GET", "/:kb/wiki-models", "wiki_models"}, {"GET", "/:kb/wiki", "wiki_status"}, {"GET", "/:kb/wiki/:kind", "wiki_read"},
 	} {
 		server.AddRoute(rest.Route{Method: v.method, Path: "/api/v1/ai/admin/knowledge-bases" + v.path, Handler: weknoraHandler(s, v.action)}, rest.WithMaxBytes(weknora.MaxFileBytes+131072))
 	}
@@ -58,8 +59,9 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 			}
 		}
 		var path struct {
-			KB  string `path:"kb,optional"`
-			Doc string `path:"doc,optional"`
+			Kind string `path:"kind,optional"`
+			KB   string `path:"kb,optional"`
+			Doc  string `path:"doc,optional"`
 		}
 		_ = httpx.ParsePath(r, &path)
 		read := func(v any) bool {
@@ -79,6 +81,21 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 		ctx := r.Context()
 		wk := s.WeKnora
 		switch action {
+		case "wiki_config":
+			var v weknora.WikiSettings
+			if !read(&v) {
+				return
+			}
+			finish(nil, wk.ConfigureWiki(ctx, path.KB, actor, v))
+		case "wiki_models":
+			v, e := wk.WikiModels(ctx, path.KB)
+			finish(v, e)
+		case "wiki_status":
+			v, e := wk.WikiStatus(ctx, path.KB)
+			finish(v, e)
+		case "wiki_read":
+			v, e := wk.WikiRead(ctx, path.KB, path.Kind, r.URL.Query().Get("slug"), r.URL.Query().Get("query"), page)
+			finish(v, e)
 		case "list":
 			v, e := wk.Bases(ctx)
 			finish(map[string]any{"list": v, "engine": "WeKnora", "version": "v0.8.2"}, e)
