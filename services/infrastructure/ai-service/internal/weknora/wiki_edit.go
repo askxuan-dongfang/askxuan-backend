@@ -151,7 +151,7 @@ func (s *Service) WikiWrite(ctx context.Context, kb, kind, actor string, in Wiki
 		} else {
 			out = map[string]bool{"ok": true}
 		}
-		return s.audit(ctx, tx, actor, "wiki_"+kind, kb+":"+in.Slug)
+		return s.audit(ctx, tx, actor, "wiki_"+kind, kb)
 	})
 	return out, err
 }

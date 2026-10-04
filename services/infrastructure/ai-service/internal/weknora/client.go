@@ -81,6 +81,9 @@ func (c *Client) raw(ctx context.Context, method, path string, body io.Reader, c
 	if r.StatusCode < 200 || r.StatusCode >= 300 {
 		return out, fmt.Errorf("%w (HTTP %d)", ErrUnavailable, r.StatusCode)
 	}
+	if r.StatusCode == http.StatusNoContent {
+		return json.RawMessage(`{}`), nil
+	}
 	b, e := io.ReadAll(io.LimitReader(r.Body, 4*1024*1024+1))
 	if e != nil || len(b) > 4*1024*1024 || !json.Valid(b) {
 		return out, ErrUnavailable

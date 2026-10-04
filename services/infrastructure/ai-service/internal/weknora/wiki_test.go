@@ -129,3 +129,40 @@ func TestWikiSettingsPreserveParserAndRejectStaleRevision(t *testing.T) {
 		})
 	}
 }
+
+func TestWikiCreateAuditUsesRegisteredResourceID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			w.Write([]byte(`{"success":true,"data":{"indexing_strategy":{"wiki_enabled":true}}}`))
+			return
+		}
+		w.WriteHeader(201)
+		w.Write([]byte(`{"slug":"concept/long-page-slug","title":"测试","version":1}`))
+	}))
+	defer srv.Close()
+	c, _ := New(srv.URL, "private", "embedding")
+	db, m, _ := sqlmock.New()
+	defer db.Close()
+	s := &Service{DB: sqlx.NewSqlConnFromDB(db), Client: c}
+	m.ExpectBegin()
+	for i := 0; i < 2; i++ {
+		m.ExpectQuery("SELECT id,name,description,enabled,revision").WithArgs(kbID).WillReturnRows(sqlmock.NewRows(baseCols).AddRow(kbID, "库", "", true, 1))
+	}
+	m.ExpectExec("INSERT INTO ai_knowledge_audit").WithArgs("admin", "wiki_create", kbID).WillReturnResult(sqlmock.NewResult(1, 1))
+	m.ExpectCommit()
+	_, err := s.WikiWrite(context.Background(), kbID, "create", "admin", WikiEdit{Slug: "concept/long-page-slug", Title: "测试", Content: "正文", Status: "draft"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = m.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+func TestEngineNoContentMutation(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }))
+	defer srv.Close()
+	c, _ := New(srv.URL, "private", "embedding")
+	if _, err := c.raw(context.Background(), "DELETE", "/wiki/pages/concept/test", nil, ""); err != nil {
+		t.Fatal(err)
+	}
+}
