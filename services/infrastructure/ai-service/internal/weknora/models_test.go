@@ -81,6 +81,14 @@ func TestSummaryBindingPreservesParserAndUsesOfficialEndpoint(t *testing.T) {
 		if string(b["llmModelId"]) != `"qa"` || string(b["embeddingModelId"]) != `"e"` || !strings.Contains(string(b["documentSplitting"]), `"chunkOverlap":60`) || !strings.Contains(string(b["documentSplitting"]), `"enableParentChild":true`) {
 			t.Fatalf("configuration cleared: %s", b)
 		}
+		var graph struct {
+			Enabled   bool              `json:"enabled"`
+			Tags      []string          `json:"tags"`
+			Relations []json.RawMessage `json:"relations"`
+		}
+		if json.Unmarshal(b["nodeExtract"], &graph) != nil || !graph.Enabled || len(graph.Tags) == 0 || len(graph.Relations) == 0 {
+			t.Fatal("graph extraction needs relation vocabulary and examples")
+		}
 		w.Write([]byte(`{"success":true,"data":{}}`))
 	}))
 	defer srv.Close()
