@@ -19,6 +19,7 @@ import (
 
 // ServiceContext ai 服务依赖容器
 type ServiceContext struct {
+	Retrieval         knowledge.RetrievalPolicy
 	KnowledgeBases    []string
 	WeKnora           *weknora.Service
 	Knowledge         *knowledge.Store
@@ -78,6 +79,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	if client := weknora.FromEnv(); client != nil {
 		wk = &weknora.Service{DB: db, Client: client}
 		references.Remote = wk
+		ops.ValidateRetrieval = wk.ValidateRetrieval
 	}
 	ops.References = references
 	return &ServiceContext{
@@ -125,6 +127,7 @@ func (s *ServiceContext) AskRuntimeFor(ctx context.Context, subject string) (*Se
 	result.SkillModel = &agentops.SkillView{Frozen: *f, Version: version}
 	result.AgentDefaultModel = f.Config.Model
 	result.AgentVersion = version
+	result.Retrieval = f.Config.Retrieval
 	result.KnowledgeEnabled = f.Config.KnowledgeEnabled
 	result.KnowledgeBases = append([]string(nil), f.Config.KnowledgeBaseIDs...)
 	result.MemoryEnabled = f.Config.MemoryEnabled

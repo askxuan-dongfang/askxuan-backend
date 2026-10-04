@@ -27,7 +27,7 @@ func (m *Manager) bindReferences(in *askagent.Input, c Config, actor string) {
 			if query == "" {
 				query = in.Question
 			}
-			out, e = m.References.SearchKnowledge(ctx, query, c.KnowledgeBaseIDs)
+			out, e = m.References.SearchKnowledge(knowledge.WithRetrieval(ctx, c.Retrieval), query, c.KnowledgeBaseIDs)
 		} else {
 			out, e = m.References.Search(ctx, kind, owner, in.Question)
 		}

@@ -28,7 +28,7 @@ func bindReferences(s *svc.ServiceContext, in *askagent.Input, user string, obse
 			if query == "" {
 				query = in.Question
 			}
-			r, e = s.Knowledge.SearchKnowledge(ctx, query, s.KnowledgeBases)
+			r, e = s.Knowledge.SearchKnowledge(knowledge.WithRetrieval(ctx, s.Retrieval), query, s.KnowledgeBases)
 		} else {
 			r, e = s.Knowledge.Search(ctx, kind, owner, in.Question)
 		}

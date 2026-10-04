@@ -14,11 +14,13 @@ import (
 // reaching the portal. Wiki is an editorial view, never an authorization bypass
 // into the Harness document retrieval scope.
 type WikiState struct {
-	Revision   int64 `json:"revision"`
-	Documents  int   `json:"knowledge_count"`
-	Chunks     int   `json:"chunk_count"`
-	Processing int   `json:"processing_count"`
-	Indexing   struct {
+	SummaryModel   string `json:"summary_model_id"`
+	EmbeddingModel string `json:"embedding_model_id"`
+	Revision       int64  `json:"revision"`
+	Documents      int    `json:"knowledge_count"`
+	Chunks         int    `json:"chunk_count"`
+	Processing     int    `json:"processing_count"`
+	Indexing       struct {
 		Wiki  bool `json:"wiki_enabled"`
 		Graph bool `json:"graph_enabled"`
 	} `json:"indexing_strategy"`
@@ -198,6 +200,30 @@ func (s *Service) WikiRead(ctx context.Context, kb, kind, slug, query string, pa
 	var suffix string
 	var result any
 	switch kind {
+	case "lint":
+		suffix = "lint"
+		result = &WikiLint{}
+	case "issues":
+		suffix = "issues?status=pending"
+		result = &[]WikiIssue{}
+	case "revisions":
+		escaped, e := wikiSlug(slug)
+		if e != nil {
+			return nil, e
+		}
+		suffix = "revisions/" + escaped + "?limit=20&offset=" + strconv.Itoa((page-1)*20)
+		result = &WikiHistory{}
+	case "revision":
+		escaped, e := wikiSlug(slug)
+		if e != nil {
+			return nil, e
+		}
+		version, e := strconv.Atoi(query)
+		if e != nil || version < 1 {
+			return nil, ErrInput
+		}
+		suffix = "revisions/" + escaped + "?version=" + strconv.Itoa(version)
+		result = &WikiRevision{}
 	case "stats":
 		suffix = "stats"
 		result = &WikiStats{}

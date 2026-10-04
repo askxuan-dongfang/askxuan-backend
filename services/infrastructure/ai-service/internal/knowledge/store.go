@@ -45,9 +45,13 @@ type Hit struct {
 	Score    float64 `json:"score"`
 }
 type Result struct {
-	Mode string `json:"mode"`
-	Hits []Hit  `json:"hits"`
-	Note string `json:"note"`
+	Retrieval    *RetrievalPolicy `json:"retrieval,omitempty"`
+	GraphStatus  string           `json:"graphStatus,omitempty"`
+	RerankStatus string           `json:"rerankStatus,omitempty"`
+	Graph        json.RawMessage  `json:"graph,omitempty"`
+	Mode         string           `json:"mode"`
+	Hits         []Hit            `json:"hits"`
+	Note         string           `json:"note"`
 }
 type Embedder interface {
 	Embed(context.Context, string) ([]float64, error)

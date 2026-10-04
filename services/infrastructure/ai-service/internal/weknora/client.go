@@ -75,6 +75,9 @@ func (c *Client) raw(ctx context.Context, method, path string, body io.Reader, c
 		return out, ErrUnavailable
 	}
 	defer r.Body.Close()
+	if r.StatusCode == 409 {
+		return out, ErrConflict
+	}
 	if r.StatusCode < 200 || r.StatusCode >= 300 {
 		return out, fmt.Errorf("%w (HTTP %d)", ErrUnavailable, r.StatusCode)
 	}

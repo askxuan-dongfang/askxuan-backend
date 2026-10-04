@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/askxuan/ai-service/internal/agent"
+	"github.com/askxuan/ai-service/internal/knowledge"
 	"github.com/askxuan/ai-service/internal/model"
 )
 
@@ -31,15 +32,16 @@ type SkillPolicy struct {
 	UseTool bool   `json:"useTool"`
 }
 type Config struct {
-	KnowledgeBaseIDs []string         `json:"knowledgeBaseIds"`
-	KnowledgeEnabled bool             `json:"knowledgeEnabled"`
-	MemoryEnabled    bool             `json:"memoryEnabled"`
-	Name             string           `json:"name"`
-	Instruction      string           `json:"instruction"`
-	Model            string           `json:"model"`
-	MaxOutputTokens  int              `json:"maxOutputTokens"`
-	Skills           []SkillPolicy    `json:"skills"`
-	Evaluation       []EvaluationCase `json:"evaluation"`
+	Retrieval        knowledge.RetrievalPolicy `json:"retrieval"`
+	KnowledgeBaseIDs []string                  `json:"knowledgeBaseIds"`
+	KnowledgeEnabled bool                      `json:"knowledgeEnabled"`
+	MemoryEnabled    bool                      `json:"memoryEnabled"`
+	Name             string                    `json:"name"`
+	Instruction      string                    `json:"instruction"`
+	Model            string                    `json:"model"`
+	MaxOutputTokens  int                       `json:"maxOutputTokens"`
+	Skills           []SkillPolicy             `json:"skills"`
+	Evaluation       []EvaluationCase          `json:"evaluation"`
 }
 
 // Frozen includes the reviewed input/tool contracts, not just editable prompts.
@@ -144,6 +146,9 @@ func Default(skills []*model.AISkill) Config {
 	return c
 }
 func Freeze(c Config, catalog []*model.AISkill) (Frozen, error) {
+	if !c.Retrieval.Valid() {
+		return Frozen{}, invalid("检索数量或重排配置无效")
+	}
 	c.Name = strings.TrimSpace(c.Name)
 	c.Instruction = strings.TrimSpace(c.Instruction)
 	c.Model = strings.TrimSpace(c.Model)

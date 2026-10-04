@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/askxuan/ai-service/internal/knowledge"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/weknora"
 	"github.com/askxuan/common"
@@ -16,12 +17,16 @@ import (
 )
 
 func registerWeKnora(server *rest.Server, s *svc.ServiceContext) {
+	for _, v := range []struct{ method, path, action string }{{"GET", "", "models"}, {"POST", "", "model_create"}, {"PUT", "/:model", "model_update"}, {"DELETE", "/:model", "model_delete"}, {"POST", "/:model/test", "model_test"}} {
+		server.AddRoute(rest.Route{Method: v.method, Path: "/api/v1/ai/admin/knowledge-models" + v.path, Handler: weknoraHandler(s, v.action)})
+	}
+
 	for _, v := range []struct{ method, path, action string }{
 		{"GET", "", "list"}, {"POST", "", "create"}, {"PUT", "/:kb", "update"}, {"DELETE", "/:kb", "delete"},
 		{"GET", "/:kb/documents", "documents"}, {"POST", "/:kb/documents", "manual"}, {"POST", "/:kb/upload", "upload"},
 		{"GET", "/:kb/documents/:doc/chunks", "chunks"}, {"PUT", "/:kb/documents/:doc", "policy"}, {"DELETE", "/:kb/documents/:doc", "delete_doc"}, {"POST", "/:kb/documents/:doc/reparse", "reparse"},
-		{"POST", "/:kb/search", "search"},
-		{"PUT", "/:kb/wiki", "wiki_config"}, {"GET", "/:kb/wiki-models", "wiki_models"}, {"GET", "/:kb/wiki", "wiki_status"}, {"GET", "/:kb/wiki/:kind", "wiki_read"},
+		{"POST", "/:kb/search", "search"}, {"GET", "/:kb/graph", "graph"}, {"PUT", "/:kb/graph", "graph_config"},
+		{"POST", "/:kb/wiki/:kind", "wiki_write"}, {"PUT", "/:kb/wiki", "wiki_config"}, {"GET", "/:kb/wiki-models", "wiki_models"}, {"GET", "/:kb/wiki", "wiki_status"}, {"GET", "/:kb/wiki/:kind", "wiki_read"},
 	} {
 		server.AddRoute(rest.Route{Method: v.method, Path: "/api/v1/ai/admin/knowledge-bases" + v.path, Handler: weknoraHandler(s, v.action)}, rest.WithMaxBytes(weknora.MaxFileBytes+131072))
 	}
@@ -59,9 +64,10 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 			}
 		}
 		var path struct {
-			Kind string `path:"kind,optional"`
-			KB   string `path:"kb,optional"`
-			Doc  string `path:"doc,optional"`
+			Model string `path:"model,optional"`
+			Kind  string `path:"kind,optional"`
+			KB    string `path:"kb,optional"`
+			Doc   string `path:"doc,optional"`
 		}
 		_ = httpx.ParsePath(r, &path)
 		read := func(v any) bool {
@@ -81,6 +87,31 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 		ctx := r.Context()
 		wk := s.WeKnora
 		switch action {
+		case "models":
+			v, e := wk.Models(ctx)
+			finish(map[string]any{"list": v}, e)
+		case "model_create", "model_update":
+			var v weknora.ModelInput
+			if !read(&v) {
+				return
+			}
+			out, e := wk.SaveModel(ctx, path.Model, actor, v)
+			finish(out, e)
+		case "model_delete":
+			finish(nil, wk.DeleteModel(ctx, path.Model, actor))
+		case "model_test":
+			v, e := wk.TestModel(ctx, path.Model)
+			finish(v, e)
+		case "graph":
+			v, e := wk.EntityGraph(ctx, path.KB, r.URL.Query().Get("query"))
+			finish(v, e)
+		case "graph_config":
+			var v weknora.GraphSettings
+			if !read(&v) {
+				return
+			}
+			finish(nil, wk.ConfigureGraph(ctx, path.KB, actor, v))
+
 		case "wiki_config":
 			var v weknora.WikiSettings
 			if !read(&v) {
@@ -93,7 +124,9 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 		case "wiki_status":
 			v, e := wk.WikiStatus(ctx, path.KB)
 			finish(v, e)
-		case "wiki_read":
+		case "wiki_write":
+ var in weknora.WikiEdit;if !read(&in){return};v,e:=wk.WikiWrite(ctx,path.KB,path.Kind,actor,in);finish(v,e)
+ case "wiki_read":
 			v, e := wk.WikiRead(ctx, path.KB, path.Kind, r.URL.Query().Get("slug"), r.URL.Query().Get("query"), page)
 			finish(v, e)
 		case "list":
@@ -103,11 +136,13 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 			var v struct {
 				Name        string `json:"name"`
 				Description string `json:"description"`
+				Embedding   string `json:"embeddingModel"`
+				Summary     string `json:"summaryModel"`
 			}
 			if !read(&v) {
 				return
 			}
-			out, e := wk.CreateBase(ctx, v.Name, v.Description, actor)
+			out, e := wk.CreateBaseModels(ctx, v.Name, v.Description, actor, v.Embedding, v.Summary)
 			finish(out, e)
 		case "update":
 			var v weknora.Base
@@ -164,12 +199,13 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 			finish(nil, wk.MutateDocument(ctx, path.KB, path.Doc, "reparse", actor))
 		case "search":
 			var v struct {
-				Query string `json:"query"`
+				Query     string                    `json:"query"`
+				Retrieval knowledge.RetrievalPolicy `json:"retrieval"`
 			}
 			if !read(&v) {
 				return
 			}
-			out, e := wk.Search(ctx, v.Query, []string{path.KB})
+			out, e := wk.Search(knowledge.WithRetrieval(ctx, v.Retrieval), v.Query, []string{path.KB})
 			finish(out, e)
 		}
 	}

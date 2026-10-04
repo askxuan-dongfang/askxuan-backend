@@ -11,3 +11,11 @@ builtin_models:
       embedding_parameters:
         dimension: 512
         truncate_prompt_tokens: 0
+  - id: askxuan-rerank
+    type: Rerank
+    source: remote
+    name: BAAI/bge-reranker-base
+    parameters:
+      base_url: http://rerank:9981/v1/rerank
+      api_key: ${AI_EMBEDDING_KEY}
+      provider: generic
