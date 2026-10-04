@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/askxuan/ai-service/internal/knowledge"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"net/http"
 	"net/http/httptest"
@@ -152,6 +153,49 @@ func TestMultipleBasesShareOneRankingAndRemainScoped(t *testing.T) {
 			}
 			if err = m.ExpectationsWereMet(); err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestRerankFailurePolicyAndProviderScope(t *testing.T) {
+	for _, strict := range []bool{false, true} {
+		t.Run(map[bool]string{false: "fallback", true: "strict"}[strict], func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case strings.HasSuffix(r.URL.Path, "hybrid-search"):
+					w.Write([]byte(`{"success":true,"data":[{"id":"a","knowledge_id":"` + docID + `","content":"approved","score":0.1},{"id":"b","knowledge_id":"foreign","content":"secret"}]}`))
+				case r.Method == "GET":
+					w.Write([]byte(`{"success":true,"data":{"type":"Rerank"}}`))
+				default:
+					r.ParseForm()
+					if strings.Contains(r.Form.Get("documents"), "secret") {
+						t.Error("foreign content reached provider")
+					}
+					w.WriteHeader(503)
+				}
+			}))
+			defer srv.Close()
+			c, _ := New(srv.URL, "key", "e")
+			db, m, _ := sqlmock.New()
+			defer db.Close()
+			s := &Service{DB: sqlx.NewSqlConnFromDB(db), Client: c}
+			m.ExpectQuery("SELECT id,name,description,enabled,revision FROM ai_knowledge_base ORDER").WillReturnRows(sqlmock.NewRows(baseCols).AddRow(kbID, "test", "", true, 1))
+			m.ExpectQuery("SELECT id,base_id,source,enabled,revision").WithArgs(kbID).WillReturnRows(sqlmock.NewRows(docCols).AddRow(docID, kbID, "source", true, 1))
+			if !strict {
+				m.ExpectQuery("SELECT id,name,description,enabled,revision FROM ai_knowledge_base WHERE").WithArgs(kbID).WillReturnRows(sqlmock.NewRows(baseCols).AddRow(kbID, "test", "", true, 1))
+				m.ExpectQuery("SELECT id,base_id,source,enabled,revision").WithArgs(kbID).WillReturnRows(sqlmock.NewRows(docCols).AddRow(docID, kbID, "source", true, 1))
+			}
+			out, e := s.Search(knowledge.WithRetrieval(context.Background(), knowledge.RetrievalPolicy{RerankModel: "rank", RerankRequired: strict}), "question", []string{kbID})
+			if strict {
+				if e == nil {
+					t.Fatal("strict policy ignored")
+				}
+			} else if e != nil || out.RerankStatus != "failed_fallback" || len(out.Hits) != 1 {
+				t.Fatalf("fallback missing: %+v %v", out, e)
+			}
+			if e = m.ExpectationsWereMet(); e != nil {
+				t.Fatal(e)
 			}
 		})
 	}

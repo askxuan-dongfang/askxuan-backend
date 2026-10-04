@@ -66,3 +66,27 @@ func TestModelEndpointRestrictions(t *testing.T) {
 		}
 	}
 }
+
+func TestSummaryBindingPreservesParserAndUsesOfficialEndpoint(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/initialization/config/"+kbID {
+			t.Error(r.URL.Path)
+		}
+		if r.Method == "GET" {
+			w.Write([]byte(`{"success":true,"data":{"documentSplitting":{"chunkSize":450,"chunkOverlap":60,"parserEngineRules":[{"file_type":"pdf"}],"enableParentChild":true},"nodeExtract":{"enabled":false},"questionGeneration":{"enabled":false},"multimodal":{"enabled":false}}}`))
+			return
+		}
+		var b map[string]json.RawMessage
+		json.NewDecoder(r.Body).Decode(&b)
+		if string(b["llmModelId"]) != `"qa"` || string(b["embeddingModelId"]) != `"e"` || !strings.Contains(string(b["documentSplitting"]), `"chunkOverlap":60`) || !strings.Contains(string(b["documentSplitting"]), `"enableParentChild":true`) {
+			t.Fatalf("configuration cleared: %s", b)
+		}
+		w.Write([]byte(`{"success":true,"data":{}}`))
+	}))
+	defer srv.Close()
+	c, _ := New(srv.URL, "key", "e")
+	s := &Service{Client: c}
+	if e := s.bindSummaryModel(context.Background(), kbID, "qa", map[string]json.RawMessage{"embedding_model_id": json.RawMessage(`"e"`)}); e != nil {
+		t.Fatal(e)
+	}
+}
