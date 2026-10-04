@@ -95,6 +95,11 @@ func (s *Service) SaveModel(ctx context.Context, id, actor string, v ModelInput)
 		}
 	}
 	params := map[string]any{"base_url": strings.TrimRight(v.BaseURL, "/"), "provider": v.Provider, "embedding_parameters": map[string]int{"dimension": v.Dimension}, "max_concurrency": 1}
+	// DeepSeek's thinking-capable aliases need an explicit wire switch for
+	// structured extraction; generic OpenAI settings otherwise omit Thinking=false.
+	if endpoint, _ := url.Parse(v.BaseURL); v.Type == "KnowledgeQA" && strings.EqualFold(endpoint.Hostname(), "api.deepseek.com") {
+		params["extra_config"] = map[string]string{"thinking_control": "thinking_type"}
+	}
 	if v.APIKey != "" {
 		params["api_key"] = v.APIKey
 	}
@@ -175,7 +180,7 @@ func (s *Service) debugModel(ctx context.Context, id, input string, documents []
 		return DebugResult{}, ErrInput
 	}
 	b, _ := json.Marshal(documents)
-	form := url.Values{"input": {input}, "documents": {string(b)}, "options": {`{"max_tokens":64}`}}
+	form := url.Values{"input": {input}, "documents": {string(b)}, "options": {`{"max_tokens":256,"thinking":false}`}}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	v, e := decode[DebugResult](s.Client.call(ctx, "POST", "/models/"+id+"/debug", strings.NewReader(form.Encode()), "application/x-www-form-urlencoded"))
