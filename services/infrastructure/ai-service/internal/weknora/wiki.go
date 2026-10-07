@@ -24,10 +24,16 @@ type WikiState struct {
 		Wiki  bool `json:"wiki_enabled"`
 		Graph bool `json:"graph_enabled"`
 	} `json:"indexing_strategy"`
-	Config *struct {
-		Model string `json:"synthesis_model_id"`
-	} `json:"wiki_config"`
+	Config *WikiConfig `json:"wiki_config"`
 }
+type WikiConfig struct {
+	Model                  string `json:"synthesis_model_id"`
+	Granularity            string `json:"extraction_granularity"`
+	MaxPages               int    `json:"max_pages_per_ingest"`
+	ContentInstructions    string `json:"content_instructions"`
+	ExtractionInstructions string `json:"extraction_instructions"`
+}
+
 type WikiReference struct {
 	ID       string `json:"id"`
 	Source   string `json:"source"`
@@ -107,13 +113,17 @@ func (s *Service) WikiModels(ctx context.Context, kb string) ([]WikiModel, error
 }
 
 type WikiSettings struct {
-	Enabled  bool   `json:"enabled"`
-	Model    string `json:"model"`
-	Revision int64  `json:"revision"`
+	Enabled                bool    `json:"enabled"`
+	Model                  string  `json:"model"`
+	Revision               int64   `json:"revision"`
+	Granularity            *string `json:"extraction_granularity,omitempty"`
+	MaxPages               *int    `json:"max_pages_per_ingest,omitempty"`
+	ContentInstructions    *string `json:"content_instructions,omitempty"`
+	ExtractionInstructions *string `json:"extraction_instructions,omitempty"`
 }
 
 func (s *Service) ConfigureWiki(ctx context.Context, kb, actor string, in WikiSettings) error {
-	if in.Revision < 1 {
+	if in.Revision < 1 || !in.validDepth() {
 		return ErrInput
 	}
 	models, e := s.WikiModels(ctx, kb)
@@ -156,15 +166,7 @@ func (s *Service) ConfigureWiki(ctx context.Context, kb, actor string, in WikiSe
 		if in.Enabled {
 			wiki["synthesis_model_id"] = in.Model
 		}
-		wiki["max_pages_per_ingest"] = 6
-		wiki["extraction_granularity"] = "focused"
-		wiki["ingest_batch_size"] = 2
-		wiki["ingest_map_parallel"] = 1
-		wiki["ingest_reduce_parallel"] = 1
-		wiki["ingest_max_inflight"] = 1
-		if _, ok := wiki["content_instructions"]; !ok {
-			wiki["content_instructions"] = "用中文整理文献知识，保留原文来源。古籍观点标为历史文化观点，不作为已证实事实；不得根据外貌推断人格、命运或健康。缺失证据不补造，矛盾观点并列呈现。"
-		}
+		applyWikiDepth(wiki, in)
 		cfg := map[string]any{"indexing_strategy": strategy, "wiki_config": wiki}
 		for _, key := range []string{"chunking_config", "image_processing_config", "faq_config", "auto_tag_config", "profile_config"} {
 			if v, ok := engine[key]; ok {
@@ -180,6 +182,48 @@ func (s *Service) ConfigureWiki(ctx context.Context, kb, actor string, in WikiSe
 		return s.audit(ctx, tx, actor, "configure_wiki", kb)
 	})
 }
+
+// Absent fields preserve existing engine settings, including old clients that
+// only change the model or enable switch. Limits bound per-document model work.
+func (in WikiSettings) validDepth() bool {
+	if in.Granularity != nil && *in.Granularity != "focused" && *in.Granularity != "standard" && *in.Granularity != "exhaustive" {
+		return false
+	}
+	if in.MaxPages != nil && (*in.MaxPages < 1 || *in.MaxPages > 32) {
+		return false
+	}
+	for _, v := range []*string{in.ContentInstructions, in.ExtractionInstructions} {
+		if v != nil && (len([]rune(*v)) > 4000 || strings.ContainsRune(*v, '\x00')) {
+			return false
+		}
+	}
+	return true
+}
+func applyWikiDepth(wiki map[string]any, in WikiSettings) {
+	defaults := map[string]any{
+		"max_pages_per_ingest": 12, "extraction_granularity": "standard",
+		"ingest_batch_size": 2, "ingest_map_parallel": 1, "ingest_reduce_parallel": 1, "ingest_max_inflight": 1,
+		"content_instructions": "用中文整理文献知识，保留原文来源。古籍观点标为历史文化观点，不作为已证实事实；不得根据外貌推断人格、命运或健康。缺失证据不补造，矛盾观点并列呈现。",
+	}
+	for k, v := range defaults {
+		if _, ok := wiki[k]; !ok {
+			wiki[k] = v
+		}
+	}
+	if in.Granularity != nil {
+		wiki["extraction_granularity"] = *in.Granularity
+	}
+	if in.MaxPages != nil {
+		wiki["max_pages_per_ingest"] = *in.MaxPages
+	}
+	if in.ContentInstructions != nil {
+		wiki["content_instructions"] = *in.ContentInstructions
+	}
+	if in.ExtractionInstructions != nil {
+		wiki["extraction_instructions"] = *in.ExtractionInstructions
+	}
+}
+
 func wikiSlug(slug string) (string, error) {
 	if len(slug) == 0 || len(slug) > 1024 || strings.ContainsAny(slug, "\\%?#\x00\r\n") {
 		return "", ErrInput

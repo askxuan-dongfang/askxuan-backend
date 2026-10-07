@@ -166,3 +166,38 @@ func TestEngineNoContentMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestWikiDepthValidationBeforeAccess(t *testing.T) {
+	str := func(v string) *string { return &v }
+	num := func(v int) *int { return &v }
+	for _, in := range []WikiSettings{
+		{Revision: 1, Granularity: str("arbitrary")}, {Revision: 1, MaxPages: num(0)}, {Revision: 1, MaxPages: num(33)},
+		{Revision: 1, ContentInstructions: str(strings.Repeat("中", 4001))}, {Revision: 1, ExtractionInstructions: str("a\x00b")},
+	} {
+		if e := (&Service{}).ConfigureWiki(context.Background(), kbID, "admin", in); e != ErrInput {
+			t.Fatalf("accepted invalid depth: %v", e)
+		}
+	}
+}
+func TestWikiDepthPreservesOmittedSettingsAndOverridesExplicitFields(t *testing.T) {
+	wiki := map[string]any{"max_pages_per_ingest": 24, "extraction_granularity": "exhaustive", "ingest_batch_size": 3, "content_instructions": "已有编辑要求", "extraction_instructions": "已有范围"}
+	applyWikiDepth(wiki, WikiSettings{})
+	if wiki["max_pages_per_ingest"] != 24 || wiki["extraction_granularity"] != "exhaustive" || wiki["ingest_batch_size"] != 3 || wiki["content_instructions"] != "已有编辑要求" {
+		t.Fatalf("lost existing settings: %+v", wiki)
+	}
+	gran, pages, content, extract := "standard", 16, "定义、出处、异说和关系", ""
+	applyWikiDepth(wiki, WikiSettings{Granularity: &gran, MaxPages: &pages, ContentInstructions: &content, ExtractionInstructions: &extract})
+	raw, _ := json.Marshal(wiki)
+	var dto WikiConfig
+	if err := json.Unmarshal(raw, &dto); err != nil {
+		t.Fatal(err)
+	}
+	if dto.Granularity != gran || dto.MaxPages != pages || dto.ContentInstructions != content || dto.ExtractionInstructions != "" || wiki["ingest_batch_size"] != 3 {
+		t.Fatalf("bad roundtrip: %+v", dto)
+	}
+	fresh := map[string]any{}
+	applyWikiDepth(fresh, WikiSettings{})
+	if fresh["max_pages_per_ingest"] != 12 || fresh["extraction_granularity"] != "standard" {
+		t.Fatal(fresh)
+	}
+}
