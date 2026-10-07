@@ -32,6 +32,7 @@ type SkillPolicy struct {
 	UseTool bool   `json:"useTool"`
 }
 type Config struct {
+	WebSearchEnabled bool                      `json:"webSearchEnabled"`
 	Retrieval        knowledge.RetrievalPolicy `json:"retrieval"`
 	KnowledgeBaseIDs []string                  `json:"knowledgeBaseIds"`
 	KnowledgeEnabled bool                      `json:"knowledgeEnabled"`

@@ -18,10 +18,11 @@ var ErrConflict = errors.New("配置已被其他管理员更新，请重新加�
 var validModel = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,99}$`)
 
 type Values struct {
-	ComplexOutputTokens int `json:"complexOutputTokens"`
-	ContextWindow       int `json:"contextWindow"`
-	MaxInputChars       int `json:"maxInputChars"`
-	TaskTimeoutSeconds  int `json:"taskTimeoutSeconds"`
+	WebSearchProvider   string `json:"webSearchProvider"`
+	ComplexOutputTokens int    `json:"complexOutputTokens"`
+	ContextWindow       int    `json:"contextWindow"`
+	MaxInputChars       int    `json:"maxInputChars"`
+	TaskTimeoutSeconds  int    `json:"taskTimeoutSeconds"`
 
 	Provider        string   `json:"provider"`
 	BaseURL         string   `json:"baseUrl"`
@@ -33,6 +34,8 @@ type Values struct {
 	MaxOutputTokens int      `json:"maxOutputTokens"`
 }
 type Update struct {
+	WebSearchAPIKey   string `json:"webSearchApiKey"`
+	ClearWebSearchKey bool   `json:"clearWebSearchKey"`
 	Values
 	Revision int64  `json:"revision"`
 	APIKey   string `json:"apiKey"`
@@ -44,6 +47,7 @@ type Audit struct {
 	Fields   []string `json:"fields"`
 }
 type Public struct {
+	HasWebSearchKey bool `json:"hasWebSearchKey"`
 	Values
 	Revision  int64   `json:"revision"`
 	HasAPIKey bool    `json:"hasApiKey"`
@@ -52,6 +56,7 @@ type Public struct {
 	History   []Audit `json:"history"`
 }
 type record struct {
+	WebSearchAPIKey string `json:"webSearchSecret,omitempty"`
 	Values
 	APIKey   string  `json:"secret"`
 	Revision int64   `json:"revision"`
@@ -80,7 +85,7 @@ func New(initial config.AIConf, dir, key string) (*Manager, error) {
 	if u, e := url.Parse(initial.BaseURL); e == nil && u.Hostname() == "api.deepseek.com" {
 		kind = "deepseek"
 	}
-	r := record{Values: Values{Provider: kind, BaseURL: initial.BaseURL, DefaultModel: initial.Model, VisionModel: initial.VisionModel, ThinkingEnabled: initial.ThinkingEnabled, ReasoningEffort: initial.ReasoningEffort, MaxOutputTokens: initial.MaxOutputTokens, ComplexOutputTokens: initial.ComplexOutputTokens, ContextWindow: initial.ContextWindow, MaxInputChars: initial.MaxInputChars, TaskTimeoutSeconds: initial.TaskTimeoutSeconds}, APIKey: initial.APIKey, History: []Audit{}}
+	r := record{WebSearchAPIKey: initial.WebSearch.APIKey, Values: Values{WebSearchProvider: initial.WebSearch.Provider, Provider: kind, BaseURL: initial.BaseURL, DefaultModel: initial.Model, VisionModel: initial.VisionModel, ThinkingEnabled: initial.ThinkingEnabled, ReasoningEffort: initial.ReasoningEffort, MaxOutputTokens: initial.MaxOutputTokens, ComplexOutputTokens: initial.ComplexOutputTokens, ContextWindow: initial.ContextWindow, MaxInputChars: initial.MaxInputChars, TaskTimeoutSeconds: initial.TaskTimeoutSeconds}, APIKey: initial.APIKey, History: []Audit{}}
 	m := &Manager{original: initial, store: st}
 	m.build = m.buildSnapshot
 	if st != nil {
@@ -118,7 +123,7 @@ func (m *Manager) publicLocked() Public {
 	if r.Revision > 0 {
 		source = "platform"
 	}
-	return Public{Values: v, Revision: r.Revision, HasAPIKey: r.APIKey != "", Writable: m.store != nil, Source: source, History: append([]Audit{}, r.History...)}
+	return Public{HasWebSearchKey: r.WebSearchAPIKey != "", Values: v, Revision: r.Revision, HasAPIKey: r.APIKey != "", Writable: m.store != nil, Source: source, History: append([]Audit{}, r.History...)}
 }
 func (m *Manager) prepare(req Update) (record, error) {
 	m.mu.RLock()
@@ -192,10 +197,31 @@ func (m *Manager) prepare(req Update) (record, error) {
 	if key == "" || len(key) > 4096 || strings.ContainsAny(key, "\r\n\t ") {
 		return record{}, errors.New("请填写有效的 API Key")
 	}
-	return record{Values: req.Values, APIKey: key, Revision: old.Revision}, nil
+	if req.WebSearchProvider == "" {
+		req.WebSearchProvider = old.WebSearchProvider
+	}
+	if req.WebSearchProvider != "" && req.WebSearchProvider != "disabled" && req.WebSearchProvider != "tavily" && req.WebSearchProvider != "brave" {
+		return record{}, errors.New("请选择停用、Tavily 或 Brave Search")
+	}
+	searchKey := strings.TrimSpace(req.WebSearchAPIKey)
+	if searchKey == "" && !req.ClearWebSearchKey {
+		searchKey = old.WebSearchAPIKey
+		if req.WebSearchProvider != old.WebSearchProvider && req.WebSearchProvider != "disabled" {
+			searchKey = ""
+		}
+	}
+	if req.ClearWebSearchKey {
+		searchKey = ""
+	}
+	if len(searchKey) > 4096 || strings.ContainsAny(searchKey, "\r\n\t ") {
+		return record{}, errors.New("搜索密钥格式无效")
+	}
+	return record{Values: req.Values, APIKey: key, WebSearchAPIKey: searchKey, Revision: old.Revision}, nil
 }
 func (m *Manager) buildSnapshot(r record) (*Snapshot, error) {
 	c := m.original
+	c.WebSearch.Provider = r.WebSearchProvider
+	c.WebSearch.APIKey = r.WebSearchAPIKey
 	c.BaseURL = r.BaseURL
 	c.APIKey = r.APIKey
 	c.Model = r.DefaultModel
@@ -298,6 +324,9 @@ func (m *Manager) Save(ctx context.Context, req Update, actor string) (Public, e
 	if m.record.APIKey != r.APIKey {
 		fields = append(fields, "apiKey")
 	}
+	if m.record.WebSearchAPIKey != r.WebSearchAPIKey {
+		fields = append(fields, "webSearchApiKey")
+	}
 	r.Revision++
 	r.History = append([]Audit{{Revision: r.Revision, Actor: actor, At: time.Now().UTC().Format(time.RFC3339), Fields: fields}}, m.record.History...)
 	if len(r.History) > 50 {
@@ -327,4 +356,16 @@ func normalized(v Values) Values {
 		v.TaskTimeoutSeconds = 180
 	}
 	return v
+}
+
+// TestWebSearch uses a fixed public query and never returns credentials.
+func (m *Manager) TestWebSearch(ctx context.Context, req Update) (string, error) {
+	r, e := m.prepare(req)
+	if e != nil {
+		return "", e
+	}
+	c := m.original.WebSearch
+	c.Provider = r.WebSearchProvider
+	c.APIKey = r.WebSearchAPIKey
+	return c.Search(ctx, "中国 国家图书馆 古籍")
 }

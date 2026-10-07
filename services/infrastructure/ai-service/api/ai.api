@@ -65,6 +65,7 @@ type (
     }
 
     SessionCreateReq {
+        WebSearch bool `json:"webSearch,optional"`
         Model string `json:"model,optional"`
         UserId    string `json:"userId,optional"`
         SkillCode string `json:"skillCode,optional"`
@@ -160,6 +161,7 @@ type (
     }
 
     MessageSendReq {
+        WebSearch bool `json:"webSearch,optional"`
         Model string `json:"model,optional"`
         Id      int64  `path:"id"` // 会话 ID
         UserId  string `json:"userId,optional"`

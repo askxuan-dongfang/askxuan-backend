@@ -278,3 +278,24 @@ func TestExplicitCalculationEntryAlwaysShowsMissingFactsForm(t *testing.T) {
 		t.Fatalf("confirmed facts blocked: %+v %v", out, err)
 	}
 }
+
+func TestHarnessSearchLoopAndPermission(t *testing.T) {
+	in := fixtureInput()
+	calls := 0
+	in.WebSearch = func(_ context.Context, q string) (string, error) {
+		calls++
+		if q != "周易 原文" {
+			t.Fatal("wrong query")
+		}
+		return `{"sources":[{"title":"原文","url":"https://example.org/book","snippet":"fixture-web-evidence"}]}`, nil
+	}
+	out, e := runFixture(t, in, &mcpStub{}, []map[string]any{toolCall("search_web", `{"query":"周易 原文"}`), {"role": "assistant", "content": "依据 [原文](https://example.org/book) 的 fixture-web-evidence。"}})
+	if e != nil || calls != 1 || out.ToolCalls != 1 || !strings.Contains(out.Text, "https://example.org/book") {
+		t.Fatalf("search loop failed: %+v %v", out, e)
+	}
+	in.WebSearch = nil
+	_, e = runFixture(t, in, &mcpStub{}, []map[string]any{toolCall("search_web", `{"query":"周易 原文"}`)})
+	if e == nil || calls != 1 {
+		t.Fatal("unavailable tool executed")
+	}
+}

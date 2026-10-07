@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"github.com/askxuan/ai-service/internal/websearch"
 	"os"
 	"strconv"
 	"strings"
@@ -22,9 +23,10 @@ type Config struct {
 }
 
 type AIConf struct {
-	ComplexOutputTokens int `json:",optional"`
-	ContextWindow       int `json:",optional"`
-	TaskTimeoutSeconds  int `json:",optional"`
+	WebSearch           websearch.Config `json:",optional"`
+	ComplexOutputTokens int              `json:",optional"`
+	ContextWindow       int              `json:",optional"`
+	TaskTimeoutSeconds  int              `json:",optional"`
 
 	HarnessEnabled       bool `json:",optional"`
 	Provider             string
@@ -64,6 +66,8 @@ type MCPConf struct {
 }
 
 func (c AIConf) Runtime() AIConf {
+	c.WebSearch.Provider = envString("AI_WEB_SEARCH_PROVIDER", c.WebSearch.Provider)
+	c.WebSearch.APIKey = envString("AI_WEB_SEARCH_API_KEY", c.WebSearch.APIKey)
 	c.ComplexOutputTokens = envInt("AI_COMPLEX_OUTPUT_TOKENS", c.ComplexOutputTokens, 16384)
 	c.ContextWindow = envInt("AI_CONTEXT_WINDOW", c.ContextWindow, 1048576)
 	c.TaskTimeoutSeconds = envInt("AI_TASK_TIMEOUT_SECONDS", c.TaskTimeoutSeconds, 180)

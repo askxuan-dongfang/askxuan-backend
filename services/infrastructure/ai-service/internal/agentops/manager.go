@@ -143,6 +143,9 @@ func (m *Manager) Publish(ctx context.Context, revision int64, actor, note strin
 		return 0, ErrUntested
 	}
 	snap, pr := m.Snapshot()
+	if f.Config.WebSearchEnabled && !snap.Config.WebSearch.Ready() {
+		return 0, invalid("联网搜索未配置，无法发布启用联网的版本")
+	}
 	if _, err = snap.Models.Select(ctx, f.Config.Model, false); err != nil {
 		return 0, invalid("所选模型已不可用，请调整并重新调试")
 	}
@@ -218,6 +221,9 @@ func (m *Manager) StartDebug(ctx context.Context, actor string, req DebugRequest
 		return DebugRun{}, err
 	}
 	snap, pr := m.Snapshot()
+	if f.Config.WebSearchEnabled && !snap.Config.WebSearch.Ready() {
+		return DebugRun{}, invalid("联网搜索未配置，无法调试启用联网的版本")
+	}
 	guard := agent.NewGuard(snap.Config.MaxInputChars, snap.Config.BlockedTerms)
 	if strings.TrimSpace(req.Question) == "" {
 		return DebugRun{}, invalid("请填写测试问题")

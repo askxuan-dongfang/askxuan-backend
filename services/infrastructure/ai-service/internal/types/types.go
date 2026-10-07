@@ -52,6 +52,7 @@ type AISession struct {
 
 // SessionCreateReq 创建会话请求
 type SessionCreateReq struct {
+	WebSearch   bool                   `json:"webSearch,optional"`
 	Model       string                 `json:"model,optional"`
 	UserId      string                 `json:"userId,optional"`
 	SkillCode   string                 `json:"skillCode,optional"`
@@ -153,6 +154,7 @@ type SessionDeleteReq struct {
 
 // MessageSendReq 发送问事消息请求
 type MessageSendReq struct {
+	WebSearch   bool                   `json:"webSearch,optional"`
 	Model       string                 `json:"model,optional"`
 	Id          int64                  `path:"id"` // 会话 ID
 	UserId      string                 `json:"userId,optional"`

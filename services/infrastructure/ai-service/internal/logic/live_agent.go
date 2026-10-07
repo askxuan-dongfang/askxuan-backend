@@ -60,8 +60,11 @@ func liveContext(messages []*model.AIMessage, pendingID int64, limit int, report
 		}
 		switch m.Role {
 		case model.RoleUser:
+			in.WebSearchRequested = false
 			facts := map[string]any{}
 			if json.Unmarshal([]byte(m.InputJSON), &facts) == nil {
+				in.WebSearchRequested, _ = facts["_webSearch"].(bool)
+				delete(facts, "_webSearch")
 				for k, v := range facts {
 					in.Facts[k] = v
 				}
@@ -221,6 +224,9 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 	}
 	in.ReasoningFallback = provider.ReasoningFallbackOptions(s.Provider, req.ThinkingEnabled)
 	bindReferences(s, &in, session.UserId, nil)
+	if in.WebSearchRequested && s.WebSearchEnabled && s.AIConfig.WebSearch.Ready() {
+		in.WebSearch = s.AIConfig.WebSearch.Search
+	}
 	out, e := askagent.Execute(ctx, chat, in, liveMCP{s, run.Id, hooks}, s.Guard, hooks)
 	out.Usage.Model = s.Provider.ModelFor(req)
 	status := model.MessageStatusCompleted

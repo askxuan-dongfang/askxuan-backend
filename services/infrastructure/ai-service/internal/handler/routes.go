@@ -29,6 +29,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	registerFloorPlan(server, svcCtx)
 
 	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/ai/capabilities", Handler: capabilitiesHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/models", Handler: modelListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/ai/skills", Handler: skillListHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/ai/sessions", Handler: sessionCreateHandler(svcCtx)},
@@ -360,5 +361,23 @@ func messageCancelHandler(s *svc.ServiceContext) http.HandlerFunc {
 		}
 		stopped := logic.CancelMessage(req.MessageId)
 		respond(w, map[string]any{"accepted": stopped}, nil)
+	}
+}
+
+func capabilitiesHandler(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		user, e := resolveUserID(r, "")
+		if e != nil {
+			common.JsonError(w, e)
+			return
+		}
+		runtime, e := s.Runtime().AskRuntimeFor(r.Context(), user)
+		if e != nil {
+			common.JsonError(w, common.NewBizError(50301, "智能体配置暂不可用"))
+			return
+		}
+		available := runtime.AIConfig.HarnessEnabled && runtime.WebSearchEnabled && runtime.AIConfig.WebSearch.Ready()
+		respond(w, map[string]any{"webSearchAvailable": available}, nil)
 	}
 }

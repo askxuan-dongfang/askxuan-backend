@@ -50,3 +50,26 @@ func TestKnowledgeQueryCannotWidenScope(t *testing.T) {
 		t.Fatal("memory scope changed")
 	}
 }
+
+func TestWebSearchRequiresExplicitQuery(t *testing.T) {
+	calls := 0
+	tool := &referenceTool{name: "search_web", read: func(_ context.Context, name, q string) (string, error) {
+		calls++
+		if name != "search_web" || q != "古籍" {
+			t.Fatal("unexpected query")
+		}
+		return "ok", nil
+	}}
+	for _, a := range []string{`{}`, `{"query":""}`, `{"query":"古籍","owner":"another"}`, `null`} {
+		out, e := tool.InvokableRun(context.Background(), a)
+		if e != nil || !strings.Contains(out, "invalid_model_arguments") {
+			t.Fatal("invalid input accepted")
+		}
+	}
+	if calls != 0 {
+		t.Fatal("search happened without valid arguments")
+	}
+	if _, e := tool.InvokableRun(context.Background(), `{"query":"古籍"}`); e != nil || calls != 1 {
+		t.Fatal("valid query failed")
+	}
+}

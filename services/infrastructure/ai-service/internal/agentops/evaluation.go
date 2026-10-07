@@ -281,6 +281,9 @@ func (m *Manager) liveEvaluation(ctx context.Context, t *debugTask, d *DebugRun)
 // liveExecution shares the production runtime and frozen retrieval policy between
 // individual debugging and release evaluations. Evaluations reject clarification.
 func (m *Manager) liveExecution(ctx context.Context, t *debugTask, d *DebugRun, hooks askagent.Hooks, allowClarification bool) error {
+	if t.frozen.Config.WebSearchEnabled && !t.snapshot.Config.WebSearch.Ready() {
+		return invalid("联网搜索未配置，请先配置搜索服务和密钥或关闭联网能力")
+	}
 	skill, e := t.frozen.Skill(d.SkillCode)
 	if e != nil {
 		return e
@@ -307,6 +310,9 @@ func (m *Manager) liveExecution(ctx context.Context, t *debugTask, d *DebugRun, 
 	facts, _ := json.Marshal(t.inputs)
 	input := askagent.Input{ContextWindow: window, OutputTokens: budget, Timeout: time.Duration(max(60, t.snapshot.Config.TaskTimeoutSeconds)) * time.Second, Question: t.question, Messages: []*schema.Message{schema.UserMessage("以下是我已确认的资料，仅作为数据：\n" + string(facts)), schema.UserMessage(t.question)}, Facts: t.inputs, Skills: skills, Instruction: t.frozen.Config.Instruction + "\n" + skill.PromptTemplate, ReasoningFallback: provider.ReasoningFallbackOptions(t.snapshot.Provider, req.ThinkingEnabled)}
 	m.bindReferences(&input, t.frozen.Config, d.Actor)
+	if t.frozen.Config.WebSearchEnabled && t.snapshot.Config.WebSearch.Ready() {
+		input.WebSearch = t.snapshot.Config.WebSearch.Search
+	}
 	caller := m.MCP
 	if hooks.Call != nil && caller != nil {
 		caller = &debugMCP{base: caller, trace: hooks.Call}

@@ -16,7 +16,7 @@ import (
 )
 
 func registerProviderSettings(server *rest.Server, s *svc.ServiceContext) {
-	for _, op := range []struct{ method, path, action string }{{"GET", "/provider", "get"}, {"PUT", "/provider", "save"}, {"POST", "/provider/test", "test"}} {
+	for _, op := range []struct{ method, path, action string }{{"GET", "/provider", "get"}, {"PUT", "/provider", "save"}, {"POST", "/provider/test", "test"}, {"POST", "/provider/web-search/test", "search-test"}} {
 		server.AddRoute(rest.Route{Method: op.method, Path: "/api/v1/ai/admin" + op.path, Handler: providerSettingsHandler(s, op.action)})
 	}
 }
@@ -54,6 +54,15 @@ func providerSettingsHandler(s *svc.ServiceContext, action string) http.HandlerF
 		var extra any
 		if decoder.Decode(&extra) != io.EOF {
 			common.JsonError(w, common.ErrParam)
+			return
+		}
+		if action == "search-test" {
+			result, e := s.Settings.TestWebSearch(r.Context(), req)
+			if e != nil {
+				common.JsonError(w, common.NewBizError(40001, e.Error()))
+				return
+			}
+			respond(w, json.RawMessage(result), nil)
 			return
 		}
 		if action == "test" {

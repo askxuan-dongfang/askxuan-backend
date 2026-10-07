@@ -75,6 +75,10 @@ func (l *MessageSendLogic) Send(req *types.MessageSendReq) (*types.MessageSendRe
 		}
 		return nil, common.ErrSystem
 	}
+	inputJSON, err = withWebSearch(l.svcCtx, inputJSON, req.WebSearch)
+	if err != nil {
+		return nil, err
+	}
 	attachmentsJSON, err := encodeAttachments(req.Attachments)
 	if err != nil {
 		return nil, common.ErrParamInvalid

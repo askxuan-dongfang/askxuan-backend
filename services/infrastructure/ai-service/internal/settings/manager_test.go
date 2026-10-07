@@ -280,3 +280,43 @@ func TestBudgetOnlySavePreservesProviderCredential(t *testing.T) {
 		t.Fatal("persisted credential was changed by budget-only update")
 	}
 }
+
+func TestSearchCredentialsEncryptedPreservedAndCleared(t *testing.T) {
+	m, dir, key := fixture(t)
+	req := update(m)
+	req.WebSearchProvider = "tavily"
+	req.WebSearchAPIKey = "search-secret"
+	pub, e := m.Save(context.Background(), req, "42")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if !pub.HasWebSearchKey {
+		t.Fatal("missing configured state")
+	}
+	for _, data := range [][]byte{mustJSON(t, pub), mustRead(t, filepath.Join(dir, "settings.enc"))} {
+		if strings.Contains(string(data), "search-secret") {
+			t.Fatal("search credential escaped")
+		}
+	}
+	restored, e := New(m.original, dir, key)
+	if e != nil || restored.Snapshot().Config.WebSearch.APIKey != "search-secret" {
+		t.Fatal("credential not restored")
+	}
+	req = update(m)
+	req.WebSearchProvider = ""
+	r, e := m.prepare(req)
+	if e != nil || r.WebSearchAPIKey != "search-secret" || r.WebSearchProvider != "tavily" {
+		t.Fatal("old client dropped credentials")
+	}
+	req.WebSearchProvider = "brave"
+	r, e = m.prepare(req)
+	if e != nil || r.WebSearchAPIKey != "" {
+		t.Fatal("cross-provider key reuse")
+	}
+	req = update(m)
+	req.ClearWebSearchKey = true
+	r, e = m.prepare(req)
+	if e != nil || r.WebSearchAPIKey != "" {
+		t.Fatal("clear failed")
+	}
+}

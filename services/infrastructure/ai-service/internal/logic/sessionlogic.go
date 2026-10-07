@@ -74,6 +74,10 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 	if strings.TrimSpace(req.Question) == "" && len(req.Inputs) > 0 {
 		req.Question = "请根据所填资料进行分析"
 	}
+	inputJSON, err = withWebSearch(l.svcCtx, inputJSON, req.WebSearch)
+	if err != nil {
+		return nil, err
+	}
 	attachmentsJSON, err := encodeAttachments(req.Attachments)
 	if err != nil {
 		return nil, common.ErrParamInvalid

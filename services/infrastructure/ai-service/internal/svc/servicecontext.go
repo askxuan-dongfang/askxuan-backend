@@ -23,6 +23,7 @@ type ServiceContext struct {
 	KnowledgeBases    []string
 	WeKnora           *weknora.Service
 	Knowledge         *knowledge.Store
+	WebSearchEnabled  bool
 	KnowledgeEnabled  bool
 	MemoryEnabled     bool
 	Config            config.Config
@@ -128,6 +129,7 @@ func (s *ServiceContext) AskRuntimeFor(ctx context.Context, subject string) (*Se
 	result.AgentDefaultModel = f.Config.Model
 	result.AgentVersion = version
 	result.Retrieval = f.Config.Retrieval
+	result.WebSearchEnabled = f.Config.WebSearchEnabled
 	result.KnowledgeEnabled = f.Config.KnowledgeEnabled
 	result.KnowledgeBases = append([]string(nil), f.Config.KnowledgeBaseIDs...)
 	result.MemoryEnabled = f.Config.MemoryEnabled
