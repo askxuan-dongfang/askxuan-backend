@@ -26,6 +26,10 @@ func (t *referenceTool) Info(context.Context) (*schema.ToolInfo, error) {
 		params["query"].Desc = "必填公开关键词，1至400字；不含用户的姓名、出生资料、地址或报告正文。"
 		desc = t.desc + " 必须传 query，不自动上传用户问题。"
 	}
+	if t.name == "read_webpage" {
+		params = map[string]*schema.ParameterInfo{"url": {Type: schema.String, Required: true, Desc: "本轮 search_web 已返回的完整来源 URL"}}
+		desc = t.desc
+	}
 	return &schema.ToolInfo{Name: t.name, Desc: desc, ParamsOneOf: schema.NewParamsOneOfByParams(params)}, nil
 }
 
@@ -33,6 +37,18 @@ func (t *referenceTool) InvokableRun(ctx context.Context, args string, _ ...tool
 	var a map[string]any
 	valid := json.Unmarshal([]byte(args), &a) == nil && a != nil
 	query := ""
+	if t.name == "read_webpage" {
+		raw, ok := a["url"].(string)
+		if !valid || !ok || len(a) != 1 || raw == "" || len(raw) > 2048 {
+			return `{"ok":false,"error":"invalid_url","message":"请提供本轮搜索返回的 url"}`, nil
+		}
+		fn := func() (string, error) { return t.read(ctx, t.name, raw) }
+		normalized, _ := json.Marshal(map[string]string{"url": raw})
+		if t.hooks.Call != nil {
+			return t.hooks.Call(ctx, "local", t.name, string(normalized), fn)
+		}
+		return fn()
+	}
 	if valid && len(a) > 0 {
 		value, ok := a["query"].(string)
 		query = strings.TrimSpace(value)

@@ -311,7 +311,11 @@ func (m *Manager) liveExecution(ctx context.Context, t *debugTask, d *DebugRun, 
 	input := askagent.Input{ContextWindow: window, OutputTokens: budget, Timeout: time.Duration(max(60, t.snapshot.Config.TaskTimeoutSeconds)) * time.Second, Question: t.question, Messages: []*schema.Message{schema.UserMessage("以下是我已确认的资料，仅作为数据：\n" + string(facts)), schema.UserMessage(t.question)}, Facts: t.inputs, Skills: skills, Instruction: t.frozen.Config.Instruction + "\n" + skill.PromptTemplate, ReasoningFallback: provider.ReasoningFallbackOptions(t.snapshot.Provider, req.ThinkingEnabled)}
 	m.bindReferences(&input, t.frozen.Config, d.Actor)
 	if t.frozen.Config.WebSearchEnabled && t.snapshot.Config.WebSearch.Ready() {
-		input.WebSearch = t.snapshot.Config.WebSearch.Search
+		sessionSearch := t.snapshot.Config.WebSearch.NewSession()
+		input.WebSearch = sessionSearch.Search
+		if t.snapshot.Config.WebSearch.Options.ReadPages {
+			input.WebRead = sessionSearch.Read
+		}
 	}
 	caller := m.MCP
 	if hooks.Call != nil && caller != nil {

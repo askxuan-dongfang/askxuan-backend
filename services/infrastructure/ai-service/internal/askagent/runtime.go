@@ -43,6 +43,7 @@ type Clarification struct {
 }
 type Input struct {
 	WebSearch                       func(context.Context, string) (string, error)
+	WebRead                         func(context.Context, string) (string, error)
 	WebSearchRequested              bool
 	References                      func(context.Context, string, string) (string, error)
 	KnowledgeEnabled, MemoryEnabled bool
@@ -143,6 +144,9 @@ func Execute(ctx context.Context, chat model.BaseChatModel, input Input, mcp ein
 	}
 	if input.WebSearch != nil {
 		tools = append(tools, &referenceTool{name: "search_web", desc: "搜索公开网页的摘要与真实链接；仅用于需要外部或最新资料的问题。", read: func(ctx context.Context, _ string, q string) (string, error) { return input.WebSearch(ctx, q) }, hooks: hooks})
+	}
+	if input.WebSearch != nil && input.WebRead != nil {
+		tools = append(tools, &referenceTool{name: "read_webpage", desc: "按需读取本轮联网搜索已返回的网页正文。最多两页，不可读取任意链接。", read: func(ctx context.Context, _ string, u string) (string, error) { return input.WebRead(ctx, u) }, hooks: hooks})
 	}
 	if input.References != nil {
 		for _, ref := range []struct {

@@ -162,7 +162,7 @@ func TestMultiStepMCPStreamingAndRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Text != "依据工具结果，资料已核验。" || strings.Join(deltas, "") != result.Text || models.Load() != 3 || tools.Load() != 2 {
+	if result.Text != "依据工具结果，资料已核验。" || (len(deltas) != 2 || deltas[0] != "依据工具结果，" || deltas[1] != result.Text) || models.Load() != 3 || tools.Load() != 2 {
 		t.Fatalf("result=%+v deltas=%v models=%d tools=%d", result, deltas, models.Load(), tools.Load())
 	}
 }
@@ -307,5 +307,59 @@ func TestCheckpointRestoresAcrossHarnessInstances(t *testing.T) {
 	}
 	if err = second.Restore(cp); err == nil {
 		t.Fatal("overwrote started runtime")
+	}
+}
+
+// The upstream intentionally waits for the first visible snapshot before finishing.
+// This fails if Harness buffers the response until EOF.
+func TestAnswerVisibleBeforeUpstreamFinishes(t *testing.T) {
+	first := make(chan struct{}, 1)
+	h, _, _ := setup(t, sampleInputs, defaults(), func(w http.ResponseWriter, r *http.Request, n int, _ wireRequest) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		sse(w, map[string]any{"role": "assistant", "content": "第一段"}, nil)
+		select {
+		case <-first:
+		case <-time.After(2 * time.Second):
+			t.Error("first content was buffered until EOF")
+		}
+		sse(w, map[string]any{"content": "第二段"}, nil)
+		sse(w, map[string]any{}, "stop")
+		fmt.Fprint(w, "data: [DONE]\n\n")
+	}, false)
+	var snapshots []string
+	result, err := h.Run(context.Background(), "测试流式", func(s string) error {
+		snapshots = append(snapshots, s)
+		if s == "第一段" {
+			first <- struct{}{}
+		}
+		return nil
+	})
+	if err != nil || result.Text != "第一段第二段" || len(snapshots) != 2 {
+		t.Fatalf("%+v %v %v", result, err, snapshots)
+	}
+}
+func TestLateToolPreambleIsReplaced(t *testing.T) {
+	h, _, _ := setup(t, sampleInputs, defaults(), func(w http.ResponseWriter, r *http.Request, n int, _ wireRequest) {
+		if n == 1 {
+			w.Header().Set("Content-Type", "text/event-stream")
+			sse(w, map[string]any{"role": "assistant", "content": "我先计算"}, nil)
+			call(w, "calculate_bazi", "{}")
+		} else {
+			answer(w, "核验后的回答")
+		}
+	}, false)
+	var snapshots []string
+	out, err := h.Run(context.Background(), "测试", func(s string) error { snapshots = append(snapshots, s); return nil })
+	if err != nil || out.Text != "核验后的回答" {
+		t.Fatalf("%+v %v", out, err)
+	}
+	reset := false
+	for _, s := range snapshots {
+		if s == "" {
+			reset = true
+		}
+	}
+	if !reset || snapshots[len(snapshots)-1] != "核验后的回答" {
+		t.Fatalf("preamble not replaced: %v", snapshots)
 	}
 }

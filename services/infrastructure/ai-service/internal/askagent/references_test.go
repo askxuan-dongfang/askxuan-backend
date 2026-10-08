@@ -73,3 +73,27 @@ func TestWebSearchRequiresExplicitQuery(t *testing.T) {
 		t.Fatal("valid query failed")
 	}
 }
+
+func TestWebPageReaderStrictArguments(t *testing.T) {
+	calls := 0
+	tool := &referenceTool{name: "read_webpage", read: func(_ context.Context, name, url string) (string, error) {
+		calls++
+		if name != "read_webpage" || url != "https://example.org/book" {
+			t.Fatal("wrong reader arguments")
+		}
+		return "page", nil
+	}}
+	for _, args := range []string{`{}`, `null`, `{"query":"anything"}`, `{"url":123}`, `{"url":"https://example.org/book","headers":{"Authorization":"secret"}}`} {
+		raw, err := tool.InvokableRun(context.Background(), args)
+		if err != nil || !strings.Contains(raw, "invalid_url") {
+			t.Fatal("invalid reader arguments accepted")
+		}
+	}
+	if calls != 0 {
+		t.Fatal("invalid read executed")
+	}
+	raw, err := tool.InvokableRun(context.Background(), `{"url":"https://example.org/book"}`)
+	if err != nil || raw != "page" || calls != 1 {
+		t.Fatal("reader failed")
+	}
+}

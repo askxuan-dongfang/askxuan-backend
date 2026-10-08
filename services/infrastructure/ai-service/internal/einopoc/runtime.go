@@ -138,6 +138,9 @@ func (h *Harness) Resume(ctx context.Context, interruptID, answer string, onText
 
 func (h *Harness) consume(ctx context.Context, iter *adk.AsyncIterator[*adk.AgentEvent], onText func(string) error) (result Result, err error) {
 	defer func() {
+		if err != nil && onText != nil {
+			_ = onText("")
+		}
 		if result.InterruptID == "" {
 			h.interruptID = ""
 			_ = h.store.Delete(context.Background(), "probe")
@@ -177,7 +180,15 @@ func (h *Harness) consume(ctx context.Context, iter *adk.AsyncIterator[*adk.Agen
 		}
 		var text strings.Builder
 		var calls int
+		published := false
 		read := func(m *schema.Message) error {
+			if len(m.ToolCalls) > 0 && published && onText != nil {
+				// Snapshot replacement removes a provisional preamble if tools arrive later.
+				if e := onText(""); e != nil {
+					return e
+				}
+				published = false
+			}
 			calls += len(m.ToolCalls)
 			text.WriteString(m.Content)
 			if text.Len() > 32768 {
@@ -187,6 +198,12 @@ func (h *Harness) consume(ctx context.Context, iter *adk.AsyncIterator[*adk.Agen
 				return err
 			}
 
+			if calls == 0 && m.Content != "" && onText != nil {
+				if e := onText(text.String()); e != nil {
+					return e
+				}
+				published = true
+			}
 			return nil
 		}
 		if v.IsStreaming {
@@ -217,8 +234,8 @@ func (h *Harness) consume(ctx context.Context, iter *adk.AsyncIterator[*adk.Agen
 		}
 		if calls == 0 && text.Len() > 0 {
 			result.Text = text.String()
-			// Tool-selection commentary is not a final answer. Publish only a completed answer.
-			if onText != nil {
+			// Final snapshot is retained; content was already delivered while receiving chunks.
+			if onText != nil && !published {
 				if err = onText(result.Text); err != nil {
 					return Result{}, err
 				}

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/askxuan/ai-service/internal/config"
 	"github.com/askxuan/ai-service/internal/provider"
+	"github.com/askxuan/ai-service/internal/websearch"
 )
 
 func fixture(t *testing.T) (*Manager, string, string) {
@@ -318,5 +320,98 @@ func TestSearchCredentialsEncryptedPreservedAndCleared(t *testing.T) {
 	r, e = m.prepare(req)
 	if e != nil || r.WebSearchAPIKey != "" {
 		t.Fatal("clear failed")
+	}
+}
+
+func TestFallbackSettingsRoundTripAndLegacyUpdates(t *testing.T) {
+	m, dir, key := fixture(t)
+	req := update(m)
+	req.WebSearchProvider = "bocha"
+	req.WebSearchAPIKey = "bocha-secret"
+	req.WebSearchFallbackProvider = "tencent"
+	req.WebSearchFallbackAPIKey = "tencent-secret"
+	req.WebSearchOptions = &websearch.Options{Language: "zh-hans", Freshness: "month", MaxResults: 8}
+	pub, err := m.Save(context.Background(), req, "42")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !pub.HasWebSearchFallbackKey {
+		t.Fatal("missing fallback state")
+	}
+	for _, data := range [][]byte{mustJSON(t, pub), mustRead(t, filepath.Join(dir, "settings.enc"))} {
+		if strings.Contains(string(data), "tencent-secret") {
+			t.Fatal("credential escaped")
+		}
+	}
+	restored, err := New(m.original, dir, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := restored.Snapshot().Config.WebSearch
+	if c.FallbackAPIKey != "tencent-secret" || c.FallbackProvider != "tencent" || c.Options.MaxResults != 8 {
+		t.Fatal("search configuration not restored")
+	}
+	req = update(m)
+	req.WebSearchFallbackProvider = ""
+	req.WebSearchOptions = nil
+	r, err := m.prepare(req)
+	if err != nil || r.WebSearchFallbackAPIKey != "tencent-secret" || r.WebSearchOptions.MaxResults != 8 {
+		t.Fatal("legacy update lost settings")
+	}
+	req.WebSearchFallbackProvider = "brave"
+	r, err = m.prepare(req)
+	if err != nil || r.WebSearchFallbackAPIKey != "" {
+		t.Fatal("reused different provider credential")
+	}
+	req = update(m)
+	req.ClearWebSearchFallbackKey = true
+	r, err = m.prepare(req)
+	if err != nil || r.WebSearchFallbackAPIKey != "" {
+		t.Fatal("clear failed")
+	}
+	req = update(m)
+	req.WebSearchFallbackProvider = "bocha"
+	if _, err = m.prepare(req); err == nil {
+		t.Fatal("same primary and fallback accepted")
+	}
+	pub = m.Public()
+	pub.WebSearchOptions.MaxResults = 1
+	if m.Public().WebSearchOptions.MaxResults != 8 {
+		t.Fatal("public settings alias internal settings")
+	}
+}
+
+func TestSearchProbeNeverFallsBackOrSaves(t *testing.T) {
+	m, _, _ := fixture(t)
+	req := update(m)
+	req.WebSearchProvider = "bocha"
+	req.WebSearchAPIKey = "bocha-only"
+	req.WebSearchFallbackProvider = "tencent"
+	req.WebSearchFallbackAPIKey = "tencent-only"
+	original := http.DefaultTransport
+	defer func() { http.DefaultTransport = original }()
+	calls := 0
+	http.DefaultTransport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if r.URL.Host == "api.bochaai.com" {
+			if r.Header.Get("Authorization") != "Bearer bocha-only" {
+				t.Fatal("wrong primary key")
+			}
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"code":403,"message":"secret"}`))}, nil
+		}
+		if r.URL.Host != "api.wsa.cloud.tencent.com" || r.Header.Get("Authorization") != "Bearer tencent-only" {
+			t.Fatal("wrong test target")
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"Response":{"Pages":[]}}`))}, nil
+	})
+	if _, err := m.TestWebSearch(context.Background(), req); err == nil || calls != 1 {
+		t.Fatal("probe hid primary failure behind fallback")
+	}
+	req.WebSearchTestTarget = "fallback"
+	if _, err := m.TestWebSearch(context.Background(), req); err != nil || calls != 2 {
+		t.Fatal("fallback could not be tested independently", err)
+	}
+	if m.Public().Revision != 0 || m.Public().HasWebSearchKey || m.Public().HasWebSearchFallbackKey {
+		t.Fatal("probe saved credentials")
 	}
 }

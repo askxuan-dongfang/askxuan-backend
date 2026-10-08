@@ -174,7 +174,17 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 	}
 	hooks := askagent.Hooks{}
 	hooks.Stage = func(stage string) error { return s.RunModel.UpdateStage(ctx, run.Id, pending.Id, stage) }
+	lastTextAt := time.Time{}
+	lastText := ""
 	hooks.Text = func(text string) error {
+		if text != "" && lastText != "" && time.Since(lastTextAt) < 120*time.Millisecond {
+			return nil
+		}
+		lastTextAt = time.Now()
+		lastText = text
+		if text == "" {
+			return s.ConversationModel.UpdateMessageContent(ctx, pending.Id, "")
+		}
 		if e := hooks.Stage("answering"); e != nil {
 			return e
 		}
@@ -225,7 +235,11 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 	in.ReasoningFallback = provider.ReasoningFallbackOptions(s.Provider, req.ThinkingEnabled)
 	bindReferences(s, &in, session.UserId, nil)
 	if in.WebSearchRequested && s.WebSearchEnabled && s.AIConfig.WebSearch.Ready() {
-		in.WebSearch = s.AIConfig.WebSearch.Search
+		sessionSearch := s.AIConfig.WebSearch.NewSession()
+		in.WebSearch = sessionSearch.Search
+		if s.AIConfig.WebSearch.Options.ReadPages {
+			in.WebRead = sessionSearch.Read
+		}
 	}
 	out, e := askagent.Execute(ctx, chat, in, liveMCP{s, run.Id, hooks}, s.Guard, hooks)
 	out.Usage.Model = s.Provider.ModelFor(req)

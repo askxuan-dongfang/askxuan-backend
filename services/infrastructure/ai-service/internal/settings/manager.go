@@ -12,17 +12,20 @@ import (
 
 	"github.com/askxuan/ai-service/internal/config"
 	"github.com/askxuan/ai-service/internal/provider"
+	"github.com/askxuan/ai-service/internal/websearch"
 )
 
 var ErrConflict = errors.New("配置已被其他管理员更新，请重新加载后再保存")
 var validModel = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,99}$`)
 
 type Values struct {
-	WebSearchProvider   string `json:"webSearchProvider"`
-	ComplexOutputTokens int    `json:"complexOutputTokens"`
-	ContextWindow       int    `json:"contextWindow"`
-	MaxInputChars       int    `json:"maxInputChars"`
-	TaskTimeoutSeconds  int    `json:"taskTimeoutSeconds"`
+	WebSearchFallbackProvider string             `json:"webSearchFallbackProvider"`
+	WebSearchOptions          *websearch.Options `json:"webSearchOptions,omitempty"`
+	WebSearchProvider         string             `json:"webSearchProvider"`
+	ComplexOutputTokens       int                `json:"complexOutputTokens"`
+	ContextWindow             int                `json:"contextWindow"`
+	MaxInputChars             int                `json:"maxInputChars"`
+	TaskTimeoutSeconds        int                `json:"taskTimeoutSeconds"`
 
 	Provider        string   `json:"provider"`
 	BaseURL         string   `json:"baseUrl"`
@@ -34,8 +37,11 @@ type Values struct {
 	MaxOutputTokens int      `json:"maxOutputTokens"`
 }
 type Update struct {
-	WebSearchAPIKey   string `json:"webSearchApiKey"`
-	ClearWebSearchKey bool   `json:"clearWebSearchKey"`
+	WebSearchFallbackAPIKey   string `json:"webSearchFallbackApiKey"`
+	ClearWebSearchFallbackKey bool   `json:"clearWebSearchFallbackKey"`
+	WebSearchTestTarget       string `json:"webSearchTestTarget,omitempty"`
+	WebSearchAPIKey           string `json:"webSearchApiKey"`
+	ClearWebSearchKey         bool   `json:"clearWebSearchKey"`
 	Values
 	Revision int64  `json:"revision"`
 	APIKey   string `json:"apiKey"`
@@ -47,7 +53,8 @@ type Audit struct {
 	Fields   []string `json:"fields"`
 }
 type Public struct {
-	HasWebSearchKey bool `json:"hasWebSearchKey"`
+	HasWebSearchFallbackKey bool `json:"hasWebSearchFallbackKey"`
+	HasWebSearchKey         bool `json:"hasWebSearchKey"`
 	Values
 	Revision  int64   `json:"revision"`
 	HasAPIKey bool    `json:"hasApiKey"`
@@ -56,7 +63,8 @@ type Public struct {
 	History   []Audit `json:"history"`
 }
 type record struct {
-	WebSearchAPIKey string `json:"webSearchSecret,omitempty"`
+	WebSearchFallbackAPIKey string `json:"webSearchFallbackSecret,omitempty"`
+	WebSearchAPIKey         string `json:"webSearchSecret,omitempty"`
 	Values
 	APIKey   string  `json:"secret"`
 	Revision int64   `json:"revision"`
@@ -85,7 +93,7 @@ func New(initial config.AIConf, dir, key string) (*Manager, error) {
 	if u, e := url.Parse(initial.BaseURL); e == nil && u.Hostname() == "api.deepseek.com" {
 		kind = "deepseek"
 	}
-	r := record{WebSearchAPIKey: initial.WebSearch.APIKey, Values: Values{WebSearchProvider: initial.WebSearch.Provider, Provider: kind, BaseURL: initial.BaseURL, DefaultModel: initial.Model, VisionModel: initial.VisionModel, ThinkingEnabled: initial.ThinkingEnabled, ReasoningEffort: initial.ReasoningEffort, MaxOutputTokens: initial.MaxOutputTokens, ComplexOutputTokens: initial.ComplexOutputTokens, ContextWindow: initial.ContextWindow, MaxInputChars: initial.MaxInputChars, TaskTimeoutSeconds: initial.TaskTimeoutSeconds}, APIKey: initial.APIKey, History: []Audit{}}
+	r := record{WebSearchFallbackAPIKey: initial.WebSearch.FallbackAPIKey, WebSearchAPIKey: initial.WebSearch.APIKey, Values: Values{WebSearchFallbackProvider: initial.WebSearch.FallbackProvider, WebSearchOptions: &initial.WebSearch.Options, WebSearchProvider: initial.WebSearch.Provider, Provider: kind, BaseURL: initial.BaseURL, DefaultModel: initial.Model, VisionModel: initial.VisionModel, ThinkingEnabled: initial.ThinkingEnabled, ReasoningEffort: initial.ReasoningEffort, MaxOutputTokens: initial.MaxOutputTokens, ComplexOutputTokens: initial.ComplexOutputTokens, ContextWindow: initial.ContextWindow, MaxInputChars: initial.MaxInputChars, TaskTimeoutSeconds: initial.TaskTimeoutSeconds}, APIKey: initial.APIKey, History: []Audit{}}
 	m := &Manager{original: initial, store: st}
 	m.build = m.buildSnapshot
 	if st != nil {
@@ -118,12 +126,16 @@ func (m *Manager) Public() Public { m.mu.RLock(); defer m.mu.RUnlock(); return m
 func (m *Manager) publicLocked() Public {
 	r := m.record
 	v := r.Values
+	if v.WebSearchOptions != nil {
+		o := *v.WebSearchOptions
+		v.WebSearchOptions = &o
+	}
 	v.EnabledModels = append([]string{}, v.EnabledModels...)
 	source := "environment"
 	if r.Revision > 0 {
 		source = "platform"
 	}
-	return Public{HasWebSearchKey: r.WebSearchAPIKey != "", Values: v, Revision: r.Revision, HasAPIKey: r.APIKey != "", Writable: m.store != nil, Source: source, History: append([]Audit{}, r.History...)}
+	return Public{HasWebSearchFallbackKey: r.WebSearchFallbackAPIKey != "", HasWebSearchKey: r.WebSearchAPIKey != "", Values: v, Revision: r.Revision, HasAPIKey: r.APIKey != "", Writable: m.store != nil, Source: source, History: append([]Audit{}, r.History...)}
 }
 func (m *Manager) prepare(req Update) (record, error) {
 	m.mu.RLock()
@@ -200,8 +212,8 @@ func (m *Manager) prepare(req Update) (record, error) {
 	if req.WebSearchProvider == "" {
 		req.WebSearchProvider = old.WebSearchProvider
 	}
-	if req.WebSearchProvider != "" && req.WebSearchProvider != "disabled" && req.WebSearchProvider != "tavily" && req.WebSearchProvider != "brave" {
-		return record{}, errors.New("请选择停用、Tavily 或 Brave Search")
+	if req.WebSearchProvider != "" && req.WebSearchProvider != "disabled" && !websearch.Supported(req.WebSearchProvider) {
+		return record{}, errors.New("请选择停用、博查、腾讯云、Tavily 或 Brave Search")
 	}
 	searchKey := strings.TrimSpace(req.WebSearchAPIKey)
 	if searchKey == "" && !req.ClearWebSearchKey {
@@ -216,12 +228,47 @@ func (m *Manager) prepare(req Update) (record, error) {
 	if len(searchKey) > 4096 || strings.ContainsAny(searchKey, "\r\n\t ") {
 		return record{}, errors.New("搜索密钥格式无效")
 	}
-	return record{Values: req.Values, APIKey: key, WebSearchAPIKey: searchKey, Revision: old.Revision}, nil
+	if req.WebSearchFallbackProvider == "" {
+		req.WebSearchFallbackProvider = old.WebSearchFallbackProvider
+	}
+	if req.WebSearchFallbackProvider != "" && req.WebSearchFallbackProvider != "disabled" && !websearch.Supported(req.WebSearchFallbackProvider) {
+		return record{}, errors.New("备用搜索服务无效")
+	}
+	if websearch.Supported(req.WebSearchFallbackProvider) && req.WebSearchFallbackProvider == req.WebSearchProvider {
+		return record{}, errors.New("主用和备用搜索服务不能相同")
+	}
+	fallbackKey := strings.TrimSpace(req.WebSearchFallbackAPIKey)
+	if fallbackKey == "" && !req.ClearWebSearchFallbackKey && (req.WebSearchFallbackProvider == old.WebSearchFallbackProvider || req.WebSearchFallbackProvider == "disabled") {
+		fallbackKey = old.WebSearchFallbackAPIKey
+	}
+	if req.ClearWebSearchFallbackKey {
+		fallbackKey = ""
+	}
+	if len(fallbackKey) > 4096 || strings.ContainsAny(fallbackKey, "\r\n\t ") {
+		return record{}, errors.New("备用搜索密钥格式无效")
+	}
+	if req.WebSearchOptions == nil {
+		req.WebSearchOptions = old.WebSearchOptions
+	}
+	options := websearch.Options{}
+	if req.WebSearchOptions != nil {
+		options = *req.WebSearchOptions
+	}
+	if err := options.Validate(); err != nil {
+		return record{}, err
+	}
+	req.WebSearchOptions = &options
+	return record{Values: req.Values, APIKey: key, WebSearchAPIKey: searchKey, WebSearchFallbackAPIKey: fallbackKey, Revision: old.Revision}, nil
 }
 func (m *Manager) buildSnapshot(r record) (*Snapshot, error) {
 	c := m.original
 	c.WebSearch.Provider = r.WebSearchProvider
 	c.WebSearch.APIKey = r.WebSearchAPIKey
+	c.WebSearch.FallbackProvider = r.WebSearchFallbackProvider
+	c.WebSearch.FallbackAPIKey = r.WebSearchFallbackAPIKey
+	if r.WebSearchOptions != nil {
+		c.WebSearch.Options = *r.WebSearchOptions
+	}
 	c.BaseURL = r.BaseURL
 	c.APIKey = r.APIKey
 	c.Model = r.DefaultModel
@@ -327,6 +374,9 @@ func (m *Manager) Save(ctx context.Context, req Update, actor string) (Public, e
 	if m.record.WebSearchAPIKey != r.WebSearchAPIKey {
 		fields = append(fields, "webSearchApiKey")
 	}
+	if m.record.WebSearchFallbackAPIKey != r.WebSearchFallbackAPIKey {
+		fields = append(fields, "webSearchFallbackApiKey")
+	}
 	r.Revision++
 	r.History = append([]Audit{{Revision: r.Revision, Actor: actor, At: time.Now().UTC().Format(time.RFC3339), Fields: fields}}, m.record.History...)
 	if len(r.History) > 50 {
@@ -367,5 +417,17 @@ func (m *Manager) TestWebSearch(ctx context.Context, req Update) (string, error)
 	c := m.original.WebSearch
 	c.Provider = r.WebSearchProvider
 	c.APIKey = r.WebSearchAPIKey
+	if r.WebSearchOptions != nil {
+		c.Options = *r.WebSearchOptions
+	}
+	// Test exactly the selected credential, never hide a primary failure behind fallback.
+	c.FallbackProvider = ""
+	c.FallbackAPIKey = ""
+	if req.WebSearchTestTarget == "fallback" {
+		c.Provider = r.WebSearchFallbackProvider
+		c.APIKey = r.WebSearchFallbackAPIKey
+	} else if req.WebSearchTestTarget != "" && req.WebSearchTestTarget != "primary" {
+		return "", errors.New("测试目标无效")
+	}
 	return c.Search(ctx, "中国 国家图书馆 古籍")
 }

@@ -210,7 +210,7 @@ func TestReasoningBudgetRetriesOnceAndMetersBothAttempts(t *testing.T) {
 			input := fixtureInput()
 			input.ReasoningFallback = provider.ReasoningFallbackOptions(p, true)
 			published := ""
-			out, e := Execute(context.Background(), chat, input, &mcpStub{}, agent.NewGuard(4000, nil), Hooks{Text: func(s string) error { published += s; return nil }})
+			out, e := Execute(context.Background(), chat, input, &mcpStub{}, agent.NewGuard(4000, nil), Hooks{Text: func(s string) error { published = s; return nil }})
 			if partial {
 				if e == nil || calls.Load() != 1 || published != "" {
 					t.Fatalf("partial output accepted/retried: %+v %v %q", out, e, published)
@@ -297,5 +297,29 @@ func TestHarnessSearchLoopAndPermission(t *testing.T) {
 	_, e = runFixture(t, in, &mcpStub{}, []map[string]any{toolCall("search_web", `{"query":"周易 原文"}`)})
 	if e == nil || calls != 1 {
 		t.Fatal("unavailable tool executed")
+	}
+}
+
+func TestHarnessSearchThenReadAndDisabledRead(t *testing.T) {
+	in := fixtureInput()
+	searches, reads := 0, 0
+	in.WebSearch = func(context.Context, string) (string, error) {
+		searches++
+		return `{"sources":[{"url":"https://example.org/book","snippet":"summary"}]}`, nil
+	}
+	in.WebRead = func(_ context.Context, url string) (string, error) {
+		reads++
+		if url != "https://example.org/book" {
+			t.Fatal("wrong URL")
+		}
+		return `{"text":"完整依据 fixture-page-evidence","url":"https://example.org/book"}`, nil
+	}
+	out, err := runFixture(t, in, &mcpStub{}, []map[string]any{toolCall("search_web", `{"query":"古籍"}`), toolCall("read_webpage", `{"url":"https://example.org/book"}`), {"role": "assistant", "content": "依据原文给出回答"}})
+	if err != nil || out.ToolCalls != 2 || reads != 1 || searches != 1 {
+		t.Fatalf("%+v %v", out, err)
+	}
+	in.WebSearch = nil
+	if _, err = runFixture(t, in, &mcpStub{}, []map[string]any{toolCall("read_webpage", `{"url":"https://example.org/book"}`)}); err == nil || reads != 1 {
+		t.Fatal("web reader bypassed per-turn search permission")
 	}
 }
