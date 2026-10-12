@@ -107,7 +107,7 @@ func resourceUnion(code string) (string, []interface{}) {
 	if code != "" {
 		serviceWhere += " AND tsit.tag_code=?"
 		// 大师分支：心愿对应的标准服务编码（service 型诉求的 landing_value）
-		masterWhere += " AND mst.service_code IN (SELECT landing_value FROM intent_tag WHERE code=? AND landing_type='service')"
+		masterWhere += " AND EXISTS (SELECT 1 FROM master_service_intention mi WHERE mi.master_code=mst.master_code AND mi.service_code=mst.service_code AND mi.tag_code=?)"
 		args = append(args, code, code)
 	}
 	query := fmt.Sprintf(`

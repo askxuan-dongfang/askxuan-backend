@@ -50,6 +50,10 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/favorites/products", Handler: productFavoritesHandler(svcCtx)},
 	})
 
+	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/admin/platform/intentions/bindings", Handler: serviceIntentions(svcCtx, false)},
+		{Method: http.MethodPut, Path: "/api/v1/admin/platform/intentions/bindings", Handler: serviceIntentions(svcCtx, true)},
+	})
 	// ===== 商城台路由 =====
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/admin/products", Handler: adminProductListHandler(svcCtx)},

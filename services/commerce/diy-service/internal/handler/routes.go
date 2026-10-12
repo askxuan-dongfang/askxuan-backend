@@ -18,6 +18,7 @@ import (
 // RegisterHandlers 注册 diy 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
+	registerCreatorRewards(server, svcCtx)
 
 	auth := &middleware.AuthConfig{Secret: svcCtx.Config.AuthSecret}
 	customer := &middleware.AdminAuthConfig{AllowedRoles: []string{"customer"}}

@@ -160,6 +160,9 @@ func CreatePricedOrder(ctx context.Context, conn sqlx.SqlConn, orderModel DiyOrd
 				return insertErr
 			}
 		}
+		if err := SnapshotReward(ctx, session, order); err != nil {
+			return err
+		}
 		result = &PricedOrderResult{Order: order, Items: items}
 		return nil
 	})

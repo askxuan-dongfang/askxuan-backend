@@ -47,6 +47,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	startConsumer(ctx, svcCtx)
+	model.StartCreatorRewards(ctx, svcCtx.DB)
 	mq.StartOutbox(ctx, svcCtx.DB, svcCtx.MqProducer)
 
 	// 优雅退出
