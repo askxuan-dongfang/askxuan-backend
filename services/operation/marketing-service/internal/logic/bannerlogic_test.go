@@ -50,3 +50,17 @@ func TestBannerPublishingValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestExternalBannerTargets(t *testing.T) {
+	for _, value := range []string{"https://www.ai-tianji.com/", "https://example.org/topic?a=1#chapter"} {
+		b := model.Banner{Title: "友情推荐", Placement: "customer_home", ImageUrl: "/assets/banner.webp", LinkType: "web", LinkValue: value, Status: "enabled"}
+		if err := validateBanner(b); err != nil {
+			t.Errorf("valid HTTPS rejected: %s: %v", value, err)
+		}
+	}
+	for _, value := range []string{"http://example.org/", "//example.org/", "javascript:alert(1)", "data:text/html,hello", "https://user:pass@example.org/", "https://example.org\\@evil.com/", "https://example.org/\npath", "https://example.org/ space", "https:///example.org/", "https://", "https://example.org:99999/"} {
+		if validBannerTarget("web", value) {
+			t.Errorf("unsafe URL accepted: %q", value)
+		}
+	}
+}

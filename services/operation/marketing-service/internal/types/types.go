@@ -16,7 +16,7 @@ type Banner struct {
 	Title     string `json:"title"`
 	Placement string `json:"placement"`
 	ImageUrl  string `json:"imageUrl"`
-	LinkType  string `json:"linkType"` // temple/master/product/diy/ad_landing
+	LinkType  string `json:"linkType"` // temple/master/product/service/activity/reward/ai/diy/ad_landing/web
 	LinkValue string `json:"linkValue"`
 	Sort      int    `json:"sort"`
 	Status    string `json:"status"` // enabled/disabled

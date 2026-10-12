@@ -11,6 +11,7 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -60,12 +61,36 @@ func validMediaURL(value string) bool {
 
 var targetID = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
+func validExternalWebURL(value string) bool {
+	if !strings.HasPrefix(value, "https://") || strings.ContainsAny(value, "\\") {
+		return false
+	}
+	for _, r := range value {
+		if r <= 32 || r == 127 {
+			return false
+		}
+	}
+	u, err := url.Parse(value)
+	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil {
+		return false
+	}
+	if u.Port() != "" {
+		port, err := strconv.Atoi(u.Port())
+		if err != nil || port > 65535 {
+			return false
+		}
+	}
+	return true
+}
+
 func validBannerTarget(kind, value string) bool {
 	switch kind {
 	case "temple", "master", "product", "service", "activity", "reward":
 		return targetID.MatchString(value)
 	case "ai", "diy":
 		return value == ""
+	case "web":
+		return validExternalWebURL(value)
 	case "ad_landing":
 		return value == "/c/ai" || value == "/c/diy" || value == "/c/shop" || value == "/c/rewards" || value == "/c/temples" || value == "/c/masters" || value == "/c/services"
 	}
