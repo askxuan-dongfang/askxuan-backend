@@ -17,6 +17,7 @@ import (
 
 // RegisterHandlers 注册 temple 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
+	registerRegionRoutes(server, svcCtx)
 	server.AddRoute(rest.Route{Method: http.MethodGet, Path: "/api/v1/temples/:id/favorite", Handler: func(w http.ResponseWriter, r *http.Request) {
 		userID, err := strconv.ParseInt(r.Header.Get("X-User-Id"), 10, 64)
 		if err != nil || userID <= 0 {

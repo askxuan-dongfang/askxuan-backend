@@ -34,6 +34,8 @@ const templeTable = "temple"
 
 // Temple 寺院实体（依据 init.sql temple 表）
 type Temple struct {
+	RegionCode  string  `db:"region_code" json:"regionCode"`
+	RegionName  string  `db:"region_name" json:"regionName"`
 	Id          int64   `db:"id" json:"id"`         // 自增主键
 	Code        string  `db:"code" json:"code"`     // 寺院编码 T001~T006
 	Name        string  `db:"name" json:"name"`     // 名称
@@ -52,6 +54,7 @@ type Temple struct {
 
 // TempleFilter 列表查询过滤条件
 type TempleFilter struct {
+	RegionCode string
 	BeliefCode string
 	Sect       string
 	Type       string
@@ -110,7 +113,7 @@ func (m *defaultTempleModel) Insert(ctx context.Context, data *Temple) (int64, e
 // FindOne 按寺院编码查询
 func (m *defaultTempleModel) FindOne(ctx context.Context, code string) (*Temple, error) {
 	var t Temple
-	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time FROM %s WHERE code = ?`, templeTable)
+	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+` FROM %s WHERE code = ?`, templeTable)
 	err := m.conn.QueryRowCtx(ctx, &t, query, code)
 	if err != nil {
 		return nil, err
@@ -121,7 +124,7 @@ func (m *defaultTempleModel) FindOne(ctx context.Context, code string) (*Temple,
 // FindOneByPk 按自增主键查询（管理台从 JWT 取 templeId 后使用）
 func (m *defaultTempleModel) FindOneByPk(ctx context.Context, id int64) (*Temple, error) {
 	var t Temple
-	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time FROM %s WHERE id = ?`, templeTable)
+	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+` FROM %s WHERE id = ?`, templeTable)
 	err := m.conn.QueryRowCtx(ctx, &t, query, id)
 	if err != nil {
 		return nil, err
@@ -143,7 +146,7 @@ func (m *defaultTempleModel) FindList(ctx context.Context, filter TempleFilter, 
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time FROM %s WHERE %s ORDER BY id ASC LIMIT ?, ?`,
+	listQuery := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+` FROM %s WHERE %s ORDER BY id ASC LIMIT ?, ?`,
 		templeTable, where)
 	listArgs := append(args, offset, size)
 	var list []*Temple
@@ -196,6 +199,10 @@ func buildTempleWhere(filter TempleFilter) (string, []interface{}) {
 	if filter.Type != "" {
 		where += " AND type = ?"
 		args = append(args, filter.Type)
+	}
+	if filter.RegionCode != "" {
+		where += " AND " + templeRegionCode("temple.code") + " = ?"
+		args = append(args, filter.RegionCode)
 	}
 	if filter.Region != "" {
 		where += " AND region = ?"

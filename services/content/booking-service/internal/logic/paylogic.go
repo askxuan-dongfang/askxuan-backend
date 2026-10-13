@@ -44,5 +44,8 @@ func (l *PayLogic) Pay(req *types.PayReq) (*types.CreateResp, error) {
 	if b.Status != model.StatusPendingPayment || expires.Before(time.Now()) {
 		return nil, common.ErrBookingPaymentExpired
 	}
+	if err := requireValidConsultation(l.ctx, l.svcCtx, userID, b.MasterId); err != nil {
+		return nil, err
+	}
 	return responseFromBooking(NewCreateLogic(l.ctx, l.svcCtx).autoPay(b)), nil
 }

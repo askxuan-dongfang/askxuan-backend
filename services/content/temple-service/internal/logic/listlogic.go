@@ -39,6 +39,7 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 	}
 
 	list, total, err := l.svcCtx.TempleModel.FindList(l.ctx, model.TempleFilter{
+		RegionCode: req.RegionCode,
 		BeliefCode: req.BeliefCode,
 		Sect:       req.Sect,
 		Type:       req.Type,

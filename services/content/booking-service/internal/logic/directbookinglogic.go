@@ -69,6 +69,9 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 		if req.ManualPayment {
 			return responseFromBooking(existing), nil
 		}
+		if err := requireValidConsultation(l.ctx, l.svcCtx, userIDStr, existing.MasterId); err != nil {
+			return nil, err
+		}
 		return l.autoPay(existing), nil
 	}
 
@@ -87,14 +90,9 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 		return nil, common.ErrConsultationUnavailable
 	}
 
-	// 3. 先付费咨询前置条件
-	consulted, err := l.svcCtx.ConsultationModel.HasPaidConsultation(l.ctx, userIDStr, masterCode)
-	if err != nil {
-		l.Errorf("查询付费咨询记录失败: %v", err)
-		return nil, common.ErrSystem
-	}
-	if !consulted {
-		return nil, common.NewBizError(40415, "请先完成付费咨询后再预约服务")
+	// Both master booking paths require a currently valid paid consultation.
+	if err := requireValidConsultation(l.ctx, l.svcCtx, userIDStr, masterCode); err != nil {
+		return nil, err
 	}
 
 	// 4. 创建直约单（不占寺院时段库存）

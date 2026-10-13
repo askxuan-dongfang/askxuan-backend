@@ -39,6 +39,7 @@ func (l *PlatformTempleListLogic) PlatformTempleList(req *types.ListReq) (*types
 
 	// 平台视角：不强制 status=正常，filter.Status 留空以返回全部
 	list, total, err := l.svcCtx.TempleModel.FindList(l.ctx, model.TempleFilter{
+		RegionCode: req.RegionCode,
 		BeliefCode: req.BeliefCode,
 		Sect:       req.Sect,
 		Type:       req.Type,

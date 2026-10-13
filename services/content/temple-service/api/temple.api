@@ -30,6 +30,8 @@ type (
     }
 
     Temple {
+        RegionCode string `json:"regionCode"`
+        RegionName string `json:"regionName"`
         Id           string   `json:"id"`
         Name         string   `json:"name"`
         Region       string   `json:"region"`
@@ -53,6 +55,7 @@ type (
     }
 
     ListReq {
+        RegionCode string `form:"regionCode,optional"`
         BeliefCode  string `form:"beliefCode,optional"`
         Sect        string `form:"sect,optional"`
         Type        string `form:"type,optional"`
@@ -465,4 +468,41 @@ service temple-service {
 
     @handler platformTempleStatus
     put /:id/status (TemplePlatformStatusReq) returns (TemplePlatformStatusResp)
+}
+
+
+// 地区由平台统一维护，师傅可覆盖或继承所属寺院地区。
+type (
+    RegionTag { Code string `json:"code"`
+        Name string `json:"name"`
+        Sort int `json:"sort"`
+        Status string `json:"status"` }
+    RegionListResp { List []RegionTag `json:"list"` }
+    RegionUpdateReq { Code string `path:"code"`
+        Name string `json:"name"`
+        Sort int `json:"sort"`
+        Status string `json:"status"` }
+    ProviderRegionReq { Kind string `path:"kind"`
+        Id string `path:"id"`
+        RegionCode string `json:"regionCode"` }
+    ProviderRegionResp { RegionCode string `json:"regionCode"` }
+)
+@server (group: region.public
+        prefix: /api/v1/regions)
+service temple-service {
+    @handler publicRegionList
+    get / returns (RegionListResp)
+}
+@server (group: region.platform
+        prefix: /api/v1/admin/platform/regions
+        jwt: Auth)
+service temple-service {
+    @handler adminRegionList
+    get / returns (RegionListResp)
+    @handler adminRegionCreate
+    post / (RegionTag) returns (RegionTag)
+    @handler adminRegionUpdate
+    put /:code (RegionUpdateReq) returns (RegionTag)
+    @handler adminProviderRegion
+    put /providers/:kind/:id (ProviderRegionReq) returns (ProviderRegionResp)
 }

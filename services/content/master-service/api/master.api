@@ -10,6 +10,9 @@ info (
 // ============ 法师基础 ============
 type (
     Master {
+        RegionCode string `json:"regionCode"`
+        RegionName string `json:"regionName"`
+        RegionInherited bool `json:"regionInherited"`
         Id          string   `json:"id"`          // 法师编码 M001~M010
         DharmaName  string   `json:"dharmaName"`  // 法号
         LayName     string   `json:"layName"`     // 俗名
@@ -32,6 +35,7 @@ type (
     }
 
     ListReq {
+        RegionCode string `form:"regionCode,optional"`
         BeliefCode string `form:"beliefCode,optional"`
         Sect     string `form:"sect,optional"`
         Type     string `form:"type,optional"`
@@ -48,6 +52,7 @@ type (
     }
 
     PlatformMasterListReq {
+        RegionCode string `form:"regionCode,optional"`
         BeliefCode     string `form:"beliefCode,optional"`
         Sect           string `form:"sect,optional"`
         Type           string `form:"type,optional"`

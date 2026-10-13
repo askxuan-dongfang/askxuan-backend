@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -57,13 +58,16 @@ func (bookingPathMaster) GetByCode(_ context.Context, code string) (*masterrpc.B
 
 type bookingPathConsultation struct {
 	model.ConsultationModel
-	paid  bool
-	calls int
+	paid         bool
+	calls        int
+	err          error
+	user, master string
 }
 
-func (m *bookingPathConsultation) HasPaidConsultation(context.Context, string, string) (bool, error) {
+func (m *bookingPathConsultation) HasValidPaidConsultation(_ context.Context, user, master string) (bool, error) {
 	m.calls++
-	return m.paid, nil
+	m.user, m.master = user, master
+	return m.paid, m.err
 }
 
 func bookingPathFixture(t *testing.T, manageBy, tagStatus string, httpStatus int) (context.Context, *svc.ServiceContext, *bookingPathOrders, *bookingPathConsultation) {
@@ -117,6 +121,7 @@ func TestTempleMasterBookingUsesCompletePriceAndTempleInventory(t *testing.T) {
 	ctx, s, orders, consult := bookingPathFixture(t, "temple", "enabled", 200)
 	req := bookingPathReq("S007")
 	req.MeritMoney = 20
+	consult.paid = true
 	result, err := NewCreateLogic(ctx, s).Create(req)
 	if err != nil {
 		t.Fatal(err)
@@ -124,8 +129,8 @@ func TestTempleMasterBookingUsesCompletePriceAndTempleInventory(t *testing.T) {
 	if result.TotalFee != 369 || orders.saved.ServiceFee != 49 || orders.saved.MeritMoney != 320 || !orders.reserved {
 		t.Fatalf("incorrect split or inventory: %+v", orders.saved)
 	}
-	if consult.calls != 0 {
-		t.Fatal("temple booking unexpectedly requires paid consultation")
+	if consult.calls != 1 {
+		t.Fatal("temple booking must require a valid paid consultation")
 	}
 }
 func TestWholeTempleBookingDoesNotRequireMasterTags(t *testing.T) {
@@ -168,5 +173,56 @@ func TestDirectBookingRejectsTempleMasterAndRetainsConsultationGate(t *testing.T
 				t.Fatalf("incorrect direct booking: %+v", orders.saved)
 			}
 		})
+	}
+}
+
+func (m *bookingPathOrders) FindOne(_ context.Context, id string) (*model.Booking, error) {
+	return m.saved, nil
+}
+
+func TestNamedMasterRequiresValidConsultationOnBothPaths(t *testing.T) {
+	for _, track := range []string{"temple", "platform"} {
+		for _, dependencyFailure := range []bool{false, true} {
+			t.Run(track+fmt.Sprint(dependencyFailure), func(t *testing.T) {
+				ctx, s, orders, consult := bookingPathFixture(t, track, "enabled", 200)
+				if dependencyFailure {
+					consult.err = errors.New("unavailable")
+				}
+				var err error
+				if track == "temple" {
+					_, err = NewCreateLogic(ctx, s).Create(bookingPathReq("S007"))
+				} else {
+					_, err = NewDirectBookingLogic(ctx, s).Create("M002", &types.DirectBookingReq{ServiceCode: "S007", BookingDate: time.Now().Add(24 * time.Hour).Format("2006-01-02"), RequestId: "test-prerequisite", ManualPayment: true})
+				}
+				if err == nil {
+					t.Fatal("invalid consultation allowed a booking")
+				}
+				if !dependencyFailure {
+					assertBookingCode(t, err, 40415)
+				}
+				if orders.saved != nil || orders.reserved {
+					t.Fatal("ineligible request changed inventory/orders")
+				}
+				if consult.user != "123" || consult.master != "M002" {
+					t.Fatalf("wrong prerequisite identity: %+v", consult)
+				}
+			})
+		}
+	}
+}
+func TestPendingBookingCannotPayAfterConsultationExpires(t *testing.T) {
+	ctx, s, orders, consult := bookingPathFixture(t, "temple", "enabled", 200)
+	orders.saved = &model.Booking{Id: "existing", UserId: "123", MasterId: "M002", Status: model.StatusPendingPayment, PaymentStatus: "pending", PaymentExpireTime: time.Now().Add(time.Hour).Format("2006-01-02 15:04:05")}
+	_, err := NewPayLogic(ctx, s).Pay(&types.PayReq{Id: "existing"})
+	assertBookingCode(t, err, 40415)
+	if consult.calls != 1 {
+		t.Fatal("pending order skipped prerequisite")
+	}
+	orders.saved.PaymentStatus = model.PaymentStatusSuccess
+	if _, err = NewPayLogic(ctx, s).Pay(&types.PayReq{Id: "existing"}); err != nil {
+		t.Fatalf("already paid order must remain readable: %v", err)
+	}
+	if consult.calls != 1 {
+		t.Fatal("already paid result should not recheck consultation")
 	}
 }

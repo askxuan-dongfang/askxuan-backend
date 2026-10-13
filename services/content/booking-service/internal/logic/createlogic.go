@@ -92,6 +92,9 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 		if !offered {
 			return nil, common.NewBizError(40311, "该师傅未提供此服务，请重新选择可预约项目")
 		}
+		if err := requireValidConsultation(l.ctx, l.svcCtx, req.UserId, masterCode); err != nil {
+			return nil, err
+		}
 	}
 
 	slot := selectSlot(service.Slots, req.SlotCode, req.TimeSlot)
@@ -124,6 +127,10 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 }
 
 func (l *CreateLogic) autoPay(booking *model.Booking) *model.Booking {
+	if err := requireValidConsultation(l.ctx, l.svcCtx, booking.UserId, booking.MasterId); err != nil {
+		l.Errorf("预约支付前咨询校验失败: %v", err)
+		return booking
+	}
 	payment, err := l.svcCtx.PaymentClient.AutoPayBooking(l.ctx, booking.Id, booking.UserId, booking.TotalFee)
 	if err != nil {
 		l.Errorf("模拟支付暂不可用 booking=%s: %v", booking.Id, err)

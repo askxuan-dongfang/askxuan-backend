@@ -37,6 +37,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	registerFulfillment(server, svcCtx, authCfg)
 	// ============ C端分组（需JWT） ============
 	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/bookings/eligibility", Handler: bookingEligibilityHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/chats", Handler: chatListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/chats/incoming-call", Handler: chatIncomingCallHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/chats/:id/call-capabilities", Handler: chatCallHandler(svcCtx)},

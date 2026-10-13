@@ -47,6 +47,8 @@ type BeliefStatusReq struct {
 
 // Temple 寺院
 type Temple struct {
+	RegionCode   string   `json:"regionCode"`
+	RegionName   string   `json:"regionName"`
 	Id           string   `json:"id"`
 	Name         string   `json:"name"`
 	Region       string   `json:"region"`
@@ -72,6 +74,7 @@ type TempleDetail struct {
 
 // ListReq 列表查询请求
 type ListReq struct {
+	RegionCode  string `form:"regionCode,optional"`
 	BeliefCode  string `form:"beliefCode,optional"`
 	Sect        string `form:"sect,optional"`
 	Type        string `form:"type,optional"`

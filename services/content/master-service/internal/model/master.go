@@ -67,6 +67,9 @@ const (
 
 // Master 法师表（对应 askxuan.master）
 type Master struct {
+	RegionCode             string  `db:"region_code" json:"regionCode"`
+	RegionName             string  `db:"region_name" json:"regionName"`
+	RegionInherited        bool    `db:"region_inherited" json:"regionInherited"`
 	Id                     int64   `db:"id" json:"id"`
 	Code                   string  `db:"code" json:"code"` // 法师编码 M001~M010
 	DharmaName             string  `db:"dharma_name" json:"dharmaName"`
@@ -100,9 +103,9 @@ type MasterModel interface {
 	// FindAll 平台查询所有法师（按 shelfStatus 筛选，空则全部）
 	FindAll(ctx context.Context, shelfStatus string, page, size int) ([]*Master, int64, error)
 	// FindPlatformList 平台查询全量法师，不应用 C 端可见性条件。
-	FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus string, page, size int) ([]*Master, int64, error)
+	FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus, regionCode string, page, size int) ([]*Master, int64, error)
 	// FindCList C端公开列表（仅 on_shelf + normal），按 sect/type/templeCode/manageBy/serviceCode 筛选
-	FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy, serviceCode string, page, size int) ([]*Master, int64, error)
+	FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy, serviceCode, regionCode string, page, size int) ([]*Master, int64, error)
 	FindTempleNameByCode(ctx context.Context, templeCode string) (string, error)
 	Insert(ctx context.Context, data *Master) (int64, error)
 	Update(ctx context.Context, data *Master) error
@@ -172,7 +175,7 @@ func (m *masterModel) FindAll(ctx context.Context, shelfStatus string, page, siz
 	return m.queryPage(ctx, where, args, "ORDER BY id DESC", page, size)
 }
 
-func (m *masterModel) FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus string, page, size int) ([]*Master, int64, error) {
+func (m *masterModel) FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus, regionCode string, page, size int) ([]*Master, int64, error) {
 	where := "WHERE 1 = 1"
 	args := make([]interface{}, 0, 7)
 	filters := []struct {
@@ -193,10 +196,14 @@ func (m *masterModel) FindPlatformList(ctx context.Context, beliefCode, sect, mt
 			args = append(args, filter.value)
 		}
 	}
+	if regionCode != "" {
+		where += " AND " + masterRegionCode + " = ?"
+		args = append(args, regionCode)
+	}
 	return m.queryPage(ctx, where, args, "ORDER BY id DESC", page, size)
 }
 
-func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy, serviceCode string, page, size int) ([]*Master, int64, error) {
+func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy, serviceCode, regionCode string, page, size int) ([]*Master, int64, error) {
 	where := "WHERE shelf_status = ? AND platform_status = ?"
 	args := []interface{}{MasterShelfStatusOnShelf, MasterPlatformStatusNormal}
 	if beliefCode != "" {
@@ -225,9 +232,13 @@ func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, te
 		args = append(args, manageBy)
 	}
 	if serviceCode != "" {
-		// 按可提供服务筛选：大师标签（master_service_tag.enabled）或服务目录指定大师（service_type.master_codes）
-		where += " AND (EXISTS (SELECT 1 FROM " + masterServiceTagTable + " mst WHERE mst.master_code = " + m.table + ".code AND mst.service_code = ? AND mst.status = 'enabled') OR FIND_IN_SET(" + m.table + ".code, (SELECT master_codes FROM askxuan_temple.service_type WHERE code = ?)))"
-		args = append(args, serviceCode, serviceCode)
+		// 按可提供服务筛选：本人已开放的服务标签；目录推荐关系不代表可执行服务
+		where += " AND EXISTS (SELECT 1 FROM " + masterServiceTagTable + " mst WHERE mst.master_code = " + m.table + ".code AND mst.service_code = ? AND mst.status = 'enabled')"
+		args = append(args, serviceCode)
+	}
+	if regionCode != "" {
+		where += " AND " + masterRegionCode + " = ?"
+		args = append(args, regionCode)
 	}
 	return m.queryPage(ctx, where, args, "ORDER BY rating DESC, id DESC", page, size)
 }
@@ -335,4 +346,7 @@ func (m *masterModel) NextWildCode(ctx context.Context) (string, error) {
 }
 
 // masterRows 法师表查询字段
-const masterRows = "id, code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, manage_by, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes, create_time, update_time"
+const masterOwnRegion = "(SELECT pr.region_code FROM askxuan_temple.provider_region pr WHERE pr.provider_kind='master' AND pr.provider_code=master.code)"
+const masterRegionCode = "COALESCE(" + masterOwnRegion + ",(SELECT pr.region_code FROM askxuan_temple.provider_region pr WHERE pr.provider_kind='temple' AND pr.provider_code=master.temple_code AND master.manage_by='temple'),'')"
+const masterRegionColumns = masterRegionCode + " AS region_code, COALESCE((SELECT rt.name FROM askxuan_temple.region_tag rt WHERE rt.code=" + masterRegionCode + "),'') AS region_name, (master.manage_by='temple' AND " + masterOwnRegion + " IS NULL) AS region_inherited"
+const masterRows = masterRegionColumns + ", " + "id, code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, manage_by, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes, create_time, update_time"

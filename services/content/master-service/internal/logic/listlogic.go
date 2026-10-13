@@ -39,7 +39,7 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 		size = 20
 	}
 
-	list, total, err := l.svcCtx.MasterModel.FindCList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, req.ManageBy, req.ServiceCode, page, size)
+	list, total, err := l.svcCtx.MasterModel.FindCList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, req.ManageBy, req.ServiceCode, req.RegionCode, page, size)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +88,7 @@ func toTypeMaster(m *model.Master) types.Master {
 
 func toTypeMasterWithTempleName(m *model.Master, templeName string) types.Master {
 	return types.Master{
+		RegionCode: m.RegionCode, RegionName: m.RegionName, RegionInherited: m.RegionInherited,
 		Id:                     m.Code,
 		DharmaName:             m.DharmaName,
 		LayName:                m.LayName,

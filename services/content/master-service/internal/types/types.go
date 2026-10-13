@@ -4,31 +4,35 @@ package types
 
 // Master 法师
 type Master struct {
-	Id                     string   `json:"id"`
-	DharmaName             string   `json:"dharmaName"`
-	LayName                string   `json:"layName"`
-	TempleId               string   `json:"templeId"`
-	TempleName             string   `json:"templeName"`
-	Position               string   `json:"position"`
-	BeliefCode             string   `json:"beliefCode"`
-	Sect                   string   `json:"sect"`
-	Type                   string   `json:"type"`
-	AuthStatus             string   `json:"authStatus"`
-	ShelfStatus            string   `json:"shelfStatus"`
-	PlatformStatus         string   `json:"platformStatus"`
-	ManageBy               string   `json:"manageBy"` // temple=寺庙绑定 / platform=平台(野生)
+	RegionCode             string                 `json:"regionCode"`
+	RegionName             string                 `json:"regionName"`
+	RegionInherited        bool                   `json:"regionInherited"`
+	Id                     string                 `json:"id"`
+	DharmaName             string                 `json:"dharmaName"`
+	LayName                string                 `json:"layName"`
+	TempleId               string                 `json:"templeId"`
+	TempleName             string                 `json:"templeName"`
+	Position               string                 `json:"position"`
+	BeliefCode             string                 `json:"beliefCode"`
+	Sect                   string                 `json:"sect"`
+	Type                   string                 `json:"type"`
+	AuthStatus             string                 `json:"authStatus"`
+	ShelfStatus            string                 `json:"shelfStatus"`
+	PlatformStatus         string                 `json:"platformStatus"`
+	ManageBy               string                 `json:"manageBy"`              // temple=寺庙绑定 / platform=平台(野生)
 	ServiceTags            []MasterServiceTagItem `json:"serviceTags,omitempty"` // 大师服务标签
-	Specialties            []string `json:"specialties"`
-	Avatar                 string   `json:"avatar"`
-	Rating                 float64  `json:"rating"`
-	ConsultEnabled         bool     `json:"consultEnabled"`
-	ConsultFee             float64  `json:"consultFee"`
-	ConsultValidHours      int      `json:"consultValidHours"`
-	ConsultResponseMinutes int      `json:"consultResponseMinutes"`
+	Specialties            []string               `json:"specialties"`
+	Avatar                 string                 `json:"avatar"`
+	Rating                 float64                `json:"rating"`
+	ConsultEnabled         bool                   `json:"consultEnabled"`
+	ConsultFee             float64                `json:"consultFee"`
+	ConsultValidHours      int                    `json:"consultValidHours"`
+	ConsultResponseMinutes int                    `json:"consultResponseMinutes"`
 }
 
 // ListReq 列表查询请求
 type ListReq struct {
+	RegionCode  string `form:"regionCode,optional"`
 	BeliefCode  string `form:"beliefCode,optional"`
 	Sect        string `form:"sect,optional"`
 	Type        string `form:"type,optional"`
@@ -49,6 +53,7 @@ type ListResp struct {
 
 // PlatformMasterListReq 平台法师全量列表请求。
 type PlatformMasterListReq struct {
+	RegionCode     string `form:"regionCode,optional"`
 	BeliefCode     string `form:"beliefCode,optional"`
 	Sect           string `form:"sect,optional"`
 	Type           string `form:"type,optional"`
@@ -308,20 +313,20 @@ type MasterProfileReq struct {
 
 // MasterProfileResp 法师资料响应
 type MasterProfileResp struct {
-	Id          string   `json:"id"`
-	DharmaName  string   `json:"dharmaName"`
-	LayName     string   `json:"layName"`
-	TempleId    string   `json:"templeId"`
-	Position    string   `json:"position"`
-	Sect        string   `json:"sect"`
-	Type        string   `json:"type"`
-	AuthStatus  string   `json:"authStatus"`
-	Specialties []string `json:"specialties"`
-	Avatar      string   `json:"avatar"`
-	Bio         string   `json:"bio"`
-	Pricing     string   `json:"pricing"`
-	Rating      float64  `json:"rating"`
-	ManageBy    string                    `json:"manageBy"`               // temple/platform
+	Id          string                     `json:"id"`
+	DharmaName  string                     `json:"dharmaName"`
+	LayName     string                     `json:"layName"`
+	TempleId    string                     `json:"templeId"`
+	Position    string                     `json:"position"`
+	Sect        string                     `json:"sect"`
+	Type        string                     `json:"type"`
+	AuthStatus  string                     `json:"authStatus"`
+	Specialties []string                   `json:"specialties"`
+	Avatar      string                     `json:"avatar"`
+	Bio         string                     `json:"bio"`
+	Pricing     string                     `json:"pricing"`
+	Rating      float64                    `json:"rating"`
+	ManageBy    string                     `json:"manageBy"`              // temple/platform
 	ServiceTags []MasterServiceTagItemResp `json:"serviceTags,omitempty"` // 我的服务标签
 }
 

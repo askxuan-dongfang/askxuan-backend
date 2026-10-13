@@ -46,7 +46,7 @@ func orderSQL(kind string) string {
 	case "diy_order":
 		return `SELECT user_id,CAST(ROUND(total_fee*100) AS SIGNED) cents,(status='pending_review' AND payment_status='pending') payable FROM askxuan_diy.diy_order WHERE order_no=?`
 	case "booking":
-		return `SELECT user_id,CAST(ROUND(total_fee*100) AS SIGNED) cents,(status='pending_payment' AND payment_status='pending' AND payment_expire_time>NOW() AND (slot_reserved=1 OR (slot_code='' AND master_code<>''))) payable FROM askxuan_booking.booking WHERE booking_no=?`
+		return `SELECT user_id,CAST(ROUND(total_fee*100) AS SIGNED) cents,(status='pending_payment' AND payment_status='pending' AND payment_expire_time>NOW() AND (slot_reserved=1 OR (slot_code='' AND master_code<>'')) AND (master_code='' OR EXISTS (SELECT 1 FROM askxuan_booking.consultation_order c WHERE c.user_id=booking.user_id AND c.master_code=booking.master_code AND c.payment_status='success' AND c.status='active' AND c.consult_fee>0 AND c.valid_from<=NOW() AND c.expires_at>NOW()))) payable FROM askxuan_booking.booking WHERE booking_no=?`
 	case "consultation":
 		return `SELECT user_id,CAST(ROUND(consult_fee*100) AS SIGNED) cents,(status='pending_payment' AND payment_status='pending') payable FROM askxuan_booking.consultation_order WHERE order_no=?`
 	case "ai_report":
