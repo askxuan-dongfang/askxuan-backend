@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"github.com/askxuan/common"
 
 	"fmt"
 	"github.com/askxuan/master-service/internal/types"
@@ -67,6 +68,7 @@ const (
 
 // Master 法师表（对应 askxuan.master）
 type Master struct {
+	TraditionCodes         string  `db:"tradition_codes"`
 	RegionCode             string  `db:"region_code" json:"regionCode"`
 	RegionName             string  `db:"region_name" json:"regionName"`
 	RegionInherited        bool    `db:"region_inherited" json:"regionInherited"`
@@ -349,4 +351,5 @@ func (m *masterModel) NextWildCode(ctx context.Context) (string, error) {
 const masterOwnRegion = "(SELECT pr.region_code FROM askxuan_temple.provider_region pr WHERE pr.provider_kind='master' AND pr.provider_code=master.code)"
 const masterRegionCode = "COALESCE(" + masterOwnRegion + ",(SELECT pr.region_code FROM askxuan_temple.provider_region pr WHERE pr.provider_kind='temple' AND pr.provider_code=master.temple_code AND master.manage_by='temple'),'')"
 const masterRegionColumns = masterRegionCode + " AS region_code, COALESCE((SELECT rt.name FROM askxuan_temple.region_tag rt WHERE rt.code=" + masterRegionCode + "),'') AS region_name, (master.manage_by='temple' AND " + masterOwnRegion + " IS NULL) AS region_inherited"
-const masterRows = masterRegionColumns + ", " + "id, code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, manage_by, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes, create_time, update_time"
+
+var masterRows = common.DirectoryTagColumns("master", "master.code") + ", " + masterRegionColumns + ", " + "id, code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, manage_by, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes, create_time, update_time"

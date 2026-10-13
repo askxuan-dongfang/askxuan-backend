@@ -4,6 +4,7 @@ package types
 
 // Master 法师
 type Master struct {
+	TraditionCodes         []string               `json:"traditionCodes"`
 	RegionCode             string                 `json:"regionCode"`
 	RegionName             string                 `json:"regionName"`
 	RegionInherited        bool                   `json:"regionInherited"`

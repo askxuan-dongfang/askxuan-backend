@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"errors"
+	"github.com/askxuan/common"
 	"strings"
 
 	"github.com/askxuan/master-service/internal/model"
@@ -88,7 +89,8 @@ func toTypeMaster(m *model.Master) types.Master {
 
 func toTypeMasterWithTempleName(m *model.Master, templeName string) types.Master {
 	return types.Master{
-		RegionCode: m.RegionCode, RegionName: m.RegionName, RegionInherited: m.RegionInherited,
+		TraditionCodes: common.SplitDirectoryTags(m.TraditionCodes),
+		RegionCode:     m.RegionCode, RegionName: m.RegionName, RegionInherited: m.RegionInherited,
 		Id:                     m.Code,
 		DharmaName:             m.DharmaName,
 		LayName:                m.LayName,
