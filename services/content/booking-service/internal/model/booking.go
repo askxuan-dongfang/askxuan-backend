@@ -97,7 +97,7 @@ func NewBookingModel(conn sqlx.SqlConn) BookingModel { return &defaultBookingMod
 
 const bookingSelect = `booking_no,COALESCE(request_id,'') request_id,user_id,temple_code,temple_name,master_code,master_name,service_code,service_name,DATE_FORMAT(booking_date,'%Y-%m-%d') booking_date,slot_code,time_slot,service_fee,merit_money,merit_money_tier,total_fee,COALESCE(CAST(price_snapshot AS CHAR),'') price_snapshot,payment_no,payment_channel,payment_status,COALESCE(DATE_FORMAT(payment_expire_time,'%Y-%m-%d %H:%i:%s'),'') payment_expire_time,slot_reserved,status,note,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
 
-// InsertDirect 大师直约：不占寺院时段库存（野生大师或直连寺庙大师）
+// InsertDirect 独立执业师傅直约：不占寺院时段库存。
 func (m *defaultBookingModel) InsertDirect(ctx context.Context, data *Booking) (*Booking, error) {
 	now := time.Now()
 	data.Id = fmt.Sprintf("B%s%06d", now.Format("20060102150405"), now.Nanosecond()/1e3%1000000)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -76,17 +77,12 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 	if err != nil {
 		return nil, common.ErrMasterNotFound
 	}
+	if master.ManageBy != "platform" {
+		return nil, common.NewBizError(40312, "寺院师傅请通过寺院排期预约，费用包含寺院服务费与师傅执行费")
+	}
 
 	// 2. 服务标签校验：大师提供该服务且已上架
-	var tagPrice float64
-	tagFound := false
-	for _, t := range master.ServiceTags {
-		if t.ServiceCode == req.ServiceCode && (t.Status == "" || t.Status == "enabled") {
-			tagPrice = t.Price
-			tagFound = true
-			break
-		}
-	}
+	tagPrice, tagFound := masterServicePrice(master, req.ServiceCode)
 	if !tagFound {
 		return nil, common.ErrConsultationUnavailable
 	}
@@ -133,6 +129,15 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 		return responseFromBooking(created), nil
 	}
 	return l.autoPay(created), nil
+}
+
+func masterServicePrice(master *masterDetail, serviceCode string) (float64, bool) {
+	for _, tag := range master.ServiceTags {
+		if tag.ServiceCode == serviceCode && (tag.Status == "" || tag.Status == "enabled") && tag.Price >= 0 && !math.IsNaN(tag.Price) && !math.IsInf(tag.Price, 0) {
+			return tag.Price, true
+		}
+	}
+	return 0, false
 }
 
 func (l *DirectBookingLogic) autoPay(b *model.Booking) *types.CreateResp {
