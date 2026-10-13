@@ -55,7 +55,7 @@ by_belief=Counter()
 for i,(tag,label,belief,locations) in enumerate(traditions):
  for j,(region,city) in enumerate(locations):
   n=i*3+j+1;local=by_belief[belief];by_belief[belief]+=1
-  tc=f'DT{n:03}';name=f'{city}·{["澄和","知礼","和光"][j]}{"宫" if belief in ["folk","daoism"] else "寺"}（演示）'
+  tc=f'DT{n:03}';short_label=label.replace(' / 天后','').replace('信俗','').replace('传统','');name=f'{city}·{short_label}{["澄和","知礼","和光"][j]}{"宫" if belief in ["folk","daoism"] else "寺"}（演示）'
   desc=f'虚构演示场所，用于展示{city}地区的{label}分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。'
   insert('askxuan_temple.temple',['code','name','region','type','belief_code','sect','status','address','cover_image','rating','description'],[tc,name,city,beliefs[belief],belief,label,'正常','演示地址 · 不对应真实场所','',0,desc])
   insert('askxuan_temple.provider_region',['provider_kind','provider_code','region_code'],['temple',tc,region])
@@ -67,7 +67,7 @@ for i,(tag,label,belief,locations) in enumerate(traditions):
    insert('askxuan_temple.temple_service',['temple_code','service_code','service_name','price','time_slots','status'],[tc,sc,services[sn-1],price,'["09:00-12:00","13:00-17:00"]','on_shelf'])
    rows.append(f"INSERT IGNORE INTO askxuan_temple.temple_service_slot(temple_service_id,slot_code,label,start_time,end_time,capacity,status,sort) SELECT id,'morning','上午','09:00','12:00',10,'enabled',10 FROM askxuan_temple.temple_service WHERE temple_code={q(tc)} AND service_code={q(sc)};")
    rows.append(f"INSERT IGNORE INTO askxuan_temple.temple_service_slot(temple_service_id,slot_code,label,start_time,end_time,capacity,status,sort) SELECT id,'afternoon','下午','13:00','17:00',10,'enabled',20 FROM askxuan_temple.temple_service WHERE temple_code={q(tc)} AND service_code={q(sc)};")
-  temples.append(dict(code=tc,belief=belief,tradition=tag,region=region,services=chosen))
+  temples.append(dict(code=tc,name=name,belief=belief,tradition=tag,region=region,services=chosen))
   for track,prefix in [('platform','DW'),('temple','DM')]:
    mc=f'{prefix}{n:03}';pos=positions[belief][local%len(positions[belief])]
    # Distribute each specialty at least three times without overloading profile cards.
@@ -91,6 +91,7 @@ for kind,prefix in [('temple','DT'),('master','DM'),('master','DW')]:
   insert('askxuan_temple.provider_directory_tag',['provider_kind','provider_code','tag_code'],[kind,f'{prefix}{n:03}',tag])
 rows+=['COMMIT;']
 # Validate the generator, and store the same matrix used for live acceptance.
+assert len({t['name'] for t in temples}) == len(temples), 'Demo temple names must be distinct'
 for tag in tags:
  group=tag['group'];value=tag['value']
  if group=='tradition':assert sum(t['tradition']==value for t in temples)>=3
