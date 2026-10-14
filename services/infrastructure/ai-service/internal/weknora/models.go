@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/askxuan/ai-service/internal/knowledge"
+	"github.com/askxuan/ai-service/internal/provider"
 	"math"
 	"net/url"
 	"strings"
@@ -39,6 +40,17 @@ type ModelInput struct {
 
 func (s *Service) Models(ctx context.Context) ([]EngineModel, error) {
 	return decode[[]EngineModel](s.Client.json(ctx, "GET", "/models", nil))
+}
+
+func (s *Service) ValidateModelType(ctx context.Context, id, kind string) error {
+	m, err := s.engineModel(ctx, id)
+	if err != nil {
+		return err
+	}
+	if m.Type != kind {
+		return ErrInput
+	}
+	return nil
 }
 func (s *Service) engineModel(ctx context.Context, id string) (EngineModel, error) {
 	if !validModelID(id) {
@@ -99,6 +111,9 @@ func (s *Service) SaveModel(ctx context.Context, id, actor string, v ModelInput)
 	// structured extraction; generic OpenAI settings otherwise omit Thinking=false.
 	if endpoint, _ := url.Parse(v.BaseURL); v.Type == "KnowledgeQA" && strings.EqualFold(endpoint.Hostname(), "api.deepseek.com") {
 		params["extra_config"] = map[string]string{"thinking_control": "thinking_type"}
+	}
+	if v.Type == "KnowledgeQA" && provider.IsVolcenginePlanURL(v.BaseURL) {
+		params["extra_config"] = map[string]string{"thinking_control": "none"}
 	}
 	if v.APIKey != "" {
 		params["api_key"] = v.APIKey
@@ -180,7 +195,11 @@ func (s *Service) debugModel(ctx context.Context, id, input string, documents []
 		return DebugResult{}, ErrInput
 	}
 	b, _ := json.Marshal(documents)
-	form := url.Values{"input": {input}, "documents": {string(b)}, "options": {`{"max_tokens":256,"thinking":false}`}}
+	options := `{"max_tokens":256,"thinking":false}`
+	if m, err := s.engineModel(ctx, id); err == nil && m.Type == "KnowledgeQA" && provider.IsVolcenginePlanURL(m.Parameters.BaseURL) {
+		options = `{"max_tokens":2048}`
+	}
+	form := url.Values{"input": {input}, "documents": {string(b)}, "options": {options}}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	v, e := decode[DebugResult](s.Client.call(ctx, "POST", "/models/"+id+"/debug", strings.NewReader(form.Encode()), "application/x-www-form-urlencoded"))

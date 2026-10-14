@@ -121,7 +121,9 @@ func (c *Catalog) List(ctx context.Context) (ModelList, error) {
 	now := time.Now()
 	if now.Sub(c.fetched) > 5*time.Minute && now.Sub(c.attempted) > 15*time.Second {
 		c.attempted = now
-		if upstream, ok := c.provider.(*OpenAICompatible); ok {
+		if upstream, ok := c.provider.(interface {
+			listModels(context.Context) ([]ModelOption, error)
+		}); ok {
 			list, err := upstream.listModels(ctx)
 			c.lastErr = err
 			if err == nil {

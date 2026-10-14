@@ -232,7 +232,7 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 	if e != nil {
 		return e
 	}
-	in.ReasoningFallback = provider.ReasoningFallbackOptions(s.Provider, req.ThinkingEnabled)
+	in.ReasoningFallback = provider.ReasoningFallbackOptions(s.Provider, req.ThinkingEnabled, req.Model)
 	bindReferences(s, &in, session.UserId, nil)
 	if in.WebSearchRequested && s.WebSearchEnabled && s.AIConfig.WebSearch.Ready() {
 		sessionSearch := s.AIConfig.WebSearch.NewSession()
