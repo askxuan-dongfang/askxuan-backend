@@ -99,8 +99,8 @@ func (m *intentionModel) UpdateTagStatus(ctx context.Context, code, status strin
 }
 
 func resourceUnion(code string) (string, []interface{}) {
-	serviceWhere := "ts.status='on_shelf' AND t.status='正常' AND st.status='enabled'"
-	masterWhere := "mst.status='enabled' AND st.status='enabled' AND m.auth_status='已认证' AND m.shelf_status='on_shelf' AND m.platform_status='normal' AND (m.manage_by='platform' OR (m.manage_by='temple' AND t.status='正常' AND ts.status='on_shelf'))"
+	serviceWhere := "ts.status='on_shelf' AND t.status='正常'"
+	masterWhere := "mst.status='enabled' AND m.auth_status='已认证' AND m.shelf_status='on_shelf' AND m.platform_status='normal' AND (m.manage_by='platform' OR (m.manage_by='temple' AND t.status='正常' AND ts.status='on_shelf'))"
 	var args []interface{}
 	if code != "" {
 		serviceWhere += " AND FIND_IN_SET(?, (" + TempleIntentionTagsSQL("ts") + "))>0"

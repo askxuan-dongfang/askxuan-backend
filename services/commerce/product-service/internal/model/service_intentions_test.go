@@ -8,6 +8,7 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -61,12 +62,22 @@ func TestIntentionMySQL(t *testing.T) {
 		`CREATE TABLE IF NOT EXISTS askxuan_product.service_intention_rule(service_code varchar(32),tag_code varchar(32),PRIMARY KEY(service_code,tag_code))`,
 		`CREATE TABLE IF NOT EXISTS askxuan_product.master_service_intention(master_code varchar(32),service_code varchar(32),tag_code varchar(32),PRIMARY KEY(master_code,service_code,tag_code))`,
 		`CREATE TABLE IF NOT EXISTS askxuan_temple.temple_service_intent_tag(temple_service_id bigint,tag_code varchar(32),PRIMARY KEY(temple_service_id,tag_code))`,
-		`CREATE TABLE IF NOT EXISTS askxuan_temple.service_type(code varchar(32) PRIMARY KEY,name varchar(128),status varchar(32))`,
+
 		`CREATE TABLE IF NOT EXISTS askxuan_temple.temple(code varchar(32) PRIMARY KEY,name varchar(128),status varchar(32),description text,cover_image text)`,
 		`CREATE TABLE IF NOT EXISTS askxuan_temple.temple_service(id bigint PRIMARY KEY,temple_code varchar(32),service_code varchar(32),service_name varchar(128),price decimal(10,2),status varchar(32),intent_mode varchar(16) DEFAULT 'inherit',update_time timestamp DEFAULT CURRENT_TIMESTAMP,UNIQUE(temple_code,service_code))`,
 		`CREATE TABLE IF NOT EXISTS askxuan_master.master(code varchar(32) PRIMARY KEY,dharma_name varchar(128),temple_code varchar(32),type varchar(64),sect varchar(64),avatar text,auth_status varchar(32),shelf_status varchar(32),platform_status varchar(32),manage_by varchar(32))`,
 		`CREATE TABLE IF NOT EXISTS askxuan_master.master_service_tag(id bigint AUTO_INCREMENT PRIMARY KEY,master_code varchar(32),service_code varchar(32),price decimal(10,2),status varchar(32),intent_mode varchar(16) DEFAULT 'inherit',update_time timestamp DEFAULT CURRENT_TIMESTAMP,UNIQUE(master_code,service_code))`,
 	}
+	// Import the real catalog DDL, so an invented fixture column cannot hide a production incompatibility.
+	initSQL, err := os.ReadFile("../../../../../db/init.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalogDDL := regexp.MustCompile("(?s)CREATE TABLE `service_type` \\(.*?;").FindString(string(initSQL))
+	if catalogDDL == "" {
+		t.Fatal("service catalog DDL not found")
+	}
+	exec(strings.Replace(catalogDDL, "CREATE TABLE `service_type`", "CREATE TABLE IF NOT EXISTS askxuan_temple.service_type", 1))
 	for _, q := range stmts {
 		exec(q)
 	}
@@ -75,7 +86,7 @@ func TestIntentionMySQL(t *testing.T) {
 	}
 	exec(`INSERT INTO askxuan_product.intent_tag VALUES('peace','enabled'),('wealth','enabled')`)
 	exec(`INSERT INTO askxuan_product.service_intention_rule VALUES('S001','peace'),('S002','peace'),('S003','peace')`)
-	exec(`INSERT INTO askxuan_temple.service_type VALUES('S001','祈福','enabled'),('S002','供灯','enabled'),('S003','上香','enabled')`)
+	exec(`INSERT INTO askxuan_temple.service_type(code,name,type) VALUES('S001','祈福','法事'),('S002','供灯','供养'),('S003','上香','供养')`)
 	exec(`INSERT INTO askxuan_temple.temple VALUES('T1','演示寺','正常','','')`)
 	exec(`INSERT INTO askxuan_temple.temple_service(id,temple_code,service_code,service_name,price,status) VALUES(1,'T1','S001','祈福',200,'on_shelf'),(2,'T1','S002','供灯',80,'on_shelf')`)
 	for _, track := range []string{"platform", "temple"} {
@@ -156,9 +167,12 @@ func TestIntentionMySQL(t *testing.T) {
 		exec(`UPDATE askxuan_product.intent_tag SET status='disabled' WHERE code='wealth'`)
 	})
 	t.Run("disabled service and provider are filtered", func(t *testing.T) {
-		exec(`UPDATE askxuan_temple.service_type SET status='disabled' WHERE code='S001'`)
+		exec(`UPDATE askxuan_temple.temple_service SET status='off_shelf' WHERE service_code='S001'`)
+		count("peace", 5)
+		exec(`UPDATE askxuan_master.master_service_tag SET status='disabled' WHERE service_code='S001'`)
 		count("peace", 4)
-		exec(`UPDATE askxuan_temple.service_type SET status='enabled'`)
+		exec(`UPDATE askxuan_temple.temple_service SET status='on_shelf'`)
+		exec(`UPDATE askxuan_master.master_service_tag SET status='enabled'`)
 		exec(`UPDATE askxuan_temple.temple SET status='下架'`)
 		count("peace", 3)
 		exec(`UPDATE askxuan_temple.temple SET status='正常'`)
