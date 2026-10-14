@@ -67,6 +67,46 @@ func TestModelEndpointRestrictions(t *testing.T) {
 	}
 }
 
+func TestLanguageConnectionProbeUsesMinimalPromptAndPlanWireOptions(t *testing.T) {
+	for _, endpoint := range []string{"https://api.deepseek.com", "https://ark.cn-beijing.volces.com/api/plan/v3"} {
+		t.Run(endpoint, func(t *testing.T) {
+			called := false
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet {
+					json.NewEncoder(w).Encode(map[string]any{"success": true, "data": map[string]any{"type": "KnowledgeQA", "parameters": map[string]any{"base_url": endpoint}}})
+					return
+				}
+				called = true
+				if err := r.ParseForm(); err != nil {
+					t.Error(err)
+					return
+				}
+				if r.Form.Get("input") != "连通性测试，请只回复 OK。" || r.Form.Get("documents") != "[]" {
+					t.Error("connection check requested a substantive reasoning task")
+				}
+				var options map[string]any
+				if err := json.Unmarshal([]byte(r.Form.Get("options")), &options); err != nil {
+					t.Error(err)
+					return
+				}
+				if strings.Contains(endpoint, "/plan/") {
+					if _, found := options["thinking"]; found || options["max_tokens"] != float64(2048) {
+						t.Error("Agent Plan probe used unsupported thinking control or insufficient output allowance")
+					}
+				}
+				w.Write([]byte(`{"success":true,"data":{"ok":true,"raw_response":{"answer":"OK"}}}`))
+			}))
+			defer srv.Close()
+			c, _ := New(srv.URL, "key", "e")
+			s := &Service{Client: c}
+			v, err := s.TestModel(context.Background(), "qa")
+			if err != nil || !v.OK || !called || v.Raw != nil {
+				t.Fatalf("invalid probe result: %+v %v", v, err)
+			}
+		})
+	}
+}
+
 func TestSummaryBindingPreservesParserAndUsesOfficialEndpoint(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/initialization/config/"+kbID {

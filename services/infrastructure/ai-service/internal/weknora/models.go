@@ -209,7 +209,19 @@ func (s *Service) debugModel(ctx context.Context, id, input string, documents []
 	return v, e
 }
 func (s *Service) TestModel(ctx context.Context, id string) (DebugResult, error) {
-	v, e := s.debugModel(ctx, id, "如何核对文献出处？", []string{"引用需要注明文献名称和原文位置。", "今天晚餐吃什么。"})
+	m, e := s.engineModel(ctx, id)
+	if e != nil {
+		return DebugResult{}, e
+	}
+	input := "如何核对文献出处？"
+	documents := []string{"引用需要注明文献名称和原文位置。", "今天晚餐吃什么。"}
+	if m.Type == "KnowledgeQA" {
+		// A connection check must not ask a reasoning model to solve a task.
+		// Agent Plan may ignore attempts to disable thinking; keep the response bounded instead.
+		input = "连通性测试，请只回复 OK。"
+		documents = []string{}
+	}
+	v, e := s.debugModel(ctx, id, input, documents)
 	v.Raw = nil
 	return v, e
 }
