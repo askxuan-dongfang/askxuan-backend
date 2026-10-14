@@ -63,8 +63,11 @@ type Public struct {
 	History   []Audit `json:"history"`
 }
 type record struct {
-	WebSearchFallbackAPIKey string `json:"webSearchFallbackSecret,omitempty"`
-	WebSearchAPIKey         string `json:"webSearchSecret,omitempty"`
+	Models                  []modelRecord     `json:"models,omitempty"`
+	ModelUses               ModelUses         `json:"modelUses,omitempty"`
+	KnowledgeLinks          map[string]string `json:"knowledgeLinks,omitempty"`
+	WebSearchFallbackAPIKey string            `json:"webSearchFallbackSecret,omitempty"`
+	WebSearchAPIKey         string            `json:"webSearchSecret,omitempty"`
 	Values
 	APIKey   string  `json:"secret"`
 	Revision int64   `json:"revision"`
@@ -76,12 +79,13 @@ type Snapshot struct {
 	Models   *provider.Catalog
 }
 type Manager struct {
-	mu       sync.RWMutex
-	original config.AIConf
-	active   *Snapshot
-	record   record
-	store    *store
-	build    func(record) (*Snapshot, error)
+	mu           sync.RWMutex
+	original     config.AIConf
+	active       *Snapshot
+	record       record
+	store        *store
+	build        func(record) (*Snapshot, error)
+	modelBuilder func(modelRecord) (provider.Provider, provider.ModelOption, error)
 }
 
 func New(initial config.AIConf, dir, key string) (*Manager, error) {
@@ -96,6 +100,7 @@ func New(initial config.AIConf, dir, key string) (*Manager, error) {
 	r := record{WebSearchFallbackAPIKey: initial.WebSearch.FallbackAPIKey, WebSearchAPIKey: initial.WebSearch.APIKey, Values: Values{WebSearchFallbackProvider: initial.WebSearch.FallbackProvider, WebSearchOptions: &initial.WebSearch.Options, WebSearchProvider: initial.WebSearch.Provider, Provider: kind, BaseURL: initial.BaseURL, DefaultModel: initial.Model, VisionModel: initial.VisionModel, ThinkingEnabled: initial.ThinkingEnabled, ReasoningEffort: initial.ReasoningEffort, MaxOutputTokens: initial.MaxOutputTokens, ComplexOutputTokens: initial.ComplexOutputTokens, ContextWindow: initial.ContextWindow, MaxInputChars: initial.MaxInputChars, TaskTimeoutSeconds: initial.TaskTimeoutSeconds}, APIKey: initial.APIKey, History: []Audit{}}
 	m := &Manager{original: initial, store: st}
 	m.build = m.buildSnapshot
+	m.modelBuilder = buildLanguageModel
 	if st != nil {
 		saved, e := st.read()
 		if e != nil {
@@ -261,7 +266,7 @@ func (m *Manager) prepare(req Update) (record, error) {
 		return record{}, err
 	}
 	req.WebSearchOptions = &options
-	return record{Values: req.Values, APIKey: key, WebSearchAPIKey: searchKey, WebSearchFallbackAPIKey: fallbackKey, Revision: old.Revision}, nil
+	return record{Values: req.Values, APIKey: key, WebSearchAPIKey: searchKey, WebSearchFallbackAPIKey: fallbackKey, Revision: old.Revision, Models: append([]modelRecord(nil), old.Models...), ModelUses: old.ModelUses, KnowledgeLinks: copyLinks(old.KnowledgeLinks)}, nil
 }
 func (m *Manager) buildSnapshot(r record) (*Snapshot, error) {
 	c := m.original
@@ -303,7 +308,8 @@ func (m *Manager) buildSnapshot(r record) (*Snapshot, error) {
 		c.InputCostPerMillion = 0
 		c.OutputCostPerMillion = 0
 	}
-	return &Snapshot{Config: c, Provider: p, Models: provider.NewCatalogWithAllowed(p, r.EnabledModels)}, nil
+	snap := &Snapshot{Config: c, Provider: p, Models: provider.NewCatalogWithAllowed(p, r.EnabledModels)}
+	return m.withModelLibrary(snap, r)
 }
 func (m *Manager) check(ctx context.Context, r record, strict bool) (*Snapshot, provider.ModelList, error) {
 	r.Values = normalized(r.Values)
@@ -312,12 +318,13 @@ func (m *Manager) check(ctx context.Context, r record, strict bool) (*Snapshot, 
 		return nil, provider.ModelList{}, errors.New("无法创建模型连接")
 	}
 	// Discovery is unfiltered, so administrators can see all upstream models.
-	list, err := provider.NewCatalog(snap.Provider).List(ctx)
+	primary := provider.PrimaryProvider(snap.Provider)
+	list, err := provider.NewCatalog(primary).List(ctx)
 	if err != nil {
 		return nil, list, errors.New("连接测试失败，请检查地址、密钥和服务状态")
 	}
 	if r.Provider == "volcengine" {
-		if err := probeVolcengineModels(ctx, snap.Provider, list.List, provider.IsVolcenginePlanURL(snap.Config.BaseURL)); err != nil {
+		if err := probeVolcengineModels(ctx, primary, list.List, provider.IsVolcenginePlanURL(r.BaseURL)); err != nil {
 			return nil, list, err
 		}
 	}

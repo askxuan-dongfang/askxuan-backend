@@ -11,6 +11,11 @@ import (
 // NewEinoModel adapts an immutable provider snapshot without exporting its key or
 // replacing its secure HTTP client. Both live tasks and admin evaluations use this adapter.
 func NewEinoModel(ctx context.Context, source Provider, req Request) (model.BaseChatModel, error) {
+	var err error
+	source, req, err = ResolveProvider(ctx, source, req)
+	if err != nil {
+		return nil, err
+	}
 	p, ok := source.(*OpenAICompatible)
 	if !ok {
 		return nil, errors.New("Eino requires an OpenAI-compatible provider")
@@ -41,7 +46,18 @@ func NewEinoModel(ctx context.Context, source Provider, req Request) (model.Base
 
 // ReasoningFallbackOptions permits one bounded non-thinking retry on adapters
 // that explicitly support the thinking parameter. It never increases token limits.
-func ReasoningFallbackOptions(source Provider, enabled bool) []model.Option {
+func ReasoningFallbackOptions(source Provider, enabled bool, selected ...string) []model.Option {
+	if r, ok := source.(*Registry); ok {
+		id := r.Model()
+		if len(selected) > 0 && selected[0] != "" {
+			id = selected[0]
+		}
+		if route, found := r.routes[id]; found {
+			source = route.Provider
+		} else {
+			source = r.primary
+		}
+	}
 	p, ok := source.(*OpenAICompatible)
 	if !enabled || !ok || p.standardParameters || p.modelDefaultReasoning {
 		return nil

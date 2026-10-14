@@ -19,7 +19,7 @@ services:
       LOCAL_STORAGE_BASE_DIR: /data/files
       DOCREADER_ADDR: docreader:50051
       BUILTIN_MODELS_CONFIG: /app/config/builtin_models.yaml
-      SSRF_WHITELIST: embedding,rerank,api.deepseek.com
+      SSRF_WHITELIST: embedding,rerank,api.deepseek.com,ark.cn-beijing.volces.com
       NEO4J_ENABLE: "true"
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USERNAME: neo4j

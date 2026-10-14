@@ -16,6 +16,7 @@ import (
 )
 
 func registerProviderSettings(server *rest.Server, s *svc.ServiceContext) {
+	registerModelLibrary(server, s)
 	for _, op := range []struct{ method, path, action string }{{"GET", "/provider", "get"}, {"PUT", "/provider", "save"}, {"POST", "/provider/test", "test"}, {"POST", "/provider/web-search/test", "search-test"}} {
 		server.AddRoute(rest.Route{Method: op.method, Path: "/api/v1/ai/admin" + op.path, Handler: providerSettingsHandler(s, op.action)})
 	}

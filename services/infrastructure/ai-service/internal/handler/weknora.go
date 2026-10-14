@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/askxuan/ai-service/internal/knowledge"
+	"github.com/askxuan/ai-service/internal/settings"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/weknora"
 	"github.com/askxuan/common"
@@ -57,7 +58,7 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 			}
 			if errors.Is(e, weknora.ErrInput) {
 				common.JsonError(w, common.NewBizError(40001, e.Error()))
-			} else if errors.Is(e, weknora.ErrConflict) {
+			} else if errors.Is(e, weknora.ErrConflict) || errors.Is(e, settings.ErrConflict) {
 				common.JsonError(w, common.NewBizError(40901, e.Error()))
 			} else {
 				common.JsonError(w, common.NewBizError(50301, "知识操作失败，请检查引擎、索引及数据库状态"))
@@ -86,6 +87,21 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 		}
 		ctx := r.Context()
 		wk := s.WeKnora
+		documentModel := func(selected string) (string, error) {
+			if selected == "" {
+				return selected, nil
+			}
+			var revision int64
+			if s.Settings != nil {
+				_, revision = s.Settings.ModelUses()
+			}
+			id, _, err := resolveDocumentModel(s, r, selected, actor, revision)
+			return id, err
+		}
+		if (action == "model_update" || action == "model_delete") && s.Settings != nil && s.Settings.KnowledgeModelInUse(path.Model) {
+			finish(nil, weknora.ErrConflict)
+			return
+		}
 		switch action {
 		case "models":
 			v, e := wk.Models(ctx)
@@ -110,12 +126,26 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 			if !read(&v) {
 				return
 			}
+			if v.Enabled {
+				v.Model, e = documentModel(v.Model)
+				if e != nil {
+					finish(nil, e)
+					return
+				}
+			}
 			finish(nil, wk.ConfigureGraph(ctx, path.KB, actor, v))
 
 		case "wiki_config":
 			var v weknora.WikiSettings
 			if !read(&v) {
 				return
+			}
+			if v.Enabled {
+				v.Model, e = documentModel(v.Model)
+				if e != nil {
+					finish(nil, e)
+					return
+				}
 			}
 			finish(nil, wk.ConfigureWiki(ctx, path.KB, actor, v))
 		case "wiki_models":
@@ -125,8 +155,13 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 			v, e := wk.WikiStatus(ctx, path.KB)
 			finish(v, e)
 		case "wiki_write":
- var in weknora.WikiEdit;if !read(&in){return};v,e:=wk.WikiWrite(ctx,path.KB,path.Kind,actor,in);finish(v,e)
- case "wiki_read":
+			var in weknora.WikiEdit
+			if !read(&in) {
+				return
+			}
+			v, e := wk.WikiWrite(ctx, path.KB, path.Kind, actor, in)
+			finish(v, e)
+		case "wiki_read":
 			v, e := wk.WikiRead(ctx, path.KB, path.Kind, r.URL.Query().Get("slug"), r.URL.Query().Get("query"), page)
 			finish(v, e)
 		case "list":
@@ -140,6 +175,11 @@ func weknoraHandler(s *svc.ServiceContext, action string) http.HandlerFunc {
 				Summary     string `json:"summaryModel"`
 			}
 			if !read(&v) {
+				return
+			}
+			v.Summary, e = documentModel(v.Summary)
+			if e != nil {
+				finish(nil, e)
 				return
 			}
 			out, e := wk.CreateBaseModels(ctx, v.Name, v.Description, actor, v.Embedding, v.Summary)
