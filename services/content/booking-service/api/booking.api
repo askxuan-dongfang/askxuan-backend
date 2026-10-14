@@ -32,6 +32,15 @@ type (
         CreatedAt     string  `json:"createdAt"`     // 创建时间
     }
 
+    BookingEligibilityReq {
+        MasterId string `form:"masterId"`
+    }
+    BookingEligibilityResp {
+        MasterId string `json:"masterId"`
+        Eligible bool `json:"eligible"`
+        Requirement string `json:"requirement"`
+    }
+
     CreateReq {
         RequestId      string  `json:"requestId,optional"`
         UserId         string  `json:"userId"`
@@ -345,6 +354,9 @@ type (
     prefix: /api/v1/bookings
 )
 service booking-service {
+    @handler bookingEligibility
+    get /eligibility (BookingEligibilityReq) returns (BookingEligibilityResp)
+
     @handler availability
     get /availability (AvailabilityReq) returns (AvailabilityResp)
 

@@ -40,7 +40,8 @@ func TestCreatePricedOrderIgnoresSnapshotPrice(t *testing.T) {
 	mock.ExpectQuery("SELECT config_value FROM diy_config").WillReturnRows(sqlmock.NewRows([]string{"config_value"}).AddRow("0"))
 	mock.ExpectExec("INSERT INTO askxuan_diy.diy_order").WillReturnResult(sqlmock.NewResult(11, 1))
 	mock.ExpectExec("INSERT INTO askxuan_diy.diy_order_item").WillReturnResult(sqlmock.NewResult(21, 1))
-	mock.ExpectCommit()
+	mock.ExpectQuery("SELECT enabled,kind,rate_bps").WillReturnRows(sqlmock.NewRows([]string{"enabled","kind","rate_bps","cap_cents","wait_days","min_withdraw_cents","coupon_id","revision"}).AddRow(false,"cash",500,2000,7,100,0,1))
+ mock.ExpectCommit()
 
 	result, err := CreatePricedOrder(context.Background(), conn, NewDiyOrderModel(conn), NewDiyOrderItemModel(conn), PricedOrderInput{
 		UserId: "buyer", Design: &DiyDesign{Id: 9, UserId: "creator", TotalPrice: 2},

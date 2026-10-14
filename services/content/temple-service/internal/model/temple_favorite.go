@@ -24,16 +24,17 @@ func (m *defaultTempleModel) SetTempleFavorite(ctx context.Context, userId int64
 // ListFavoriteTemples 查询用户收藏的寺院列表（收藏时间倒序，上限 50）
 func (m *defaultTempleModel) ListFavoriteTemples(ctx context.Context, userId int64) ([]types.Temple, error) {
 	var rows []Temple
-	query := fmt.Sprintf(`SELECT t.id, t.code, t.name, t.region, t.type, t.belief_code, t.sect, t.status, t.address, t.cover_image, t.rating, t.description, t.create_time, t.update_time FROM %s t JOIN %s f ON f.temple_code = t.code WHERE f.user_id = ? ORDER BY f.create_time DESC, f.temple_code DESC LIMIT 50 OFFSET ?`, templeTable, templeFavoriteTable)
+	query := fmt.Sprintf(`SELECT t.id, t.code, t.name, t.region, t.type, t.belief_code, t.sect, t.status, t.address, t.cover_image, t.rating, t.description, t.create_time, t.update_time, `+templeRegionColumns("t.code")+` FROM %s t JOIN %s f ON f.temple_code = t.code WHERE f.user_id = ? ORDER BY f.create_time DESC, f.temple_code DESC LIMIT 50 OFFSET ?`, templeTable, templeFavoriteTable)
 	if err := m.conn.QueryRowsCtx(ctx, &rows, query, userId, favoriteOffset(ctx)); err != nil {
 		return nil, err
 	}
 	list := make([]types.Temple, 0, len(rows))
 	for i := range rows {
 		list = append(list, types.Temple{
-			Id:           rows[i].Code,
-			Name:         rows[i].Name,
-			Region:       rows[i].Region,
+			Id:         rows[i].Code,
+			Name:       rows[i].Name,
+			Region:     rows[i].Region,
+			RegionCode: rows[i].RegionCode, RegionName: rows[i].RegionName,
 			Type:         rows[i].Type,
 			BeliefCode:   rows[i].BeliefCode,
 			Sect:         rows[i].Sect,

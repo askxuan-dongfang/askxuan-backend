@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -68,6 +69,9 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 		if req.ManualPayment {
 			return responseFromBooking(existing), nil
 		}
+		if err := requireValidConsultation(l.ctx, l.svcCtx, userIDStr, existing.MasterId); err != nil {
+			return nil, err
+		}
 		return l.autoPay(existing), nil
 	}
 
@@ -76,29 +80,19 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 	if err != nil {
 		return nil, common.ErrMasterNotFound
 	}
+	if master.ManageBy != "platform" {
+		return nil, common.NewBizError(40312, "寺院师傅请通过寺院排期预约，费用包含寺院服务费与师傅执行费")
+	}
 
 	// 2. 服务标签校验：大师提供该服务且已上架
-	var tagPrice float64
-	tagFound := false
-	for _, t := range master.ServiceTags {
-		if t.ServiceCode == req.ServiceCode && (t.Status == "" || t.Status == "enabled") {
-			tagPrice = t.Price
-			tagFound = true
-			break
-		}
-	}
+	tagPrice, tagFound := masterServicePrice(master, req.ServiceCode)
 	if !tagFound {
 		return nil, common.ErrConsultationUnavailable
 	}
 
-	// 3. 先付费咨询前置条件
-	consulted, err := l.svcCtx.ConsultationModel.HasPaidConsultation(l.ctx, userIDStr, masterCode)
-	if err != nil {
-		l.Errorf("查询付费咨询记录失败: %v", err)
-		return nil, common.ErrSystem
-	}
-	if !consulted {
-		return nil, common.NewBizError(40415, "请先完成付费咨询后再预约服务")
+	// Both master booking paths require a currently valid paid consultation.
+	if err := requireValidConsultation(l.ctx, l.svcCtx, userIDStr, masterCode); err != nil {
+		return nil, err
 	}
 
 	// 4. 创建直约单（不占寺院时段库存）
@@ -133,6 +127,15 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 		return responseFromBooking(created), nil
 	}
 	return l.autoPay(created), nil
+}
+
+func masterServicePrice(master *masterDetail, serviceCode string) (float64, bool) {
+	for _, tag := range master.ServiceTags {
+		if tag.ServiceCode == serviceCode && (tag.Status == "" || tag.Status == "enabled") && tag.Price >= 0 && !math.IsNaN(tag.Price) && !math.IsInf(tag.Price, 0) {
+			return tag.Price, true
+		}
+	}
+	return 0, false
 }
 
 func (l *DirectBookingLogic) autoPay(b *model.Booking) *types.CreateResp {

@@ -1,0 +1,4290 @@
+{
+  "tags": [
+    {
+      "code": "chan",
+      "group": "tradition",
+      "name": "禅宗",
+      "value": "chan",
+      "sort": 10,
+      "status": "enabled"
+    },
+    {
+      "code": "pure_land",
+      "group": "tradition",
+      "name": "净土宗",
+      "value": "pure_land",
+      "sort": 20,
+      "status": "enabled"
+    },
+    {
+      "code": "tiantai",
+      "group": "tradition",
+      "name": "天台宗",
+      "value": "tiantai",
+      "sort": 30,
+      "status": "enabled"
+    },
+    {
+      "code": "huayan",
+      "group": "tradition",
+      "name": "华严宗",
+      "value": "huayan",
+      "sort": 40,
+      "status": "enabled"
+    },
+    {
+      "code": "gelug",
+      "group": "tradition",
+      "name": "格鲁派",
+      "value": "gelug",
+      "sort": 50,
+      "status": "enabled"
+    },
+    {
+      "code": "nyingma",
+      "group": "tradition",
+      "name": "宁玛派",
+      "value": "nyingma",
+      "sort": 60,
+      "status": "enabled"
+    },
+    {
+      "code": "kagyu",
+      "group": "tradition",
+      "name": "噶举派",
+      "value": "kagyu",
+      "sort": 70,
+      "status": "enabled"
+    },
+    {
+      "code": "sakya",
+      "group": "tradition",
+      "name": "萨迦派",
+      "value": "sakya",
+      "sort": 80,
+      "status": "enabled"
+    },
+    {
+      "code": "theravada",
+      "group": "tradition",
+      "name": "上座部传统",
+      "value": "theravada",
+      "sort": 90,
+      "status": "enabled"
+    },
+    {
+      "code": "quanzhen",
+      "group": "tradition",
+      "name": "全真派",
+      "value": "quanzhen",
+      "sort": 100,
+      "status": "enabled"
+    },
+    {
+      "code": "zhengyi",
+      "group": "tradition",
+      "name": "正一派",
+      "value": "zhengyi",
+      "sort": 110,
+      "status": "enabled"
+    },
+    {
+      "code": "mazu",
+      "group": "tradition",
+      "name": "妈祖 / 天后",
+      "value": "mazu",
+      "sort": 120,
+      "status": "enabled"
+    },
+    {
+      "code": "guandi",
+      "group": "tradition",
+      "name": "关帝信俗",
+      "value": "guandi",
+      "sort": 130,
+      "status": "enabled"
+    },
+    {
+      "code": "chenghuang",
+      "group": "tradition",
+      "name": "城隍信俗",
+      "value": "chenghuang",
+      "sort": 140,
+      "status": "enabled"
+    },
+    {
+      "code": "wangye",
+      "group": "tradition",
+      "name": "王爷信俗",
+      "value": "wangye",
+      "sort": 150,
+      "status": "enabled"
+    },
+    {
+      "code": "fude",
+      "group": "tradition",
+      "name": "福德正神",
+      "value": "fude",
+      "sort": 160,
+      "status": "enabled"
+    },
+    {
+      "code": "baosheng",
+      "group": "tradition",
+      "name": "保生大帝",
+      "value": "baosheng",
+      "sort": 170,
+      "status": "enabled"
+    },
+    {
+      "code": "nezha",
+      "group": "tradition",
+      "name": "哪吒信俗",
+      "value": "nezha",
+      "sort": 180,
+      "status": "enabled"
+    },
+    {
+      "code": "hung_shing",
+      "group": "tradition",
+      "name": "洪圣信俗",
+      "value": "hung_shing",
+      "sort": 190,
+      "status": "enabled"
+    },
+    {
+      "code": "wong_tai_sin",
+      "group": "tradition",
+      "name": "黄大仙信俗",
+      "value": "wong_tai_sin",
+      "sort": 200,
+      "status": "enabled"
+    },
+    {
+      "code": "nine_emperors",
+      "group": "tradition",
+      "name": "九皇爷信俗",
+      "value": "nine_emperors",
+      "sort": 210,
+      "status": "enabled"
+    },
+    {
+      "code": "tua_pek_kong",
+      "group": "tradition",
+      "name": "大伯公信俗",
+      "value": "tua_pek_kong",
+      "sort": 220,
+      "status": "enabled"
+    },
+    {
+      "code": "datuk_gong",
+      "group": "tradition",
+      "name": "拿督公信俗",
+      "value": "datuk_gong",
+      "sort": 230,
+      "status": "enabled"
+    },
+    {
+      "code": "sanshan",
+      "group": "tradition",
+      "name": "三山国王",
+      "value": "sanshan",
+      "sort": 240,
+      "status": "enabled"
+    },
+    {
+      "code": "position_01",
+      "group": "position",
+      "name": "方丈",
+      "value": "方丈",
+      "sort": 10,
+      "status": "enabled"
+    },
+    {
+      "code": "position_02",
+      "group": "position",
+      "name": "客堂法师",
+      "value": "客堂法师",
+      "sort": 20,
+      "status": "enabled"
+    },
+    {
+      "code": "position_03",
+      "group": "position",
+      "name": "禅修讲师",
+      "value": "禅修讲师",
+      "sort": 30,
+      "status": "enabled"
+    },
+    {
+      "code": "position_04",
+      "group": "position",
+      "name": "独立居士",
+      "value": "独立居士",
+      "sort": 40,
+      "status": "enabled"
+    },
+    {
+      "code": "position_05",
+      "group": "position",
+      "name": "讲师",
+      "value": "讲师",
+      "sort": 50,
+      "status": "enabled"
+    },
+    {
+      "code": "position_06",
+      "group": "position",
+      "name": "独立道长",
+      "value": "独立道长",
+      "sort": 60,
+      "status": "enabled"
+    },
+    {
+      "code": "position_07",
+      "group": "position",
+      "name": "经师",
+      "value": "经师",
+      "sort": 70,
+      "status": "enabled"
+    },
+    {
+      "code": "position_08",
+      "group": "position",
+      "name": "民俗文化顾问",
+      "value": "民俗文化顾问",
+      "sort": 80,
+      "status": "enabled"
+    },
+    {
+      "code": "position_09",
+      "group": "position",
+      "name": "文化讲师",
+      "value": "文化讲师",
+      "sort": 90,
+      "status": "enabled"
+    },
+    {
+      "code": "position_10",
+      "group": "position",
+      "name": "命理师",
+      "value": "命理师",
+      "sort": 100,
+      "status": "enabled"
+    },
+    {
+      "code": "position_11",
+      "group": "position",
+      "name": "占卜师",
+      "value": "占卜师",
+      "sort": 110,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_01",
+      "group": "specialty",
+      "name": "禅修入门",
+      "value": "禅修入门",
+      "sort": 10,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_02",
+      "group": "specialty",
+      "name": "佛教文化",
+      "value": "佛教文化",
+      "sort": 20,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_03",
+      "group": "specialty",
+      "name": "静心禅修",
+      "value": "静心禅修",
+      "sort": 30,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_04",
+      "group": "specialty",
+      "name": "禅修指导",
+      "value": "禅修指导",
+      "sort": 40,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_05",
+      "group": "specialty",
+      "name": "少林文化",
+      "value": "少林文化",
+      "sort": 50,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_06",
+      "group": "specialty",
+      "name": "静心课程",
+      "value": "静心课程",
+      "sort": 60,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_07",
+      "group": "specialty",
+      "name": "地藏文化",
+      "value": "地藏文化",
+      "sort": 70,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_08",
+      "group": "specialty",
+      "name": "佛教礼仪",
+      "value": "佛教礼仪",
+      "sort": 80,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_09",
+      "group": "specialty",
+      "name": "静心交流",
+      "value": "静心交流",
+      "sort": 90,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_10",
+      "group": "specialty",
+      "name": "寺院历史",
+      "value": "寺院历史",
+      "sort": 100,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_11",
+      "group": "specialty",
+      "name": "祈愿礼仪",
+      "value": "祈愿礼仪",
+      "sort": 110,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_12",
+      "group": "specialty",
+      "name": "建筑讲解",
+      "value": "建筑讲解",
+      "sort": 120,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_13",
+      "group": "specialty",
+      "name": "藏传佛教文化",
+      "value": "藏传佛教文化",
+      "sort": 130,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_14",
+      "group": "specialty",
+      "name": "藏文化交流",
+      "value": "藏文化交流",
+      "sort": 140,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_15",
+      "group": "specialty",
+      "name": "南传佛教文化",
+      "value": "南传佛教文化",
+      "sort": 150,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_16",
+      "group": "specialty",
+      "name": "正念练习",
+      "value": "正念练习",
+      "sort": 160,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_17",
+      "group": "specialty",
+      "name": "道教文化",
+      "value": "道教文化",
+      "sort": 170,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_18",
+      "group": "specialty",
+      "name": "科仪讲解",
+      "value": "科仪讲解",
+      "sort": 180,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_19",
+      "group": "specialty",
+      "name": "养生导引",
+      "value": "养生导引",
+      "sort": 190,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_20",
+      "group": "specialty",
+      "name": "武当文化",
+      "value": "武当文化",
+      "sort": 200,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_21",
+      "group": "specialty",
+      "name": "太极养生",
+      "value": "太极养生",
+      "sort": 210,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_22",
+      "group": "specialty",
+      "name": "道教礼仪",
+      "value": "道教礼仪",
+      "sort": 220,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_23",
+      "group": "specialty",
+      "name": "青城道教文化",
+      "value": "青城道教文化",
+      "sort": 230,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_24",
+      "group": "specialty",
+      "name": "礼仪讲解",
+      "value": "礼仪讲解",
+      "sort": 240,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_25",
+      "group": "specialty",
+      "name": "妈祖文化",
+      "value": "妈祖文化",
+      "sort": 250,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_26",
+      "group": "specialty",
+      "name": "民俗礼仪",
+      "value": "民俗礼仪",
+      "sort": 260,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_27",
+      "group": "specialty",
+      "name": "海洋文化",
+      "value": "海洋文化",
+      "sort": 270,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_28",
+      "group": "specialty",
+      "name": "传统礼俗",
+      "value": "传统礼俗",
+      "sort": 280,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_29",
+      "group": "specialty",
+      "name": "民俗祈愿",
+      "value": "民俗祈愿",
+      "sort": 290,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_30",
+      "group": "specialty",
+      "name": "紫微斗数",
+      "value": "紫微斗数",
+      "sort": 300,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_31",
+      "group": "specialty",
+      "name": "奇门遁甲",
+      "value": "奇门遁甲",
+      "sort": 310,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_32",
+      "group": "specialty",
+      "name": "八字命理",
+      "value": "八字命理",
+      "sort": 320,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_33",
+      "group": "specialty",
+      "name": "风水堪舆",
+      "value": "风水堪舆",
+      "sort": 330,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_34",
+      "group": "specialty",
+      "name": "姻缘测算",
+      "value": "姻缘测算",
+      "sort": 340,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_35",
+      "group": "specialty",
+      "name": "六爻梅花",
+      "value": "六爻梅花",
+      "sort": 350,
+      "status": "enabled"
+    },
+    {
+      "code": "specialty_36",
+      "group": "specialty",
+      "name": "塔罗牌",
+      "value": "塔罗牌",
+      "sort": 360,
+      "status": "enabled"
+    }
+  ],
+  "temples": [
+    {
+      "code": "DT001",
+      "belief": "han_buddhism",
+      "tradition": "chan",
+      "region": "mainland",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DT002",
+      "belief": "han_buddhism",
+      "tradition": "chan",
+      "region": "hong_kong",
+      "services": [
+        4,
+        5,
+        6,
+        8
+      ]
+    },
+    {
+      "code": "DT003",
+      "belief": "han_buddhism",
+      "tradition": "chan",
+      "region": "taiwan",
+      "services": [
+        8,
+        10,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DT004",
+      "belief": "han_buddhism",
+      "tradition": "pure_land",
+      "region": "mainland",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DT005",
+      "belief": "han_buddhism",
+      "tradition": "pure_land",
+      "region": "macau",
+      "services": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "code": "DT006",
+      "belief": "han_buddhism",
+      "tradition": "pure_land",
+      "region": "southeast_asia",
+      "services": [
+        6,
+        8,
+        10,
+        12
+      ]
+    },
+    {
+      "code": "DT007",
+      "belief": "han_buddhism",
+      "tradition": "tiantai",
+      "region": "mainland",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DT008",
+      "belief": "han_buddhism",
+      "tradition": "tiantai",
+      "region": "hong_kong",
+      "services": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "code": "DT009",
+      "belief": "han_buddhism",
+      "tradition": "tiantai",
+      "region": "taiwan",
+      "services": [
+        5,
+        6,
+        8,
+        10
+      ]
+    },
+    {
+      "code": "DT010",
+      "belief": "han_buddhism",
+      "tradition": "huayan",
+      "region": "mainland",
+      "services": [
+        10,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DT011",
+      "belief": "han_buddhism",
+      "tradition": "huayan",
+      "region": "taiwan",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DT012",
+      "belief": "han_buddhism",
+      "tradition": "huayan",
+      "region": "southeast_asia",
+      "services": [
+        4,
+        5,
+        6,
+        8
+      ]
+    },
+    {
+      "code": "DT013",
+      "belief": "tibetan_buddhism",
+      "tradition": "gelug",
+      "region": "mainland",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DT014",
+      "belief": "tibetan_buddhism",
+      "tradition": "gelug",
+      "region": "taiwan",
+      "services": [
+        4,
+        5,
+        6,
+        12
+      ]
+    },
+    {
+      "code": "DT015",
+      "belief": "tibetan_buddhism",
+      "tradition": "gelug",
+      "region": "southeast_asia",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DT016",
+      "belief": "tibetan_buddhism",
+      "tradition": "nyingma",
+      "region": "mainland",
+      "services": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "code": "DT017",
+      "belief": "tibetan_buddhism",
+      "tradition": "nyingma",
+      "region": "hong_kong",
+      "services": [
+        5,
+        6,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DT018",
+      "belief": "tibetan_buddhism",
+      "tradition": "nyingma",
+      "region": "taiwan",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DT019",
+      "belief": "tibetan_buddhism",
+      "tradition": "kagyu",
+      "region": "mainland",
+      "services": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "code": "DT020",
+      "belief": "tibetan_buddhism",
+      "tradition": "kagyu",
+      "region": "hong_kong",
+      "services": [
+        6,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DT021",
+      "belief": "tibetan_buddhism",
+      "tradition": "kagyu",
+      "region": "southeast_asia",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DT022",
+      "belief": "tibetan_buddhism",
+      "tradition": "sakya",
+      "region": "mainland",
+      "services": [
+        4,
+        5,
+        6,
+        12
+      ]
+    },
+    {
+      "code": "DT023",
+      "belief": "tibetan_buddhism",
+      "tradition": "sakya",
+      "region": "taiwan",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DT024",
+      "belief": "tibetan_buddhism",
+      "tradition": "sakya",
+      "region": "southeast_asia",
+      "services": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "code": "DT025",
+      "belief": "theravada_buddhism",
+      "tradition": "theravada",
+      "region": "mainland",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DT026",
+      "belief": "theravada_buddhism",
+      "tradition": "theravada",
+      "region": "southeast_asia",
+      "services": [
+        4,
+        12,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DT027",
+      "belief": "theravada_buddhism",
+      "tradition": "theravada",
+      "region": "southeast_asia",
+      "services": [
+        2,
+        3,
+        4,
+        12
+      ]
+    },
+    {
+      "code": "DT028",
+      "belief": "daoism",
+      "tradition": "quanzhen",
+      "region": "mainland",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DT029",
+      "belief": "daoism",
+      "tradition": "quanzhen",
+      "region": "hong_kong",
+      "services": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "code": "DT030",
+      "belief": "daoism",
+      "tradition": "quanzhen",
+      "region": "macau",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DT031",
+      "belief": "daoism",
+      "tradition": "zhengyi",
+      "region": "mainland",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DT032",
+      "belief": "daoism",
+      "tradition": "zhengyi",
+      "region": "taiwan",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DT033",
+      "belief": "daoism",
+      "tradition": "zhengyi",
+      "region": "southeast_asia",
+      "services": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "code": "DT034",
+      "belief": "folk",
+      "tradition": "mazu",
+      "region": "mainland",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DT035",
+      "belief": "folk",
+      "tradition": "mazu",
+      "region": "macau",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DT036",
+      "belief": "folk",
+      "tradition": "mazu",
+      "region": "taiwan",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DT037",
+      "belief": "folk",
+      "tradition": "guandi",
+      "region": "mainland",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DT038",
+      "belief": "folk",
+      "tradition": "guandi",
+      "region": "hong_kong",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DT039",
+      "belief": "folk",
+      "tradition": "guandi",
+      "region": "southeast_asia",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DT040",
+      "belief": "folk",
+      "tradition": "chenghuang",
+      "region": "mainland",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DT041",
+      "belief": "folk",
+      "tradition": "chenghuang",
+      "region": "taiwan",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DT042",
+      "belief": "folk",
+      "tradition": "chenghuang",
+      "region": "southeast_asia",
+      "services": [
+        3,
+        4,
+        7,
+        8
+      ]
+    },
+    {
+      "code": "DT043",
+      "belief": "folk",
+      "tradition": "wangye",
+      "region": "mainland",
+      "services": [
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "code": "DT044",
+      "belief": "folk",
+      "tradition": "wangye",
+      "region": "taiwan",
+      "services": [
+        11,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DT045",
+      "belief": "folk",
+      "tradition": "wangye",
+      "region": "southeast_asia",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DT046",
+      "belief": "folk",
+      "tradition": "fude",
+      "region": "mainland",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DT047",
+      "belief": "folk",
+      "tradition": "fude",
+      "region": "hong_kong",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DT048",
+      "belief": "folk",
+      "tradition": "fude",
+      "region": "taiwan",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DT049",
+      "belief": "folk",
+      "tradition": "baosheng",
+      "region": "mainland",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DT050",
+      "belief": "folk",
+      "tradition": "baosheng",
+      "region": "taiwan",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DT051",
+      "belief": "folk",
+      "tradition": "baosheng",
+      "region": "southeast_asia",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DT052",
+      "belief": "folk",
+      "tradition": "nezha",
+      "region": "macau",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DT053",
+      "belief": "folk",
+      "tradition": "nezha",
+      "region": "mainland",
+      "services": [
+        3,
+        4,
+        7,
+        8
+      ]
+    },
+    {
+      "code": "DT054",
+      "belief": "folk",
+      "tradition": "nezha",
+      "region": "taiwan",
+      "services": [
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "code": "DT055",
+      "belief": "folk",
+      "tradition": "hung_shing",
+      "region": "hong_kong",
+      "services": [
+        11,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DT056",
+      "belief": "folk",
+      "tradition": "hung_shing",
+      "region": "hong_kong",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DT057",
+      "belief": "folk",
+      "tradition": "hung_shing",
+      "region": "mainland",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DT058",
+      "belief": "folk",
+      "tradition": "wong_tai_sin",
+      "region": "hong_kong",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DT059",
+      "belief": "folk",
+      "tradition": "wong_tai_sin",
+      "region": "mainland",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DT060",
+      "belief": "folk",
+      "tradition": "wong_tai_sin",
+      "region": "macau",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DT061",
+      "belief": "folk",
+      "tradition": "nine_emperors",
+      "region": "southeast_asia",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DT062",
+      "belief": "folk",
+      "tradition": "nine_emperors",
+      "region": "southeast_asia",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DT063",
+      "belief": "folk",
+      "tradition": "nine_emperors",
+      "region": "southeast_asia",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DT064",
+      "belief": "folk",
+      "tradition": "tua_pek_kong",
+      "region": "southeast_asia",
+      "services": [
+        3,
+        4,
+        7,
+        8
+      ]
+    },
+    {
+      "code": "DT065",
+      "belief": "folk",
+      "tradition": "tua_pek_kong",
+      "region": "southeast_asia",
+      "services": [
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "code": "DT066",
+      "belief": "folk",
+      "tradition": "tua_pek_kong",
+      "region": "southeast_asia",
+      "services": [
+        11,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DT067",
+      "belief": "folk",
+      "tradition": "datuk_gong",
+      "region": "southeast_asia",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DT068",
+      "belief": "folk",
+      "tradition": "datuk_gong",
+      "region": "southeast_asia",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DT069",
+      "belief": "folk",
+      "tradition": "datuk_gong",
+      "region": "southeast_asia",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DT070",
+      "belief": "folk",
+      "tradition": "sanshan",
+      "region": "mainland",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DT071",
+      "belief": "folk",
+      "tradition": "sanshan",
+      "region": "taiwan",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DT072",
+      "belief": "folk",
+      "tradition": "sanshan",
+      "region": "southeast_asia",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    }
+  ],
+  "masters": [
+    {
+      "code": "DW001",
+      "belief": "han_buddhism",
+      "tradition": "chan",
+      "region": "mainland",
+      "position": "方丈",
+      "specialties": [
+        "禅修入门",
+        "佛教文化",
+        "静心禅修",
+        "禅修指导"
+      ],
+      "track": "platform",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DM001",
+      "belief": "han_buddhism",
+      "tradition": "chan",
+      "region": "mainland",
+      "position": "方丈",
+      "specialties": [
+        "禅修入门",
+        "佛教文化",
+        "静心禅修",
+        "禅修指导"
+      ],
+      "track": "temple",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DW002",
+      "belief": "han_buddhism",
+      "tradition": "chan",
+      "region": "hong_kong",
+      "position": "客堂法师",
+      "specialties": [
+        "少林文化",
+        "静心课程",
+        "地藏文化",
+        "佛教礼仪"
+      ],
+      "track": "platform",
+      "services": [
+        4,
+        5,
+        6,
+        8
+      ]
+    },
+    {
+      "code": "DM002",
+      "belief": "han_buddhism",
+      "tradition": "chan",
+      "region": "hong_kong",
+      "position": "客堂法师",
+      "specialties": [
+        "少林文化",
+        "静心课程",
+        "地藏文化",
+        "佛教礼仪"
+      ],
+      "track": "temple",
+      "services": [
+        4,
+        5,
+        6,
+        8
+      ]
+    },
+    {
+      "code": "DW003",
+      "belief": "han_buddhism",
+      "tradition": "chan",
+      "region": "taiwan",
+      "position": "禅修讲师",
+      "specialties": [
+        "静心交流",
+        "寺院历史",
+        "祈愿礼仪",
+        "建筑讲解"
+      ],
+      "track": "platform",
+      "services": [
+        8,
+        10,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DM003",
+      "belief": "han_buddhism",
+      "tradition": "chan",
+      "region": "taiwan",
+      "position": "禅修讲师",
+      "specialties": [
+        "静心交流",
+        "寺院历史",
+        "祈愿礼仪",
+        "建筑讲解"
+      ],
+      "track": "temple",
+      "services": [
+        8,
+        10,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DW004",
+      "belief": "han_buddhism",
+      "tradition": "pure_land",
+      "region": "mainland",
+      "position": "独立居士",
+      "specialties": [
+        "禅修入门",
+        "佛教文化",
+        "静心禅修",
+        "禅修指导"
+      ],
+      "track": "platform",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DM004",
+      "belief": "han_buddhism",
+      "tradition": "pure_land",
+      "region": "mainland",
+      "position": "独立居士",
+      "specialties": [
+        "禅修入门",
+        "佛教文化",
+        "静心禅修",
+        "禅修指导"
+      ],
+      "track": "temple",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DW005",
+      "belief": "han_buddhism",
+      "tradition": "pure_land",
+      "region": "macau",
+      "position": "方丈",
+      "specialties": [
+        "少林文化",
+        "静心课程",
+        "地藏文化",
+        "佛教礼仪"
+      ],
+      "track": "platform",
+      "services": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "code": "DM005",
+      "belief": "han_buddhism",
+      "tradition": "pure_land",
+      "region": "macau",
+      "position": "方丈",
+      "specialties": [
+        "少林文化",
+        "静心课程",
+        "地藏文化",
+        "佛教礼仪"
+      ],
+      "track": "temple",
+      "services": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "code": "DW006",
+      "belief": "han_buddhism",
+      "tradition": "pure_land",
+      "region": "southeast_asia",
+      "position": "客堂法师",
+      "specialties": [
+        "静心交流",
+        "寺院历史",
+        "祈愿礼仪",
+        "建筑讲解"
+      ],
+      "track": "platform",
+      "services": [
+        6,
+        8,
+        10,
+        12
+      ]
+    },
+    {
+      "code": "DM006",
+      "belief": "han_buddhism",
+      "tradition": "pure_land",
+      "region": "southeast_asia",
+      "position": "客堂法师",
+      "specialties": [
+        "静心交流",
+        "寺院历史",
+        "祈愿礼仪",
+        "建筑讲解"
+      ],
+      "track": "temple",
+      "services": [
+        6,
+        8,
+        10,
+        12
+      ]
+    },
+    {
+      "code": "DW007",
+      "belief": "han_buddhism",
+      "tradition": "tiantai",
+      "region": "mainland",
+      "position": "禅修讲师",
+      "specialties": [
+        "禅修入门",
+        "佛教文化",
+        "静心禅修",
+        "禅修指导"
+      ],
+      "track": "platform",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DM007",
+      "belief": "han_buddhism",
+      "tradition": "tiantai",
+      "region": "mainland",
+      "position": "禅修讲师",
+      "specialties": [
+        "禅修入门",
+        "佛教文化",
+        "静心禅修",
+        "禅修指导"
+      ],
+      "track": "temple",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DW008",
+      "belief": "han_buddhism",
+      "tradition": "tiantai",
+      "region": "hong_kong",
+      "position": "独立居士",
+      "specialties": [
+        "少林文化",
+        "静心课程",
+        "地藏文化",
+        "佛教礼仪"
+      ],
+      "track": "platform",
+      "services": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "code": "DM008",
+      "belief": "han_buddhism",
+      "tradition": "tiantai",
+      "region": "hong_kong",
+      "position": "独立居士",
+      "specialties": [
+        "少林文化",
+        "静心课程",
+        "地藏文化",
+        "佛教礼仪"
+      ],
+      "track": "temple",
+      "services": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "code": "DW009",
+      "belief": "han_buddhism",
+      "tradition": "tiantai",
+      "region": "taiwan",
+      "position": "方丈",
+      "specialties": [
+        "静心交流",
+        "寺院历史",
+        "祈愿礼仪",
+        "建筑讲解"
+      ],
+      "track": "platform",
+      "services": [
+        5,
+        6,
+        8,
+        10
+      ]
+    },
+    {
+      "code": "DM009",
+      "belief": "han_buddhism",
+      "tradition": "tiantai",
+      "region": "taiwan",
+      "position": "方丈",
+      "specialties": [
+        "静心交流",
+        "寺院历史",
+        "祈愿礼仪",
+        "建筑讲解"
+      ],
+      "track": "temple",
+      "services": [
+        5,
+        6,
+        8,
+        10
+      ]
+    },
+    {
+      "code": "DW010",
+      "belief": "han_buddhism",
+      "tradition": "huayan",
+      "region": "mainland",
+      "position": "客堂法师",
+      "specialties": [
+        "禅修入门",
+        "佛教文化",
+        "静心禅修",
+        "禅修指导"
+      ],
+      "track": "platform",
+      "services": [
+        10,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DM010",
+      "belief": "han_buddhism",
+      "tradition": "huayan",
+      "region": "mainland",
+      "position": "客堂法师",
+      "specialties": [
+        "禅修入门",
+        "佛教文化",
+        "静心禅修",
+        "禅修指导"
+      ],
+      "track": "temple",
+      "services": [
+        10,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DW011",
+      "belief": "han_buddhism",
+      "tradition": "huayan",
+      "region": "taiwan",
+      "position": "禅修讲师",
+      "specialties": [
+        "少林文化",
+        "静心课程",
+        "地藏文化",
+        "佛教礼仪"
+      ],
+      "track": "platform",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DM011",
+      "belief": "han_buddhism",
+      "tradition": "huayan",
+      "region": "taiwan",
+      "position": "禅修讲师",
+      "specialties": [
+        "少林文化",
+        "静心课程",
+        "地藏文化",
+        "佛教礼仪"
+      ],
+      "track": "temple",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DW012",
+      "belief": "han_buddhism",
+      "tradition": "huayan",
+      "region": "southeast_asia",
+      "position": "独立居士",
+      "specialties": [
+        "静心交流",
+        "寺院历史",
+        "祈愿礼仪",
+        "建筑讲解"
+      ],
+      "track": "platform",
+      "services": [
+        4,
+        5,
+        6,
+        8
+      ]
+    },
+    {
+      "code": "DM012",
+      "belief": "han_buddhism",
+      "tradition": "huayan",
+      "region": "southeast_asia",
+      "position": "独立居士",
+      "specialties": [
+        "静心交流",
+        "寺院历史",
+        "祈愿礼仪",
+        "建筑讲解"
+      ],
+      "track": "temple",
+      "services": [
+        4,
+        5,
+        6,
+        8
+      ]
+    },
+    {
+      "code": "DW013",
+      "belief": "tibetan_buddhism",
+      "tradition": "gelug",
+      "region": "mainland",
+      "position": "讲师",
+      "specialties": [
+        "藏传佛教文化",
+        "藏文化交流",
+        "静心交流"
+      ],
+      "track": "platform",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DM013",
+      "belief": "tibetan_buddhism",
+      "tradition": "gelug",
+      "region": "mainland",
+      "position": "讲师",
+      "specialties": [
+        "藏传佛教文化",
+        "藏文化交流",
+        "静心交流"
+      ],
+      "track": "temple",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DW014",
+      "belief": "tibetan_buddhism",
+      "tradition": "gelug",
+      "region": "taiwan",
+      "position": "讲师",
+      "specialties": [
+        "藏文化交流",
+        "静心交流",
+        "藏传佛教文化"
+      ],
+      "track": "platform",
+      "services": [
+        4,
+        5,
+        6,
+        12
+      ]
+    },
+    {
+      "code": "DM014",
+      "belief": "tibetan_buddhism",
+      "tradition": "gelug",
+      "region": "taiwan",
+      "position": "讲师",
+      "specialties": [
+        "藏文化交流",
+        "静心交流",
+        "藏传佛教文化"
+      ],
+      "track": "temple",
+      "services": [
+        4,
+        5,
+        6,
+        12
+      ]
+    },
+    {
+      "code": "DW015",
+      "belief": "tibetan_buddhism",
+      "tradition": "gelug",
+      "region": "southeast_asia",
+      "position": "讲师",
+      "specialties": [
+        "静心交流",
+        "藏传佛教文化",
+        "藏文化交流"
+      ],
+      "track": "platform",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DM015",
+      "belief": "tibetan_buddhism",
+      "tradition": "gelug",
+      "region": "southeast_asia",
+      "position": "讲师",
+      "specialties": [
+        "静心交流",
+        "藏传佛教文化",
+        "藏文化交流"
+      ],
+      "track": "temple",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DW016",
+      "belief": "tibetan_buddhism",
+      "tradition": "nyingma",
+      "region": "mainland",
+      "position": "讲师",
+      "specialties": [
+        "藏传佛教文化",
+        "藏文化交流",
+        "静心交流"
+      ],
+      "track": "platform",
+      "services": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "code": "DM016",
+      "belief": "tibetan_buddhism",
+      "tradition": "nyingma",
+      "region": "mainland",
+      "position": "讲师",
+      "specialties": [
+        "藏传佛教文化",
+        "藏文化交流",
+        "静心交流"
+      ],
+      "track": "temple",
+      "services": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "code": "DW017",
+      "belief": "tibetan_buddhism",
+      "tradition": "nyingma",
+      "region": "hong_kong",
+      "position": "讲师",
+      "specialties": [
+        "藏文化交流",
+        "静心交流",
+        "藏传佛教文化"
+      ],
+      "track": "platform",
+      "services": [
+        5,
+        6,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DM017",
+      "belief": "tibetan_buddhism",
+      "tradition": "nyingma",
+      "region": "hong_kong",
+      "position": "讲师",
+      "specialties": [
+        "藏文化交流",
+        "静心交流",
+        "藏传佛教文化"
+      ],
+      "track": "temple",
+      "services": [
+        5,
+        6,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DW018",
+      "belief": "tibetan_buddhism",
+      "tradition": "nyingma",
+      "region": "taiwan",
+      "position": "讲师",
+      "specialties": [
+        "静心交流",
+        "藏传佛教文化",
+        "藏文化交流"
+      ],
+      "track": "platform",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DM018",
+      "belief": "tibetan_buddhism",
+      "tradition": "nyingma",
+      "region": "taiwan",
+      "position": "讲师",
+      "specialties": [
+        "静心交流",
+        "藏传佛教文化",
+        "藏文化交流"
+      ],
+      "track": "temple",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DW019",
+      "belief": "tibetan_buddhism",
+      "tradition": "kagyu",
+      "region": "mainland",
+      "position": "讲师",
+      "specialties": [
+        "藏传佛教文化",
+        "藏文化交流",
+        "静心交流"
+      ],
+      "track": "platform",
+      "services": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "code": "DM019",
+      "belief": "tibetan_buddhism",
+      "tradition": "kagyu",
+      "region": "mainland",
+      "position": "讲师",
+      "specialties": [
+        "藏传佛教文化",
+        "藏文化交流",
+        "静心交流"
+      ],
+      "track": "temple",
+      "services": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "code": "DW020",
+      "belief": "tibetan_buddhism",
+      "tradition": "kagyu",
+      "region": "hong_kong",
+      "position": "讲师",
+      "specialties": [
+        "藏文化交流",
+        "静心交流",
+        "藏传佛教文化"
+      ],
+      "track": "platform",
+      "services": [
+        6,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DM020",
+      "belief": "tibetan_buddhism",
+      "tradition": "kagyu",
+      "region": "hong_kong",
+      "position": "讲师",
+      "specialties": [
+        "藏文化交流",
+        "静心交流",
+        "藏传佛教文化"
+      ],
+      "track": "temple",
+      "services": [
+        6,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DW021",
+      "belief": "tibetan_buddhism",
+      "tradition": "kagyu",
+      "region": "southeast_asia",
+      "position": "讲师",
+      "specialties": [
+        "静心交流",
+        "藏传佛教文化",
+        "藏文化交流"
+      ],
+      "track": "platform",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DM021",
+      "belief": "tibetan_buddhism",
+      "tradition": "kagyu",
+      "region": "southeast_asia",
+      "position": "讲师",
+      "specialties": [
+        "静心交流",
+        "藏传佛教文化",
+        "藏文化交流"
+      ],
+      "track": "temple",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DW022",
+      "belief": "tibetan_buddhism",
+      "tradition": "sakya",
+      "region": "mainland",
+      "position": "讲师",
+      "specialties": [
+        "藏传佛教文化",
+        "藏文化交流",
+        "静心交流"
+      ],
+      "track": "platform",
+      "services": [
+        4,
+        5,
+        6,
+        12
+      ]
+    },
+    {
+      "code": "DM022",
+      "belief": "tibetan_buddhism",
+      "tradition": "sakya",
+      "region": "mainland",
+      "position": "讲师",
+      "specialties": [
+        "藏传佛教文化",
+        "藏文化交流",
+        "静心交流"
+      ],
+      "track": "temple",
+      "services": [
+        4,
+        5,
+        6,
+        12
+      ]
+    },
+    {
+      "code": "DW023",
+      "belief": "tibetan_buddhism",
+      "tradition": "sakya",
+      "region": "taiwan",
+      "position": "讲师",
+      "specialties": [
+        "藏文化交流",
+        "静心交流",
+        "藏传佛教文化"
+      ],
+      "track": "platform",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DM023",
+      "belief": "tibetan_buddhism",
+      "tradition": "sakya",
+      "region": "taiwan",
+      "position": "讲师",
+      "specialties": [
+        "藏文化交流",
+        "静心交流",
+        "藏传佛教文化"
+      ],
+      "track": "temple",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DW024",
+      "belief": "tibetan_buddhism",
+      "tradition": "sakya",
+      "region": "southeast_asia",
+      "position": "讲师",
+      "specialties": [
+        "静心交流",
+        "藏传佛教文化",
+        "藏文化交流"
+      ],
+      "track": "platform",
+      "services": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "code": "DM024",
+      "belief": "tibetan_buddhism",
+      "tradition": "sakya",
+      "region": "southeast_asia",
+      "position": "讲师",
+      "specialties": [
+        "静心交流",
+        "藏传佛教文化",
+        "藏文化交流"
+      ],
+      "track": "temple",
+      "services": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "code": "DW025",
+      "belief": "theravada_buddhism",
+      "tradition": "theravada",
+      "region": "mainland",
+      "position": "禅修讲师",
+      "specialties": [
+        "南传佛教文化",
+        "正念练习",
+        "禅修入门"
+      ],
+      "track": "platform",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DM025",
+      "belief": "theravada_buddhism",
+      "tradition": "theravada",
+      "region": "mainland",
+      "position": "禅修讲师",
+      "specialties": [
+        "南传佛教文化",
+        "正念练习",
+        "禅修入门"
+      ],
+      "track": "temple",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DW026",
+      "belief": "theravada_buddhism",
+      "tradition": "theravada",
+      "region": "southeast_asia",
+      "position": "禅修讲师",
+      "specialties": [
+        "正念练习",
+        "禅修入门",
+        "南传佛教文化"
+      ],
+      "track": "platform",
+      "services": [
+        4,
+        12,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DM026",
+      "belief": "theravada_buddhism",
+      "tradition": "theravada",
+      "region": "southeast_asia",
+      "position": "禅修讲师",
+      "specialties": [
+        "正念练习",
+        "禅修入门",
+        "南传佛教文化"
+      ],
+      "track": "temple",
+      "services": [
+        4,
+        12,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DW027",
+      "belief": "theravada_buddhism",
+      "tradition": "theravada",
+      "region": "southeast_asia",
+      "position": "禅修讲师",
+      "specialties": [
+        "禅修入门",
+        "南传佛教文化",
+        "正念练习"
+      ],
+      "track": "platform",
+      "services": [
+        2,
+        3,
+        4,
+        12
+      ]
+    },
+    {
+      "code": "DM027",
+      "belief": "theravada_buddhism",
+      "tradition": "theravada",
+      "region": "southeast_asia",
+      "position": "禅修讲师",
+      "specialties": [
+        "禅修入门",
+        "南传佛教文化",
+        "正念练习"
+      ],
+      "track": "temple",
+      "services": [
+        2,
+        3,
+        4,
+        12
+      ]
+    },
+    {
+      "code": "DW028",
+      "belief": "daoism",
+      "tradition": "quanzhen",
+      "region": "mainland",
+      "position": "独立道长",
+      "specialties": [
+        "道教文化",
+        "科仪讲解",
+        "养生导引",
+        "武当文化"
+      ],
+      "track": "platform",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DM028",
+      "belief": "daoism",
+      "tradition": "quanzhen",
+      "region": "mainland",
+      "position": "独立道长",
+      "specialties": [
+        "道教文化",
+        "科仪讲解",
+        "养生导引",
+        "武当文化"
+      ],
+      "track": "temple",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DW029",
+      "belief": "daoism",
+      "tradition": "quanzhen",
+      "region": "hong_kong",
+      "position": "经师",
+      "specialties": [
+        "太极养生",
+        "道教礼仪",
+        "青城道教文化",
+        "礼仪讲解"
+      ],
+      "track": "platform",
+      "services": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "code": "DM029",
+      "belief": "daoism",
+      "tradition": "quanzhen",
+      "region": "hong_kong",
+      "position": "经师",
+      "specialties": [
+        "太极养生",
+        "道教礼仪",
+        "青城道教文化",
+        "礼仪讲解"
+      ],
+      "track": "temple",
+      "services": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "code": "DW030",
+      "belief": "daoism",
+      "tradition": "quanzhen",
+      "region": "macau",
+      "position": "独立道长",
+      "specialties": [
+        "道教文化",
+        "科仪讲解",
+        "养生导引",
+        "武当文化"
+      ],
+      "track": "platform",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DM030",
+      "belief": "daoism",
+      "tradition": "quanzhen",
+      "region": "macau",
+      "position": "独立道长",
+      "specialties": [
+        "道教文化",
+        "科仪讲解",
+        "养生导引",
+        "武当文化"
+      ],
+      "track": "temple",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DW031",
+      "belief": "daoism",
+      "tradition": "zhengyi",
+      "region": "mainland",
+      "position": "经师",
+      "specialties": [
+        "太极养生",
+        "道教礼仪",
+        "青城道教文化",
+        "礼仪讲解"
+      ],
+      "track": "platform",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DM031",
+      "belief": "daoism",
+      "tradition": "zhengyi",
+      "region": "mainland",
+      "position": "经师",
+      "specialties": [
+        "太极养生",
+        "道教礼仪",
+        "青城道教文化",
+        "礼仪讲解"
+      ],
+      "track": "temple",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DW032",
+      "belief": "daoism",
+      "tradition": "zhengyi",
+      "region": "taiwan",
+      "position": "独立道长",
+      "specialties": [
+        "道教文化",
+        "科仪讲解",
+        "养生导引",
+        "武当文化"
+      ],
+      "track": "platform",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DM032",
+      "belief": "daoism",
+      "tradition": "zhengyi",
+      "region": "taiwan",
+      "position": "独立道长",
+      "specialties": [
+        "道教文化",
+        "科仪讲解",
+        "养生导引",
+        "武当文化"
+      ],
+      "track": "temple",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DW033",
+      "belief": "daoism",
+      "tradition": "zhengyi",
+      "region": "southeast_asia",
+      "position": "经师",
+      "specialties": [
+        "太极养生",
+        "道教礼仪",
+        "青城道教文化",
+        "礼仪讲解"
+      ],
+      "track": "platform",
+      "services": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "code": "DM033",
+      "belief": "daoism",
+      "tradition": "zhengyi",
+      "region": "southeast_asia",
+      "position": "经师",
+      "specialties": [
+        "太极养生",
+        "道教礼仪",
+        "青城道教文化",
+        "礼仪讲解"
+      ],
+      "track": "temple",
+      "services": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "code": "DW034",
+      "belief": "folk",
+      "tradition": "mazu",
+      "region": "mainland",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DM034",
+      "belief": "folk",
+      "tradition": "mazu",
+      "region": "mainland",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DW035",
+      "belief": "folk",
+      "tradition": "mazu",
+      "region": "macau",
+      "position": "文化讲师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DM035",
+      "belief": "folk",
+      "tradition": "mazu",
+      "region": "macau",
+      "position": "文化讲师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DW036",
+      "belief": "folk",
+      "tradition": "mazu",
+      "region": "taiwan",
+      "position": "命理师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DM036",
+      "belief": "folk",
+      "tradition": "mazu",
+      "region": "taiwan",
+      "position": "命理师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DW037",
+      "belief": "folk",
+      "tradition": "guandi",
+      "region": "mainland",
+      "position": "占卜师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DM037",
+      "belief": "folk",
+      "tradition": "guandi",
+      "region": "mainland",
+      "position": "占卜师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DW038",
+      "belief": "folk",
+      "tradition": "guandi",
+      "region": "hong_kong",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DM038",
+      "belief": "folk",
+      "tradition": "guandi",
+      "region": "hong_kong",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DW039",
+      "belief": "folk",
+      "tradition": "guandi",
+      "region": "southeast_asia",
+      "position": "文化讲师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DM039",
+      "belief": "folk",
+      "tradition": "guandi",
+      "region": "southeast_asia",
+      "position": "文化讲师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DW040",
+      "belief": "folk",
+      "tradition": "chenghuang",
+      "region": "mainland",
+      "position": "命理师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DM040",
+      "belief": "folk",
+      "tradition": "chenghuang",
+      "region": "mainland",
+      "position": "命理师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DW041",
+      "belief": "folk",
+      "tradition": "chenghuang",
+      "region": "taiwan",
+      "position": "占卜师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DM041",
+      "belief": "folk",
+      "tradition": "chenghuang",
+      "region": "taiwan",
+      "position": "占卜师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DW042",
+      "belief": "folk",
+      "tradition": "chenghuang",
+      "region": "southeast_asia",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        3,
+        4,
+        7,
+        8
+      ]
+    },
+    {
+      "code": "DM042",
+      "belief": "folk",
+      "tradition": "chenghuang",
+      "region": "southeast_asia",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        3,
+        4,
+        7,
+        8
+      ]
+    },
+    {
+      "code": "DW043",
+      "belief": "folk",
+      "tradition": "wangye",
+      "region": "mainland",
+      "position": "文化讲师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "code": "DM043",
+      "belief": "folk",
+      "tradition": "wangye",
+      "region": "mainland",
+      "position": "文化讲师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "code": "DW044",
+      "belief": "folk",
+      "tradition": "wangye",
+      "region": "taiwan",
+      "position": "命理师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        11,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DM044",
+      "belief": "folk",
+      "tradition": "wangye",
+      "region": "taiwan",
+      "position": "命理师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        11,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DW045",
+      "belief": "folk",
+      "tradition": "wangye",
+      "region": "southeast_asia",
+      "position": "占卜师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DM045",
+      "belief": "folk",
+      "tradition": "wangye",
+      "region": "southeast_asia",
+      "position": "占卜师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DW046",
+      "belief": "folk",
+      "tradition": "fude",
+      "region": "mainland",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DM046",
+      "belief": "folk",
+      "tradition": "fude",
+      "region": "mainland",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DW047",
+      "belief": "folk",
+      "tradition": "fude",
+      "region": "hong_kong",
+      "position": "文化讲师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DM047",
+      "belief": "folk",
+      "tradition": "fude",
+      "region": "hong_kong",
+      "position": "文化讲师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DW048",
+      "belief": "folk",
+      "tradition": "fude",
+      "region": "taiwan",
+      "position": "命理师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DM048",
+      "belief": "folk",
+      "tradition": "fude",
+      "region": "taiwan",
+      "position": "命理师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DW049",
+      "belief": "folk",
+      "tradition": "baosheng",
+      "region": "mainland",
+      "position": "占卜师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DM049",
+      "belief": "folk",
+      "tradition": "baosheng",
+      "region": "mainland",
+      "position": "占卜师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DW050",
+      "belief": "folk",
+      "tradition": "baosheng",
+      "region": "taiwan",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DM050",
+      "belief": "folk",
+      "tradition": "baosheng",
+      "region": "taiwan",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DW051",
+      "belief": "folk",
+      "tradition": "baosheng",
+      "region": "southeast_asia",
+      "position": "文化讲师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DM051",
+      "belief": "folk",
+      "tradition": "baosheng",
+      "region": "southeast_asia",
+      "position": "文化讲师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DW052",
+      "belief": "folk",
+      "tradition": "nezha",
+      "region": "macau",
+      "position": "命理师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DM052",
+      "belief": "folk",
+      "tradition": "nezha",
+      "region": "macau",
+      "position": "命理师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DW053",
+      "belief": "folk",
+      "tradition": "nezha",
+      "region": "mainland",
+      "position": "占卜师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        3,
+        4,
+        7,
+        8
+      ]
+    },
+    {
+      "code": "DM053",
+      "belief": "folk",
+      "tradition": "nezha",
+      "region": "mainland",
+      "position": "占卜师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        3,
+        4,
+        7,
+        8
+      ]
+    },
+    {
+      "code": "DW054",
+      "belief": "folk",
+      "tradition": "nezha",
+      "region": "taiwan",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "code": "DM054",
+      "belief": "folk",
+      "tradition": "nezha",
+      "region": "taiwan",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "code": "DW055",
+      "belief": "folk",
+      "tradition": "hung_shing",
+      "region": "hong_kong",
+      "position": "文化讲师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        11,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DM055",
+      "belief": "folk",
+      "tradition": "hung_shing",
+      "region": "hong_kong",
+      "position": "文化讲师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        11,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DW056",
+      "belief": "folk",
+      "tradition": "hung_shing",
+      "region": "hong_kong",
+      "position": "命理师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DM056",
+      "belief": "folk",
+      "tradition": "hung_shing",
+      "region": "hong_kong",
+      "position": "命理师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DW057",
+      "belief": "folk",
+      "tradition": "hung_shing",
+      "region": "mainland",
+      "position": "占卜师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DM057",
+      "belief": "folk",
+      "tradition": "hung_shing",
+      "region": "mainland",
+      "position": "占卜师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DW058",
+      "belief": "folk",
+      "tradition": "wong_tai_sin",
+      "region": "hong_kong",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DM058",
+      "belief": "folk",
+      "tradition": "wong_tai_sin",
+      "region": "hong_kong",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DW059",
+      "belief": "folk",
+      "tradition": "wong_tai_sin",
+      "region": "mainland",
+      "position": "文化讲师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DM059",
+      "belief": "folk",
+      "tradition": "wong_tai_sin",
+      "region": "mainland",
+      "position": "文化讲师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DW060",
+      "belief": "folk",
+      "tradition": "wong_tai_sin",
+      "region": "macau",
+      "position": "命理师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DM060",
+      "belief": "folk",
+      "tradition": "wong_tai_sin",
+      "region": "macau",
+      "position": "命理师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DW061",
+      "belief": "folk",
+      "tradition": "nine_emperors",
+      "region": "southeast_asia",
+      "position": "占卜师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DM061",
+      "belief": "folk",
+      "tradition": "nine_emperors",
+      "region": "southeast_asia",
+      "position": "占卜师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DW062",
+      "belief": "folk",
+      "tradition": "nine_emperors",
+      "region": "southeast_asia",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DM062",
+      "belief": "folk",
+      "tradition": "nine_emperors",
+      "region": "southeast_asia",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "code": "DW063",
+      "belief": "folk",
+      "tradition": "nine_emperors",
+      "region": "southeast_asia",
+      "position": "文化讲师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DM063",
+      "belief": "folk",
+      "tradition": "nine_emperors",
+      "region": "southeast_asia",
+      "position": "文化讲师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        13,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "code": "DW064",
+      "belief": "folk",
+      "tradition": "tua_pek_kong",
+      "region": "southeast_asia",
+      "position": "命理师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        3,
+        4,
+        7,
+        8
+      ]
+    },
+    {
+      "code": "DM064",
+      "belief": "folk",
+      "tradition": "tua_pek_kong",
+      "region": "southeast_asia",
+      "position": "命理师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        3,
+        4,
+        7,
+        8
+      ]
+    },
+    {
+      "code": "DW065",
+      "belief": "folk",
+      "tradition": "tua_pek_kong",
+      "region": "southeast_asia",
+      "position": "占卜师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "code": "DM065",
+      "belief": "folk",
+      "tradition": "tua_pek_kong",
+      "region": "southeast_asia",
+      "position": "占卜师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "code": "DW066",
+      "belief": "folk",
+      "tradition": "tua_pek_kong",
+      "region": "southeast_asia",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        11,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DM066",
+      "belief": "folk",
+      "tradition": "tua_pek_kong",
+      "region": "southeast_asia",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        11,
+        12,
+        13,
+        1
+      ]
+    },
+    {
+      "code": "DW067",
+      "belief": "folk",
+      "tradition": "datuk_gong",
+      "region": "southeast_asia",
+      "position": "文化讲师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DM067",
+      "belief": "folk",
+      "tradition": "datuk_gong",
+      "region": "southeast_asia",
+      "position": "文化讲师",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "code": "DW068",
+      "belief": "folk",
+      "tradition": "datuk_gong",
+      "region": "southeast_asia",
+      "position": "命理师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DM068",
+      "belief": "folk",
+      "tradition": "datuk_gong",
+      "region": "southeast_asia",
+      "position": "命理师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        4,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "code": "DW069",
+      "belief": "folk",
+      "tradition": "datuk_gong",
+      "region": "southeast_asia",
+      "position": "占卜师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DM069",
+      "belief": "folk",
+      "tradition": "datuk_gong",
+      "region": "southeast_asia",
+      "position": "占卜师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "code": "DW070",
+      "belief": "folk",
+      "tradition": "sanshan",
+      "region": "mainland",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "platform",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DM070",
+      "belief": "folk",
+      "tradition": "sanshan",
+      "region": "mainland",
+      "position": "民俗文化顾问",
+      "specialties": [
+        "妈祖文化",
+        "民俗礼仪",
+        "海洋文化",
+        "传统礼俗"
+      ],
+      "track": "temple",
+      "services": [
+        12,
+        13,
+        1,
+        2
+      ]
+    },
+    {
+      "code": "DW071",
+      "belief": "folk",
+      "tradition": "sanshan",
+      "region": "taiwan",
+      "position": "文化讲师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "platform",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DM071",
+      "belief": "folk",
+      "tradition": "sanshan",
+      "region": "taiwan",
+      "position": "文化讲师",
+      "specialties": [
+        "民俗祈愿",
+        "紫微斗数",
+        "奇门遁甲",
+        "八字命理"
+      ],
+      "track": "temple",
+      "services": [
+        2,
+        3,
+        4,
+        7
+      ]
+    },
+    {
+      "code": "DW072",
+      "belief": "folk",
+      "tradition": "sanshan",
+      "region": "southeast_asia",
+      "position": "命理师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "platform",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "code": "DM072",
+      "belief": "folk",
+      "tradition": "sanshan",
+      "region": "southeast_asia",
+      "position": "命理师",
+      "specialties": [
+        "风水堪舆",
+        "姻缘测算",
+        "六爻梅花",
+        "塔罗牌"
+      ],
+      "track": "temple",
+      "services": [
+        7,
+        8,
+        9,
+        10
+      ]
+    }
+  ]
+}

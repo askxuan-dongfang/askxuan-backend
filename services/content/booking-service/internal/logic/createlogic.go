@@ -59,17 +59,13 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 		return nil, common.NewBizError(40310, "寺院服务当前不可预约")
 	}
 
-	// 双轨制：指定大师执行时，大师按自身服务标签价格分流，寺院服务费+功德归寺院；
-	// 大师未配置该服务标签时回退原计价（服务费全归大师），兼容存量数据。
-	// 未指定大师（masterId 为空）= 全寺执行：服务费与功德全归寺院。
+	// 指定师傅必须提供该服务；寺院费与师傅执行费明确相加。
+	// 未指定师傅时为全寺执行，服务费与随喜归寺院。
 	templeFee := service.Price
 	var masterCode, masterName string
-	masterFee := service.Price
-	meritToTemple := req.MeritMoney
-	if req.MasterId == "" {
-		masterFee = 0
-		meritToTemple = service.Price + req.MeritMoney
-	} else {
+	masterFee := 0.0
+	meritToTemple := service.Price + req.MeritMoney
+	if req.MasterId != "" {
 		master, masterErr := l.svcCtx.MasterClient.GetByCode(l.ctx, req.MasterId)
 		if masterErr != nil {
 			if status.Code(masterErr) == codes.NotFound {
@@ -84,14 +80,20 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 			return nil, common.NewBizError(40309, "法师不属于所选寺院")
 		}
 		masterCode, masterName = master.Code, master.DharmaName
-		if detail, fErr := fetchMasterDetail(l.svcCtx, master.Code); fErr == nil {
-			for _, t := range detail.ServiceTags {
-				if t.ServiceCode == service.ServiceCode && (t.Status == "" || t.Status == "enabled") {
-					masterFee = t.Price
-					meritToTemple = service.Price + req.MeritMoney
-					break
-				}
-			}
+		detail, detailErr := fetchMasterDetail(l.svcCtx, master.Code)
+		if detailErr != nil {
+			return nil, common.ErrDependencyUnavailable
+		}
+		if detail.ManageBy == "platform" {
+			return nil, common.NewBizError(40312, "独立执业师傅请通过个人服务预约")
+		}
+		var offered bool
+		masterFee, offered = masterServicePrice(detail, service.ServiceCode)
+		if !offered {
+			return nil, common.NewBizError(40311, "该师傅未提供此服务，请重新选择可预约项目")
+		}
+		if err := requireValidConsultation(l.ctx, l.svcCtx, req.UserId, masterCode); err != nil {
+			return nil, err
 		}
 	}
 
@@ -125,6 +127,10 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 }
 
 func (l *CreateLogic) autoPay(booking *model.Booking) *model.Booking {
+	if err := requireValidConsultation(l.ctx, l.svcCtx, booking.UserId, booking.MasterId); err != nil {
+		l.Errorf("预约支付前咨询校验失败: %v", err)
+		return booking
+	}
 	payment, err := l.svcCtx.PaymentClient.AutoPayBooking(l.ctx, booking.Id, booking.UserId, booking.TotalFee)
 	if err != nil {
 		l.Errorf("模拟支付暂不可用 booking=%s: %v", booking.Id, err)

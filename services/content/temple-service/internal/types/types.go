@@ -47,20 +47,23 @@ type BeliefStatusReq struct {
 
 // Temple 寺院
 type Temple struct {
-	Id           string   `json:"id"`
-	Name         string   `json:"name"`
-	Region       string   `json:"region"`
-	Type         string   `json:"type"`
-	BeliefCode   string   `json:"beliefCode"`
-	Sect         string   `json:"sect"`
-	Status       string   `json:"status"`
-	Address      string   `json:"address"`
-	CoverImage   string   `json:"coverImage"`
-	Rating       float64  `json:"rating"`
-	Description  string   `json:"description"`
-	ServiceCodes []string `json:"serviceCodes"`
-	ServiceTags  []string `json:"serviceTags"`
-	ServiceCount int      `json:"serviceCount"`
+	TraditionCodes []string `json:"traditionCodes"`
+	RegionCode     string   `json:"regionCode"`
+	RegionName     string   `json:"regionName"`
+	Id             string   `json:"id"`
+	Name           string   `json:"name"`
+	Region         string   `json:"region"`
+	Type           string   `json:"type"`
+	BeliefCode     string   `json:"beliefCode"`
+	Sect           string   `json:"sect"`
+	Status         string   `json:"status"`
+	Address        string   `json:"address"`
+	CoverImage     string   `json:"coverImage"`
+	Rating         float64  `json:"rating"`
+	Description    string   `json:"description"`
+	ServiceCodes   []string `json:"serviceCodes"`
+	ServiceTags    []string `json:"serviceTags"`
+	ServiceCount   int      `json:"serviceCount"`
 }
 
 // TempleDetail 寺院详情（含图片+服务）
@@ -72,6 +75,7 @@ type TempleDetail struct {
 
 // ListReq 列表查询请求
 type ListReq struct {
+	RegionCode  string `form:"regionCode,optional"`
 	BeliefCode  string `form:"beliefCode,optional"`
 	Sect        string `form:"sect,optional"`
 	Type        string `form:"type,optional"`

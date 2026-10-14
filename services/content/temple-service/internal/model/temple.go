@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"github.com/askxuan/common"
 	"strings"
 
 	"github.com/askxuan/temple-service/internal/types"
@@ -34,30 +35,35 @@ const templeTable = "temple"
 
 // Temple 寺院实体（依据 init.sql temple 表）
 type Temple struct {
-	Id          int64   `db:"id" json:"id"`         // 自增主键
-	Code        string  `db:"code" json:"code"`     // 寺院编码 T001~T006
-	Name        string  `db:"name" json:"name"`     // 名称
-	Region      string  `db:"region" json:"region"` // 地区
-	Type        string  `db:"type" json:"type"`     // 类型 汉传佛教/道教/藏传佛教
-	BeliefCode  string  `db:"belief_code" json:"beliefCode"`
-	Sect        string  `db:"sect" json:"sect"`       // 宗派 禅宗/全真派/格鲁派/正一派
-	Status      string  `db:"status" json:"status"`   // 状态 正常/待审核/封禁/推荐
-	Address     string  `db:"address" json:"address"` // 地址
-	CoverImage  string  `db:"cover_image" json:"coverImage"`
-	Rating      float64 `db:"rating" json:"rating"` // 评分
-	Description string  `db:"description" json:"description"`
-	CreateTime  string  `db:"create_time" json:"createTime"`
-	UpdateTime  string  `db:"update_time" json:"updateTime"`
+	TraditionCodes string  `db:"tradition_codes"`
+	RegionCode     string  `db:"region_code" json:"regionCode"`
+	RegionName     string  `db:"region_name" json:"regionName"`
+	Id             int64   `db:"id" json:"id"`         // 自增主键
+	Code           string  `db:"code" json:"code"`     // 寺院编码 T001~T006
+	Name           string  `db:"name" json:"name"`     // 名称
+	Region         string  `db:"region" json:"region"` // 地区
+	Type           string  `db:"type" json:"type"`     // 类型 汉传佛教/道教/藏传佛教
+	BeliefCode     string  `db:"belief_code" json:"beliefCode"`
+	Sect           string  `db:"sect" json:"sect"`       // 宗派 禅宗/全真派/格鲁派/正一派
+	Status         string  `db:"status" json:"status"`   // 状态 正常/待审核/封禁/推荐
+	Address        string  `db:"address" json:"address"` // 地址
+	CoverImage     string  `db:"cover_image" json:"coverImage"`
+	Rating         float64 `db:"rating" json:"rating"` // 评分
+	Description    string  `db:"description" json:"description"`
+	CreateTime     string  `db:"create_time" json:"createTime"`
+	UpdateTime     string  `db:"update_time" json:"updateTime"`
 }
 
 // TempleFilter 列表查询过滤条件
 type TempleFilter struct {
-	BeliefCode string
-	Sect       string
-	Type       string
-	Region     string
-	Status     string // 为空时不筛选状态
-	Statuses   []string
+	ServiceCode string
+	RegionCode  string
+	BeliefCode  string
+	Sect        string
+	Type        string
+	Region      string
+	Status      string // 为空时不筛选状态
+	Statuses    []string
 }
 
 func TemplePublicStatuses() []string {
@@ -110,7 +116,7 @@ func (m *defaultTempleModel) Insert(ctx context.Context, data *Temple) (int64, e
 // FindOne 按寺院编码查询
 func (m *defaultTempleModel) FindOne(ctx context.Context, code string) (*Temple, error) {
 	var t Temple
-	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time FROM %s WHERE code = ?`, templeTable)
+	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+", "+common.DirectoryTagColumns("temple", "temple.code")+` FROM %s WHERE code = ?`, templeTable)
 	err := m.conn.QueryRowCtx(ctx, &t, query, code)
 	if err != nil {
 		return nil, err
@@ -121,7 +127,7 @@ func (m *defaultTempleModel) FindOne(ctx context.Context, code string) (*Temple,
 // FindOneByPk 按自增主键查询（管理台从 JWT 取 templeId 后使用）
 func (m *defaultTempleModel) FindOneByPk(ctx context.Context, id int64) (*Temple, error) {
 	var t Temple
-	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time FROM %s WHERE id = ?`, templeTable)
+	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+", "+common.DirectoryTagColumns("temple", "temple.code")+` FROM %s WHERE id = ?`, templeTable)
 	err := m.conn.QueryRowCtx(ctx, &t, query, id)
 	if err != nil {
 		return nil, err
@@ -143,7 +149,7 @@ func (m *defaultTempleModel) FindList(ctx context.Context, filter TempleFilter, 
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time FROM %s WHERE %s ORDER BY id ASC LIMIT ?, ?`,
+	listQuery := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+", "+common.DirectoryTagColumns("temple", "temple.code")+` FROM %s WHERE %s ORDER BY id ASC LIMIT ?, ?`,
 		templeTable, where)
 	listArgs := append(args, offset, size)
 	var list []*Temple
@@ -185,6 +191,10 @@ func (m *defaultTempleModel) Delete(ctx context.Context, id int64) error {
 func buildTempleWhere(filter TempleFilter) (string, []interface{}) {
 	where := "1=1"
 	var args []interface{}
+	if filter.ServiceCode != "" {
+		where += " AND EXISTS (SELECT 1 FROM temple_service ts WHERE ts.temple_code=temple.code AND ts.service_code=? AND ts.status='on_shelf')"
+		args = append(args, filter.ServiceCode)
+	}
 	if filter.BeliefCode != "" {
 		where += " AND belief_code = ?"
 		args = append(args, filter.BeliefCode)
@@ -196,6 +206,10 @@ func buildTempleWhere(filter TempleFilter) (string, []interface{}) {
 	if filter.Type != "" {
 		where += " AND type = ?"
 		args = append(args, filter.Type)
+	}
+	if filter.RegionCode != "" {
+		where += " AND " + templeRegionCode("temple.code") + " = ?"
+		args = append(args, filter.RegionCode)
 	}
 	if filter.Region != "" {
 		where += " AND region = ?"

@@ -38,7 +38,7 @@ func (l *PlatformMasterListLogic) PlatformMasterList(req *types.PlatformMasterLi
 	if size < 1 || size > 100 {
 		size = 20
 	}
-	list, total, err := l.svcCtx.MasterModel.FindPlatformList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, req.AuthStatus, req.ShelfStatus, req.PlatformStatus, page, size)
+	list, total, err := l.svcCtx.MasterModel.FindPlatformList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, req.AuthStatus, req.ShelfStatus, req.PlatformStatus, req.RegionCode, page, size)
 	if err != nil {
 		return nil, err
 	}

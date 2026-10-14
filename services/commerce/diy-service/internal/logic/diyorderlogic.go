@@ -91,7 +91,7 @@ func (l *DiyOrderCreateLogic) Create(req *types.DiyOrderCreateReq) (*types.DiyOr
 	}
 	result, err := model.CreatePricedOrder(l.ctx, l.svcCtx.DB, l.svcCtx.DiyOrderModel, l.svcCtx.DiyOrderItemModel, model.PricedOrderInput{
 		UserId: req.UserId, Design: design, Items: toPricedInputs(req.Items), BlessServiceCode: req.BlessServiceCode,
-		AddressId: req.AddressId, Source: "custom",
+		AddressId: req.AddressId, Source: "custom", CreatorId: attribution(l.ctx, l.svcCtx, design, req.UserId),
 	})
 	if err != nil {
 		return nil, mapPricingError(err)
@@ -139,7 +139,7 @@ func (l *DiyDesignOrderCreateLogic) Create(req *types.DiyDesignOrderCreateReq) (
 	}
 	result, err := model.CreatePricedOrder(l.ctx, l.svcCtx.DB, l.svcCtx.DiyOrderModel, l.svcCtx.DiyOrderItemModel, model.PricedOrderInput{
 		UserId: req.UserId, Design: design, Items: toPricedInputs(items), BlessServiceCode: blessCode,
-		AddressId: req.AddressId, Source: "design_square", CreatorId: design.UserId,
+		AddressId: req.AddressId, Source: "design_square", CreatorId: attribution(l.ctx, l.svcCtx, design, req.UserId),
 	})
 	if err != nil {
 		l.Errorf("设计广场下单失败 designId=%d: %v", design.Id, err)
@@ -299,4 +299,27 @@ func (l *DiyOrderDetailLogic) Detail(req *types.DiyOrderDetailReq) (*types.DiyOr
 		return nil, common.ErrDiyOrderNotFound
 	}
 	return toTypesDiyOrderDetail(l.ctx, l.svcCtx, o), nil
+}
+
+// Follow server-owned copy lineage. A client cannot nominate a beneficiary.
+func attribution(ctx context.Context, s *svc.ServiceContext, d *model.DiyDesign, buyer string) string {
+	seen := map[int64]bool{}
+	for depth := 0; depth < 32; depth++ {
+		if seen[d.Id] {
+			return ""
+		}
+		seen[d.Id] = true
+		if d.SourceDesignId == 0 {
+			if d.UserId != buyer {
+				return d.UserId
+			}
+			return ""
+		}
+		next, e := s.DiyDesignModel.FindOne(ctx, d.SourceDesignId)
+		if e != nil {
+			return ""
+		}
+		d = next
+	}
+	return ""
 }
