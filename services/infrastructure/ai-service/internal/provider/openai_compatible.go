@@ -15,6 +15,7 @@ import (
 type OpenAICompatible struct {
 	baseURL, apiKey, model, visionModel string
 	standardParameters                  bool
+	configuredModels                    []ModelOption
 	client                              *http.Client
 }
 
@@ -30,9 +31,19 @@ func (p *OpenAICompatible) payload(req Request, model string, messages []wireMes
 	if p.standardParameters {
 		delete(result, "thinking")
 	}
+	if p.Name() == "volcengine" && req.ThinkingEnabled && req.MaxTokens > 0 {
+		// Ark max_tokens bounds the answer only; thinking must share the budget.
+		delete(result, "max_tokens")
+		result["max_completion_tokens"] = req.MaxTokens
+	}
 	return result
 }
-func (p *OpenAICompatible) Name() string  { return "openai_compatible" }
+func (p *OpenAICompatible) Name() string {
+	if p.configuredModels != nil {
+		return "volcengine"
+	}
+	return "openai_compatible"
+}
 func (p *OpenAICompatible) Model() string { return p.model }
 func (p *OpenAICompatible) ModelFor(req Request) string {
 	if req.Model != "" {
@@ -51,9 +62,6 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 	messages := wireMessages(req)
 	model := p.ModelFor(req)
 	payload := p.payload(req, model, messages)
-	if req.MaxTokens > 0 {
-		payload["max_tokens"] = req.MaxTokens
-	}
 	body, _ := json.Marshal(payload)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {

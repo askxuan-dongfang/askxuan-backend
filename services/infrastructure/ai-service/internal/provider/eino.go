@@ -24,6 +24,10 @@ func NewEinoModel(ctx context.Context, source Provider, req Request) (model.Base
 	}
 	if req.ThinkingEnabled {
 		c.ReasoningEffort = openai.ReasoningEffortLevel(req.ReasoningEffort)
+		if p.Name() == "volcengine" {
+			c.MaxTokens = nil
+			c.MaxCompletionTokens = &req.MaxTokens
+		}
 	}
 	if !p.standardParameters {
 		mode := "disabled"

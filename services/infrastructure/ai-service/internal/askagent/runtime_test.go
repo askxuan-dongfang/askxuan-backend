@@ -38,7 +38,7 @@ func (m *mcpStub) Call(_ context.Context, _, args string) (string, error) {
 	}
 	return `{"yearPillar":"fixture-evidence"}`, nil
 }
-func runFixture(t *testing.T, input Input, mcp *mcpStub, replies []map[string]any) (Outcome, error) {
+func runFixture(t *testing.T, input Input, mcp *mcpStub, replies []map[string]any, providerKind ...string) (Outcome, error) {
 	t.Helper()
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -71,8 +71,16 @@ func runFixture(t *testing.T, input Input, mcp *mcpStub, replies []map[string]an
 	}))
 	defer server.Close()
 	p := provider.NewOpenAICompatible(server.URL, "fixture", "fixture", "")
+	if len(providerKind) > 0 && providerKind[0] == "volcengine" {
+		ark, err := provider.New(provider.Config{Provider: "volcengine", BaseURL: server.URL, APIKey: "fixture", Model: "ep-fixture"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		p = ark.(*provider.OpenAICompatible)
+	} else {
+		p.UseStandardParameters()
+	}
 	p.SetHTTPClient(server.Client())
-	p.UseStandardParameters()
 	chat, e := provider.NewEinoModel(context.Background(), p, provider.Request{MaxTokens: 128})
 	if e != nil {
 		t.Fatal(e)
@@ -90,6 +98,14 @@ func TestLiveLoopReadsReportCalculatesThenAnswers(t *testing.T) {
 	o, e := runFixture(t, fixtureInput(), m, []map[string]any{toolCall("read_report", "{}"), toolCall("calculate_bazi", "{}"), {"role": "assistant", "content": "根据报告和八字工具的 fixture-evidence 整理回答。"}})
 	if e != nil || o.ModelCalls != 3 || o.ToolCalls != 2 || m.calls != 1 || !strings.Contains(o.Text, "fixture-evidence") || o.Usage.PromptTokens != 30 || o.Usage.CompletionTokens != 15 {
 		t.Fatalf("not a real tool loop: %+v %v calls=%d", o, e, m.calls)
+	}
+}
+
+func TestVolcengineLiveLoopReadsReportCalculatesThenAnswers(t *testing.T) {
+	m := &mcpStub{}
+	o, err := runFixture(t, fixtureInput(), m, []map[string]any{toolCall("read_report", "{}"), toolCall("calculate_bazi", "{}"), {"role": "assistant", "content": "根据报告和八字工具的 fixture-evidence 整理回答。"}}, "volcengine")
+	if err != nil || o.ModelCalls != 3 || o.ToolCalls != 2 || m.calls != 1 || !strings.Contains(o.Text, "fixture-evidence") || o.Usage.PromptTokens != 30 || o.Usage.CompletionTokens != 15 {
+		t.Fatalf("Ark tool loop failed: %+v %v calls=%d", o, err, m.calls)
 	}
 }
 func TestMissingFactsInterruptAndNextTurnContinues(t *testing.T) {

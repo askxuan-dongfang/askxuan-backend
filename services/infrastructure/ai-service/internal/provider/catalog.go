@@ -56,6 +56,11 @@ func NewCatalogWithAllowed(p Provider, ids []string) *Catalog {
 // Model IDs come from the authenticated upstream catalog. Descriptions and
 // capabilities are our compatibility metadata, not inferred from arbitrary IDs.
 func (p *OpenAICompatible) listModels(ctx context.Context) ([]ModelOption, error) {
+	// Ark Endpoint IDs are account resources, not a discoverable /models catalog.
+	// Settings probes these explicit IDs before publishing the immutable snapshot.
+	if p.configuredModels != nil {
+		return append([]ModelOption{}, p.configuredModels...), nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL+"/models", nil)
