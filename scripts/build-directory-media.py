@@ -8,7 +8,7 @@ root=Path(__file__).resolve().parent
 examples=json.loads((root/'db/20261014_directory_examples.json').read_text())
 catalog_path=args.h5/'src/data/directory-media.json';catalog=json.loads(catalog_path.read_text())
 labels={'han_buddhism':('han','汉传佛教'),'tibetan_buddhism':('tibetan','藏传佛教'),'theravada_buddhism':('theravada','南传佛教'),'daoism':('dao','道教'),'folk':('folk','民间信俗')}
-base='/c/assets/profiles/demo-20261014/'
+base='/assets/profiles/demo-20261014/'
 def q(v):return "'"+str(v).replace("'","''")+"'"
 def media(key,caption):return dict(url=base+key+'.jpg',thumbnail=base+key+'-thumb.jpg',caption=caption,kind='generated')
 rows=['-- Generated demo-only media; exact names and empty/current demo covers are required.','SET NAMES utf8mb4;','START TRANSACTION;']
