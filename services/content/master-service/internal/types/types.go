@@ -4,6 +4,8 @@ package types
 
 // Master 法师
 type Master struct {
+	Images                 []ProfileImage         `json:"images,omitempty"`
+	MediaNotice            string                 `json:"mediaNotice,omitempty"`
 	TraditionCodes         []string               `json:"traditionCodes"`
 	RegionCode             string                 `json:"regionCode"`
 	RegionName             string                 `json:"regionName"`
@@ -435,4 +437,10 @@ type MasterPlatformStatusReq struct {
 type MasterPlatformStatusResp struct {
 	Id     string `json:"id"`
 	Status string `json:"status"`
+}
+
+type ProfileImage struct {
+	URL     string `json:"url"`
+	Caption string `json:"caption"`
+	Kind    string `json:"kind"`
 }

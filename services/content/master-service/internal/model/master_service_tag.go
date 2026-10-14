@@ -35,12 +35,23 @@ func (m *masterModel) ListServiceTagsByMaster(ctx context.Context, masterCode st
 // ReplaceServiceTags 覆盖式更新大师服务标签（事务）
 func (m *masterModel) ReplaceServiceTags(ctx context.Context, masterCode string, tags []types.MasterServiceTagItem) error {
 	return m.conn.TransactCtx(ctx, func(_ context.Context, s sqlx.Session) error {
-		if _, err := s.ExecCtx(ctx, fmt.Sprintf("DELETE FROM %s WHERE master_code = ?", masterServiceTagTable), masterCode); err != nil {
+		// Keep existing row IDs and intent_mode when only the price changes.
+		placeholders := make([]string, 0, len(tags))
+		args := []interface{}{masterCode}
+		for _, tag := range tags {
+			placeholders = append(placeholders, "?")
+			args = append(args, tag.ServiceCode)
+		}
+		query := fmt.Sprintf("DELETE FROM %s WHERE master_code = ?", masterServiceTagTable)
+		if len(tags) > 0 {
+			query += " AND service_code NOT IN (" + strings.Join(placeholders, ",") + ")"
+		}
+		if _, err := s.ExecCtx(ctx, query, args...); err != nil {
 			return err
 		}
 		for _, t := range tags {
 			if _, err := s.ExecCtx(ctx,
-				fmt.Sprintf("INSERT INTO %s (master_code, service_code, price, status) VALUES (?, ?, ?, 'enabled')", masterServiceTagTable),
+				fmt.Sprintf("INSERT INTO %s (master_code, service_code, price, status) VALUES (?, ?, ?, 'enabled') ON DUPLICATE KEY UPDATE price=VALUES(price),status=VALUES(status)", masterServiceTagTable),
 				masterCode, t.ServiceCode, t.Price); err != nil {
 				return err
 			}

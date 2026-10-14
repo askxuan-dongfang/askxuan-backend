@@ -50,6 +50,18 @@ func (l *DetailLogic) Detail(req *types.DetailReq) (*types.Master, error) {
 			})
 		}
 	}
+	if l.svcCtx.MasterImageModel != nil {
+		images, err := l.svcCtx.MasterImageModel.FindPublic(l.ctx, m.Code)
+		if err != nil {
+			return nil, err
+		}
+		for _, image := range images {
+			resp.Images = append(resp.Images, types.ProfileImage{URL: image.URL, Caption: image.Caption, Kind: image.Kind})
+		}
+		if len(images) > 0 {
+			resp.MediaNotice = "AI 生成 · 共享演示素材，非本人肖像及场所实拍"
+		}
+	}
 	return &resp, nil
 }
 

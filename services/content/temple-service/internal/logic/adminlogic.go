@@ -279,6 +279,14 @@ func (l *AdminServiceCreateLogic) AdminServiceCreate(req *types.TempleServiceCre
 	} else if !errors.Is(findErr, sqlx.ErrNotFound) {
 		return nil, common.ErrSystem
 	}
+	if req.IntentMode != "" && req.IntentMode != "inherit" && req.IntentMode != "custom" {
+		return nil, common.ErrParamInvalid
+	}
+	if req.IntentMode == "inherit" {
+		req.IntentTags = nil
+	} else if req.IntentMode == "custom" && req.IntentTags == nil {
+		req.IntentTags = []string{}
+	}
 	if !model.ValidIntentTags(req.IntentTags) {
 		return nil, common.ErrParamInvalid
 	}
@@ -316,6 +324,14 @@ func NewAdminServiceUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminServiceUpdateLogic) AdminServiceUpdate(req *types.TempleServiceUpdateReq) (*types.TempleService, error) {
+	if req.IntentMode != "" && req.IntentMode != "inherit" && req.IntentMode != "custom" {
+		return nil, common.ErrParamInvalid
+	}
+	if req.IntentMode == "inherit" {
+		req.IntentTags = nil
+	} else if req.IntentMode == "custom" && req.IntentTags == nil {
+		req.IntentTags = []string{}
+	}
 	if req.IntentTags != nil && !model.ValidIntentTags(req.IntentTags) {
 		return nil, common.ErrParamInvalid
 	}
@@ -350,7 +366,11 @@ func (l *AdminServiceUpdateLogic) AdminServiceUpdate(req *types.TempleServiceUpd
 		l.Errorf("更新寺院服务失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	if req.IntentTags != nil {
+	if req.IntentTags != nil || req.IntentMode != "" {
+		record.IntentMode = "custom"
+		if req.IntentTags == nil {
+			record.IntentMode = "inherit"
+		}
 		if err := l.svcCtx.TempleServiceModel.ReplaceIntentTags(l.ctx, req.Id, req.IntentTags); err != nil {
 			l.Errorf("更新服务诉求标签失败: %v", err)
 			return nil, common.ErrSystem
@@ -683,6 +703,7 @@ func toTypeTempleService(s *model.TempleServiceRecord) types.TempleService {
 		TimeSlots:   timeSlots,
 		Slots:       slots,
 		IntentTags:  []string{},
+		IntentMode:  s.IntentMode,
 		Status:      s.Status,
 		CreateTime:  s.CreateTime,
 	}

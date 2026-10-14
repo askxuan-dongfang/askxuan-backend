@@ -79,7 +79,7 @@ for i,(tag,label,belief,locations) in enumerate(traditions):
    insert('askxuan_temple.provider_directory_tag',['provider_kind','provider_code','tag_code'],['master',mc,tag])
    insert('askxuan_master.master_profile_ext',['master_code','bio','pricing'],[mc,f'虚构演示人物，用于展示{label}相关目录与预约流程。身份、专长和价格均为示例，不代表真实人物资质或服务承诺。','演示价格；指定师傅预约须先有该师傅有效付费咨询。'])
    for sn in chosen:insert('askxuan_master.master_service_tag',['master_code','service_code','price','status'],[mc,f'S{sn:03}',([128,320,680,1280][local%4] if track=='platform' else 39),'enabled'])
-   masters.append(dict(code=mc,belief=belief,tradition=tag,region=region,position=pos,specialties=assigned,track=track,services=chosen))
+   masters.append(dict(code=mc,name=mn,belief=belief,tradition=tag,region=region,position=pos,specialties=assigned,track=track,services=chosen))
 # Backfill only exact existing sect labels; explicit assignments can later be changed independently.
 for tag,label,*_ in traditions:
  for kind in ['temple','master']:

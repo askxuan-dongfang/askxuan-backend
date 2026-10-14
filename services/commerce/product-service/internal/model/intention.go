@@ -99,38 +99,41 @@ func (m *intentionModel) UpdateTagStatus(ctx context.Context, code, status strin
 }
 
 func resourceUnion(code string) (string, []interface{}) {
-	// 按心愿办：聚合寺院服务 + 双轨大师服务（寺庙绑定+野生，不含商品）
-	serviceWhere := "ts.status='on_shelf' AND t.status='正常'"
-	// 双轨大师：已认证+上架+正常，服务标签 enabled（两类大师都可直约/经寺院服务下单）
-	masterWhere := "mst.status='enabled' AND m.auth_status='已认证' AND m.shelf_status='on_shelf' AND m.platform_status='normal'"
+	serviceWhere := "ts.status='on_shelf' AND t.status='正常' AND st.status='enabled'"
+	masterWhere := "mst.status='enabled' AND st.status='enabled' AND m.auth_status='已认证' AND m.shelf_status='on_shelf' AND m.platform_status='normal' AND (m.manage_by='platform' OR (m.manage_by='temple' AND t.status='正常' AND ts.status='on_shelf'))"
 	var args []interface{}
 	if code != "" {
-		serviceWhere += " AND tsit.tag_code=?"
-		// 大师分支：心愿对应的标准服务编码（service 型诉求的 landing_value）
-		masterWhere += " AND EXISTS (SELECT 1 FROM master_service_intention mi WHERE mi.master_code=mst.master_code AND mi.service_code=mst.service_code AND mi.tag_code=?)"
+		serviceWhere += " AND FIND_IN_SET(?, (" + TempleIntentionTagsSQL("ts") + "))>0"
+		masterWhere += " AND FIND_IN_SET(?, (" + MasterIntentionTagsSQL("mst") + "))>0"
 		args = append(args, code, code)
+	} else {
+		serviceWhere += " AND (" + TempleIntentionTagsSQL("ts") + ")<>''"
+		masterWhere += " AND (" + MasterIntentionTagsSQL("mst") + ")<>''"
 	}
 	query := fmt.Sprintf(`
-SELECT DISTINCT 'service' resource_type, CAST(ts.id AS CHAR) source_id,
-  CONCAT(t.name,' · ',ts.service_name) title, COALESCE(t.description,'') subtitle,
-  ts.price, t.cover_image image,
-  CONCAT('service:',ts.temple_code,':',ts.service_code) order_target,
-  ts.temple_code, ts.service_code, '' master_code,
-  DATE_FORMAT(ts.update_time,'%%Y-%%m-%%d %%H:%%i:%%s') updated_at
+SELECT 'service' resource_type, CAST(ts.id AS CHAR) source_id,
+ CONCAT(t.name,' · ',ts.service_name) title, COALESCE(t.description,'') subtitle,
+ ts.price, t.cover_image image,
+ CONCAT('service:',ts.temple_code,':',ts.service_code) order_target,
+ ts.temple_code, ts.service_code, '' master_code,
+ DATE_FORMAT(ts.update_time,'%%Y-%%m-%%d %%H:%%i:%%s') updated_at
 FROM askxuan_temple.temple_service ts
 JOIN askxuan_temple.temple t ON t.code=ts.temple_code
-JOIN askxuan_temple.temple_service_intent_tag tsit ON tsit.temple_service_id=ts.id
+JOIN askxuan_temple.service_type st ON st.code=ts.service_code
 WHERE %s
 UNION ALL
-SELECT DISTINCT 'master' resource_type, mst.master_code source_id,
-  CONCAT(m.dharma_name,' · ',st.name) title, CONCAT(m.type,' · ',m.sect) subtitle,
-  mst.price, COALESCE(m.avatar,'') image,
-  CONCAT('master:',mst.master_code,':',mst.service_code) order_target,
-  m.temple_code temple_code, mst.service_code service_code, mst.master_code master_code,
-  DATE_FORMAT(mst.update_time,'%%Y-%%m-%%d %%H:%%i:%%s') updated_at
+SELECT 'master' resource_type, mst.master_code source_id,
+ CONCAT(m.dharma_name,' · ',st.name) title, CONCAT(m.type,' · ',m.sect) subtitle,
+ CASE WHEN m.manage_by='temple' THEN ts.price+mst.price ELSE mst.price END price,
+ COALESCE(m.avatar,'') image,
+ CONCAT('master:',mst.master_code,':',mst.service_code) order_target,
+ m.temple_code temple_code, mst.service_code service_code, mst.master_code master_code,
+ DATE_FORMAT(mst.update_time,'%%Y-%%m-%%d %%H:%%i:%%s') updated_at
 FROM askxuan_master.master_service_tag mst
 JOIN askxuan_master.master m ON m.code=mst.master_code
 JOIN askxuan_temple.service_type st ON st.code=mst.service_code
+LEFT JOIN askxuan_temple.temple t ON t.code=m.temple_code
+LEFT JOIN askxuan_temple.temple_service ts ON ts.temple_code=m.temple_code AND ts.service_code=mst.service_code
 WHERE %s`, serviceWhere, masterWhere)
 	return query, args
 }
@@ -146,7 +149,7 @@ func (m *intentionModel) FindResources(ctx context.Context, code string, page, s
 	}
 	listArgs := append(append([]interface{}{}, args...), (page-1)*size, size)
 	var resources []*IntentionResource
-	query := "SELECT resource_type,source_id,title,subtitle,price,image,order_target,temple_code,service_code,master_code,updated_at FROM (" + union + ") intention_resources ORDER BY updated_at DESC,resource_type,source_id DESC LIMIT ?,?"
+	query := "SELECT resource_type,source_id,title,subtitle,price,image,order_target,temple_code,service_code,master_code,updated_at FROM (" + union + ") intention_resources ORDER BY updated_at DESC,resource_type,source_id DESC,service_code,temple_code,master_code LIMIT ?,?"
 	if err := m.conn.QueryRowsCtx(ctx, &resources, query, listArgs...); err != nil {
 		return nil, 0, err
 	}

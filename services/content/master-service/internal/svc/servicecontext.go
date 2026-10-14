@@ -16,6 +16,7 @@ type ServiceContext struct {
 	Config                config.Config
 	Redis                 *redis.Redis
 	MasterModel           model.MasterModel
+	MasterImageModel      model.MasterImageModel
 	MasterAuditModel      model.MasterAuditModel
 	MasterCredModel       model.MasterCredentialModel
 	MasterScheduleModel   model.MasterScheduleModel
@@ -47,6 +48,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Config:                c,
 		Redis:                 rds,
 		MasterModel:           model.NewMasterModel(conn),
+		MasterImageModel:      model.NewMasterImageModel(conn),
 		MasterAuditModel:      model.NewMasterAuditModel(conn),
 		MasterCredModel:       model.NewMasterCredentialModel(conn),
 		MasterScheduleModel:   model.NewMasterScheduleModel(conn),

@@ -57,7 +57,7 @@ func (l *DetailLogic) Detail(req *types.DetailReq) (*types.TempleDetail, error) 
 	imageItems := make([]types.TempleImage, 0, len(images))
 	for _, image := range images {
 		imageItems = append(imageItems, types.TempleImage{
-			Id: image.Id, TempleCode: image.TempleCode, Url: image.Url,
+			Id: image.Id, TempleCode: image.TempleCode, Url: image.Url, Caption: image.Caption, Kind: image.Kind,
 			Type: image.Type, Sort: image.Sort, CreateTime: image.CreateTime,
 		})
 	}

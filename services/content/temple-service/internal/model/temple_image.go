@@ -21,6 +21,8 @@ const templeImageTable = "temple_image"
 
 // TempleImage 寺院图片
 type TempleImage struct {
+	Caption    string `db:"caption" json:"caption"`
+	Kind       string `db:"kind" json:"kind"`
 	Id         int64  `db:"id" json:"id"`
 	TempleCode string `db:"temple_code" json:"templeCode"`
 	Url        string `db:"url" json:"url"`
@@ -65,7 +67,7 @@ func (m *defaultTempleImageModel) Insert(ctx context.Context, data *TempleImage)
 // FindOne 按 ID 查询寺院图片
 func (m *defaultTempleImageModel) FindOne(ctx context.Context, id int64) (*TempleImage, error) {
 	var img TempleImage
-	query := fmt.Sprintf(`SELECT id, temple_code, url, type, sort, create_time FROM %s WHERE id = ?`, templeImageTable)
+	query := fmt.Sprintf(`SELECT id, temple_code, url, type, sort, create_time,caption,kind FROM %s WHERE id = ?`, templeImageTable)
 	err := m.conn.QueryRowCtx(ctx, &img, query, id)
 	if err != nil {
 		return nil, err
@@ -75,7 +77,7 @@ func (m *defaultTempleImageModel) FindOne(ctx context.Context, id int64) (*Templ
 
 // FindByTempleCode 查询寺院图片列表
 func (m *defaultTempleImageModel) FindByTempleCode(ctx context.Context, templeCode string) ([]*TempleImage, error) {
-	query := fmt.Sprintf(`SELECT id, temple_code, url, type, sort, create_time FROM %s WHERE temple_code = ? ORDER BY sort ASC, id ASC`, templeImageTable)
+	query := fmt.Sprintf(`SELECT i.id,i.temple_code,i.url,i.type,i.sort,i.create_time,i.caption,i.kind FROM %s i JOIN temple t ON t.code=i.temple_code WHERE i.temple_code=? AND (i.name_guard='' OR (i.name_guard=t.name AND i.cover_guard=t.cover_image)) ORDER BY i.sort,i.id`, templeImageTable)
 	var list []*TempleImage
 	if err := m.conn.QueryRowsCtx(ctx, &list, query, templeCode); err != nil {
 		return nil, err
@@ -95,7 +97,7 @@ func (m *defaultTempleImageModel) CountByTempleCodeAndType(ctx context.Context, 
 
 // Update 更新寺院图片
 func (m *defaultTempleImageModel) Update(ctx context.Context, data *TempleImage) error {
-	query := fmt.Sprintf(`UPDATE %s SET temple_code = ?, url = ?, type = ?, sort = ? WHERE id = ?`, templeImageTable)
+	query := fmt.Sprintf(`UPDATE %s SET temple_code = ?, url = ?, type = ?, sort = ?,caption='',kind='',name_guard='',cover_guard='' WHERE id = ?`, templeImageTable)
 	_, err := m.conn.ExecCtx(ctx, query, data.TempleCode, data.Url, data.Type, data.Sort, data.Id)
 	return err
 }

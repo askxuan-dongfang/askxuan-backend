@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -23,6 +22,7 @@ const templeServiceTable = "temple_service"
 
 // TempleServiceRecord 寺院开通的标准服务（避免与 types.TempleService 混淆，model 层加 Record 后缀）
 type TempleServiceRecord struct {
+	IntentMode  string              `db:"intent_mode" json:"intentMode"`
 	Id          int64               `db:"id" json:"id"`
 	TempleCode  string              `db:"temple_code" json:"templeCode"`
 	ServiceCode string              `db:"service_code" json:"serviceCode"`
@@ -47,6 +47,7 @@ type TempleServiceSlot struct {
 
 // templeServiceRow 服务 DB 行结构（TimeSlots 为 JSON 字符串）
 type templeServiceRow struct {
+	IntentMode  string  `db:"intent_mode" json:"intentMode"`
 	Id          int64   `db:"id"`
 	TempleCode  string  `db:"temple_code"`
 	ServiceCode string  `db:"service_code"`
@@ -74,11 +75,16 @@ type TempleServiceModel interface {
 }
 
 func ValidIntentTags(tags []string) bool {
-	pattern := regexp.MustCompile(`^[a-z][a-z0-9_]{1,31}$`)
-	for _, raw := range tags {
-		if !pattern.MatchString(strings.TrimSpace(raw)) {
+	allowed := map[string]bool{"peace": true, "wealth": true, "love": true, "career": true, "study": true, "taisui": true, "rite": true}
+	if len(tags) > 7 {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, tag := range tags {
+		if !allowed[tag] || seen[tag] {
 			return false
 		}
+		seen[tag] = true
 	}
 	return true
 }
@@ -120,7 +126,7 @@ func (m *defaultTempleServiceModel) Insert(ctx context.Context, data *TempleServ
 
 // FindOne 按 ID 查询寺院服务
 func (m *defaultTempleServiceModel) FindOne(ctx context.Context, id int64) (*TempleServiceRecord, error) {
-	query := fmt.Sprintf(`SELECT id, temple_code, service_code, service_name, price, time_slots, status, create_time, update_time FROM %s WHERE id = ?`,
+	query := fmt.Sprintf(`SELECT id, temple_code, service_code, service_name, price, time_slots, status, intent_mode, create_time, update_time FROM %s WHERE id = ?`,
 		templeServiceTable)
 	var row templeServiceRow
 	if err := m.conn.QueryRowCtx(ctx, &row, query, id); err != nil {
@@ -132,7 +138,7 @@ func (m *defaultTempleServiceModel) FindOne(ctx context.Context, id int64) (*Tem
 }
 
 func (m *defaultTempleServiceModel) FindByCodes(ctx context.Context, templeCode, serviceCode string) (*TempleServiceRecord, error) {
-	const query = `SELECT id, temple_code, service_code, service_name, price, time_slots, status, create_time, update_time FROM temple_service WHERE temple_code=? AND service_code=?`
+	const query = `SELECT id, temple_code, service_code, service_name, price, time_slots, status, intent_mode, create_time, update_time FROM temple_service WHERE temple_code=? AND service_code=?`
 	var row templeServiceRow
 	if err := m.conn.QueryRowCtx(ctx, &row, query, templeCode, serviceCode); err != nil {
 		return nil, err
@@ -144,7 +150,7 @@ func (m *defaultTempleServiceModel) FindByCodes(ctx context.Context, templeCode,
 
 // FindByTempleId 查询寺院的服务列表（含下架）
 func (m *defaultTempleServiceModel) FindByTempleId(ctx context.Context, templeCode string) ([]*TempleServiceRecord, error) {
-	query := fmt.Sprintf(`SELECT id, temple_code, service_code, service_name, price, time_slots, status, create_time, update_time FROM %s WHERE temple_code = ? ORDER BY id ASC`,
+	query := fmt.Sprintf(`SELECT id, temple_code, service_code, service_name, price, time_slots, status, intent_mode, create_time, update_time FROM %s WHERE temple_code = ? ORDER BY id ASC`,
 		templeServiceTable)
 	var rows []*templeServiceRow
 	if err := m.conn.QueryRowsCtx(ctx, &rows, query, templeCode); err != nil {
@@ -182,7 +188,7 @@ func (m *defaultTempleServiceModel) FindList(ctx context.Context, templeCode, st
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, temple_code, service_code, service_name, price, time_slots, status, create_time, update_time FROM %s WHERE %s ORDER BY id ASC LIMIT ?, ?`,
+	listQuery := fmt.Sprintf(`SELECT id, temple_code, service_code, service_name, price, time_slots, status, intent_mode, create_time, update_time FROM %s WHERE %s ORDER BY id ASC LIMIT ?, ?`,
 		templeServiceTable, where)
 	listArgs := append(args, offset, size)
 	var rows []*templeServiceRow
@@ -279,7 +285,7 @@ func (m *defaultTempleServiceModel) FindIntentTags(ctx context.Context, id int64
 	var rows []struct {
 		Code string `db:"tag_code"`
 	}
-	if err := m.conn.QueryRowsCtx(ctx, &rows, "SELECT tag_code FROM temple_service_intent_tag WHERE temple_service_id=? ORDER BY tag_code", id); err != nil {
+	if err := m.conn.QueryRowsCtx(ctx, &rows, `SELECT b.tag_code FROM temple_service_intent_tag b JOIN temple_service s ON s.id=b.temple_service_id JOIN askxuan_product.intent_tag i ON i.code=b.tag_code AND i.status='enabled' WHERE s.id=? AND s.intent_mode='custom' UNION SELECT r.tag_code FROM temple_service s JOIN askxuan_product.service_intention_rule r ON r.service_code=s.service_code JOIN askxuan_product.intent_tag i ON i.code=r.tag_code AND i.status='enabled' WHERE s.id=? AND s.intent_mode='inherit' ORDER BY tag_code`, id, id); err != nil {
 		return nil, err
 	}
 	tags := make([]string, 0, len(rows))
@@ -294,6 +300,22 @@ func (m *defaultTempleServiceModel) ReplaceIntentTags(ctx context.Context, id in
 		return fmt.Errorf("invalid intent tags")
 	}
 	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		for _, tag := range tags {
+			var count int
+			if e := session.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM askxuan_product.intent_tag WHERE code=? AND status='enabled'", tag); e != nil {
+				return e
+			}
+			if count != 1 {
+				return fmt.Errorf("invalid intent tag")
+			}
+		}
+		mode := "custom"
+		if tags == nil {
+			mode = "inherit"
+		}
+		if _, err := session.ExecCtx(ctx, "UPDATE temple_service SET intent_mode=? WHERE id=?", mode, id); err != nil {
+			return err
+		}
 		if _, err := session.ExecCtx(ctx, "DELETE FROM temple_service_intent_tag WHERE temple_service_id=?", id); err != nil {
 			return err
 		}
@@ -322,6 +344,7 @@ func rowToService(row *templeServiceRow) *TempleServiceRecord {
 		slots = []string{}
 	}
 	return &TempleServiceRecord{
+		IntentMode:  row.IntentMode,
 		Id:          row.Id,
 		TempleCode:  row.TempleCode,
 		ServiceCode: row.ServiceCode,

@@ -1,0 +1,4542 @@
+{
+  "temples": {
+    "DT001": {
+      "name": "浙江杭州·禅宗澄和寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT002": {
+      "name": "香港新界·禅宗知礼寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT003": {
+      "name": "台湾台北·禅宗和光寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT004": {
+      "name": "福建福州·净土宗澄和寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT005": {
+      "name": "澳门·净土宗知礼寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT006": {
+      "name": "新加坡·净土宗和光寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT007": {
+      "name": "浙江台州·天台宗澄和寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT008": {
+      "name": "香港九龙·天台宗知礼寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT009": {
+      "name": "台湾台中·天台宗和光寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT010": {
+      "name": "江苏苏州·华严宗澄和寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT011": {
+      "name": "台湾台北·华严宗知礼寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT012": {
+      "name": "马来西亚槟城·华严宗和光寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/han02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "汉传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "汉传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT013": {
+      "name": "青海西宁·格鲁派澄和寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT014": {
+      "name": "台湾台北·格鲁派知礼寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT015": {
+      "name": "新加坡·格鲁派和光寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT016": {
+      "name": "四川甘孜·宁玛派澄和寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT017": {
+      "name": "香港·宁玛派知礼寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT018": {
+      "name": "台湾高雄·宁玛派和光寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT019": {
+      "name": "云南迪庆·噶举派澄和寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT020": {
+      "name": "香港·噶举派知礼寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT021": {
+      "name": "马来西亚吉隆坡·噶举派和光寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT022": {
+      "name": "西藏日喀则·萨迦派澄和寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT023": {
+      "name": "台湾台北·萨迦派知礼寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT024": {
+      "name": "新加坡·萨迦派和光寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "藏传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "藏传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT025": {
+      "name": "云南西双版纳·上座部澄和寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/theravada01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada01-thumb.jpg",
+          "caption": "南传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada02-thumb.jpg",
+          "caption": "南传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT026": {
+      "name": "泰国清迈·上座部知礼寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/theravada02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/theravada02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/theravada02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada01-thumb.jpg",
+          "caption": "南传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada02-thumb.jpg",
+          "caption": "南传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT027": {
+      "name": "缅甸仰光·上座部和光寺（演示）",
+      "original": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/theravada01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada01-thumb.jpg",
+          "caption": "南传佛教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada02-thumb.jpg",
+          "caption": "南传佛教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT028": {
+      "name": "山东青岛·全真派澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/dao02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/dao02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "道教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "道教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT029": {
+      "name": "香港新界·全真派知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/dao01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/dao01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "道教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "道教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT030": {
+      "name": "澳门·全真派和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/dao02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/dao02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "道教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "道教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT031": {
+      "name": "江西鹰潭·正一派澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/dao01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/dao01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "道教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "道教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT032": {
+      "name": "台湾台南·正一派知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/dao02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/dao02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "道教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "道教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT033": {
+      "name": "马来西亚柔佛·正一派和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/dao01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/dao01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "道教场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "道教空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT034": {
+      "name": "福建莆田·妈祖澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT035": {
+      "name": "澳门·妈祖知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT036": {
+      "name": "台湾台中·妈祖和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT037": {
+      "name": "广东汕头·关帝澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT038": {
+      "name": "香港九龙·关帝知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT039": {
+      "name": "马来西亚槟城·关帝和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT040": {
+      "name": "浙江宁波·城隍澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT041": {
+      "name": "台湾新竹·城隍知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT042": {
+      "name": "新加坡·城隍和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT043": {
+      "name": "福建泉州·王爷澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT044": {
+      "name": "台湾屏东·王爷知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT045": {
+      "name": "马来西亚马六甲·王爷和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT046": {
+      "name": "福建漳州·福德正神澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT047": {
+      "name": "香港新界·福德正神知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT048": {
+      "name": "台湾台南·福德正神和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT049": {
+      "name": "福建厦门·保生大帝澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT050": {
+      "name": "台湾台北·保生大帝知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT051": {
+      "name": "新加坡·保生大帝和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT052": {
+      "name": "澳门·哪吒澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT053": {
+      "name": "广东珠海·哪吒知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT054": {
+      "name": "台湾高雄·哪吒和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT055": {
+      "name": "香港西贡·洪圣澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT056": {
+      "name": "香港大澳·洪圣知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT057": {
+      "name": "广东广州·洪圣和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT058": {
+      "name": "香港九龙·黄大仙澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT059": {
+      "name": "浙江金华·黄大仙知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT060": {
+      "name": "澳门·黄大仙和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT061": {
+      "name": "新加坡·九皇爷澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT062": {
+      "name": "马来西亚槟城·九皇爷知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT063": {
+      "name": "泰国普吉·九皇爷和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT064": {
+      "name": "马来西亚砂拉越·大伯公澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT065": {
+      "name": "新加坡·大伯公知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT066": {
+      "name": "印度尼西亚西加里曼丹·大伯公和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT067": {
+      "name": "马来西亚吉隆坡·拿督公澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT068": {
+      "name": "马来西亚柔佛·拿督公知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT069": {
+      "name": "新加坡·拿督公和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT070": {
+      "name": "广东揭阳·三山国王澄和宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT071": {
+      "name": "台湾宜兰·三山国王知礼宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DT072": {
+      "name": "马来西亚柔佛·三山国王和光宫（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folk02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "民间信俗场景示意 · 非场所实拍",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "民间信俗空间示意 · 共享演示素材",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    }
+  },
+  "masters": {
+    "DW001": {
+      "name": "知远法师01（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM001": {
+      "name": "知远法师01（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW002": {
+      "name": "明禾法师02（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM002": {
+      "name": "明禾法师02（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW003": {
+      "name": "静初法师03（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM003": {
+      "name": "静初法师03（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW004": {
+      "name": "知远法师04（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM004": {
+      "name": "知远法师04（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW005": {
+      "name": "明禾法师05（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM005": {
+      "name": "明禾法师05（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW006": {
+      "name": "静初法师06（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM006": {
+      "name": "静初法师06（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW007": {
+      "name": "知远法师07（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM007": {
+      "name": "知远法师07（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW008": {
+      "name": "明禾法师08（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM008": {
+      "name": "明禾法师08（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW009": {
+      "name": "静初法师09（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM009": {
+      "name": "静初法师09（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW010": {
+      "name": "知远法师10（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM010": {
+      "name": "知远法师10（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW011": {
+      "name": "明禾法师11（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM011": {
+      "name": "明禾法师11（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW012": {
+      "name": "静初法师12（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM012": {
+      "name": "静初法师12（演示）",
+      "original": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/hanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/hanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/han02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/han02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW013": {
+      "name": "知远法师13（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM013": {
+      "name": "知远法师13（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW014": {
+      "name": "明禾法师14（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM014": {
+      "name": "明禾法师14（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW015": {
+      "name": "静初法师15（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM015": {
+      "name": "静初法师15（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW016": {
+      "name": "知远法师16（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM016": {
+      "name": "知远法师16（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW017": {
+      "name": "明禾法师17（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM017": {
+      "name": "明禾法师17（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW018": {
+      "name": "静初法师18（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM018": {
+      "name": "静初法师18（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW019": {
+      "name": "知远法师19（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM019": {
+      "name": "知远法师19（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW020": {
+      "name": "明禾法师20（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM020": {
+      "name": "明禾法师20（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW021": {
+      "name": "静初法师21（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM021": {
+      "name": "静初法师21（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW022": {
+      "name": "知远法师22（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM022": {
+      "name": "知远法师22（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW023": {
+      "name": "明禾法师23（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM023": {
+      "name": "明禾法师23（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW024": {
+      "name": "静初法师24（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM024": {
+      "name": "静初法师24（演示）",
+      "original": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetanportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetanportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/tibetan02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/tibetan02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW025": {
+      "name": "知远法师25（演示）",
+      "original": "/c/assets/profiles/demo-20261014/theravadaportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/theravadaportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/theravadaportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravadaportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravadaportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM025": {
+      "name": "知远法师25（演示）",
+      "original": "/c/assets/profiles/demo-20261014/theravadaportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/theravadaportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/theravadaportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravadaportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravadaportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW026": {
+      "name": "明禾法师26（演示）",
+      "original": "/c/assets/profiles/demo-20261014/theravadaportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/theravadaportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/theravadaportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravadaportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravadaportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM026": {
+      "name": "明禾法师26（演示）",
+      "original": "/c/assets/profiles/demo-20261014/theravadaportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/theravadaportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/theravadaportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravadaportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravadaportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW027": {
+      "name": "静初法师27（演示）",
+      "original": "/c/assets/profiles/demo-20261014/theravadaportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/theravadaportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/theravadaportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravadaportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravadaportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM027": {
+      "name": "静初法师27（演示）",
+      "original": "/c/assets/profiles/demo-20261014/theravadaportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/theravadaportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/theravadaportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravadaportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravadaportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/theravada01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/theravada01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW028": {
+      "name": "知远道长28（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM028": {
+      "name": "知远道长28（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW029": {
+      "name": "明禾道长29（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM029": {
+      "name": "明禾道长29（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW030": {
+      "name": "静初道长30（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM030": {
+      "name": "静初道长30（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW031": {
+      "name": "知远道长31（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM031": {
+      "name": "知远道长31（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW032": {
+      "name": "明禾道长32（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM032": {
+      "name": "明禾道长32（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW033": {
+      "name": "静初道长33（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM033": {
+      "name": "静初道长33（演示）",
+      "original": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/daoportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/daoportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/dao01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/dao01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW034": {
+      "name": "知远老师34（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM034": {
+      "name": "知远老师34（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW035": {
+      "name": "明禾老师35（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM035": {
+      "name": "明禾老师35（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW036": {
+      "name": "静初老师36（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM036": {
+      "name": "静初老师36（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW037": {
+      "name": "知远老师37（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM037": {
+      "name": "知远老师37（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW038": {
+      "name": "明禾老师38（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM038": {
+      "name": "明禾老师38（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW039": {
+      "name": "静初老师39（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM039": {
+      "name": "静初老师39（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW040": {
+      "name": "知远老师40（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM040": {
+      "name": "知远老师40（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW041": {
+      "name": "明禾老师41（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM041": {
+      "name": "明禾老师41（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW042": {
+      "name": "静初老师42（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM042": {
+      "name": "静初老师42（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW043": {
+      "name": "知远老师43（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM043": {
+      "name": "知远老师43（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW044": {
+      "name": "明禾老师44（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM044": {
+      "name": "明禾老师44（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW045": {
+      "name": "静初老师45（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM045": {
+      "name": "静初老师45（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW046": {
+      "name": "知远老师46（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM046": {
+      "name": "知远老师46（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW047": {
+      "name": "明禾老师47（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM047": {
+      "name": "明禾老师47（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW048": {
+      "name": "静初老师48（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM048": {
+      "name": "静初老师48（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW049": {
+      "name": "知远老师49（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM049": {
+      "name": "知远老师49（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW050": {
+      "name": "明禾老师50（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM050": {
+      "name": "明禾老师50（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW051": {
+      "name": "静初老师51（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM051": {
+      "name": "静初老师51（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW052": {
+      "name": "知远老师52（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM052": {
+      "name": "知远老师52（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW053": {
+      "name": "明禾老师53（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM053": {
+      "name": "明禾老师53（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW054": {
+      "name": "静初老师54（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM054": {
+      "name": "静初老师54（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW055": {
+      "name": "知远老师55（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM055": {
+      "name": "知远老师55（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW056": {
+      "name": "明禾老师56（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM056": {
+      "name": "明禾老师56（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW057": {
+      "name": "静初老师57（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM057": {
+      "name": "静初老师57（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW058": {
+      "name": "知远老师58（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM058": {
+      "name": "知远老师58（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW059": {
+      "name": "明禾老师59（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM059": {
+      "name": "明禾老师59（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW060": {
+      "name": "静初老师60（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM060": {
+      "name": "静初老师60（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW061": {
+      "name": "知远老师61（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM061": {
+      "name": "知远老师61（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW062": {
+      "name": "明禾老师62（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM062": {
+      "name": "明禾老师62（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW063": {
+      "name": "静初老师63（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM063": {
+      "name": "静初老师63（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW064": {
+      "name": "知远老师64（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM064": {
+      "name": "知远老师64（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW065": {
+      "name": "明禾老师65（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM065": {
+      "name": "明禾老师65（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW066": {
+      "name": "静初老师66（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM066": {
+      "name": "静初老师66（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW067": {
+      "name": "知远老师67（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM067": {
+      "name": "知远老师67（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW068": {
+      "name": "明禾老师68（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM068": {
+      "name": "明禾老师68（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW069": {
+      "name": "静初老师69（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM069": {
+      "name": "静初老师69（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW070": {
+      "name": "知远老师70（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM070": {
+      "name": "知远老师70（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW071": {
+      "name": "明禾老师71（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM071": {
+      "name": "明禾老师71（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk01-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DW072": {
+      "name": "静初老师72（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait02-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    },
+    "DM072": {
+      "name": "静初老师72（演示）",
+      "original": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "cover": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+      "icon": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+      "images": [
+        {
+          "url": "/c/assets/profiles/demo-20261014/folkportrait01.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folkportrait01-thumb.jpg",
+          "caption": "演示形象 · 非本人肖像",
+          "kind": "generated"
+        },
+        {
+          "url": "/c/assets/profiles/demo-20261014/folk02.jpg",
+          "thumbnail": "/c/assets/profiles/demo-20261014/folk02-thumb.jpg",
+          "caption": "交流空间示意 · 非场所实拍",
+          "kind": "generated"
+        }
+      ],
+      "sharedDemo": true
+    }
+  }
+}

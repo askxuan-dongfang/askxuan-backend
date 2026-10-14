@@ -120,6 +120,8 @@ type FavoritesResp struct {
 
 // TempleImage 寺院图片
 type TempleImage struct {
+	Caption    string `json:"caption"`
+	Kind       string `json:"kind"`
 	Id         int64  `json:"id"`
 	TempleCode string `json:"templeCode"`
 	Url        string `json:"url"`
@@ -171,6 +173,7 @@ type TempleService struct {
 	Price       float64             `json:"price"`
 	TimeSlots   []string            `json:"timeSlots"`
 	Slots       []TempleServiceSlot `json:"slots"`
+	IntentMode  string              `json:"intentMode,optional"`
 	IntentTags  []string            `json:"intentTags"`
 	Status      string              `json:"status"`
 	CreateTime  string              `json:"createTime"`
@@ -203,6 +206,7 @@ type TempleServiceCreateReq struct {
 	Price       float64             `json:"price"`
 	TimeSlots   []string            `json:"timeSlots"`
 	Slots       []TempleServiceSlot `json:"slots,optional"`
+	IntentMode  string              `json:"intentMode,optional"`
 	IntentTags  []string            `json:"intentTags,optional"`
 }
 
@@ -223,6 +227,7 @@ type TempleServiceUpdateReq struct {
 	Price       float64             `json:"price,optional"`
 	TimeSlots   []string            `json:"timeSlots,optional"`
 	Slots       []TempleServiceSlot `json:"slots,optional"`
+	IntentMode  string              `json:"intentMode,optional"`
 	IntentTags  []string            `json:"intentTags,optional"`
 }
 
