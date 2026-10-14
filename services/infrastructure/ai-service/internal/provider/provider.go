@@ -46,7 +46,10 @@ type StreamDelta struct {
 	Reasoning bool
 }
 
-type Config struct{ Provider, BaseURL, APIKey, Model, VisionModel string }
+type Config struct {
+	Provider, BaseURL, APIKey, Model, VisionModel string
+	EnabledModels                                 []string
+}
 
 func ConfigFromEnvironment(fallback Config) Config {
 	if v := os.Getenv("AI_PROVIDER"); v != "" {
@@ -74,6 +77,14 @@ func New(cfg Config) (Provider, error) {
 	switch strings.ToLower(cfg.Provider) {
 	case "mock":
 		return Mock{}, nil
+	case "volcengine":
+		if cfg.BaseURL == "" {
+			cfg.BaseURL = VolcengineBaseURL
+		}
+		if cfg.APIKey == "" || cfg.Model == "" {
+			return nil, fmt.Errorf("volcengine requires AI_API_KEY and AI_MODEL (Model ID or Endpoint ID)")
+		}
+		return newVolcengine(cfg), nil
 	case "openai_compatible":
 		if cfg.BaseURL == "" || cfg.APIKey == "" || cfg.Model == "" {
 			return nil, fmt.Errorf("openai_compatible requires AI_BASE_URL, AI_API_KEY and AI_MODEL")

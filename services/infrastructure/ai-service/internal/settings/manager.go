@@ -163,12 +163,15 @@ func (m *Manager) prepare(req Update) (record, error) {
 		return record{}, err
 	}
 	req.BaseURL = base
-	if req.Provider != "deepseek" && req.Provider != "openai_compatible" {
-		return record{}, errors.New("请选择 DeepSeek 或 OpenAI 兼容接口")
+	if req.Provider != "deepseek" && req.Provider != "openai_compatible" && req.Provider != "volcengine" {
+		return record{}, errors.New("请选择 DeepSeek、火山引擎或 OpenAI 兼容接口")
 	}
 	u, _ := url.Parse(base)
 	if req.Provider == "deepseek" && (u.Hostname() != "api.deepseek.com" || (u.Path != "" && u.Path != "/v1")) {
 		return record{}, errors.New("DeepSeek 使用官方接口地址")
+	}
+	if req.Provider == "volcengine" && !provider.IsVolcengineURL(base) {
+		return record{}, errors.New("火山方舟请填写所在地域的官方模型服务地址，例如 https://ark.cn-beijing.volces.com/api/v3")
 	}
 	if !validModel.MatchString(req.DefaultModel) || (req.VisionModel != "" && !validModel.MatchString(req.VisionModel)) {
 		return record{}, errors.New("请填写有效的默认模型和图片模型")
@@ -281,16 +284,16 @@ func (m *Manager) buildSnapshot(r record) (*Snapshot, error) {
 	c.MaxInputChars = r.MaxInputChars
 	c.TaskTimeoutSeconds = r.TaskTimeoutSeconds
 	c.Provider = "openai_compatible"
-	if r.Provider == "mock" {
-		c.Provider = "mock"
+	if r.Provider == "mock" || r.Provider == "volcengine" {
+		c.Provider = r.Provider
 	}
-	p, err := provider.New(provider.Config{Provider: c.Provider, BaseURL: c.BaseURL, APIKey: c.APIKey, Model: c.Model, VisionModel: c.VisionModel})
+	p, err := provider.New(provider.Config{Provider: c.Provider, BaseURL: c.BaseURL, APIKey: c.APIKey, Model: c.Model, VisionModel: c.VisionModel, EnabledModels: r.EnabledModels})
 	if err != nil {
 		return nil, err
 	}
 	if compatible, ok := p.(*provider.OpenAICompatible); ok {
 		compatible.SetHTTPClient(secureClient())
-		if r.Provider != "deepseek" {
+		if r.Provider != "deepseek" && r.Provider != "volcengine" {
 			compatible.UseStandardParameters()
 		}
 	}
@@ -312,6 +315,11 @@ func (m *Manager) check(ctx context.Context, r record, strict bool) (*Snapshot, 
 	list, err := provider.NewCatalog(snap.Provider).List(ctx)
 	if err != nil {
 		return nil, list, errors.New("连接测试失败，请检查地址、密钥和服务状态")
+	}
+	if r.Provider == "volcengine" {
+		if err := probeVolcengineModels(ctx, snap.Provider, list.List); err != nil {
+			return nil, list, err
+		}
 	}
 	if strict {
 		available := map[string]provider.ModelOption{}
@@ -393,6 +401,9 @@ func (m *Manager) Save(ctx context.Context, req Update, actor string) (Public, e
 // Older records/clients omitted these fields. Fill them without overwriting an
 // explicitly stored output budget; production upgrades still use the audited API.
 func normalized(v Values) Values {
+	if v.Provider == "volcengine" && strings.TrimSpace(v.BaseURL) == "" {
+		v.BaseURL = provider.VolcengineBaseURL
+	}
 	if v.ComplexOutputTokens == 0 {
 		v.ComplexOutputTokens = max(16384, v.MaxOutputTokens)
 	}
