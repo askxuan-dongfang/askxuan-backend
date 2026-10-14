@@ -572,6 +572,7 @@
   "temples": [
     {
       "code": "DT001",
+      "name": "浙江杭州·禅宗澄和寺（演示）",
       "belief": "han_buddhism",
       "tradition": "chan",
       "region": "mainland",
@@ -584,6 +585,7 @@
     },
     {
       "code": "DT002",
+      "name": "香港新界·禅宗知礼寺（演示）",
       "belief": "han_buddhism",
       "tradition": "chan",
       "region": "hong_kong",
@@ -596,6 +598,7 @@
     },
     {
       "code": "DT003",
+      "name": "台湾台北·禅宗和光寺（演示）",
       "belief": "han_buddhism",
       "tradition": "chan",
       "region": "taiwan",
@@ -608,6 +611,7 @@
     },
     {
       "code": "DT004",
+      "name": "福建福州·净土宗澄和寺（演示）",
       "belief": "han_buddhism",
       "tradition": "pure_land",
       "region": "mainland",
@@ -620,6 +624,7 @@
     },
     {
       "code": "DT005",
+      "name": "澳门·净土宗知礼寺（演示）",
       "belief": "han_buddhism",
       "tradition": "pure_land",
       "region": "macau",
@@ -632,6 +637,7 @@
     },
     {
       "code": "DT006",
+      "name": "新加坡·净土宗和光寺（演示）",
       "belief": "han_buddhism",
       "tradition": "pure_land",
       "region": "southeast_asia",
@@ -644,6 +650,7 @@
     },
     {
       "code": "DT007",
+      "name": "浙江台州·天台宗澄和寺（演示）",
       "belief": "han_buddhism",
       "tradition": "tiantai",
       "region": "mainland",
@@ -656,6 +663,7 @@
     },
     {
       "code": "DT008",
+      "name": "香港九龙·天台宗知礼寺（演示）",
       "belief": "han_buddhism",
       "tradition": "tiantai",
       "region": "hong_kong",
@@ -668,6 +676,7 @@
     },
     {
       "code": "DT009",
+      "name": "台湾台中·天台宗和光寺（演示）",
       "belief": "han_buddhism",
       "tradition": "tiantai",
       "region": "taiwan",
@@ -680,6 +689,7 @@
     },
     {
       "code": "DT010",
+      "name": "江苏苏州·华严宗澄和寺（演示）",
       "belief": "han_buddhism",
       "tradition": "huayan",
       "region": "mainland",
@@ -692,6 +702,7 @@
     },
     {
       "code": "DT011",
+      "name": "台湾台北·华严宗知礼寺（演示）",
       "belief": "han_buddhism",
       "tradition": "huayan",
       "region": "taiwan",
@@ -704,6 +715,7 @@
     },
     {
       "code": "DT012",
+      "name": "马来西亚槟城·华严宗和光寺（演示）",
       "belief": "han_buddhism",
       "tradition": "huayan",
       "region": "southeast_asia",
@@ -716,6 +728,7 @@
     },
     {
       "code": "DT013",
+      "name": "青海西宁·格鲁派澄和寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "gelug",
       "region": "mainland",
@@ -728,6 +741,7 @@
     },
     {
       "code": "DT014",
+      "name": "台湾台北·格鲁派知礼寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "gelug",
       "region": "taiwan",
@@ -740,6 +754,7 @@
     },
     {
       "code": "DT015",
+      "name": "新加坡·格鲁派和光寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "gelug",
       "region": "southeast_asia",
@@ -752,6 +767,7 @@
     },
     {
       "code": "DT016",
+      "name": "四川甘孜·宁玛派澄和寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "nyingma",
       "region": "mainland",
@@ -764,6 +780,7 @@
     },
     {
       "code": "DT017",
+      "name": "香港·宁玛派知礼寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "nyingma",
       "region": "hong_kong",
@@ -776,6 +793,7 @@
     },
     {
       "code": "DT018",
+      "name": "台湾高雄·宁玛派和光寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "nyingma",
       "region": "taiwan",
@@ -788,6 +806,7 @@
     },
     {
       "code": "DT019",
+      "name": "云南迪庆·噶举派澄和寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "kagyu",
       "region": "mainland",
@@ -800,6 +819,7 @@
     },
     {
       "code": "DT020",
+      "name": "香港·噶举派知礼寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "kagyu",
       "region": "hong_kong",
@@ -812,6 +832,7 @@
     },
     {
       "code": "DT021",
+      "name": "马来西亚吉隆坡·噶举派和光寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "kagyu",
       "region": "southeast_asia",
@@ -824,6 +845,7 @@
     },
     {
       "code": "DT022",
+      "name": "西藏日喀则·萨迦派澄和寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "sakya",
       "region": "mainland",
@@ -836,6 +858,7 @@
     },
     {
       "code": "DT023",
+      "name": "台湾台北·萨迦派知礼寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "sakya",
       "region": "taiwan",
@@ -848,6 +871,7 @@
     },
     {
       "code": "DT024",
+      "name": "新加坡·萨迦派和光寺（演示）",
       "belief": "tibetan_buddhism",
       "tradition": "sakya",
       "region": "southeast_asia",
@@ -860,6 +884,7 @@
     },
     {
       "code": "DT025",
+      "name": "云南西双版纳·上座部澄和寺（演示）",
       "belief": "theravada_buddhism",
       "tradition": "theravada",
       "region": "mainland",
@@ -872,6 +897,7 @@
     },
     {
       "code": "DT026",
+      "name": "泰国清迈·上座部知礼寺（演示）",
       "belief": "theravada_buddhism",
       "tradition": "theravada",
       "region": "southeast_asia",
@@ -884,6 +910,7 @@
     },
     {
       "code": "DT027",
+      "name": "缅甸仰光·上座部和光寺（演示）",
       "belief": "theravada_buddhism",
       "tradition": "theravada",
       "region": "southeast_asia",
@@ -896,6 +923,7 @@
     },
     {
       "code": "DT028",
+      "name": "山东青岛·全真派澄和宫（演示）",
       "belief": "daoism",
       "tradition": "quanzhen",
       "region": "mainland",
@@ -908,6 +936,7 @@
     },
     {
       "code": "DT029",
+      "name": "香港新界·全真派知礼宫（演示）",
       "belief": "daoism",
       "tradition": "quanzhen",
       "region": "hong_kong",
@@ -920,6 +949,7 @@
     },
     {
       "code": "DT030",
+      "name": "澳门·全真派和光宫（演示）",
       "belief": "daoism",
       "tradition": "quanzhen",
       "region": "macau",
@@ -932,6 +962,7 @@
     },
     {
       "code": "DT031",
+      "name": "江西鹰潭·正一派澄和宫（演示）",
       "belief": "daoism",
       "tradition": "zhengyi",
       "region": "mainland",
@@ -944,6 +975,7 @@
     },
     {
       "code": "DT032",
+      "name": "台湾台南·正一派知礼宫（演示）",
       "belief": "daoism",
       "tradition": "zhengyi",
       "region": "taiwan",
@@ -956,6 +988,7 @@
     },
     {
       "code": "DT033",
+      "name": "马来西亚柔佛·正一派和光宫（演示）",
       "belief": "daoism",
       "tradition": "zhengyi",
       "region": "southeast_asia",
@@ -968,6 +1001,7 @@
     },
     {
       "code": "DT034",
+      "name": "福建莆田·妈祖澄和宫（演示）",
       "belief": "folk",
       "tradition": "mazu",
       "region": "mainland",
@@ -980,6 +1014,7 @@
     },
     {
       "code": "DT035",
+      "name": "澳门·妈祖知礼宫（演示）",
       "belief": "folk",
       "tradition": "mazu",
       "region": "macau",
@@ -992,6 +1027,7 @@
     },
     {
       "code": "DT036",
+      "name": "台湾台中·妈祖和光宫（演示）",
       "belief": "folk",
       "tradition": "mazu",
       "region": "taiwan",
@@ -1004,6 +1040,7 @@
     },
     {
       "code": "DT037",
+      "name": "广东汕头·关帝澄和宫（演示）",
       "belief": "folk",
       "tradition": "guandi",
       "region": "mainland",
@@ -1016,6 +1053,7 @@
     },
     {
       "code": "DT038",
+      "name": "香港九龙·关帝知礼宫（演示）",
       "belief": "folk",
       "tradition": "guandi",
       "region": "hong_kong",
@@ -1028,6 +1066,7 @@
     },
     {
       "code": "DT039",
+      "name": "马来西亚槟城·关帝和光宫（演示）",
       "belief": "folk",
       "tradition": "guandi",
       "region": "southeast_asia",
@@ -1040,6 +1079,7 @@
     },
     {
       "code": "DT040",
+      "name": "浙江宁波·城隍澄和宫（演示）",
       "belief": "folk",
       "tradition": "chenghuang",
       "region": "mainland",
@@ -1052,6 +1092,7 @@
     },
     {
       "code": "DT041",
+      "name": "台湾新竹·城隍知礼宫（演示）",
       "belief": "folk",
       "tradition": "chenghuang",
       "region": "taiwan",
@@ -1064,6 +1105,7 @@
     },
     {
       "code": "DT042",
+      "name": "新加坡·城隍和光宫（演示）",
       "belief": "folk",
       "tradition": "chenghuang",
       "region": "southeast_asia",
@@ -1076,6 +1118,7 @@
     },
     {
       "code": "DT043",
+      "name": "福建泉州·王爷澄和宫（演示）",
       "belief": "folk",
       "tradition": "wangye",
       "region": "mainland",
@@ -1088,6 +1131,7 @@
     },
     {
       "code": "DT044",
+      "name": "台湾屏东·王爷知礼宫（演示）",
       "belief": "folk",
       "tradition": "wangye",
       "region": "taiwan",
@@ -1100,6 +1144,7 @@
     },
     {
       "code": "DT045",
+      "name": "马来西亚马六甲·王爷和光宫（演示）",
       "belief": "folk",
       "tradition": "wangye",
       "region": "southeast_asia",
@@ -1112,6 +1157,7 @@
     },
     {
       "code": "DT046",
+      "name": "福建漳州·福德正神澄和宫（演示）",
       "belief": "folk",
       "tradition": "fude",
       "region": "mainland",
@@ -1124,6 +1170,7 @@
     },
     {
       "code": "DT047",
+      "name": "香港新界·福德正神知礼宫（演示）",
       "belief": "folk",
       "tradition": "fude",
       "region": "hong_kong",
@@ -1136,6 +1183,7 @@
     },
     {
       "code": "DT048",
+      "name": "台湾台南·福德正神和光宫（演示）",
       "belief": "folk",
       "tradition": "fude",
       "region": "taiwan",
@@ -1148,6 +1196,7 @@
     },
     {
       "code": "DT049",
+      "name": "福建厦门·保生大帝澄和宫（演示）",
       "belief": "folk",
       "tradition": "baosheng",
       "region": "mainland",
@@ -1160,6 +1209,7 @@
     },
     {
       "code": "DT050",
+      "name": "台湾台北·保生大帝知礼宫（演示）",
       "belief": "folk",
       "tradition": "baosheng",
       "region": "taiwan",
@@ -1172,6 +1222,7 @@
     },
     {
       "code": "DT051",
+      "name": "新加坡·保生大帝和光宫（演示）",
       "belief": "folk",
       "tradition": "baosheng",
       "region": "southeast_asia",
@@ -1184,6 +1235,7 @@
     },
     {
       "code": "DT052",
+      "name": "澳门·哪吒澄和宫（演示）",
       "belief": "folk",
       "tradition": "nezha",
       "region": "macau",
@@ -1196,6 +1248,7 @@
     },
     {
       "code": "DT053",
+      "name": "广东珠海·哪吒知礼宫（演示）",
       "belief": "folk",
       "tradition": "nezha",
       "region": "mainland",
@@ -1208,6 +1261,7 @@
     },
     {
       "code": "DT054",
+      "name": "台湾高雄·哪吒和光宫（演示）",
       "belief": "folk",
       "tradition": "nezha",
       "region": "taiwan",
@@ -1220,6 +1274,7 @@
     },
     {
       "code": "DT055",
+      "name": "香港西贡·洪圣澄和宫（演示）",
       "belief": "folk",
       "tradition": "hung_shing",
       "region": "hong_kong",
@@ -1232,6 +1287,7 @@
     },
     {
       "code": "DT056",
+      "name": "香港大澳·洪圣知礼宫（演示）",
       "belief": "folk",
       "tradition": "hung_shing",
       "region": "hong_kong",
@@ -1244,6 +1300,7 @@
     },
     {
       "code": "DT057",
+      "name": "广东广州·洪圣和光宫（演示）",
       "belief": "folk",
       "tradition": "hung_shing",
       "region": "mainland",
@@ -1256,6 +1313,7 @@
     },
     {
       "code": "DT058",
+      "name": "香港九龙·黄大仙澄和宫（演示）",
       "belief": "folk",
       "tradition": "wong_tai_sin",
       "region": "hong_kong",
@@ -1268,6 +1326,7 @@
     },
     {
       "code": "DT059",
+      "name": "浙江金华·黄大仙知礼宫（演示）",
       "belief": "folk",
       "tradition": "wong_tai_sin",
       "region": "mainland",
@@ -1280,6 +1339,7 @@
     },
     {
       "code": "DT060",
+      "name": "澳门·黄大仙和光宫（演示）",
       "belief": "folk",
       "tradition": "wong_tai_sin",
       "region": "macau",
@@ -1292,6 +1352,7 @@
     },
     {
       "code": "DT061",
+      "name": "新加坡·九皇爷澄和宫（演示）",
       "belief": "folk",
       "tradition": "nine_emperors",
       "region": "southeast_asia",
@@ -1304,6 +1365,7 @@
     },
     {
       "code": "DT062",
+      "name": "马来西亚槟城·九皇爷知礼宫（演示）",
       "belief": "folk",
       "tradition": "nine_emperors",
       "region": "southeast_asia",
@@ -1316,6 +1378,7 @@
     },
     {
       "code": "DT063",
+      "name": "泰国普吉·九皇爷和光宫（演示）",
       "belief": "folk",
       "tradition": "nine_emperors",
       "region": "southeast_asia",
@@ -1328,6 +1391,7 @@
     },
     {
       "code": "DT064",
+      "name": "马来西亚砂拉越·大伯公澄和宫（演示）",
       "belief": "folk",
       "tradition": "tua_pek_kong",
       "region": "southeast_asia",
@@ -1340,6 +1404,7 @@
     },
     {
       "code": "DT065",
+      "name": "新加坡·大伯公知礼宫（演示）",
       "belief": "folk",
       "tradition": "tua_pek_kong",
       "region": "southeast_asia",
@@ -1352,6 +1417,7 @@
     },
     {
       "code": "DT066",
+      "name": "印度尼西亚西加里曼丹·大伯公和光宫（演示）",
       "belief": "folk",
       "tradition": "tua_pek_kong",
       "region": "southeast_asia",
@@ -1364,6 +1430,7 @@
     },
     {
       "code": "DT067",
+      "name": "马来西亚吉隆坡·拿督公澄和宫（演示）",
       "belief": "folk",
       "tradition": "datuk_gong",
       "region": "southeast_asia",
@@ -1376,6 +1443,7 @@
     },
     {
       "code": "DT068",
+      "name": "马来西亚柔佛·拿督公知礼宫（演示）",
       "belief": "folk",
       "tradition": "datuk_gong",
       "region": "southeast_asia",
@@ -1388,6 +1456,7 @@
     },
     {
       "code": "DT069",
+      "name": "新加坡·拿督公和光宫（演示）",
       "belief": "folk",
       "tradition": "datuk_gong",
       "region": "southeast_asia",
@@ -1400,6 +1469,7 @@
     },
     {
       "code": "DT070",
+      "name": "广东揭阳·三山国王澄和宫（演示）",
       "belief": "folk",
       "tradition": "sanshan",
       "region": "mainland",
@@ -1412,6 +1482,7 @@
     },
     {
       "code": "DT071",
+      "name": "台湾宜兰·三山国王知礼宫（演示）",
       "belief": "folk",
       "tradition": "sanshan",
       "region": "taiwan",
@@ -1424,6 +1495,7 @@
     },
     {
       "code": "DT072",
+      "name": "马来西亚柔佛·三山国王和光宫（演示）",
       "belief": "folk",
       "tradition": "sanshan",
       "region": "southeast_asia",

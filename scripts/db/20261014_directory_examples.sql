@@ -73,7 +73,7 @@ INSERT IGNORE INTO askxuan_temple.directory_tag(code,tag_group,name,value,sort,s
 INSERT IGNORE INTO askxuan_temple.directory_tag(code,tag_group,name,value,sort,status) VALUES('specialty_34','specialty','姻缘测算','姻缘测算',340,'enabled');
 INSERT IGNORE INTO askxuan_temple.directory_tag(code,tag_group,name,value,sort,status) VALUES('specialty_35','specialty','六爻梅花','六爻梅花',350,'enabled');
 INSERT IGNORE INTO askxuan_temple.directory_tag(code,tag_group,name,value,sort,status) VALUES('specialty_36','specialty','塔罗牌','塔罗牌',360,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT001','浙江杭州·澄和寺（演示）','浙江杭州','汉传佛教','han_buddhism','禅宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示浙江杭州地区的禅宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT001','浙江杭州·禅宗澄和寺（演示）','浙江杭州','汉传佛教','han_buddhism','禅宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示浙江杭州地区的禅宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT001','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT001','chan');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT001','S001','祈福',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -104,7 +104,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM001','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM001','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM001','S004',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT002','香港新界·知礼寺（演示）','香港新界','汉传佛教','han_buddhism','禅宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港新界地区的禅宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT002','香港新界·禅宗知礼寺（演示）','香港新界','汉传佛教','han_buddhism','禅宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港新界地区的禅宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT002','hong_kong');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT002','chan');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT002','S004','还愿',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -135,7 +135,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM002','S005',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM002','S006',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM002','S008',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT003','台湾台北·和光寺（演示）','台湾台北','汉传佛教','han_buddhism','禅宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台北地区的禅宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT003','台湾台北·禅宗和光寺（演示）','台湾台北','汉传佛教','han_buddhism','禅宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台北地区的禅宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT003','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT003','chan');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT003','S008','求姻缘',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -166,7 +166,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM003','S010',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM003','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM003','S013',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT004','福建福州·澄和寺（演示）','福建福州','汉传佛教','han_buddhism','净土宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示福建福州地区的净土宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT004','福建福州·净土宗澄和寺（演示）','福建福州','汉传佛教','han_buddhism','净土宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示福建福州地区的净土宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT004','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT004','pure_land');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT004','S013','求学业',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -197,7 +197,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM004','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM004','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM004','S003',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT005','澳门·知礼寺（演示）','澳门','汉传佛教','han_buddhism','净土宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示澳门地区的净土宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT005','澳门·净土宗知礼寺（演示）','澳门','汉传佛教','han_buddhism','净土宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示澳门地区的净土宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT005','macau');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT005','pure_land');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT005','S003','上香',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -228,7 +228,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM005','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM005','S005',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM005','S006',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT006','新加坡·和光寺（演示）','新加坡','汉传佛教','han_buddhism','净土宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的净土宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT006','新加坡·净土宗和光寺（演示）','新加坡','汉传佛教','han_buddhism','净土宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的净土宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT006','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT006','pure_land');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT006','S006','开光',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -259,7 +259,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM006','S008',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM006','S010',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM006','S012',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT007','浙江台州·澄和寺（演示）','浙江台州','汉传佛教','han_buddhism','天台宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示浙江台州地区的天台宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT007','浙江台州·天台宗澄和寺（演示）','浙江台州','汉传佛教','han_buddhism','天台宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示浙江台州地区的天台宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT007','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT007','tiantai');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT007','S012','求健康',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -290,7 +290,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM007','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM007','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM007','S002',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT008','香港九龙·知礼寺（演示）','香港九龙','汉传佛教','han_buddhism','天台宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港九龙地区的天台宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT008','香港九龙·天台宗知礼寺（演示）','香港九龙','汉传佛教','han_buddhism','天台宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港九龙地区的天台宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT008','hong_kong');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT008','tiantai');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT008','S002','供灯',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -321,7 +321,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM008','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM008','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM008','S005',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT009','台湾台中·和光寺（演示）','台湾台中','汉传佛教','han_buddhism','天台宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台中地区的天台宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT009','台湾台中·天台宗和光寺（演示）','台湾台中','汉传佛教','han_buddhism','天台宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台中地区的天台宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT009','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT009','tiantai');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT009','S005','超度',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -352,7 +352,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM009','S006',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM009','S008',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM009','S010',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT010','江苏苏州·澄和寺（演示）','江苏苏州','汉传佛教','han_buddhism','华严宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示江苏苏州地区的华严宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT010','江苏苏州·华严宗澄和寺（演示）','江苏苏州','汉传佛教','han_buddhism','华严宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示江苏苏州地区的华严宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT010','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT010','huayan');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT010','S010','求事业',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -383,7 +383,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM010','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM010','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM010','S001',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT011','台湾台北·知礼寺（演示）','台湾台北','汉传佛教','han_buddhism','华严宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台北地区的华严宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT011','台湾台北·华严宗知礼寺（演示）','台湾台北','汉传佛教','han_buddhism','华严宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台北地区的华严宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT011','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT011','huayan');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT011','S001','祈福',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -414,7 +414,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM011','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM011','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM011','S004',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT012','马来西亚槟城·和光寺（演示）','马来西亚槟城','汉传佛教','han_buddhism','华严宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚槟城地区的华严宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT012','马来西亚槟城·华严宗和光寺（演示）','马来西亚槟城','汉传佛教','han_buddhism','华严宗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚槟城地区的华严宗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT012','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT012','huayan');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT012','S004','还愿',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -445,7 +445,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM012','S005',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM012','S006',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM012','S008',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT013','青海西宁·澄和寺（演示）','青海西宁','藏传佛教','tibetan_buddhism','格鲁派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示青海西宁地区的格鲁派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT013','青海西宁·格鲁派澄和寺（演示）','青海西宁','藏传佛教','tibetan_buddhism','格鲁派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示青海西宁地区的格鲁派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT013','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT013','gelug');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT013','S001','祈福',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -476,7 +476,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM013','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM013','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM013','S004',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT014','台湾台北·知礼寺（演示）','台湾台北','藏传佛教','tibetan_buddhism','格鲁派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台北地区的格鲁派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT014','台湾台北·格鲁派知礼寺（演示）','台湾台北','藏传佛教','tibetan_buddhism','格鲁派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台北地区的格鲁派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT014','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT014','gelug');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT014','S004','还愿',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -507,7 +507,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM014','S005',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM014','S006',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM014','S012',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT015','新加坡·和光寺（演示）','新加坡','藏传佛教','tibetan_buddhism','格鲁派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的格鲁派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT015','新加坡·格鲁派和光寺（演示）','新加坡','藏传佛教','tibetan_buddhism','格鲁派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的格鲁派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT015','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT015','gelug');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT015','S012','求健康',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -538,7 +538,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM015','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM015','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM015','S002',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT016','四川甘孜·澄和寺（演示）','四川甘孜','藏传佛教','tibetan_buddhism','宁玛派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示四川甘孜地区的宁玛派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT016','四川甘孜·宁玛派澄和寺（演示）','四川甘孜','藏传佛教','tibetan_buddhism','宁玛派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示四川甘孜地区的宁玛派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT016','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT016','nyingma');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT016','S002','供灯',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -569,7 +569,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM016','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM016','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM016','S005',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT017','香港·知礼寺（演示）','香港','藏传佛教','tibetan_buddhism','宁玛派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港地区的宁玛派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT017','香港·宁玛派知礼寺（演示）','香港','藏传佛教','tibetan_buddhism','宁玛派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港地区的宁玛派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT017','hong_kong');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT017','nyingma');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT017','S005','超度',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -600,7 +600,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM017','S006',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM017','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM017','S013',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT018','台湾高雄·和光寺（演示）','台湾高雄','藏传佛教','tibetan_buddhism','宁玛派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾高雄地区的宁玛派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT018','台湾高雄·宁玛派和光寺（演示）','台湾高雄','藏传佛教','tibetan_buddhism','宁玛派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾高雄地区的宁玛派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT018','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT018','nyingma');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT018','S013','求学业',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -631,7 +631,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM018','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM018','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM018','S003',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT019','云南迪庆·澄和寺（演示）','云南迪庆','藏传佛教','tibetan_buddhism','噶举派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示云南迪庆地区的噶举派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT019','云南迪庆·噶举派澄和寺（演示）','云南迪庆','藏传佛教','tibetan_buddhism','噶举派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示云南迪庆地区的噶举派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT019','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT019','kagyu');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT019','S003','上香',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -662,7 +662,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM019','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM019','S005',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM019','S006',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT020','香港·知礼寺（演示）','香港','藏传佛教','tibetan_buddhism','噶举派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港地区的噶举派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT020','香港·噶举派知礼寺（演示）','香港','藏传佛教','tibetan_buddhism','噶举派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港地区的噶举派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT020','hong_kong');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT020','kagyu');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT020','S006','开光',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -693,7 +693,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM020','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM020','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM020','S001',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT021','马来西亚吉隆坡·和光寺（演示）','马来西亚吉隆坡','藏传佛教','tibetan_buddhism','噶举派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚吉隆坡地区的噶举派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT021','马来西亚吉隆坡·噶举派和光寺（演示）','马来西亚吉隆坡','藏传佛教','tibetan_buddhism','噶举派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚吉隆坡地区的噶举派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT021','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT021','kagyu');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT021','S001','祈福',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -724,7 +724,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM021','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM021','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM021','S004',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT022','西藏日喀则·澄和寺（演示）','西藏日喀则','藏传佛教','tibetan_buddhism','萨迦派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示西藏日喀则地区的萨迦派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT022','西藏日喀则·萨迦派澄和寺（演示）','西藏日喀则','藏传佛教','tibetan_buddhism','萨迦派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示西藏日喀则地区的萨迦派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT022','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT022','sakya');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT022','S004','还愿',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -755,7 +755,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM022','S005',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM022','S006',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM022','S012',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT023','台湾台北·知礼寺（演示）','台湾台北','藏传佛教','tibetan_buddhism','萨迦派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台北地区的萨迦派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT023','台湾台北·萨迦派知礼寺（演示）','台湾台北','藏传佛教','tibetan_buddhism','萨迦派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台北地区的萨迦派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT023','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT023','sakya');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT023','S012','求健康',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -786,7 +786,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM023','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM023','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM023','S002',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT024','新加坡·和光寺（演示）','新加坡','藏传佛教','tibetan_buddhism','萨迦派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的萨迦派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT024','新加坡·萨迦派和光寺（演示）','新加坡','藏传佛教','tibetan_buddhism','萨迦派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的萨迦派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT024','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT024','sakya');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT024','S002','供灯',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -817,7 +817,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM024','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM024','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM024','S005',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT025','云南西双版纳·澄和寺（演示）','云南西双版纳','南传佛教','theravada_buddhism','上座部传统','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示云南西双版纳地区的上座部传统分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT025','云南西双版纳·上座部澄和寺（演示）','云南西双版纳','南传佛教','theravada_buddhism','上座部传统','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示云南西双版纳地区的上座部传统分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT025','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT025','theravada');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT025','S001','祈福',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -848,7 +848,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM025','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM025','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM025','S004',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT026','泰国清迈·知礼寺（演示）','泰国清迈','南传佛教','theravada_buddhism','上座部传统','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示泰国清迈地区的上座部传统分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT026','泰国清迈·上座部知礼寺（演示）','泰国清迈','南传佛教','theravada_buddhism','上座部传统','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示泰国清迈地区的上座部传统分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT026','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT026','theravada');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT026','S004','还愿',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -879,7 +879,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM026','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM026','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM026','S002',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT027','缅甸仰光·和光寺（演示）','缅甸仰光','南传佛教','theravada_buddhism','上座部传统','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示缅甸仰光地区的上座部传统分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT027','缅甸仰光·上座部和光寺（演示）','缅甸仰光','南传佛教','theravada_buddhism','上座部传统','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示缅甸仰光地区的上座部传统分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT027','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT027','theravada');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT027','S002','供灯',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -910,7 +910,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM027','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM027','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM027','S012',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT028','山东青岛·澄和宫（演示）','山东青岛','道教','daoism','全真派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示山东青岛地区的全真派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT028','山东青岛·全真派澄和宫（演示）','山东青岛','道教','daoism','全真派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示山东青岛地区的全真派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT028','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT028','quanzhen');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT028','S001','祈福',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -941,7 +941,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM028','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM028','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM028','S004',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT029','香港新界·知礼宫（演示）','香港新界','道教','daoism','全真派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港新界地区的全真派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT029','香港新界·全真派知礼宫（演示）','香港新界','道教','daoism','全真派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港新界地区的全真派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT029','hong_kong');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT029','quanzhen');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT029','S004','还愿',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -972,7 +972,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM029','S005',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM029','S006',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM029','S007',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT030','澳门·和光宫（演示）','澳门','道教','daoism','全真派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示澳门地区的全真派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT030','澳门·全真派和光宫（演示）','澳门','道教','daoism','全真派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示澳门地区的全真派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT030','macau');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT030','quanzhen');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT030','S007','化太岁',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1003,7 +1003,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM030','S008',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM030','S009',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM030','S010',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT031','江西鹰潭·澄和宫（演示）','江西鹰潭','道教','daoism','正一派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示江西鹰潭地区的正一派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT031','江西鹰潭·正一派澄和宫（演示）','江西鹰潭','道教','daoism','正一派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示江西鹰潭地区的正一派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT031','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT031','zhengyi');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT031','S010','求事业',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1034,7 +1034,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM031','S011',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM031','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM031','S013',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT032','台湾台南·知礼宫（演示）','台湾台南','道教','daoism','正一派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台南地区的正一派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT032','台湾台南·正一派知礼宫（演示）','台湾台南','道教','daoism','正一派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台南地区的正一派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT032','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT032','zhengyi');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT032','S013','求学业',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1065,7 +1065,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM032','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM032','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM032','S003',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT033','马来西亚柔佛·和光宫（演示）','马来西亚柔佛','道教','daoism','正一派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚柔佛地区的正一派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT033','马来西亚柔佛·正一派和光宫（演示）','马来西亚柔佛','道教','daoism','正一派','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚柔佛地区的正一派分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT033','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT033','zhengyi');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT033','S003','上香',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1096,7 +1096,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM033','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM033','S005',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM033','S006',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT034','福建莆田·澄和宫（演示）','福建莆田','民间信仰','folk','妈祖 / 天后','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示福建莆田地区的妈祖 / 天后分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT034','福建莆田·妈祖澄和宫（演示）','福建莆田','民间信仰','folk','妈祖 / 天后','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示福建莆田地区的妈祖 / 天后分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT034','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT034','mazu');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT034','S001','祈福',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1127,7 +1127,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM034','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM034','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM034','S004',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT035','澳门·知礼宫（演示）','澳门','民间信仰','folk','妈祖 / 天后','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示澳门地区的妈祖 / 天后分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT035','澳门·妈祖知礼宫（演示）','澳门','民间信仰','folk','妈祖 / 天后','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示澳门地区的妈祖 / 天后分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT035','macau');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT035','mazu');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT035','S004','还愿',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1158,7 +1158,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM035','S007',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM035','S008',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM035','S009',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT036','台湾台中·和光宫（演示）','台湾台中','民间信仰','folk','妈祖 / 天后','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台中地区的妈祖 / 天后分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT036','台湾台中·妈祖和光宫（演示）','台湾台中','民间信仰','folk','妈祖 / 天后','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台中地区的妈祖 / 天后分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT036','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT036','mazu');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT036','S009','求财运',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1189,7 +1189,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM036','S010',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM036','S011',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM036','S012',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT037','广东汕头·澄和宫（演示）','广东汕头','民间信仰','folk','关帝信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示广东汕头地区的关帝信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT037','广东汕头·关帝澄和宫（演示）','广东汕头','民间信仰','folk','关帝信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示广东汕头地区的关帝信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT037','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT037','guandi');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT037','S012','求健康',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1220,7 +1220,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM037','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM037','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM037','S002',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT038','香港九龙·知礼宫（演示）','香港九龙','民间信仰','folk','关帝信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港九龙地区的关帝信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT038','香港九龙·关帝知礼宫（演示）','香港九龙','民间信仰','folk','关帝信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港九龙地区的关帝信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT038','hong_kong');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT038','guandi');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT038','S002','供灯',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1251,7 +1251,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM038','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM038','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM038','S007',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT039','马来西亚槟城·和光宫（演示）','马来西亚槟城','民间信仰','folk','关帝信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚槟城地区的关帝信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT039','马来西亚槟城·关帝和光宫（演示）','马来西亚槟城','民间信仰','folk','关帝信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚槟城地区的关帝信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT039','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT039','guandi');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT039','S007','化太岁',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1282,7 +1282,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM039','S008',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM039','S009',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM039','S010',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT040','浙江宁波·澄和宫（演示）','浙江宁波','民间信仰','folk','城隍信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示浙江宁波地区的城隍信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT040','浙江宁波·城隍澄和宫（演示）','浙江宁波','民间信仰','folk','城隍信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示浙江宁波地区的城隍信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT040','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT040','chenghuang');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT040','S010','求事业',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1313,7 +1313,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM040','S011',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM040','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM040','S013',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT041','台湾新竹·知礼宫（演示）','台湾新竹','民间信仰','folk','城隍信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾新竹地区的城隍信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT041','台湾新竹·城隍知礼宫（演示）','台湾新竹','民间信仰','folk','城隍信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾新竹地区的城隍信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT041','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT041','chenghuang');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT041','S013','求学业',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1344,7 +1344,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM041','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM041','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM041','S003',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT042','新加坡·和光宫（演示）','新加坡','民间信仰','folk','城隍信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的城隍信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT042','新加坡·城隍和光宫（演示）','新加坡','民间信仰','folk','城隍信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的城隍信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT042','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT042','chenghuang');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT042','S003','上香',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1375,7 +1375,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM042','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM042','S007',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM042','S008',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT043','福建泉州·澄和宫（演示）','福建泉州','民间信仰','folk','王爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示福建泉州地区的王爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT043','福建泉州·王爷澄和宫（演示）','福建泉州','民间信仰','folk','王爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示福建泉州地区的王爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT043','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT043','wangye');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT043','S008','求姻缘',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1406,7 +1406,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM043','S009',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM043','S010',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM043','S011',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT044','台湾屏东·知礼宫（演示）','台湾屏东','民间信仰','folk','王爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾屏东地区的王爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT044','台湾屏东·王爷知礼宫（演示）','台湾屏东','民间信仰','folk','王爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾屏东地区的王爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT044','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT044','wangye');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT044','S011','求风水',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1437,7 +1437,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM044','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM044','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM044','S001',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT045','马来西亚马六甲·和光宫（演示）','马来西亚马六甲','民间信仰','folk','王爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚马六甲地区的王爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT045','马来西亚马六甲·王爷和光宫（演示）','马来西亚马六甲','民间信仰','folk','王爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚马六甲地区的王爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT045','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT045','wangye');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT045','S001','祈福',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1468,7 +1468,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM045','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM045','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM045','S004',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT046','福建漳州·澄和宫（演示）','福建漳州','民间信仰','folk','福德正神','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示福建漳州地区的福德正神分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT046','福建漳州·福德正神澄和宫（演示）','福建漳州','民间信仰','folk','福德正神','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示福建漳州地区的福德正神分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT046','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT046','fude');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT046','S004','还愿',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1499,7 +1499,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM046','S007',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM046','S008',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM046','S009',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT047','香港新界·知礼宫（演示）','香港新界','民间信仰','folk','福德正神','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港新界地区的福德正神分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT047','香港新界·福德正神知礼宫（演示）','香港新界','民间信仰','folk','福德正神','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港新界地区的福德正神分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT047','hong_kong');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT047','fude');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT047','S009','求财运',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1530,7 +1530,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM047','S010',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM047','S011',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM047','S012',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT048','台湾台南·和光宫（演示）','台湾台南','民间信仰','folk','福德正神','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台南地区的福德正神分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT048','台湾台南·福德正神和光宫（演示）','台湾台南','民间信仰','folk','福德正神','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台南地区的福德正神分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT048','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT048','fude');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT048','S012','求健康',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1561,7 +1561,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM048','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM048','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM048','S002',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT049','福建厦门·澄和宫（演示）','福建厦门','民间信仰','folk','保生大帝','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示福建厦门地区的保生大帝分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT049','福建厦门·保生大帝澄和宫（演示）','福建厦门','民间信仰','folk','保生大帝','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示福建厦门地区的保生大帝分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT049','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT049','baosheng');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT049','S002','供灯',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1592,7 +1592,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM049','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM049','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM049','S007',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT050','台湾台北·知礼宫（演示）','台湾台北','民间信仰','folk','保生大帝','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台北地区的保生大帝分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT050','台湾台北·保生大帝知礼宫（演示）','台湾台北','民间信仰','folk','保生大帝','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾台北地区的保生大帝分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT050','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT050','baosheng');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT050','S007','化太岁',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1623,7 +1623,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM050','S008',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM050','S009',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM050','S010',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT051','新加坡·和光宫（演示）','新加坡','民间信仰','folk','保生大帝','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的保生大帝分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT051','新加坡·保生大帝和光宫（演示）','新加坡','民间信仰','folk','保生大帝','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的保生大帝分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT051','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT051','baosheng');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT051','S010','求事业',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1654,7 +1654,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM051','S011',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM051','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM051','S013',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT052','澳门·澄和宫（演示）','澳门','民间信仰','folk','哪吒信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示澳门地区的哪吒信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT052','澳门·哪吒澄和宫（演示）','澳门','民间信仰','folk','哪吒信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示澳门地区的哪吒信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT052','macau');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT052','nezha');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT052','S013','求学业',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1685,7 +1685,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM052','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM052','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM052','S003',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT053','广东珠海·知礼宫（演示）','广东珠海','民间信仰','folk','哪吒信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示广东珠海地区的哪吒信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT053','广东珠海·哪吒知礼宫（演示）','广东珠海','民间信仰','folk','哪吒信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示广东珠海地区的哪吒信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT053','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT053','nezha');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT053','S003','上香',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1716,7 +1716,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM053','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM053','S007',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM053','S008',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT054','台湾高雄·和光宫（演示）','台湾高雄','民间信仰','folk','哪吒信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾高雄地区的哪吒信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT054','台湾高雄·哪吒和光宫（演示）','台湾高雄','民间信仰','folk','哪吒信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾高雄地区的哪吒信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT054','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT054','nezha');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT054','S008','求姻缘',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1747,7 +1747,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM054','S009',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM054','S010',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM054','S011',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT055','香港西贡·澄和宫（演示）','香港西贡','民间信仰','folk','洪圣信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港西贡地区的洪圣信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT055','香港西贡·洪圣澄和宫（演示）','香港西贡','民间信仰','folk','洪圣信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港西贡地区的洪圣信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT055','hong_kong');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT055','hung_shing');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT055','S011','求风水',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1778,7 +1778,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM055','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM055','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM055','S001',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT056','香港大澳·知礼宫（演示）','香港大澳','民间信仰','folk','洪圣信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港大澳地区的洪圣信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT056','香港大澳·洪圣知礼宫（演示）','香港大澳','民间信仰','folk','洪圣信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港大澳地区的洪圣信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT056','hong_kong');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT056','hung_shing');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT056','S001','祈福',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1809,7 +1809,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM056','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM056','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM056','S004',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT057','广东广州·和光宫（演示）','广东广州','民间信仰','folk','洪圣信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示广东广州地区的洪圣信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT057','广东广州·洪圣和光宫（演示）','广东广州','民间信仰','folk','洪圣信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示广东广州地区的洪圣信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT057','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT057','hung_shing');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT057','S004','还愿',260,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1840,7 +1840,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM057','S007',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM057','S008',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM057','S009',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT058','香港九龙·澄和宫（演示）','香港九龙','民间信仰','folk','黄大仙信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港九龙地区的黄大仙信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT058','香港九龙·黄大仙澄和宫（演示）','香港九龙','民间信仰','folk','黄大仙信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示香港九龙地区的黄大仙信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT058','hong_kong');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT058','wong_tai_sin');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT058','S009','求财运',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1871,7 +1871,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM058','S010',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM058','S011',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM058','S012',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT059','浙江金华·知礼宫（演示）','浙江金华','民间信仰','folk','黄大仙信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示浙江金华地区的黄大仙信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT059','浙江金华·黄大仙知礼宫（演示）','浙江金华','民间信仰','folk','黄大仙信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示浙江金华地区的黄大仙信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT059','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT059','wong_tai_sin');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT059','S012','求健康',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1902,7 +1902,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM059','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM059','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM059','S002',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT060','澳门·和光宫（演示）','澳门','民间信仰','folk','黄大仙信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示澳门地区的黄大仙信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT060','澳门·黄大仙和光宫（演示）','澳门','民间信仰','folk','黄大仙信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示澳门地区的黄大仙信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT060','macau');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT060','wong_tai_sin');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT060','S002','供灯',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1933,7 +1933,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM060','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM060','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM060','S007',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT061','新加坡·澄和宫（演示）','新加坡','民间信仰','folk','九皇爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的九皇爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT061','新加坡·九皇爷澄和宫（演示）','新加坡','民间信仰','folk','九皇爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的九皇爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT061','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT061','nine_emperors');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT061','S007','化太岁',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1964,7 +1964,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM061','S008',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM061','S009',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM061','S010',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT062','马来西亚槟城·知礼宫（演示）','马来西亚槟城','民间信仰','folk','九皇爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚槟城地区的九皇爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT062','马来西亚槟城·九皇爷知礼宫（演示）','马来西亚槟城','民间信仰','folk','九皇爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚槟城地区的九皇爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT062','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT062','nine_emperors');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT062','S010','求事业',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -1995,7 +1995,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM062','S011',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM062','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM062','S013',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT063','泰国普吉·和光宫（演示）','泰国普吉','民间信仰','folk','九皇爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示泰国普吉地区的九皇爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT063','泰国普吉·九皇爷和光宫（演示）','泰国普吉','民间信仰','folk','九皇爷信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示泰国普吉地区的九皇爷信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT063','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT063','nine_emperors');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT063','S013','求学业',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -2026,7 +2026,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM063','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM063','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM063','S003',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT064','马来西亚砂拉越·澄和宫（演示）','马来西亚砂拉越','民间信仰','folk','大伯公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚砂拉越地区的大伯公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT064','马来西亚砂拉越·大伯公澄和宫（演示）','马来西亚砂拉越','民间信仰','folk','大伯公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚砂拉越地区的大伯公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT064','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT064','tua_pek_kong');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT064','S003','上香',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -2057,7 +2057,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM064','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM064','S007',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM064','S008',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT065','新加坡·知礼宫（演示）','新加坡','民间信仰','folk','大伯公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的大伯公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT065','新加坡·大伯公知礼宫（演示）','新加坡','民间信仰','folk','大伯公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的大伯公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT065','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT065','tua_pek_kong');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT065','S008','求姻缘',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -2088,7 +2088,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM065','S009',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM065','S010',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM065','S011',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT066','印度尼西亚西加里曼丹·和光宫（演示）','印度尼西亚西加里曼丹','民间信仰','folk','大伯公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示印度尼西亚西加里曼丹地区的大伯公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT066','印度尼西亚西加里曼丹·大伯公和光宫（演示）','印度尼西亚西加里曼丹','民间信仰','folk','大伯公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示印度尼西亚西加里曼丹地区的大伯公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT066','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT066','tua_pek_kong');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT066','S011','求风水',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -2119,7 +2119,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM066','S012',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM066','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM066','S001',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT067','马来西亚吉隆坡·澄和宫（演示）','马来西亚吉隆坡','民间信仰','folk','拿督公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚吉隆坡地区的拿督公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT067','马来西亚吉隆坡·拿督公澄和宫（演示）','马来西亚吉隆坡','民间信仰','folk','拿督公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚吉隆坡地区的拿督公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT067','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT067','datuk_gong');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT067','S001','祈福',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -2150,7 +2150,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM067','S002',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM067','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM067','S004',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT068','马来西亚柔佛·知礼宫（演示）','马来西亚柔佛','民间信仰','folk','拿督公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚柔佛地区的拿督公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT068','马来西亚柔佛·拿督公知礼宫（演示）','马来西亚柔佛','民间信仰','folk','拿督公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚柔佛地区的拿督公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT068','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT068','datuk_gong');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT068','S004','还愿',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -2181,7 +2181,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM068','S007',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM068','S008',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM068','S009',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT069','新加坡·和光宫（演示）','新加坡','民间信仰','folk','拿督公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的拿督公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT069','新加坡·拿督公和光宫（演示）','新加坡','民间信仰','folk','拿督公信俗','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示新加坡地区的拿督公信俗分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT069','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT069','datuk_gong');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT069','S009','求财运',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -2212,7 +2212,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM069','S010',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM069','S011',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM069','S012',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT070','广东揭阳·澄和宫（演示）','广东揭阳','民间信仰','folk','三山国王','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示广东揭阳地区的三山国王分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT070','广东揭阳·三山国王澄和宫（演示）','广东揭阳','民间信仰','folk','三山国王','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示广东揭阳地区的三山国王分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT070','mainland');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT070','sanshan');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT070','S012','求健康',80,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -2243,7 +2243,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM070','S013',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM070','S001',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM070','S002',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT071','台湾宜兰·知礼宫（演示）','台湾宜兰','民间信仰','folk','三山国王','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾宜兰地区的三山国王分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT071','台湾宜兰·三山国王知礼宫（演示）','台湾宜兰','民间信仰','folk','三山国王','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示台湾宜兰地区的三山国王分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT071','taiwan');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT071','sanshan');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT071','S002','供灯',520,'["09:00-12:00","13:00-17:00"]','on_shelf');
@@ -2274,7 +2274,7 @@ INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,pr
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM071','S003',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM071','S004',39,'enabled');
 INSERT IGNORE INTO askxuan_master.master_service_tag(master_code,service_code,price,status) VALUES('DM071','S007',39,'enabled');
-INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT072','马来西亚柔佛·和光宫（演示）','马来西亚柔佛','民间信仰','folk','三山国王','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚柔佛地区的三山国王分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
+INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,cover_image,rating,description) VALUES('DT072','马来西亚柔佛·三山国王和光宫（演示）','马来西亚柔佛','民间信仰','folk','三山国王','正常','演示地址 · 不对应真实场所','',0,'虚构演示场所，用于展示马来西亚柔佛地区的三山国王分类、服务选择与师傅关联。非真实寺院或宫庙，不代表实际入驻、授权或服务承诺。');
 INSERT IGNORE INTO askxuan_temple.provider_region(provider_kind,provider_code,region_code) VALUES('temple','DT072','southeast_asia');
 INSERT IGNORE INTO askxuan_temple.provider_directory_tag(provider_kind,provider_code,tag_code) VALUES('temple','DT072','sanshan');
 INSERT IGNORE INTO askxuan_temple.temple_service(temple_code,service_code,service_name,price,time_slots,status) VALUES('DT072','S007','化太岁',128,'["09:00-12:00","13:00-17:00"]','on_shelf');
