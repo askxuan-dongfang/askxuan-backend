@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/askxuan/ai-service/internal/provider"
 )
@@ -24,6 +25,85 @@ func arkUpdate(m *Manager) Update {
 	r.VisionModel = "ep-fixture-vision"
 	r.EnabledModels = []string{"ep-fixture-text", "ep-fixture-vision", "doubao-fixture"}
 	return r
+}
+
+func TestAgentPlanProbeSaveRestore(t *testing.T) {
+	m, dir, key := fixture(t)
+	before := m.Snapshot()
+	arkTransport(t, m, func(r *http.Request) (*http.Response, error) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		deadline, ok := r.Context().Deadline()
+		if r.URL.String() != provider.VolcenginePlanBaseURL+"/chat/completions" || body["model"] != "ark-code-latest" || body["max_tokens"] != float64(512) || !ok || time.Until(deadline) > 25*time.Second {
+			t.Errorf("invalid/unbounded Plan probe: %s %+v", r.URL, body)
+		}
+		if body["thinking"] != nil || body["reasoning_effort"] != nil || body["max_completion_tokens"] != nil {
+			t.Error("probe forced model parameters")
+		}
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"choices":[{"message":{"content":"OK"}}]}`))}, nil
+	})
+	req := arkUpdate(m)
+	req.BaseURL = provider.VolcenginePlanBaseURL
+	req.DefaultModel, req.VisionModel, req.EnabledModels = "ark-code-latest", "", nil
+	req.ThinkingEnabled = true // Stale clients must also follow model defaults.
+	if _, err := m.Test(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if m.Snapshot() != before || m.Public().Revision != 0 {
+		t.Fatal("test published draft")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "settings.enc")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("test persisted a draft")
+	}
+	if _, err := m.Save(context.Background(), req, "42"); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := New(m.original, dir, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.Public().BaseURL != provider.VolcenginePlanBaseURL || restored.Public().DefaultModel != "ark-code-latest" || restored.Public().Revision != 1 {
+		t.Fatal("Plan config lost on restart")
+	}
+	if len(provider.ReasoningFallbackOptions(restored.Snapshot().Provider, true)) != 0 {
+		t.Fatal("restored Plan enables incompatible retry")
+	}
+	if strings.Contains(string(mustRead(t, filepath.Join(dir, "settings.enc"))), req.APIKey) || strings.Contains(string(mustJSON(t, restored.Public())), req.APIKey) {
+		t.Fatal("key leaked")
+	}
+	// Retain the existing key only for the same service. Never silently reuse a
+	// Plan key at the metered model-service root (or the reverse).
+	r := update(restored)
+	r.BaseURL = provider.VolcengineBaseURL
+	if _, err := restored.prepare(r); err == nil {
+		t.Fatal("changing billing root reused key")
+	}
+}
+
+func TestVolcengineDiagnosticCategoriesDoNotExposeSecrets(t *testing.T) {
+	for _, item := range []struct {
+		err  error
+		want string
+	}{
+		{&provider.HTTPError{StatusCode: 401}, "鉴权"},
+		{&provider.HTTPError{StatusCode: 403}, "权限"},
+		{&provider.HTTPError{StatusCode: 404}, "模型或接口不存在"},
+		{&provider.HTTPError{StatusCode: 400}, "请求参数"},
+		{&provider.HTTPError{StatusCode: 422}, "请求参数"},
+		{&provider.HTTPError{StatusCode: 429}, "额度"},
+		{&provider.HTTPError{StatusCode: 503}, "暂时异常"},
+		{context.DeadlineExceeded, "超时"},
+		{context.Canceled, "取消"},
+		{provider.ErrEmptyContent, "正文"},
+		{errors.New("private-body Bearer secret-key"), "网络"},
+	} {
+		got := volcengineProbeFailure(item.err)
+		if !strings.Contains(got, item.want) || strings.Contains(got, "secret-key") || strings.Contains(got, "private-body") {
+			t.Errorf("unsafe or incorrect diagnostic: %q", got)
+		}
+	}
 }
 
 func arkTransport(t *testing.T, m *Manager, transport roundTrip) {
@@ -168,7 +248,7 @@ func TestVolcengineValidationBeforeProbe(t *testing.T) {
 	for _, mutate := range []func(*Update){
 		func(r *Update) { r.APIKey = "" },
 		func(r *Update) { r.BaseURL = "https://api.deepseek.com" },
-		func(r *Update) { r.BaseURL = "https://ark.cn-beijing.volces.com/api/plan/v3" },
+		func(r *Update) { r.BaseURL = "https://ark.cn-beijing.volces.com/api/plan" },
 		func(r *Update) { r.DefaultModel = "" },
 		func(r *Update) { r.DefaultModel = "ep-bad/model" },
 		func(r *Update) { r.EnabledModels = []string{"doubao-fixture"} },

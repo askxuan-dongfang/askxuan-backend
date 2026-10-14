@@ -27,13 +27,19 @@ func TestVolcengineBrowserFixture(t *testing.T) {
 			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"data":[{"id":"deepseek-flash"},{"id":"deepseek-v4-pro"}]}`)), Header: make(http.Header)}, nil
 		}
 		var body struct {
-			Model    string          `json:"model"`
-			Messages json.RawMessage `json:"messages"`
+			Model     string          `json:"model"`
+			Messages  json.RawMessage `json:"messages"`
+			Thinking  json.RawMessage `json:"thinking"`
+			Reasoning json.RawMessage `json:"reasoning_effort"`
+			MaxTokens int             `json:"max_tokens"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			return nil, err
 		}
 		status := 200
+		if strings.HasPrefix(r.URL.Path, "/api/plan/") && (len(body.Thinking) > 0 || len(body.Reasoning) > 0 || body.MaxTokens != 512) {
+			status = 400
+		}
 		if r.Header.Get("Authorization") != "Bearer ark-browser-fixture" {
 			status = 401
 		}

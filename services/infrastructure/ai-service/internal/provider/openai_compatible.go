@@ -15,6 +15,7 @@ import (
 type OpenAICompatible struct {
 	baseURL, apiKey, model, visionModel string
 	standardParameters                  bool
+	modelDefaultReasoning               bool
 	configuredModels                    []ModelOption
 	client                              *http.Client
 }
@@ -28,10 +29,13 @@ func (p *OpenAICompatible) SetHTTPClient(client *http.Client) { p.client = clien
 func (p *OpenAICompatible) UseStandardParameters()            { p.standardParameters = true }
 func (p *OpenAICompatible) payload(req Request, model string, messages []wireMessage) map[string]interface{} {
 	result := basePayload(req, model, messages)
-	if p.standardParameters {
+	if p.standardParameters || p.modelDefaultReasoning {
 		delete(result, "thinking")
 	}
-	if p.Name() == "volcengine" && req.ThinkingEnabled && req.MaxTokens > 0 {
+	if p.modelDefaultReasoning {
+		delete(result, "reasoning_effort")
+	}
+	if p.Name() == "volcengine" && !p.modelDefaultReasoning && req.ThinkingEnabled && req.MaxTokens > 0 {
 		// Ark max_tokens bounds the answer only; thinking must share the budget.
 		delete(result, "max_tokens")
 		result["max_completion_tokens"] = req.MaxTokens
@@ -76,7 +80,7 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("provider returned status %d", resp.StatusCode)
+		return nil, &HTTPError{StatusCode: resp.StatusCode}
 	}
 	var decoded struct {
 		Choices []struct {
@@ -97,7 +101,7 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 		return nil, fmt.Errorf("decode provider response: %w", err)
 	}
 	if len(decoded.Choices) == 0 || strings.TrimSpace(decoded.Choices[0].Message.Content) == "" {
-		return nil, fmt.Errorf("provider returned empty content")
+		return nil, ErrEmptyContent
 	}
 	return &Response{Content: decoded.Choices[0].Message.Content, PromptTokens: decoded.Usage.PromptTokens, CompletionTokens: decoded.Usage.CompletionTokens, PromptCacheHitTokens: decoded.Usage.PromptCacheHitTokens, PromptCacheMissTokens: decoded.Usage.PromptCacheMissTokens, ReasoningTokens: decoded.Usage.CompletionTokenDetails.ReasoningTokens, FinishReason: "stop", Model: defaultValue(decoded.Model, model)}, nil
 }
@@ -123,7 +127,7 @@ func (p *OpenAICompatible) Stream(ctx context.Context, req Request, onDelta func
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 2<<20))
-		return nil, fmt.Errorf("provider returned status %d", resp.StatusCode)
+		return nil, &HTTPError{StatusCode: resp.StatusCode}
 	}
 
 	result := &Response{}

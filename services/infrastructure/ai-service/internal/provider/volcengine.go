@@ -8,20 +8,28 @@ import (
 )
 
 const VolcengineBaseURL = "https://ark.cn-beijing.volces.com/api/v3"
+const VolcenginePlanBaseURL = "https://ark.cn-beijing.volces.com/api/plan/v3"
 
 var arkHost = regexp.MustCompile(`^ark\.[a-z0-9-]+\.volces\.com$`)
 
-// IsVolcengineURL identifies the Ark model service, excluding control-plane and
-// subscription endpoints, which use different credentials and model contracts.
+// IsVolcengineURL accepts only the official model-service and Agent Plan roots.
 func IsVolcengineURL(raw string) bool {
 	u, err := url.Parse(raw)
 	return err == nil && u.Scheme == "https" && arkHost.MatchString(strings.ToLower(u.Hostname())) &&
 		(u.Port() == "" || u.Port() == "443") && u.User == nil && u.RawQuery == "" && u.Fragment == "" &&
-		strings.TrimRight(u.Path, "/") == "/api/v3"
+		(u.EscapedPath() == u.Path) && (strings.TrimRight(u.Path, "/") == "/api/v3" || strings.TrimRight(u.Path, "/") == "/api/plan/v3")
+}
+
+func IsVolcenginePlanURL(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && IsVolcengineURL(raw) && strings.TrimRight(u.Path, "/") == "/api/plan/v3"
 }
 
 func newVolcengine(cfg Config) *OpenAICompatible {
 	p := NewOpenAICompatible(cfg.BaseURL, cfg.APIKey, cfg.Model, cfg.VisionModel)
+	// Plan aliases may route to models that cannot disable thinking. Let the
+	// selected model choose its reasoning defaults on every execution path.
+	p.modelDefaultReasoning = IsVolcenginePlanURL(cfg.BaseURL)
 	p.configuredModels = []ModelOption{}
 	seen := map[string]bool{}
 	ids := append([]string{cfg.Model, cfg.VisionModel}, cfg.EnabledModels...)

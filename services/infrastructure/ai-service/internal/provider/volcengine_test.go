@@ -60,12 +60,12 @@ func TestVolcengineConfigAndOfficialEndpoints(t *testing.T) {
 			t.Fatal("missing key/model accepted")
 		}
 	}
-	for _, raw := range []string{VolcengineBaseURL, "https://ark.cn-beijing.volces.com:443/api/v3/"} {
+	for _, raw := range []string{VolcengineBaseURL, VolcenginePlanBaseURL, "https://ark.cn-beijing.volces.com:443/api/v3/", "https://ark.cn-beijing.volces.com:443/api/plan/v3/"} {
 		if !IsVolcengineURL(raw) {
 			t.Fatal("official endpoint rejected", raw)
 		}
 	}
-	for _, raw := range []string{"https://ark.cn-beijing.volces.com.attacker.test/api/v3", "http://ark.cn-beijing.volces.com/api/v3", "https://ark.cn-beijing.volces.com/api/coding/v3", "https://ark.cn-beijing.volces.com/api/v3/chat/completions", "https://ark.cn-beijing.volces.com:8443/api/v3", "https://user@ark.cn-beijing.volces.com/api/v3", VolcengineBaseURL + "?key=secret"} {
+	for _, raw := range []string{"https://ark.cn-beijing.volces.com.attacker.test/api/v3", "http://ark.cn-beijing.volces.com/api/v3", "https://ark.cn-beijing.volces.com/api/coding/v3", "https://ark.cn-beijing.volces.com/api/v3/chat/completions", "https://ark.cn-beijing.volces.com:8443/api/v3", "https://user@ark.cn-beijing.volces.com/api/v3", VolcengineBaseURL + "?key=secret", "https://ark.cn-beijing.volces.com/api/plan", VolcenginePlanBaseURL + "/chat/completions", "https://ark.cn-beijing.volces.com.attacker.test/api/plan/v3", VolcenginePlanBaseURL + "?key=secret", "https://ark.cn-beijing.volces.com/api/%70lan/v3"} {
 		if IsVolcengineURL(raw) {
 			t.Fatal("invalid endpoint accepted", raw)
 		}

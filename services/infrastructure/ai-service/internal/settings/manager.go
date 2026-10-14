@@ -171,7 +171,7 @@ func (m *Manager) prepare(req Update) (record, error) {
 		return record{}, errors.New("DeepSeek 使用官方接口地址")
 	}
 	if req.Provider == "volcengine" && !provider.IsVolcengineURL(base) {
-		return record{}, errors.New("火山方舟请填写所在地域的官方模型服务地址，例如 https://ark.cn-beijing.volces.com/api/v3")
+		return record{}, errors.New("火山方舟请填写官方 API 根地址：模型服务使用 /api/v3，Agent Plan 套餐使用 /api/plan/v3；两者密钥与额度不可混用")
 	}
 	if !validModel.MatchString(req.DefaultModel) || (req.VisionModel != "" && !validModel.MatchString(req.VisionModel)) {
 		return record{}, errors.New("请填写有效的默认模型和图片模型")
@@ -317,7 +317,7 @@ func (m *Manager) check(ctx context.Context, r record, strict bool) (*Snapshot, 
 		return nil, list, errors.New("连接测试失败，请检查地址、密钥和服务状态")
 	}
 	if r.Provider == "volcengine" {
-		if err := probeVolcengineModels(ctx, snap.Provider, list.List); err != nil {
+		if err := probeVolcengineModels(ctx, snap.Provider, list.List, provider.IsVolcenginePlanURL(snap.Config.BaseURL)); err != nil {
 			return nil, list, err
 		}
 	}

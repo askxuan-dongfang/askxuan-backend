@@ -22,14 +22,14 @@ func NewEinoModel(ctx context.Context, source Provider, req Request) (model.Base
 		APIKey: p.apiKey, BaseURL: p.baseURL, Model: p.ModelFor(req),
 		HTTPClient: p.client, MaxTokens: &req.MaxTokens,
 	}
-	if req.ThinkingEnabled {
+	if req.ThinkingEnabled && !p.modelDefaultReasoning {
 		c.ReasoningEffort = openai.ReasoningEffortLevel(req.ReasoningEffort)
 		if p.Name() == "volcengine" {
 			c.MaxTokens = nil
 			c.MaxCompletionTokens = &req.MaxTokens
 		}
 	}
-	if !p.standardParameters {
+	if !p.standardParameters && !p.modelDefaultReasoning {
 		mode := "disabled"
 		if req.ThinkingEnabled {
 			mode = "enabled"
@@ -43,7 +43,7 @@ func NewEinoModel(ctx context.Context, source Provider, req Request) (model.Base
 // that explicitly support the thinking parameter. It never increases token limits.
 func ReasoningFallbackOptions(source Provider, enabled bool) []model.Option {
 	p, ok := source.(*OpenAICompatible)
-	if !enabled || !ok || p.standardParameters {
+	if !enabled || !ok || p.standardParameters || p.modelDefaultReasoning {
 		return nil
 	}
 	return []model.Option{openai.WithExtraFields(map[string]any{"thinking": map[string]string{"type": "disabled"}})}
