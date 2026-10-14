@@ -2,6 +2,7 @@ package cashier
 
 import (
 	"context"
+	"errors"
 	"github.com/askxuan/payment-service/internal/balance"
 	"github.com/askxuan/payment-service/internal/model"
 	"github.com/askxuan/payment-service/internal/paychannel"
@@ -33,7 +34,7 @@ func TestCashWalletMySQL(t *testing.T) {
 		`CREATE TABLE askxuan_diy.diy_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),total_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24))`,
 		`CREATE TABLE askxuan_booking.booking(booking_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),total_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24),payment_expire_time DATETIME,slot_reserved INT,slot_code VARCHAR(32),master_code VARCHAR(32),payment_no VARCHAR(64),payment_channel VARCHAR(16))`,
 		`CREATE TABLE askxuan_booking.booking_status_log(id BIGINT AUTO_INCREMENT PRIMARY KEY,booking_id VARCHAR(64),from_status VARCHAR(24),to_status VARCHAR(24),operator_id VARCHAR(64),operator_type VARCHAR(32),remark VARCHAR(255),create_time DATETIME)`,
-		`CREATE TABLE askxuan_booking.consultation_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),consult_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24),payment_no VARCHAR(64),payment_channel VARCHAR(16),valid_from DATETIME,expires_at DATETIME,valid_hours INT)`,
+		`CREATE TABLE askxuan_booking.consultation_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),master_code VARCHAR(32),consult_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24),payment_no VARCHAR(64),payment_channel VARCHAR(16),valid_from DATETIME,expires_at DATETIME,valid_hours INT)`,
 		`CREATE TABLE askxuan_ai.ai_report(report_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),price_cents BIGINT,points_paid INT,status VARCHAR(24))`,
 	}
 	for _, q := range ddl {
@@ -199,7 +200,7 @@ func TestCashWalletMySQL(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_booking.consultation_order VALUES('C1','20',9.9,'pending_payment','pending','','',NULL,NULL,24)`)
+	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_booking.consultation_order VALUES('C1','20','other-master',9.9,'pending_payment','pending','','',NULL,NULL,24)`)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -210,6 +211,20 @@ func TestCashWalletMySQL(t *testing.T) {
 	if e = db.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
 		return balance.Change(ctx, tx, "20", "test-fixture", "fixture", "test", 10000, 0)
 	}); e != nil {
+		t.Fatal(e)
+	}
+	// Both booking paths require a valid paid consultation for this user/master.
+	for _, no := range []string{"B1", "B2"} {
+		if _, e = s.Pay(ctx, "20", OrderRequest{OrderType: "booking", OrderNo: no, ExpectedCents: 990, Channel: "balance"}); !errors.Is(e, balance.ErrConflict) {
+			t.Fatalf("booking without valid consultation: %s: %v", no, e)
+		}
+	}
+	beforeBooking, e := balance.Read(ctx, db, "20")
+	if e != nil || beforeBooking.Available != 10000 {
+		t.Fatalf("rejected booking changed balance: %+v %v", beforeBooking, e)
+	}
+	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_booking.consultation_order VALUES('C-valid','20','master',9.9,'active','success','fixture','balance',DATE_SUB(NOW(),INTERVAL 1 MINUTE),DATE_ADD(NOW(),INTERVAL 24 HOUR),24)`)
+	if e != nil {
 		t.Fatal(e)
 	}
 	for kind, nos := range map[string][]string{"booking": {"B1", "B2"}, "consultation": {"C1"}, "diy_order": {"D1"}, "ai_report": {"A1"}} {
