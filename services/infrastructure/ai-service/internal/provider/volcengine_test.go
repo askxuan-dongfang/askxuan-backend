@@ -72,6 +72,35 @@ func TestVolcengineConfigAndOfficialEndpoints(t *testing.T) {
 	}
 }
 
+func TestVolcenginePlanLimitsStayScopedAndRespectPlatformCaps(t *testing.T) {
+	for _, tc := range []struct {
+		name, base, id         string
+		platform, requested    int
+		wantWindow, wantOutput int
+	}{
+		{"plan alias", VolcenginePlanBaseURL, "ark-code-latest", 1048576, 32768, 256000, 32000},
+		{"named GLM", VolcenginePlanBaseURL, "glm-5.3", 1048576, 32768, 1024000, 32768},
+		{"floating GLM stays conservative", VolcenginePlanBaseURL, "glm-latest", 1048576, 32768, 256000, 32000},
+		{"platform cap", VolcenginePlanBaseURL, "ark-code-latest", 65536, 32768, 65536, 32000},
+		{"requested output", VolcenginePlanBaseURL, "ark-code-latest", 1048576, 8192, 256000, 8192},
+		{"unknown plan ID", VolcenginePlanBaseURL, "future-model", 1048576, 32768, 32768, 16384},
+		{"ordinary endpoint", VolcengineBaseURL, "ep-fixture", 1048576, 32768, 32768, 16384},
+		{"same ID outside Plan", VolcengineBaseURL, "ark-code-latest", 1048576, 32768, 32768, 16384},
+		{"untrusted host", "https://example.com/api/plan/v3", "ark-code-latest", 1048576, 32768, 32768, 16384},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p, err := New(Config{Provider: "volcengine", BaseURL: tc.base, APIKey: "fixture", Model: tc.id})
+			if err != nil {
+				t.Fatal(err)
+			}
+			w, o, err := NewCatalog(p).Limits(context.Background(), tc.id, tc.platform, tc.requested)
+			if err != nil || w != tc.wantWindow || o != tc.wantOutput {
+				t.Fatalf("limits: %d/%d, want %d/%d: %v", w, o, tc.wantWindow, tc.wantOutput, err)
+			}
+		})
+	}
+}
+
 func TestVolcengineCompleteStreamAndEinoWireContract(t *testing.T) {
 	for _, path := range []string{"complete", "stream", "eino"} {
 		for _, thinking := range []bool{false, true} {

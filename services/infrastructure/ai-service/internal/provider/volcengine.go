@@ -25,6 +25,31 @@ func IsVolcenginePlanURL(raw string) bool {
 	return err == nil && IsVolcengineURL(raw) && strings.TrimRight(u.Path, "/") == "/api/plan/v3"
 }
 
+// Documented Agent Plan limits, verified 2026-10-14:
+// https://docs.volcengine.com/docs/ark/agent-plan-enterprise-opencode?lang=zh
+// https://docs.volcengine.com/docs/ark/agent-plan-enterprise-plan-overview?lang=zh
+// Use decimal limits from Ark's client examples. Floating aliases retain the
+// documented 256K/32K baseline instead of assuming the current target's 1M.
+// Unknown IDs and ordinary Endpoint IDs keep Catalog.Limits' safe fallback.
+func volcenginePlanLimits(id string) (window, output int) {
+	switch id {
+	case "ark-code-latest", "glm-latest", "minimax-latest", "kimi-latest", "deepseek-latest", "kimi-k2.7-code":
+		return 256000, 32000
+	case "glm-5.3", "glm-5.3-flash", "minimax-m3", "kimi-k3":
+		return 1024000, 128000
+	case "deepseek-v4-flash", "deepseek-v4.1-flash", "deepseek-v4-pro":
+		return 1024000, 384000
+	case "doubao-seed-2.1-lite", "doubao-seed-2.1-pro", "doubao-seed-evolving":
+		return 1024000, 256000
+	case "doubao-seed-2.0-mini":
+		return 256000, 128000
+	case "kimi-k2.8-preview":
+		return 1024000, 1024000
+	default:
+		return 0, 0
+	}
+}
+
 func newVolcengine(cfg Config) *OpenAICompatible {
 	p := NewOpenAICompatible(cfg.BaseURL, cfg.APIKey, cfg.Model, cfg.VisionModel)
 	// Plan aliases may route to models that cannot disable thinking. Let the
@@ -39,6 +64,9 @@ func newVolcengine(cfg Config) *OpenAICompatible {
 		}
 		seen[id] = true
 		option := ModelOption{ID: id, Name: id, Description: "火山方舟 · 文字对话", SupportsVision: id == cfg.VisionModel}
+		if IsVolcenginePlanURL(cfg.BaseURL) {
+			option.ContextWindow, option.MaxOutputTokens = volcenginePlanLimits(id)
+		}
 		if option.SupportsVision {
 			option.Description = "火山方舟 · 文字与图片"
 		}
