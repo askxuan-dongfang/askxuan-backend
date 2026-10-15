@@ -335,10 +335,10 @@ type MasterProfileResp struct {
 
 // MasterProfileUpdateReq 法师资料更新请求
 type MasterProfileUpdateReq struct {
-	Bio         string   `json:"bio,optional"`
+	Bio         *string  `json:"bio,optional"`
 	Specialties []string `json:"specialties,optional"`
-	Avatar      string   `json:"avatar,optional"`
-	Pricing     string   `json:"pricing,optional"`
+	Avatar      *string  `json:"avatar,optional"`
+	Pricing     *string  `json:"pricing,optional"`
 }
 
 // ============ 平台审核 ============

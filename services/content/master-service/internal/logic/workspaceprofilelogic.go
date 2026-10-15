@@ -92,8 +92,8 @@ func (l *WorkspaceProfileUpdateLogic) WorkspaceProfileUpdate(req *types.MasterPr
 	if req.Specialties != nil {
 		master.Specialties = joinSpecialties(req.Specialties)
 	}
-	if req.Avatar != "" {
-		master.Avatar = req.Avatar
+	if req.Avatar != nil {
+		master.Avatar = *req.Avatar
 	}
 	if err := l.svcCtx.MasterModel.Update(l.ctx, master); err != nil {
 		l.Errorf("更新法师资料失败: %v", err)
@@ -105,11 +105,11 @@ func (l *WorkspaceProfileUpdateLogic) WorkspaceProfileUpdate(req *types.MasterPr
 		l.Errorf("查询法师资料扩展失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	if req.Bio != "" {
-		ext.Bio = req.Bio
+	if req.Bio != nil {
+		ext.Bio = *req.Bio
 	}
-	if req.Pricing != "" {
-		ext.Pricing = req.Pricing
+	if req.Pricing != nil {
+		ext.Pricing = *req.Pricing
 	}
 	ext.MasterCode = masterCode
 	if err := l.svcCtx.MasterProfileExtModel.Upsert(l.ctx, ext); err != nil {
@@ -117,7 +117,9 @@ func (l *WorkspaceProfileUpdateLogic) WorkspaceProfileUpdate(req *types.MasterPr
 		return nil, common.ErrSystem
 	}
 
-	return toProfileResp(master, ext), nil
+	resp := toProfileResp(master, ext)
+	resp.ManageBy = master.ManageBy
+	return resp, nil
 }
 
 // toProfileResp 将 model.Master + MasterProfileExt 组装为 types.MasterProfileResp

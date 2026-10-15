@@ -392,6 +392,7 @@ type StatusLogResp struct {
 
 // MasterBookingListReq 法师预约列表请求（masterId 从 JWT 获取，无需前端传递）
 type MasterBookingListReq struct {
+	Date   string `form:"date,optional"`
 	Status string `form:"status,optional"`
 	Page   int    `form:"page,default=1"`
 	Size   int    `form:"size,default=20"`

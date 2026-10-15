@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/askxuan/booking-service/internal/model"
 	"github.com/askxuan/booking-service/internal/svc"
@@ -31,6 +32,11 @@ func NewMasterBookingListLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 
 // MasterBookingList 法师查询自己的预约列表（masterId 从 JWT 获取）
 func (l *MasterBookingListLogic) MasterBookingList(req *types.MasterBookingListReq) (*types.MasterBookingListResp, error) {
+	if req.Date != "" {
+		if _, err := time.Parse("2006-01-02", req.Date); err != nil {
+			return nil, common.ErrParam
+		}
+	}
 	masterID := middleware.MasterIDFromCtx(l.ctx)
 	if masterID == 0 {
 		return nil, common.ErrUnauthorized
@@ -57,7 +63,7 @@ func (l *MasterBookingListLogic) MasterBookingList(req *types.MasterBookingListR
 	}
 
 	// 复用 FindAdminList，传空 templeId + masterCode 作为过滤条件
-	list, total, err := l.svcCtx.BookingModel.FindAdminList(l.ctx, "", req.Status, masterCode, page, size)
+	list, total, err := l.svcCtx.BookingModel.FindAdminList(l.ctx, "", req.Status, masterCode, page, size, req.Date)
 	if err != nil {
 		l.Errorf("法师工作台查询预约列表失败: %v", err)
 		return nil, common.ErrSystem

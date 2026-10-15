@@ -462,6 +462,7 @@ service booking-service {
 // ============ 法师工作台 - 预约分组 ============
 type (
     MasterBookingListReq {
+        Date string `form:"date,optional"`
         Status string `form:"status,optional"`
         Page   int    `form:"page,default=1"`
         Size   int    `form:"size,default=20"`

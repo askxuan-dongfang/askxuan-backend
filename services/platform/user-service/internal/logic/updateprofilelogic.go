@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/user-service/internal/model"
@@ -28,7 +29,7 @@ func NewUpdateProfileLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Upd
 	}
 }
 
-// UpdateProfile 更新用户资料，仅更新非空字段
+// UpdateProfile preserves omitted fields and applies explicit empty values.
 func (l *UpdateProfileLogic) UpdateProfile(req *types.UpdateProfileReq) (*types.UserProfile, error) {
 	if req.UserId == 0 {
 		return nil, common.ErrUnauthorized
@@ -43,33 +44,9 @@ func (l *UpdateProfileLogic) UpdateProfile(req *types.UpdateProfileReq) (*types.
 		return nil, common.ErrSystem
 	}
 
-	// 合并更新字段（空值保留原值）
-	data := &model.User{
-		Id:       req.UserId,
-		Nickname: req.Nickname,
-		Avatar:   req.Avatar,
-		Gender:   req.Gender,
-		Birthday: req.Birthday,
-		Region:   req.Region,
-		Bio:      req.Bio,
-	}
-	if data.Nickname == "" {
-		data.Nickname = exist.Nickname
-	}
-	if data.Avatar == "" {
-		data.Avatar = exist.Avatar
-	}
-	if data.Gender == "" {
-		data.Gender = exist.Gender
-	}
-	if data.Birthday == "" {
-		data.Birthday = exist.Birthday
-	}
-	if data.Region == "" {
-		data.Region = exist.Region
-	}
-	if data.Bio == "" {
-		data.Bio = exist.Bio
+	data, err := mergeProfileUpdate(exist, req)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := l.svcCtx.UserModel.Update(l.ctx, data); err != nil {
@@ -83,4 +60,31 @@ func (l *UpdateProfileLogic) UpdateProfile(req *types.UpdateProfileReq) (*types.
 	}
 	resp := userToProfile(updated)
 	return &resp, nil
+}
+
+// mergeProfileUpdate distinguishes an omitted field from an explicit clear.
+func mergeProfileUpdate(existing *model.User, req *types.UpdateProfileReq) (*model.User, error) {
+	data := *existing
+	if req.Nickname != nil {
+		data.Nickname = strings.TrimSpace(*req.Nickname)
+		if data.Nickname == "" {
+			return nil, common.ErrParam
+		}
+	}
+	if req.Avatar != nil {
+		data.Avatar = *req.Avatar
+	}
+	if req.Gender != nil {
+		data.Gender = *req.Gender
+	}
+	if req.Birthday != nil {
+		data.Birthday = *req.Birthday
+	}
+	if req.Region != nil {
+		data.Region = *req.Region
+	}
+	if req.Bio != nil {
+		data.Bio = *req.Bio
+	}
+	return &data, nil
 }

@@ -38,12 +38,12 @@ type (
     }
 
     UpdateProfileReq {
-        Nickname string `json:"nickname,optional"`
-        Avatar   string `json:"avatar,optional"`
-        Gender   string `json:"gender,optional"`
-        Birthday string `json:"birthday,optional"`
-        Region   string `json:"region,optional"`
-        Bio      string `json:"bio,optional"`
+        Nickname *string `json:"nickname,optional"`
+        Avatar   *string `json:"avatar,optional"`
+        Gender   *string `json:"gender,optional"`
+        Birthday *string `json:"birthday,optional"`
+        Region   *string `json:"region,optional"`
+        Bio      *string `json:"bio,optional"`
     }
 )
 

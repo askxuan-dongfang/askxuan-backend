@@ -1,6 +1,9 @@
 package model
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 // ===== 预约状态机测试 =====
 
@@ -61,5 +64,17 @@ func TestIsTerminalStatus(t *testing.T) {
 		if IsTerminalStatus(s) {
 			t.Errorf("状态 %q 不应为终态", s)
 		}
+	}
+}
+
+func TestMasterDateFilterPreservesOwnership(t *testing.T) {
+	where, args := buildWhere("", "pending", "", "M001", "2026-10-15")
+	if where != "1=1 AND status=? AND master_code=? AND booking_date=?" || !reflect.DeepEqual(args, []interface{}{"pending", "M001", "2026-10-15"}) {
+		t.Fatalf("unexpected filter: %s %#v", where, args)
+	}
+	without, original := buildWhere("", "pending", "", "M001")
+	empty, omitted := buildWhere("", "pending", "", "M001", "")
+	if without != empty || !reflect.DeepEqual(original, omitted) {
+		t.Fatal("empty date must preserve existing filter")
 	}
 }

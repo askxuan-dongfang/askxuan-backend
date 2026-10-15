@@ -84,7 +84,7 @@ type BookingModel interface {
 	FindList(ctx context.Context, userId, status, templeId string, page, size int) ([]*Booking, int64, error)
 	UpdateStatus(ctx context.Context, bookingNo, newStatus string) (*Booking, error)
 	UpdatePayment(ctx context.Context, bookingNo, paymentNo, channel, paymentStatus, status string) (*Booking, bool, error)
-	FindAdminList(ctx context.Context, templeId, status, masterId string, page, size int) ([]*Booking, int64, error)
+	FindAdminList(ctx context.Context, templeId, status, masterId string, page, size int, dates ...string) ([]*Booking, int64, error)
 	FindSlotUsage(ctx context.Context, templeCode, serviceCode, date string) (map[string]int, error)
 	FindPendingPayments(ctx context.Context, limit int) ([]*Booking, error)
 	ExpirePendingPayments(ctx context.Context) (int64, error)
@@ -168,11 +168,11 @@ func (m *defaultBookingModel) FindOne(ctx context.Context, bookingNo string) (*B
 func (m *defaultBookingModel) FindList(ctx context.Context, userId, status, templeId string, page, size int) ([]*Booking, int64, error) {
 	return m.findList(ctx, userId, status, templeId, "", page, size)
 }
-func (m *defaultBookingModel) FindAdminList(ctx context.Context, templeId, status, masterId string, page, size int) ([]*Booking, int64, error) {
-	return m.findList(ctx, "", status, templeId, masterId, page, size)
+func (m *defaultBookingModel) FindAdminList(ctx context.Context, templeId, status, masterId string, page, size int, dates ...string) ([]*Booking, int64, error) {
+	return m.findList(ctx, "", status, templeId, masterId, page, size, dates...)
 }
-func (m *defaultBookingModel) findList(ctx context.Context, userId, status, templeId, masterId string, page, size int) ([]*Booking, int64, error) {
-	where, args := buildWhere(userId, status, templeId, masterId)
+func (m *defaultBookingModel) findList(ctx context.Context, userId, status, templeId, masterId string, page, size int, dates ...string) ([]*Booking, int64, error) {
+	where, args := buildWhere(userId, status, templeId, masterId, dates...)
 	var total int64
 	if err := m.conn.QueryRowCtx(ctx, &total, `SELECT COUNT(1) FROM booking WHERE `+where, args...); err != nil {
 		return nil, 0, err
@@ -268,7 +268,7 @@ func (m *defaultBookingModel) ExpirePendingPayments(ctx context.Context) (int64,
 	return count, nil
 }
 
-func buildWhere(userId, status, templeId, masterId string) (string, []interface{}) {
+func buildWhere(userId, status, templeId, masterId string, dates ...string) (string, []interface{}) {
 	where := "1=1"
 	args := []interface{}{}
 	if userId != "" {
@@ -286,6 +286,10 @@ func buildWhere(userId, status, templeId, masterId string) (string, []interface{
 	if masterId != "" {
 		where += " AND master_code=?"
 		args = append(args, masterId)
+	}
+	if len(dates) > 0 && dates[0] != "" {
+		where += " AND booking_date=?"
+		args = append(args, dates[0])
 	}
 	return where, args
 }

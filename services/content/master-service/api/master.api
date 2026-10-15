@@ -272,10 +272,10 @@ type (
         Rating      float64  `json:"rating"`
     }
     MasterProfileUpdateReq {
-        Bio         string   `json:"bio,optional"`
+        Bio         *string   `json:"bio,optional"`
         Specialties []string `json:"specialties,optional"`
-        Avatar      string   `json:"avatar,optional"`
-        Pricing     string   `json:"pricing,optional"`
+        Avatar      *string   `json:"avatar,optional"`
+        Pricing     *string   `json:"pricing,optional"`
     }
 )
 
