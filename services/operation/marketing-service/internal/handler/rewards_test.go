@@ -109,3 +109,45 @@ func TestRewardCustomerIsolation(t *testing.T) {
 		})
 	}
 }
+
+func TestVirtualRewardRoutesAreRoleBound(t *testing.T) {
+	for _, tc := range []struct {
+		role, method, path string
+		code               int
+	}{
+		{"customer", "POST", "/api/v1/admin/marketing/rewards/campaigns/0/stock", common.ErrRoleForbidden.Code},
+		{"platform_super", "POST", "/api/v1/admin/marketing/rewards/campaigns/0/stock", common.ErrParam.Code},
+		{"platform_super", "GET", "/api/v1/marketing/rewards/orders/0/redemption", common.ErrRoleForbidden.Code},
+		{"customer", "GET", "/api/v1/marketing/rewards/orders/0/redemption", common.ErrParam.Code},
+	} {
+		var c rest.RestConf
+		conf.FillDefault(&c)
+		c.Name = "virtual-rewards-test"
+		c.Port = 33380
+		server, err := rest.NewServer(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer server.Stop()
+		ctx := &svc.ServiceContext{}
+		ctx.Config.Auth.AccessSecret = "local-route-test"
+		registerRewards(server, ctx)
+		token, err := common.GenAccessToken("local-route-test", common.TokenInfo{UserId: 1, Roles: []string{tc.role}}, 3600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(tc.method, tc.path, strings.NewReader("{}"))
+		req.Header.Set("Authorization", "Bearer "+token)
+		rr := httptest.NewRecorder()
+		server.ServeHTTP(rr, req)
+		var resp struct {
+			Code int `json:"code"`
+		}
+		if err = json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+			t.Fatal(err)
+		}
+		if resp.Code != tc.code {
+			t.Fatalf("%s %s: got %d want %d", tc.role, tc.path, resp.Code, tc.code)
+		}
+	}
+}

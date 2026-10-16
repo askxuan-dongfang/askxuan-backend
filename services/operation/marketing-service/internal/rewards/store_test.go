@@ -1,8 +1,11 @@
 package rewards
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
@@ -63,7 +66,7 @@ func TestMySQLRewards(t *testing.T) {
 	defer db.Close()
 	db.SetMaxOpenConns(16)
 	ctx := context.Background()
-	s := Store{DB: db}
+	s := Store{DB: db, RedemptionKey: base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))}
 	schema, e := os.ReadFile("../../../../../scripts/db/20260909_free_rewards.sql")
 	if e != nil {
 		t.Fatal(e)
@@ -94,6 +97,11 @@ func TestMySQLRewards(t *testing.T) {
 		t.Fatal(e)
 	}
 	schema = append(schema, []byte(strings.ReplaceAll(string(migration), "USE askxuan_marketing;", ""))...)
+	multiMigration, e := os.ReadFile("../../../../../scripts/db/20261016_reward_prizes.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	schema = append(schema, []byte(strings.ReplaceAll(string(multiMigration), "USE askxuan_marketing;", ""))...)
 	for pass := 0; pass < 2; pass++ {
 		for _, q := range strings.Split(string(schema), ";") {
 			if strings.TrimSpace(q) != "" {
@@ -431,6 +439,110 @@ func TestMySQLRewards(t *testing.T) {
 		must(db.QueryRow("SELECT COUNT(*) FROM askxuan_payment.points_ledger WHERE user_id='shared-balance'").Scan(&n))
 		if ok != 1 || low != 1 || balance != 0 || n != 1 {
 			t.Fatalf("overspend ok=%d low=%d balance=%d ledger=%d", ok, low, balance, n)
+		}
+	})
+
+	t.Run("multi_prize_stock_and_private_redemption", func(t *testing.T) {
+		c, err := s.Save(ctx, multiFixture(), "admin")
+		must(err)
+		if err = s.Publish(ctx, c.ID, "admin"); !errors.Is(err, ErrStock) {
+			t.Fatalf("published empty inventory: %v", err)
+		}
+		must(s.ImportStock(ctx, c.ID, c.Prizes[1].ID, []string{"TEST-ONLY-GIFT-CARD"}, "admin"))
+		if err = s.ImportStock(ctx, c.ID, c.Prizes[2].ID, []string{"javascript:alert(1)"}, "admin"); !errors.Is(err, ErrInvalid) {
+			t.Fatal("unsafe link")
+		}
+		must(s.ImportStock(ctx, c.ID, c.Prizes[2].ID, []string{"https://example.com/private/test-only-token"}, "admin"))
+		// Editing names preserves stock and identity. Imported platform/type/expiry cannot change silently.
+		current, err := s.campaign(ctx, c.ID, true)
+		must(err)
+		current.Prizes[0].Name = "香囊礼盒"
+		c, err = s.Save(ctx, current, "admin")
+		must(err)
+		another, err := s.Save(ctx, multiFixture(), "admin")
+		must(err)
+		if err = s.ImportStock(ctx, another.ID, another.Prizes[1].ID, []string{"TEST-ONLY-GIFT-CARD"}, "admin"); !errors.Is(err, ErrDuplicateStock) {
+			t.Fatal("duplicate credential reused")
+		}
+		must(s.Publish(ctx, c.ID, "admin"))
+		if err = s.ImportStock(ctx, c.ID, c.Prizes[1].ID, []string{"NEW-CODE"}, "admin"); !errors.Is(err, ErrConflict) {
+			t.Fatal("published stock modified")
+		}
+		var wg sync.WaitGroup
+		for i := 0; i < 10; i++ {
+			u := fmt.Sprintf("multi-user-%d", i)
+			fund(u, 100)
+			wg.Add(1)
+			go func(u string) {
+				defer wg.Done()
+				_, err := s.Join(ctx, c.ID, u, 10)
+				if err != nil && !errors.Is(err, ErrClosed) {
+					t.Error(err)
+				}
+			}(u)
+		}
+		wg.Wait()
+		d, err := s.Detail(ctx, c.ID, "", false)
+		must(err)
+		if len(d.Winners) != 3 || d.Campaign.AwardedCount != 3 {
+			t.Fatalf("stock not conserved: %+v", d)
+		}
+		for _, p := range d.Campaign.Prizes {
+			if p.AwardedCount != 1 || p.StockCount != 0 {
+				t.Fatal("prize inventory exposed or not conserved")
+			}
+		}
+		public, err := json.Marshal(d)
+		must(err)
+		if bytes.Contains(public, []byte("TEST-ONLY-GIFT-CARD")) || bytes.Contains(public, []byte("test-only-token")) {
+			t.Fatal("public credential leak")
+		}
+		orders, err := s.Orders(ctx, "admin", true, 1, "delivered")
+		must(err)
+		seen := map[int64]bool{}
+		for _, o := range orders {
+			if o.CampaignID != c.ID {
+				continue
+			}
+			seen[o.PrizeID] = true
+			if o.Status != "delivered" || o.Address != "" {
+				t.Fatal("digital order requires shipping")
+			}
+			if _, err = s.Redemption(ctx, o.ID, "intruder"); !errors.Is(err, ErrNotFound) {
+				t.Fatal("foreign credential leak")
+			}
+			r, err := s.Redemption(ctx, o.ID, o.UserID)
+			must(err)
+			if o.PrizeKind == "code" && r.Code != "TEST-ONLY-GIFT-CARD" {
+				t.Fatal("wrong code")
+			}
+			if o.PrizeKind == "link" && (r.Code != "" || r.URL != "https://example.com/private/test-only-token") {
+				t.Fatal("wrong link")
+			}
+			if err = s.OrderAction(ctx, o.ID, o.UserID, "claim", OrderAction{}); !errors.Is(err, ErrConflict) {
+				t.Fatal("digital shipping accepted")
+			}
+			e, err := s.Join(ctx, c.ID, o.UserID, 10)
+			must(err)
+			again, err := s.Join(ctx, c.ID, o.UserID, 10)
+			must(err)
+			if e.ID != again.ID || e.PrizeID != o.PrizeID || e.PrizeName != o.PrizeName {
+				t.Fatal("idempotent prize mismatch")
+			}
+			var balance, n int
+			must(db.QueryRow("SELECT balance FROM askxuan_payment.points_account WHERE user_id=?", o.UserID).Scan(&balance))
+			must(db.QueryRow("SELECT COUNT(*) FROM askxuan_payment.points_ledger WHERE user_id=?", o.UserID).Scan(&n))
+			if balance != 90 || n != 1 {
+				t.Fatal("duplicate debit")
+			}
+		}
+		if len(seen) != 2 {
+			t.Fatal("missing virtual awards")
+		}
+		// New campaigns cannot be awarded by the old single-prize binary.
+		_, err = db.Exec("INSERT INTO reward_entry(campaign_id,user_id,code,outcome,created_at,points_spent) VALUES(?,'legacy-multi','LEGACY-MULTI','won',?,10)", c.ID, time.Now().Unix())
+		if err == nil {
+			t.Fatal("legacy binary bypass")
 		}
 	})
 

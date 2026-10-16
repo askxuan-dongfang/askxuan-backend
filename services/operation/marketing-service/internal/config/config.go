@@ -10,6 +10,7 @@ type MySQLConf struct {
 // Config marketing 服务配置
 type Config struct {
 	rest.RestConf
-	MySQL MySQLConf
-	Auth  struct{ AccessSecret string }
+	RewardsEncryptionKey string `json:",optional"`
+	MySQL                MySQLConf
+	Auth                 struct{ AccessSecret string }
 }

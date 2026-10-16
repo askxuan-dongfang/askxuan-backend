@@ -26,37 +26,41 @@ var ErrBalance = errors.New("积分不足，请返回积分页面查看余额")
 var ErrPrice = errors.New("请确认本期参与积分后重试")
 
 type Store struct {
-	DB     *sql.DB
-	Random io.Reader
+	DB            *sql.DB
+	Random        io.Reader
+	RedemptionKey string
 }
 type Campaign struct {
-	PublishedAt      int64  `json:"publishedAt"`
-	ID               int64  `json:"id"`
-	Title            string `json:"title"`
-	Kind             string `json:"kind"`
-	PrizeName        string `json:"prizeName"`
-	Image            string `json:"image"`
-	Description      string `json:"description"`
-	Rules            string `json:"rules"`
-	PrizeValue       int64  `json:"prizeValue"`
-	Budget           int64  `json:"budget"`
-	PointsCost       int64  `json:"pointsCost"`
-	PrizeQuantity    int    `json:"prizeQuantity"`
-	Capacity         int    `json:"capacity"`
-	ParticipantCount int    `json:"participantCount"`
-	AwardedCount     int    `json:"awardedCount"`
-	StartsAt         int64  `json:"startsAt"`
-	EndsAt           int64  `json:"endsAt"`
-	Status           string `json:"status"`
-	Version          int    `json:"version"`
-	DrawnAt          int64  `json:"drawnAt"`
-	PoolDigest       string `json:"poolDigest"`
-	Announcement     string `json:"announcement"`
-	CreatedAt        int64  `json:"createdAt"`
-	Phase            string `json:"phase"`
-	Algorithm        string `json:"algorithm"`
+	Prizes           []Prize `json:"prizes"`
+	PublishedAt      int64   `json:"publishedAt"`
+	ID               int64   `json:"id"`
+	Title            string  `json:"title"`
+	Kind             string  `json:"kind"`
+	PrizeName        string  `json:"prizeName"`
+	Image            string  `json:"image"`
+	Description      string  `json:"description"`
+	Rules            string  `json:"rules"`
+	PrizeValue       int64   `json:"prizeValue"`
+	Budget           int64   `json:"budget"`
+	PointsCost       int64   `json:"pointsCost"`
+	PrizeQuantity    int     `json:"prizeQuantity"`
+	Capacity         int     `json:"capacity"`
+	ParticipantCount int     `json:"participantCount"`
+	AwardedCount     int     `json:"awardedCount"`
+	StartsAt         int64   `json:"startsAt"`
+	EndsAt           int64   `json:"endsAt"`
+	Status           string  `json:"status"`
+	Version          int     `json:"version"`
+	DrawnAt          int64   `json:"drawnAt"`
+	PoolDigest       string  `json:"poolDigest"`
+	Announcement     string  `json:"announcement"`
+	CreatedAt        int64   `json:"createdAt"`
+	Phase            string  `json:"phase"`
+	Algorithm        string  `json:"algorithm"`
 }
 type Entry struct {
+	PrizeID     int64  `json:"prizeId"`
+	PrizeName   string `json:"prizeName"`
 	ID          int64  `json:"id"`
 	CampaignID  int64  `json:"campaignId"`
 	UserID      string `json:"-"`
@@ -67,22 +71,28 @@ type Entry struct {
 	PointsSpent int64  `json:"pointsSpent"`
 }
 type Order struct {
-	ID          int64  `json:"id"`
-	CampaignID  int64  `json:"campaignId"`
-	EntryID     int64  `json:"entryId"`
-	UserID      string `json:"-"`
-	PrizeName   string `json:"prizeName"`
-	Code        string `json:"code"`
-	Status      string `json:"status"`
-	Receiver    string `json:"receiver"`
-	Mobile      string `json:"mobile"`
-	Address     string `json:"address"`
-	Carrier     string `json:"carrier"`
-	TrackingNo  string `json:"trackingNo"`
-	CreatedAt   int64  `json:"createdAt"`
-	ClaimedAt   int64  `json:"claimedAt"`
-	ShippedAt   int64  `json:"shippedAt"`
-	CompletedAt int64  `json:"completedAt"`
+	PrizeID       int64  `json:"prizeId"`
+	PrizeKind     string `json:"prizeKind"`
+	Platform      string `json:"platform"`
+	Instructions  string `json:"instructions"`
+	ExpiresAt     int64  `json:"expiresAt"`
+	RedemptionURL string `json:"redemptionUrl"`
+	ID            int64  `json:"id"`
+	CampaignID    int64  `json:"campaignId"`
+	EntryID       int64  `json:"entryId"`
+	UserID        string `json:"-"`
+	PrizeName     string `json:"prizeName"`
+	Code          string `json:"code"`
+	Status        string `json:"status"`
+	Receiver      string `json:"receiver"`
+	Mobile        string `json:"mobile"`
+	Address       string `json:"address"`
+	Carrier       string `json:"carrier"`
+	TrackingNo    string `json:"trackingNo"`
+	CreatedAt     int64  `json:"createdAt"`
+	ClaimedAt     int64  `json:"claimedAt"`
+	ShippedAt     int64  `json:"shippedAt"`
+	CompletedAt   int64  `json:"completedAt"`
 }
 type Detail struct {
 	Campaign      Campaign `json:"campaign"`
@@ -108,8 +118,8 @@ type OrderAction struct {
 }
 
 const campaignCols = `id,title,kind,prize_name,image,description,rules,prize_value,budget,prize_quantity,capacity,participant_count,awarded_count,starts_at,ends_at,status,version,drawn_at,pool_digest,announcement,created_at,published_at,points_cost`
-const entryCols = `id,campaign_id,user_id,code,outcome,created_at,points_spent`
-const orderCols = `id,campaign_id,entry_id,user_id,prize_name,code,status,receiver,mobile,address,carrier,tracking_no,created_at,claimed_at,shipped_at,completed_at`
+const entryCols = `id,campaign_id,user_id,code,outcome,created_at,points_spent,prize_id,prize_name`
+const orderCols = `id,campaign_id,entry_id,user_id,prize_name,code,status,receiver,mobile,address,carrier,tracking_no,created_at,claimed_at,shipped_at,completed_at,prize_id,prize_kind,platform,instructions,expires_at,redemption_url`
 
 type scanner interface{ Scan(...any) error }
 
@@ -120,11 +130,11 @@ func scanCampaign(r scanner) (c Campaign, err error) {
 	return
 }
 func scanEntry(r scanner) (e Entry, err error) {
-	err = r.Scan(&e.ID, &e.CampaignID, &e.UserID, &e.Code, &e.Outcome, &e.CreatedAt, &e.PointsSpent)
+	err = r.Scan(&e.ID, &e.CampaignID, &e.UserID, &e.Code, &e.Outcome, &e.CreatedAt, &e.PointsSpent, &e.PrizeID, &e.PrizeName)
 	return
 }
 func scanOrder(r scanner) (o Order, err error) {
-	err = r.Scan(&o.ID, &o.CampaignID, &o.EntryID, &o.UserID, &o.PrizeName, &o.Code, &o.Status, &o.Receiver, &o.Mobile, &o.Address, &o.Carrier, &o.TrackingNo, &o.CreatedAt, &o.ClaimedAt, &o.ShippedAt, &o.CompletedAt)
+	err = r.Scan(&o.ID, &o.CampaignID, &o.EntryID, &o.UserID, &o.PrizeName, &o.Code, &o.Status, &o.Receiver, &o.Mobile, &o.Address, &o.Carrier, &o.TrackingNo, &o.CreatedAt, &o.ClaimedAt, &o.ShippedAt, &o.CompletedAt, &o.PrizeID, &o.PrizeKind, &o.Platform, &o.Instructions, &o.ExpiresAt, &o.RedemptionURL)
 	return
 }
 func (c Campaign) phase(now int64) string {
@@ -150,10 +160,14 @@ func validText(s string, min, max int) bool {
 	return n >= min && n <= max
 }
 func Validate(c Campaign, now int64) error {
+	if err := validatePrizes(c); err != nil {
+		return err
+	}
+	normalizeCampaign(&c)
 	if c.PointsCost < 1 || c.PointsCost > 100000000 {
 		return ErrInvalid
 	}
-	if !validText(c.Title, 1, 120) || !validText(c.PrizeName, 1, 120) || !validText(c.Description, 1, 10000) || !validText(c.Rules, 1, 10000) || (c.Kind != "pool" && c.Kind != "wheel") || c.PrizeValue < 1 || c.PrizeValue > 100000000 || c.PrizeQuantity < 1 || c.PrizeQuantity > 1000 || c.Capacity < c.PrizeQuantity || c.Capacity > 100000 || c.Budget < c.PrizeValue*int64(c.PrizeQuantity) || c.Budget > 100000000000 || c.StartsAt < 1 || c.EndsAt <= c.StartsAt || c.EndsAt <= now || c.EndsAt-c.StartsAt > 366*86400 {
+	if !validText(c.Title, 1, 120) || !validText(c.PrizeName, 1, 120) || !validText(c.Description, 1, 10000) || !validText(c.Rules, 1, 10000) || (c.Kind != "pool" && c.Kind != "wheel") || c.PrizeValue < 1 || c.PrizeValue > 100000000 || c.PrizeQuantity < 1 || c.PrizeQuantity > 1000 || c.Capacity < c.PrizeQuantity || c.Capacity > 100000 || (len(c.Prizes) == 0 && c.Budget < c.PrizeValue*int64(c.PrizeQuantity)) || c.Budget > 100000000000 || c.StartsAt < 1 || c.EndsAt <= c.StartsAt || c.EndsAt <= now || c.EndsAt-c.StartsAt > 366*86400 {
 		return ErrInvalid
 	}
 	if c.Image != "" {
@@ -198,13 +212,18 @@ func lockedCampaign(ctx context.Context, tx *sql.Tx, id int64) (Campaign, error)
 	if errors.Is(e, sql.ErrNoRows) {
 		e = ErrNotFound
 	}
+	if e == nil {
+		e = loadPrizes(ctx, tx, &c, true)
+	}
 	return c, e
 }
 func (s Store) Save(ctx context.Context, c Campaign, actor string) (Campaign, error) {
+	normalizeCampaign(&c)
 	if e := Validate(c, time.Now().Unix()); e != nil {
 		return c, e
 	}
 	e := s.transaction(ctx, func(tx *sql.Tx) error {
+		var previous []Prize
 		if c.ID == 0 {
 			r, e := tx.ExecContext(ctx, `INSERT INTO reward_campaign(title,kind,prize_name,image,description,rules,prize_value,budget,prize_quantity,capacity,starts_at,ends_at,announcement,created_at,points_cost) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, c.Title, c.Kind, c.PrizeName, c.Image, c.Description, c.Rules, c.PrizeValue, c.Budget, c.PrizeQuantity, c.Capacity, c.StartsAt, c.EndsAt, "", time.Now().Unix(), c.PointsCost)
 			if e != nil {
@@ -219,6 +238,10 @@ func (s Store) Save(ctx context.Context, c Campaign, actor string) (Campaign, er
 			if e != nil {
 				return e
 			}
+			previous = old.Prizes
+			if len(previous) > 0 && len(c.Prizes) == 0 {
+				return ErrInvalid
+			}
 			if old.Status != "draft" || c.Version != old.Version {
 				return ErrConflict
 			}
@@ -226,6 +249,9 @@ func (s Store) Save(ctx context.Context, c Campaign, actor string) (Campaign, er
 			if e != nil {
 				return e
 			}
+		}
+		if e := savePrizes(ctx, tx, c, previous); e != nil {
+			return e
 		}
 		return audit(ctx, tx, c.ID, 0, actor, "save_draft", fmt.Sprintf("平台预算独立配置；每人每期 %d 积分", c.PointsCost))
 	})
@@ -238,6 +264,9 @@ func (s Store) campaign(ctx context.Context, id int64, admin bool) (Campaign, er
 	c, e := scanCampaign(s.DB.QueryRowContext(ctx, "SELECT "+campaignCols+" FROM reward_campaign WHERE id=?", id))
 	if errors.Is(e, sql.ErrNoRows) || (e == nil && !admin && c.PublishedAt == 0) {
 		e = ErrNotFound
+	}
+	if e == nil {
+		e = loadPrizes(ctx, s.DB, &c, admin)
 	}
 	return c, e
 }
@@ -266,7 +295,16 @@ func (s Store) List(ctx context.Context, admin bool, page int, kind string) ([]C
 		}
 		out = append(out, c)
 	}
-	return out, rows.Err()
+	if e = rows.Err(); e != nil {
+		return nil, e
+	}
+	rows.Close()
+	for i := range out {
+		if e = loadPrizes(ctx, s.DB, &out[i], admin); e != nil {
+			return nil, e
+		}
+	}
+	return out, nil
 }
 func (s Store) Detail(ctx context.Context, id int64, user string, admin bool) (Detail, error) {
 	d := Detail{Winners: []Entry{}}
@@ -280,6 +318,9 @@ func (s Store) Detail(ctx context.Context, id int64, user string, admin bool) (D
 		e = ErrNotFound
 	}
 	if e != nil {
+		return d, e
+	}
+	if e = loadPrizes(ctx, tx, &c, admin); e != nil {
 		return d, e
 	}
 	d.Campaign = c
@@ -329,6 +370,16 @@ func (s Store) Publish(ctx context.Context, id int64, actor string) error {
 		}
 		if e = Validate(c, time.Now().Unix()); e != nil {
 			return e
+		}
+		for _, p := range c.Prizes {
+			if p.Kind != "physical" {
+				if _, _, err := s.vault(); err != nil {
+					return err
+				}
+				if p.StockCount < p.Quantity {
+					return ErrStock
+				}
+			}
 		}
 		_, e = tx.ExecContext(ctx, "UPDATE reward_campaign SET status='published',published_at=?,version=version+1 WHERE id=?", time.Now().Unix(), id)
 		if e != nil {
@@ -414,6 +465,7 @@ func (s Store) Join(ctx context.Context, id int64, user string, expectedPoints i
 		if _, e = tx.ExecContext(ctx, `INSERT INTO askxuan_payment.points_ledger(user_id,event_key,kind,delta,balance_after,reference_no) VALUES(?,?,?,?,?,?)`, user, fmt.Sprintf("reward:%d:%s", id, user), "reward_"+c.Kind, -c.PointsCost, balance-c.PointsCost, entry.Code); e != nil {
 			return e
 		}
+		var selected *Prize
 		if c.Kind == "wheel" {
 			n, e := s.uniform(c.Capacity - c.ParticipantCount)
 			if e != nil {
@@ -422,9 +474,19 @@ func (s Store) Join(ctx context.Context, id int64, user string, expectedPoints i
 			entry.Outcome = "lost"
 			if n < c.PrizeQuantity-c.AwardedCount {
 				entry.Outcome = "won"
+				if len(c.Prizes) > 0 {
+					selected = prizeForTicket(c, n)
+					if selected == nil {
+						return ErrStock
+					}
+					entry.PrizeID = selected.ID
+					entry.PrizeName = selected.Name
+				} else {
+					entry.PrizeName = c.PrizeName
+				}
 			}
 		}
-		r, e := tx.ExecContext(ctx, `INSERT INTO reward_entry(campaign_id,user_id,code,outcome,created_at,points_spent) VALUES(?,?,?,?,?,?)`, id, user, entry.Code, entry.Outcome, entry.CreatedAt, entry.PointsSpent)
+		r, e := tx.ExecContext(ctx, `INSERT INTO reward_entry(campaign_id,user_id,code,outcome,created_at,points_spent,prize_id,prize_name) VALUES(?,?,?,?,?,?,?,?)`, id, user, entry.Code, entry.Outcome, entry.CreatedAt, entry.PointsSpent, entry.PrizeID, entry.PrizeName)
 		if e != nil {
 			return e
 		}
@@ -435,7 +497,7 @@ func (s Store) Join(ctx context.Context, id int64, user string, expectedPoints i
 		won := 0
 		if entry.Outcome == "won" {
 			won = 1
-			if e = newOrder(ctx, tx, c, entry); e != nil {
+			if e = s.award(ctx, tx, c, entry, selected); e != nil {
 				return e
 			}
 		}
@@ -547,7 +609,7 @@ func (s Store) DrawDue(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 func (s Store) Entries(ctx context.Context, user string, page int) ([]Entry, error) {
-	rows, e := s.DB.QueryContext(ctx, `SELECT e.id,e.campaign_id,e.user_id,e.code,e.outcome,e.created_at,c.title,e.points_spent FROM reward_entry e JOIN reward_campaign c ON c.id=e.campaign_id WHERE e.user_id=? ORDER BY e.id DESC LIMIT 20 OFFSET ?`, user, (page-1)*20)
+	rows, e := s.DB.QueryContext(ctx, `SELECT e.id,e.campaign_id,e.user_id,e.code,e.outcome,e.created_at,c.title,e.points_spent,e.prize_id,e.prize_name FROM reward_entry e JOIN reward_campaign c ON c.id=e.campaign_id WHERE e.user_id=? ORDER BY e.id DESC LIMIT 20 OFFSET ?`, user, (page-1)*20)
 	if e != nil {
 		return nil, e
 	}
@@ -555,7 +617,7 @@ func (s Store) Entries(ctx context.Context, user string, page int) ([]Entry, err
 	out := []Entry{}
 	for rows.Next() {
 		var v Entry
-		if e = rows.Scan(&v.ID, &v.CampaignID, &v.UserID, &v.Code, &v.Outcome, &v.CreatedAt, &v.Title, &v.PointsSpent); e != nil {
+		if e = rows.Scan(&v.ID, &v.CampaignID, &v.UserID, &v.Code, &v.Outcome, &v.CreatedAt, &v.Title, &v.PointsSpent, &v.PrizeID, &v.PrizeName); e != nil {
 			return nil, e
 		}
 		out = append(out, v)
@@ -601,6 +663,9 @@ func (s Store) OrderAction(ctx context.Context, id int64, user, action string, a
 		}
 		if action != "ship" && o.UserID != user {
 			return ErrNotFound
+		}
+		if o.PrizeKind != "physical" {
+			return ErrConflict
 		}
 		switch action {
 		case "claim":

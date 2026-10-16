@@ -23,6 +23,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	}
 	return &ServiceContext{
 		Config:  c,
-		Rewards: rewards.Store{DB: db},
+		Rewards: rewards.Store{DB: db, RedemptionKey: c.RewardsEncryptionKey},
 	}
 }

@@ -39,6 +39,10 @@ jobs:
           go-version-file: 'go.work'
           cache-dependency-path: '**/go.sum'
       - run: make test-ci
+      - name: Verify reward inventory and redemption transactions
+        run: bash scripts/test-free-rewards.sh
+        env:
+          GOCACHE: ${{ runner.temp }}/reward-go-cache
       - run: python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
   vet:
     runs-on: ubuntu-latest

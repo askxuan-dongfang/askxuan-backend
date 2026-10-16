@@ -24,6 +24,8 @@ func registerRewards(server *rest.Server, ctx *svc.ServiceContext) {
 	routes := []operation{
 		{Method: http.MethodGet, Path: "/api/v1/marketing/rewards/campaigns", Action: "list", Admin: false},
 		{Method: http.MethodGet, Path: "/api/v1/marketing/rewards/campaigns/:id", Action: "detail", Admin: false},
+		{Method: http.MethodGet, Path: "/api/v1/marketing/rewards/orders/:id/redemption", Action: "redemption", Admin: false},
+		{Method: http.MethodPost, Path: "/api/v1/admin/marketing/rewards/campaigns/:id/stock", Action: "stock", Admin: true},
 		{Method: http.MethodGet, Path: "/api/v1/marketing/rewards/orders", Action: "orders", Admin: false},
 		{Method: http.MethodPost, Path: "/api/v1/marketing/rewards/campaigns/:id/join", Action: "join", Admin: false},
 		{Method: http.MethodGet, Path: "/api/v1/marketing/rewards/entries", Action: "entries", Admin: false},
@@ -75,7 +77,7 @@ func rewardHandler(store rewards.Store, admin bool, action string) http.HandlerF
 			return
 		}
 		decode := func(v any) error {
-			d := json.NewDecoder(http.MaxBytesReader(w, r.Body, 98304))
+			d := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<20))
 			d.DisallowUnknownFields()
 			return d.Decode(v)
 		}
@@ -88,6 +90,19 @@ func rewardHandler(store rewards.Store, admin bool, action string) http.HandlerF
 			data, e = store.Detail(r.Context(), path.ID, user, admin)
 		case "orders":
 			data, e = store.Orders(r.Context(), user, admin, page, r.URL.Query().Get("status"))
+		case "redemption":
+			w.Header().Set("Cache-Control", "no-store")
+			data, e = store.Redemption(r.Context(), path.ID, user)
+		case "stock":
+			var b struct {
+				PrizeID int64    `json:"prizeId"`
+				Items   []string `json:"items"`
+			}
+			if decode(&b) != nil {
+				e = rewards.ErrInvalid
+				break
+			}
+			e = store.ImportStock(r.Context(), path.ID, b.PrizeID, b.Items, user)
 		case "entries":
 			data, e = store.Entries(r.Context(), user, page)
 		case "save":
@@ -132,7 +147,7 @@ func rewardHandler(store rewards.Store, admin bool, action string) http.HandlerF
 		}
 		if e != nil {
 			switch {
-			case errors.Is(e, rewards.ErrInvalid), errors.Is(e, rewards.ErrClosed), errors.Is(e, rewards.ErrConflict), errors.Is(e, rewards.ErrNotFound), errors.Is(e, rewards.ErrBalance), errors.Is(e, rewards.ErrPrice):
+			case errors.Is(e, rewards.ErrStock), errors.Is(e, rewards.ErrDuplicateStock), errors.Is(e, rewards.ErrVault), errors.Is(e, rewards.ErrInvalid), errors.Is(e, rewards.ErrClosed), errors.Is(e, rewards.ErrConflict), errors.Is(e, rewards.ErrNotFound), errors.Is(e, rewards.ErrBalance), errors.Is(e, rewards.ErrPrice):
 				common.JsonError(w, common.NewBizError(40001, e.Error()))
 			default:
 				logx.Errorf("reward %s: %v", action, e)

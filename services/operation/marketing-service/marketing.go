@@ -27,7 +27,10 @@ func main() {
 		panic(err)
 	}
 
+	// The standard logger dumps bodies on errors, including imported gift codes.
+	c.Middlewares.Log = false
 	server := rest.MustNewServer(c.RestConf)
+	server.Use(handler.AccessLog)
 	defer server.Stop()
 
 	svcCtx := svc.NewServiceContext(c)
