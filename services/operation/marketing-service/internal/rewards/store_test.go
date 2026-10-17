@@ -102,6 +102,11 @@ func TestMySQLRewards(t *testing.T) {
 		t.Fatal(e)
 	}
 	schema = append(schema, []byte(strings.ReplaceAll(string(multiMigration), "USE askxuan_marketing;", ""))...)
+	oddsMigration, e := os.ReadFile("../../../../../scripts/db/20261017_reward_probabilities.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	schema = append(schema, []byte(strings.ReplaceAll(string(oddsMigration), "USE askxuan_marketing;", ""))...)
 	for pass := 0; pass < 2; pass++ {
 		for _, q := range strings.Split(string(schema), ";") {
 			if strings.TrimSpace(q) != "" {
@@ -465,6 +470,10 @@ func TestMySQLRewards(t *testing.T) {
 			t.Fatal("duplicate credential reused")
 		}
 		must(s.Publish(ctx, c.ID, "admin"))
+		// Simulate an already-published campaign from before the odds migration.
+		// NULL must preserve its original inventory-based rules and digital delivery.
+		_, err = db.Exec("UPDATE reward_prize SET probability_bps=NULL WHERE campaign_id=?", c.ID)
+		must(err)
 		if err = s.ImportStock(ctx, c.ID, c.Prizes[1].ID, []string{"NEW-CODE"}, "admin"); !errors.Is(err, ErrConflict) {
 			t.Fatal("published stock modified")
 		}
@@ -543,6 +552,94 @@ func TestMySQLRewards(t *testing.T) {
 		_, err = db.Exec("INSERT INTO reward_entry(campaign_id,user_id,code,outcome,created_at,points_spent) VALUES(?,'legacy-multi','LEGACY-MULTI','won',?,10)", c.ID, time.Now().Unix())
 		if err == nil {
 			t.Fatal("legacy binary bypass")
+		}
+	})
+
+	t.Run("fixed_odds_publish_freeze_concurrency_and_no_charge_after_pause", func(t *testing.T) {
+		f := multiFixture()
+		f.Prizes = f.Prizes[:1]
+		f.Prizes[0].ProbabilityBps = bps(10000)
+		f.Prizes[0].Quantity = 3
+		c, err := s.Save(ctx, f, "admin")
+		must(err)
+		must(s.Publish(ctx, c.ID, "admin"))
+		saved, err := s.campaign(ctx, c.ID, true)
+		must(err)
+		if !saved.fixedOdds() || *saved.Prizes[0].ProbabilityBps != 10000 {
+			t.Fatal("odds not persisted")
+		}
+		saved.Prizes[0].ProbabilityBps = bps(1)
+		if _, err = s.Save(ctx, saved, "admin"); !errors.Is(err, ErrConflict) {
+			t.Fatal("published odds changed")
+		}
+		var wg sync.WaitGroup
+		for i := 0; i < 12; i++ {
+			u := fmt.Sprintf("fixed-%d", i)
+			fund(u, 100)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, err := s.Join(ctx, c.ID, u, 10)
+				if err != nil && !errors.Is(err, ErrClosed) {
+					t.Error(err)
+				}
+			}()
+		}
+		wg.Wait()
+		d, err := s.Detail(ctx, c.ID, "", false)
+		must(err)
+		if len(d.Winners) != 3 || d.Campaign.ParticipantCount != 3 || d.Campaign.Phase != "paused" || d.Campaign.Algorithm != "crypto-rand-fixed-bps-v1" || *d.Campaign.Prizes[0].ProbabilityBps != 10000 {
+			t.Fatalf("fixed campaign: %+v", d)
+		}
+		var balance, n int
+		must(db.QueryRow("SELECT SUM(balance) FROM askxuan_payment.points_account WHERE user_id LIKE 'fixed-%'").Scan(&balance))
+		must(db.QueryRow("SELECT COUNT(*) FROM askxuan_payment.points_ledger WHERE user_id LIKE 'fixed-%'").Scan(&n))
+		if balance != 1170 || n != 3 {
+			t.Fatal("paused draw charged points", balance, n)
+		}
+		for _, e := range d.Winners {
+			again, err := s.Join(ctx, c.ID, e.UserID, 10)
+			must(err)
+			if again.ID != e.ID {
+				t.Fatal("duplicate award")
+			}
+		}
+	})
+	t.Run("fixed_tickets_match_published_odds_in_transactions", func(t *testing.T) {
+		f := multiFixture()
+		f.Prizes = f.Prizes[:2]
+		for i := range f.Prizes {
+			f.Prizes[i].Kind = "physical"
+			f.Prizes[i].Platform = ""
+			f.Prizes[i].Instructions = ""
+			f.Prizes[i].ExpiresAt = 0
+			f.Prizes[i].RedemptionURL = ""
+			f.Prizes[i].Quantity = 10
+		}
+		c, err := s.Save(ctx, f, "admin")
+		must(err)
+		must(s.Publish(ctx, c.ID, "admin"))
+		for i, ticket := range []int{0, 1249, 1250, 1499, 1500, 9999} {
+			u := fmt.Sprintf("ticket-%d", i)
+			fund(u, 100)
+			deterministic := s
+			deterministic.Random = bytes.NewReader([]byte{byte(ticket >> 8), byte(ticket)})
+			e, err := deterministic.Join(ctx, c.ID, u, 10)
+			must(err)
+			var expected int64
+			if ticket < 1250 {
+				expected = c.Prizes[0].ID
+			} else if ticket < 1500 {
+				expected = c.Prizes[1].ID
+			}
+			if e.PrizeID != expected || (expected == 0 && e.Outcome != "lost") || (expected != 0 && e.Outcome != "won") {
+				t.Fatalf("ticket %d: %+v", ticket, e)
+			}
+		}
+		d, err := s.Detail(ctx, c.ID, "", false)
+		must(err)
+		if *d.Campaign.Prizes[0].ProbabilityBps != 1250 || *d.Campaign.Prizes[1].ProbabilityBps != 250 {
+			t.Fatal("displayed odds drifted")
 		}
 	})
 

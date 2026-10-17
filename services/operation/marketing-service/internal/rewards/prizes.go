@@ -23,6 +23,8 @@ type Prize struct {
 	ExpiresAt     int64  `json:"expiresAt"`
 	RedemptionURL string `json:"redemptionUrl"`
 	StockCount    int    `json:"stockCount,omitempty"`
+	// Nil preserves the published rules of campaigns created before fixed odds.
+	ProbabilityBps *int `json:"probabilityBps,omitempty"`
 }
 
 func safeHTTPS(raw string) bool {
@@ -39,11 +41,18 @@ func validatePrizes(c Campaign) error {
 	if c.Kind != "wheel" {
 		return ErrInvalid
 	}
-	total, quantity := int64(0), 0
+	total, quantity, odds, configured := int64(0), 0, 0, 0
 	ids := map[int64]bool{}
 	for _, p := range c.Prizes {
-		if !validText(p.Name, 1, 120) || p.Value < 1 || p.Value > 100000000 || p.Quantity < 1 || p.Quantity > 1000 || p.ID < 0 || (p.ID > 0 && ids[p.ID]) {
+		if !validText(p.Name, 1, 120) || p.Value < 1 || p.Value > 100000000 || p.Quantity < 1 || p.Quantity > 100000 || p.ID < 0 || (p.ID > 0 && ids[p.ID]) {
 			return ErrInvalid
+		}
+		if p.ProbabilityBps != nil {
+			configured++
+			if *p.ProbabilityBps < 1 || *p.ProbabilityBps > 10000 {
+				return ErrInvalid
+			}
+			odds += *p.ProbabilityBps
 		}
 		ids[p.ID] = true
 		if p.Image != "" && !safeHTTPS(p.Image) {
@@ -65,7 +74,7 @@ func validatePrizes(c Campaign) error {
 		total += p.Value * int64(p.Quantity)
 		quantity += p.Quantity
 	}
-	if quantity > 1000 || quantity > c.Capacity || c.Budget < total {
+	if (configured != 0 && configured != len(c.Prizes)) || odds > 10000 || c.Budget < total || (configured == 0 && (quantity > 1000 || quantity > c.Capacity)) {
 		return ErrInvalid
 	}
 	return nil
@@ -93,7 +102,7 @@ type prizeQuerier interface {
 }
 
 func loadPrizes(ctx context.Context, q prizeQuerier, c *Campaign, admin bool) error {
-	rows, err := q.QueryContext(ctx, `SELECT p.id,p.name,p.kind,p.image,p.value,p.quantity,p.awarded_count,p.platform,p.instructions,p.expires_at,p.redemption_url,(SELECT COUNT(*) FROM reward_stock s WHERE s.prize_id=p.id AND s.order_id IS NULL) FROM reward_prize p WHERE p.campaign_id=? ORDER BY p.position,p.id`, c.ID)
+	rows, err := q.QueryContext(ctx, `SELECT p.id,p.name,p.kind,p.image,p.value,p.quantity,p.awarded_count,p.platform,p.instructions,p.expires_at,p.redemption_url,p.probability_bps,(SELECT COUNT(*) FROM reward_stock s WHERE s.prize_id=p.id AND s.order_id IS NULL) FROM reward_prize p WHERE p.campaign_id=? ORDER BY p.position,p.id`, c.ID)
 	if err != nil {
 		return err
 	}
@@ -101,13 +110,17 @@ func loadPrizes(ctx context.Context, q prizeQuerier, c *Campaign, admin bool) er
 	c.Prizes = []Prize{}
 	for rows.Next() {
 		var p Prize
-		if err = rows.Scan(&p.ID, &p.Name, &p.Kind, &p.Image, &p.Value, &p.Quantity, &p.AwardedCount, &p.Platform, &p.Instructions, &p.ExpiresAt, &p.RedemptionURL, &p.StockCount); err != nil {
+		if err = rows.Scan(&p.ID, &p.Name, &p.Kind, &p.Image, &p.Value, &p.Quantity, &p.AwardedCount, &p.Platform, &p.Instructions, &p.ExpiresAt, &p.RedemptionURL, &p.ProbabilityBps, &p.StockCount); err != nil {
 			return err
 		}
 		if !admin {
 			p.StockCount = 0
 		}
 		c.Prizes = append(c.Prizes, p)
+	}
+	c.Phase = c.phase(time.Now().Unix())
+	if c.fixedOdds() {
+		c.Algorithm = "crypto-rand-fixed-bps-v1"
 	}
 	return rows.Err()
 }
@@ -118,7 +131,7 @@ func savePrizes(ctx context.Context, tx *sql.Tx, c Campaign, old []Prize) error 
 	}
 	for i, p := range c.Prizes {
 		if p.ID == 0 {
-			_, err := tx.ExecContext(ctx, `INSERT INTO reward_prize(campaign_id,position,name,kind,image,value,quantity,platform,instructions,expires_at,redemption_url) VALUES(?,?,?,?,?,?,?,?,?,?,?)`, c.ID, i, p.Name, p.Kind, p.Image, p.Value, p.Quantity, p.Platform, p.Instructions, p.ExpiresAt, p.RedemptionURL)
+			_, err := tx.ExecContext(ctx, `INSERT INTO reward_prize(campaign_id,position,name,kind,image,value,quantity,platform,instructions,expires_at,redemption_url,probability_bps) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, c.ID, i, p.Name, p.Kind, p.Image, p.Value, p.Quantity, p.Platform, p.Instructions, p.ExpiresAt, p.RedemptionURL, p.ProbabilityBps)
 			if err != nil {
 				return err
 			}
@@ -131,7 +144,7 @@ func savePrizes(ctx context.Context, tx *sql.Tx, c Campaign, old []Prize) error 
 			if before.StockCount > 0 && (before.Kind != p.Kind || before.Platform != p.Platform || before.ExpiresAt != p.ExpiresAt) {
 				return ErrConflict
 			}
-			_, err := tx.ExecContext(ctx, `UPDATE reward_prize SET position=?,name=?,kind=?,image=?,value=?,quantity=?,platform=?,instructions=?,expires_at=?,redemption_url=? WHERE id=? AND campaign_id=?`, i, p.Name, p.Kind, p.Image, p.Value, p.Quantity, p.Platform, p.Instructions, p.ExpiresAt, p.RedemptionURL, p.ID, c.ID)
+			_, err := tx.ExecContext(ctx, `UPDATE reward_prize SET position=?,name=?,kind=?,image=?,value=?,quantity=?,platform=?,instructions=?,expires_at=?,redemption_url=?,probability_bps=? WHERE id=? AND campaign_id=?`, i, p.Name, p.Kind, p.Image, p.Value, p.Quantity, p.Platform, p.Instructions, p.ExpiresAt, p.RedemptionURL, p.ProbabilityBps, p.ID, c.ID)
 			if err != nil {
 				return err
 			}
@@ -149,13 +162,32 @@ func savePrizes(ctx context.Context, tx *sql.Tx, c Campaign, old []Prize) error 
 	return nil
 }
 func prizeForTicket(c Campaign, n int) *Prize {
+	if n < 0 {
+		return nil
+	}
 	for _, p := range c.Prizes {
-		n -= p.Quantity - p.AwardedCount
+		if c.fixedOdds() {
+			n -= *p.ProbabilityBps
+		} else {
+			n -= p.Quantity - p.AwardedCount
+		}
 		if n < 0 {
 			return &p
 		}
 	}
 	return nil
+}
+
+func (c Campaign) fixedOdds() bool {
+	if c.Kind != "wheel" || len(c.Prizes) == 0 {
+		return false
+	}
+	for _, p := range c.Prizes {
+		if p.ProbabilityBps == nil {
+			return false
+		}
+	}
+	return true
 }
 func (s Store) award(ctx context.Context, tx *sql.Tx, c Campaign, e Entry, p *Prize) error {
 	if p == nil {

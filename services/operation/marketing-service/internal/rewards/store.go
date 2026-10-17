@@ -18,7 +18,7 @@ import (
 	"unicode/utf8"
 )
 
-var ErrInvalid = errors.New("活动参数不正确，请检查奖品、预算、名额与截止时间")
+var ErrInvalid = errors.New("活动参数不正确，请检查奖品、中奖概率、预算、名额与截止时间")
 var ErrClosed = errors.New("活动未开始、已截止或名额已满")
 var ErrConflict = errors.New("状态已变化，请刷新；已发布的活动规则不能修改")
 var ErrNotFound = errors.New("记录不存在或无权操作")
@@ -147,6 +147,15 @@ func (c Campaign) phase(now int64) string {
 	if now >= c.EndsAt {
 		return "awaiting_draw"
 	}
+	// Never silently turn a depleted prize's advertised chance into a loss or
+	// redistribute it. Stop new participation before charging any more points.
+	if c.fixedOdds() {
+		for _, p := range c.Prizes {
+			if p.AwardedCount >= p.Quantity {
+				return "paused"
+			}
+		}
+	}
 	if c.Kind == "wheel" && c.AwardedCount >= c.PrizeQuantity {
 		return "exhausted"
 	}
@@ -167,7 +176,7 @@ func Validate(c Campaign, now int64) error {
 	if c.PointsCost < 1 || c.PointsCost > 100000000 {
 		return ErrInvalid
 	}
-	if !validText(c.Title, 1, 120) || !validText(c.PrizeName, 1, 120) || !validText(c.Description, 1, 10000) || !validText(c.Rules, 1, 10000) || (c.Kind != "pool" && c.Kind != "wheel") || c.PrizeValue < 1 || c.PrizeValue > 100000000 || c.PrizeQuantity < 1 || c.PrizeQuantity > 1000 || c.Capacity < c.PrizeQuantity || c.Capacity > 100000 || (len(c.Prizes) == 0 && c.Budget < c.PrizeValue*int64(c.PrizeQuantity)) || c.Budget > 100000000000 || c.StartsAt < 1 || c.EndsAt <= c.StartsAt || c.EndsAt <= now || c.EndsAt-c.StartsAt > 366*86400 {
+	if !validText(c.Title, 1, 120) || !validText(c.PrizeName, 1, 120) || !validText(c.Description, 1, 10000) || !validText(c.Rules, 1, 10000) || (c.Kind != "pool" && c.Kind != "wheel") || c.PrizeValue < 1 || c.PrizeValue > 100000000 || c.PrizeQuantity < 1 || (!c.fixedOdds() && (c.PrizeQuantity > 1000 || c.Capacity < c.PrizeQuantity)) || c.Capacity < 1 || c.Capacity > 100000 || (len(c.Prizes) == 0 && c.Budget < c.PrizeValue*int64(c.PrizeQuantity)) || c.Budget > 100000000000 || c.StartsAt < 1 || c.EndsAt <= c.StartsAt || c.EndsAt <= now || c.EndsAt-c.StartsAt > 366*86400 {
 		return ErrInvalid
 	}
 	if c.Image != "" {
@@ -218,6 +227,9 @@ func lockedCampaign(ctx context.Context, tx *sql.Tx, id int64) (Campaign, error)
 	return c, e
 }
 func (s Store) Save(ctx context.Context, c Campaign, actor string) (Campaign, error) {
+	if len(c.Prizes) > 0 && !c.fixedOdds() {
+		return c, ErrInvalid
+	}
 	normalizeCampaign(&c)
 	if e := Validate(c, time.Now().Unix()); e != nil {
 		return c, e
@@ -371,6 +383,9 @@ func (s Store) Publish(ctx context.Context, id int64, actor string) error {
 		if e = Validate(c, time.Now().Unix()); e != nil {
 			return e
 		}
+		if len(c.Prizes) > 0 && !c.fixedOdds() {
+			return ErrInvalid
+		}
 		for _, p := range c.Prizes {
 			if p.Kind != "physical" {
 				if _, _, err := s.vault(); err != nil {
@@ -467,12 +482,19 @@ func (s Store) Join(ctx context.Context, id int64, user string, expectedPoints i
 		}
 		var selected *Prize
 		if c.Kind == "wheel" {
-			n, e := s.uniform(c.Capacity - c.ParticipantCount)
+			tickets := c.Capacity - c.ParticipantCount
+			if c.fixedOdds() {
+				tickets = 10000
+			}
+			n, e := s.uniform(tickets)
 			if e != nil {
 				return e
 			}
 			entry.Outcome = "lost"
-			if n < c.PrizeQuantity-c.AwardedCount {
+			if c.fixedOdds() {
+				selected = prizeForTicket(c, n)
+			}
+			if (c.fixedOdds() && selected != nil) || (!c.fixedOdds() && n < c.PrizeQuantity-c.AwardedCount) {
 				entry.Outcome = "won"
 				if len(c.Prizes) > 0 {
 					selected = prizeForTicket(c, n)
