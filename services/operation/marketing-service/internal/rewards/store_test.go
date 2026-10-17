@@ -107,6 +107,11 @@ func TestMySQLRewards(t *testing.T) {
 		t.Fatal(e)
 	}
 	schema = append(schema, []byte(strings.ReplaceAll(string(oddsMigration), "USE askxuan_marketing;", ""))...)
+	repeatMigration, e := os.ReadFile("../../../../../scripts/db/20261017_reward_repeat_spins.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	schema = append(schema, []byte(strings.ReplaceAll(string(repeatMigration), "USE askxuan_marketing;", ""))...)
 	for pass := 0; pass < 2; pass++ {
 		for _, q := range strings.Split(string(schema), ";") {
 			if strings.TrimSpace(q) != "" {
@@ -147,6 +152,80 @@ func TestMySQLRewards(t *testing.T) {
 		_, e := db.Exec("UPDATE reward_campaign SET ends_at=? WHERE id=?", time.Now().Unix()-1, id)
 		must(e)
 	}
+	t.Run("wheel_repeat_after_win_idempotent_and_balance", func(t *testing.T) {
+		c := fixture()
+		c.Kind = "wheel"
+		c.Capacity = 1
+		c.Budget = 100000
+		bps := 10000
+		c.Prizes = []Prize{{Name: "测试奖品", Kind: "physical", Value: 100, Quantity: 100, ProbabilityBps: &bps}}
+		c.WheelSlots = []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+		c = create(c)
+		fund("repeat-user", 25)
+		first, err := s.Join(ctx, c.ID, "repeat-user", 10, "attempt-0000000001")
+		must(err)
+		var wg sync.WaitGroup
+		results := make(chan Entry, 12)
+		errs := make(chan error, 12)
+		for i := 0; i < 12; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				v, e := s.Join(ctx, c.ID, "repeat-user", 10, "attempt-0000000001")
+				results <- v
+				errs <- e
+			}()
+		}
+		wg.Wait()
+		close(results)
+		close(errs)
+		for e := range errs {
+			must(e)
+		}
+		for v := range results {
+			if v.ID != first.ID {
+				t.Fatal("retry created another spin")
+			}
+		}
+		second, err := s.Join(ctx, c.ID, "repeat-user", 10, "attempt-0000000002")
+		must(err)
+		if second.ID == first.ID || first.Outcome != "won" || second.Outcome != "won" {
+			t.Fatal("winning blocks next spin")
+		}
+		_, err = s.Join(ctx, c.ID, "repeat-user", 10, "attempt-0000000003")
+		if !errors.Is(err, ErrBalance) {
+			t.Fatalf("balance gate: %v", err)
+		}
+		d, err := s.Detail(ctx, c.ID, "repeat-user", false)
+		must(err)
+		if d.PointsBalance != 5 || d.Mine.ID != second.ID || d.Campaign.ParticipantCount != 2 || d.Campaign.Phase != "open" {
+			t.Fatalf("inconsistent repeat result: %+v", d)
+		}
+		var n int
+		must(db.QueryRow("SELECT COUNT(*) FROM reward_order WHERE campaign_id=?", c.ID).Scan(&n))
+		if n != 2 {
+			t.Fatalf("orders=%d", n)
+		}
+		must(db.QueryRow("SELECT COUNT(*) FROM askxuan_payment.points_ledger WHERE user_id='repeat-user'").Scan(&n))
+		if n != 2 {
+			t.Fatalf("ledger=%d", n)
+		}
+		_, err = s.Join(ctx, c.ID, "repeat-user", 10, "bad")
+		if !errors.Is(err, ErrInvalid) {
+			t.Fatal("invalid key accepted")
+		}
+	})
+	t.Run("pool_remains_one_per_user_with_different_keys", func(t *testing.T) {
+		c := create(fixture())
+		fund("pool-keys", 100)
+		a, e := s.Join(ctx, c.ID, "pool-keys", 10, "attempt-0000000001")
+		must(e)
+		b, e := s.Join(ctx, c.ID, "pool-keys", 10, "attempt-0000000002")
+		must(e)
+		if a.ID != b.ID {
+			t.Fatal("pool accepted duplicate participant")
+		}
+	})
 	t.Run("one_user_one_code_and_deadline_100_to_1", func(t *testing.T) {
 		c := create(fixture())
 		var wg sync.WaitGroup

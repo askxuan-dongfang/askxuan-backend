@@ -115,13 +115,14 @@ func rewardHandler(store rewards.Store, admin bool, action string) http.HandlerF
 			data, e = store.Save(r.Context(), c, user)
 		case "join":
 			var b struct {
-				ExpectedPoints int64 `json:"expectedPoints"`
+				ExpectedPoints int64  `json:"expectedPoints"`
+				RequestKey     string `json:"requestKey"`
 			}
 			if decode(&b) != nil || b.ExpectedPoints < 1 {
 				e = rewards.ErrPrice
 				break
 			}
-			data, e = store.Join(r.Context(), path.ID, user, b.ExpectedPoints)
+			data, e = store.Join(r.Context(), path.ID, user, b.ExpectedPoints, b.RequestKey)
 		case "publish":
 			e = store.Publish(r.Context(), path.ID, user)
 		case "cancel":

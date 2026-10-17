@@ -32,10 +32,13 @@ func safeHTTPS(raw string) bool {
 	return err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && len(raw) <= 2000 && !strings.ContainsAny(raw, "\r\n\t")
 }
 func validatePrizes(c Campaign) error {
-	if len(c.Prizes) > 7 {
+	if len(c.Prizes) > 10 {
 		return ErrInvalid
 	}
 	if len(c.Prizes) == 0 {
+		if len(c.WheelSlots) > 0 {
+			return ErrInvalid
+		}
 		return nil
 	}
 	if c.Kind != "wheel" {
@@ -75,6 +78,35 @@ func validatePrizes(c Campaign) error {
 		quantity += p.Quantity
 	}
 	if (configured != 0 && configured != len(c.Prizes)) || odds > 10000 || c.Budget < total || (configured == 0 && (quantity > 1000 || quantity > c.Capacity)) {
+		return ErrInvalid
+	}
+	return validateWheelSlots(c, odds)
+}
+
+// Slots refer to frozen prize positions, independent of their actual odds.
+func validateWheelSlots(c Campaign, odds int) error {
+	if len(c.WheelSlots) == 0 {
+		if len(c.Prizes) == 10 && odds < 10000 {
+			return ErrInvalid
+		}
+		return nil
+	}
+	if c.Kind != "wheel" || len(c.WheelSlots) != 10 {
+		return ErrInvalid
+	}
+	seen := map[int]bool{}
+	for _, slot := range c.WheelSlots {
+		if slot < -1 || slot >= len(c.Prizes) {
+			return ErrInvalid
+		}
+		seen[slot] = true
+	}
+	for i := range c.Prizes {
+		if !seen[i] {
+			return ErrInvalid
+		}
+	}
+	if (odds < 10000) != seen[-1] {
 		return ErrInvalid
 	}
 	return nil

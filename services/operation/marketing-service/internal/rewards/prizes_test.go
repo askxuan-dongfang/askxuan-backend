@@ -142,3 +142,31 @@ func TestFixedProbabilityValidationAndBoundaries(t *testing.T) {
 		t.Fatal("100% boundary")
 	}
 }
+
+func TestTenSlotLayoutDoesNotChangeProbability(t *testing.T) {
+	bps := 2500
+	c := fixture()
+	c.Kind = "wheel"
+	c.Budget = 100000
+	c.Prizes = []Prize{{Name: "礼品", Kind: "physical", Value: 100, Quantity: 100, ProbabilityBps: &bps}}
+	c.WheelSlots = []int{0, 0, -1, 0, -1, 0, -1, 0, -1, -1}
+	if err := Validate(c, time.Now().Unix()); err != nil {
+		t.Fatal(err)
+	}
+	wins := 0
+	for ticket := 0; ticket < 10000; ticket++ {
+		if prizeForTicket(c, ticket) != nil {
+			wins++
+		}
+	}
+	if wins != 2500 {
+		t.Fatalf("slot repetition changed odds: %d", wins)
+	}
+	for _, slots := range [][]int{{0, -1}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, {0, 1, -1, 0, -1, 0, -1, 0, -1, -1}} {
+		bad := c
+		bad.WheelSlots = slots
+		if Validate(bad, time.Now().Unix()) == nil {
+			t.Fatalf("invalid slots accepted: %v", slots)
+		}
+	}
+}
