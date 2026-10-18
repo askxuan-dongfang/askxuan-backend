@@ -91,6 +91,11 @@ GRANT SELECT ON askxuan_temple.service_type TO 'product_user'@'%'; -- 按心愿�
 GRANT SELECT ON askxuan_master.master TO 'product_user'@'%'; -- 按心愿办聚合：双轨大师
 GRANT SELECT ON askxuan_master.master_service_tag TO 'product_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_diy.* TO 'diy_user'@'%';
+-- DIY attaches the existing S006 offering; no separate extra-service markup.
+GRANT SELECT ON askxuan_temple.temple TO 'diy_user'@'%';
+GRANT SELECT ON askxuan_temple.temple_service TO 'diy_user'@'%';
+GRANT SELECT ON askxuan_master.master TO 'diy_user'@'%';
+GRANT SELECT ON askxuan_master.master_service_tag TO 'diy_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_order.* TO 'order_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_payment.* TO 'payment_user'@'%';
 GRANT SELECT ON askxuan_diy.diy_order TO 'payment_user'@'%';

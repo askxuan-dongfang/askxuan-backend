@@ -96,16 +96,19 @@ type BlessingTask struct {
 
 // BlessingService 加持服务（extra_service 表）
 type BlessingService struct {
-	Id          int64   `json:"id"`
-	ServiceCode string  `json:"serviceCode"`
-	ServiceName string  `json:"serviceName"`
-	TempleCode  string  `json:"templeCode"`
-	TempleName  string  `json:"templeName"`
-	MasterCode  string  `json:"masterCode"`
-	MasterName  string  `json:"masterName"`
-	Price       float64 `json:"price"`
-	Description string  `json:"description"`
-	Status      string  `json:"status"`
+	SourceServiceId   int64   `json:"sourceServiceId,omitempty"`
+	SourceServiceCode string  `json:"sourceServiceCode,omitempty"`
+	ProviderType      string  `json:"providerType,omitempty"`
+	Id                int64   `json:"id"`
+	ServiceCode       string  `json:"serviceCode"`
+	ServiceName       string  `json:"serviceName"`
+	TempleCode        string  `json:"templeCode"`
+	TempleName        string  `json:"templeName"`
+	MasterCode        string  `json:"masterCode"`
+	MasterName        string  `json:"masterName"`
+	Price             float64 `json:"price"`
+	Description       string  `json:"description"`
+	Status            string  `json:"status"`
 }
 
 // ===== C端请求/响应 =====
@@ -195,6 +198,7 @@ type MaterialListResp struct {
 }
 
 type DiyOrderCreateReq struct {
+	ExpectedBlessFee *float64       `json:"expectedBlessFee,optional"`
 	UserId           string         `json:"userId"`
 	DesignId         int64          `json:"designId"`
 	Items            []DiyOrderItem `json:"items"`
@@ -225,10 +229,11 @@ type DiyOrderAvailabilityResp struct {
 }
 
 type DiyDesignOrderCreateReq struct {
-	Id               int64  `path:"id"`
-	UserId           string `json:"userId"`
-	BlessServiceCode string `json:"blessServiceCode,optional"`
-	AddressId        int64  `json:"addressId"`
+	ExpectedBlessFee *float64 `json:"expectedBlessFee,optional"`
+	Id               int64    `path:"id"`
+	UserId           string   `json:"userId"`
+	BlessServiceCode string   `json:"blessServiceCode,optional"`
+	AddressId        int64    `json:"addressId"`
 }
 
 type DiyOrderCreateResp struct {

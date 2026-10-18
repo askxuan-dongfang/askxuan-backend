@@ -243,7 +243,13 @@ func (m *defaultDiyOrderModel) CompleteMaking(ctx context.Context, id int64, ble
 		targetStatus := DiyStatusAwaitingShipment
 		if blessServiceCode != "" {
 			var service ExtraService
-			if queryErr := session.QueryRowCtx(ctx, &service,
+			if ValidConsecrationCode(blessServiceCode) {
+				selected, snapshotErr := orderConsecration(&order)
+				if snapshotErr != nil || selected.ServiceCode != blessServiceCode {
+					return ErrOrderBlessingUnavailable
+				}
+				service.TempleCode, service.MasterCode = selected.TempleCode, selected.MasterCode
+			} else if queryErr := session.QueryRowCtx(ctx, &service,
 				`SELECT id,code,name,temple_code,master_code,price,description,status,create_time FROM extra_service WHERE code=? AND status=? FOR UPDATE`,
 				blessServiceCode, BlessingServiceStatusOnShelf); queryErr != nil {
 				if errors.Is(queryErr, sqlx.ErrNotFound) {

@@ -81,8 +81,11 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 				// 确定分配的法师
 				masterCode := evt.MasterCode
 				if masterCode == "" {
-					// 派单未指定法师，使用默认法师
-					masterCode = "M001"
+					// A temple offering belongs to that temple's dispatch queue.
+					// Its administrator chooses a member of the temple; never substitute
+					// a global default master for the customer's chosen provider.
+					logx.Infof("寺院开光任务等待分配(taskNo=%s templeCode=%s)", evt.TaskNo, evt.TempleCode)
+					return nil
 				}
 
 				// 分配法师：dispatched → assigned

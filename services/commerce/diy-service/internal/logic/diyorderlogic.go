@@ -91,7 +91,8 @@ func (l *DiyOrderCreateLogic) Create(req *types.DiyOrderCreateReq) (*types.DiyOr
 	}
 	result, err := model.CreatePricedOrder(l.ctx, l.svcCtx.DB, l.svcCtx.DiyOrderModel, l.svcCtx.DiyOrderItemModel, model.PricedOrderInput{
 		UserId: req.UserId, Design: design, Items: toPricedInputs(req.Items), BlessServiceCode: req.BlessServiceCode,
-		AddressId: req.AddressId, Source: "custom", CreatorId: attribution(l.ctx, l.svcCtx, design, req.UserId),
+		ExpectedBlessFee: req.ExpectedBlessFee,
+		AddressId:        req.AddressId, Source: "custom", CreatorId: attribution(l.ctx, l.svcCtx, design, req.UserId),
 	})
 	if err != nil {
 		return nil, mapPricingError(err)
@@ -133,13 +134,10 @@ func (l *DiyDesignOrderCreateLogic) Create(req *types.DiyDesignOrderCreateReq) (
 		return nil, common.ErrParam
 	}
 
-	blessCode := req.BlessServiceCode
-	if blessCode == "" {
-		blessCode = design.BlessServiceCode
-	}
 	result, err := model.CreatePricedOrder(l.ctx, l.svcCtx.DB, l.svcCtx.DiyOrderModel, l.svcCtx.DiyOrderItemModel, model.PricedOrderInput{
-		UserId: req.UserId, Design: design, Items: toPricedInputs(items), BlessServiceCode: blessCode,
-		AddressId: req.AddressId, Source: "design_square", CreatorId: attribution(l.ctx, l.svcCtx, design, req.UserId),
+		UserId: req.UserId, Design: design, Items: toPricedInputs(items), BlessServiceCode: req.BlessServiceCode,
+		ExpectedBlessFee: req.ExpectedBlessFee,
+		AddressId:        req.AddressId, Source: "design_square", CreatorId: attribution(l.ctx, l.svcCtx, design, req.UserId),
 	})
 	if err != nil {
 		l.Errorf("设计广场下单失败 designId=%d: %v", design.Id, err)
@@ -170,7 +168,9 @@ func mapPricingError(err error) error {
 	case errors.Is(err, model.ErrOrderStockInsufficient):
 		return common.ErrStockInsufficient
 	case errors.Is(err, model.ErrOrderBlessingUnavailable):
-		return common.NewBizError(40908, "加持服务已不可用，请重新选择")
+		return common.NewBizError(40908, "开光服务已不可用，请重新选择")
+	case errors.Is(err, model.ErrConsecrationPriceChanged):
+		return common.NewBizError(40909, "开光服务价格已调整，请重新选择后确认")
 	case errors.Is(err, model.ErrOrderPricingInvalid):
 		return common.ErrParamInvalid
 	default:

@@ -17,6 +17,7 @@ var (
 	ErrOrderMaterialUnavailable = errors.New("order material unavailable")
 	ErrOrderStockInsufficient   = errors.New("order stock insufficient")
 	ErrOrderBlessingUnavailable = errors.New("order blessing service unavailable")
+	ErrConsecrationPriceChanged = errors.New("consecration price changed")
 	ErrOrderPricingInvalid      = errors.New("order pricing invalid")
 )
 
@@ -33,6 +34,7 @@ type PricedOrderInput struct {
 	Design           *DiyDesign
 	Items            []PricedOrderItemInput
 	BlessServiceCode string
+	ExpectedBlessFee *float64
 	AddressId        int64
 	Source           string
 	CreatorId        string
@@ -73,6 +75,7 @@ func (e *OrderMaterialUnavailableError) Error() string {
 func (e *OrderMaterialUnavailableError) Unwrap() error { return ErrOrderMaterialUnavailable }
 
 type pricingSnapshot struct {
+	Consecration        *Consecration   `json:"consecration,omitempty"`
 	OriginalMaterialFee float64         `json:"originalMaterialFee"`
 	MaterialFee         float64         `json:"materialFee"`
 	BlessFee            float64         `json:"blessFee"`
@@ -103,9 +106,16 @@ func CreatePricedOrder(ctx context.Context, conn sqlx.SqlConn, orderModel DiyOrd
 			originalMaterialFee = roundMoney(in.Design.TotalPrice)
 		}
 
-		blessFee, blessErr := resolveBlessFee(ctx, session, in.BlessServiceCode)
+		consecration, blessErr := resolveConsecration(ctx, session, in.BlessServiceCode)
 		if blessErr != nil {
 			return blessErr
+		}
+		blessFee := 0.0
+		if consecration != nil {
+			blessFee = consecration.Price
+		}
+		if in.ExpectedBlessFee != nil && (math.IsNaN(*in.ExpectedBlessFee) || math.IsInf(*in.ExpectedBlessFee, 0) || math.Abs(*in.ExpectedBlessFee-blessFee) >= .005) {
+			return ErrConsecrationPriceChanged
 		}
 		shareRate, shareErr := resolveCreatorShareRate(ctx, session, in.CreatorId)
 		if shareErr != nil {
@@ -114,11 +124,14 @@ func CreatePricedOrder(ctx context.Context, conn sqlx.SqlConn, orderModel DiyOrd
 		priceChanged := math.Abs(originalMaterialFee-materialFee) >= 0.005
 		totalFee := roundMoney(materialFee + blessFee)
 
-		designSnapshot, marshalErr := json.Marshal(in.Design)
+		snapshotDesign := *in.Design
+		snapshotDesign.BlessServiceCode = in.BlessServiceCode
+		designSnapshot, marshalErr := json.Marshal(snapshotDesign)
 		if marshalErr != nil {
 			return marshalErr
 		}
 		priceSnapshot, marshalErr := json.Marshal(pricingSnapshot{
+			Consecration:        consecration,
 			OriginalMaterialFee: originalMaterialFee,
 			MaterialFee:         materialFee,
 			BlessFee:            blessFee,
@@ -334,20 +347,6 @@ func resolvePricedItem(ctx context.Context, session sqlx.Session, requested Pric
 		Quantity:     requested.Quantity,
 		Subtype:      material.Category,
 	}, original, nil
-}
-
-func resolveBlessFee(ctx context.Context, session sqlx.Session, code string) (float64, error) {
-	if strings.TrimSpace(code) == "" {
-		return 0, nil
-	}
-	var price float64
-	if err := session.QueryRowCtx(ctx, &price, `SELECT price FROM extra_service WHERE code=? AND status=?`, code, BlessingServiceStatusOnShelf); err != nil {
-		if errors.Is(err, sqlx.ErrNotFound) {
-			return 0, ErrOrderBlessingUnavailable
-		}
-		return 0, err
-	}
-	return roundMoney(price), nil
 }
 
 func resolveCreatorShareRate(ctx context.Context, session sqlx.Session, creatorId string) (float64, error) {

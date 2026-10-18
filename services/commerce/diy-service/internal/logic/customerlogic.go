@@ -30,14 +30,19 @@ func (l *BlessingServiceListLogic) List(req *types.BlessingServiceListReq) (*typ
 	if req.Size <= 0 || req.Size > 100 {
 		req.Size = 20
 	}
-	list, total, err := l.svcCtx.ExtraServiceModel.FindListByStatus(l.ctx, model.BlessingServiceStatusOnShelf, req.Page, req.Size)
+	list, total, err := model.ListConsecrations(l.ctx, l.svcCtx.DB, req.Page, req.Size)
 	if err != nil {
 		l.Errorf("query available blessing services failed: %v", err)
 		return nil, common.ErrSystem
 	}
-	resp := &types.BlessingServiceListResp{Total: total, Page: req.Page, Size: req.Size}
+	resp := &types.BlessingServiceListResp{Total: total, Page: req.Page, Size: req.Size, List: []types.BlessingService{}}
 	for _, service := range list {
-		resp.List = append(resp.List, toTypesBlessingService(service))
+		resp.List = append(resp.List, types.BlessingService{
+			Id: service.Id, ServiceCode: service.ServiceCode, ServiceName: service.ServiceName,
+			SourceServiceId: service.SourceServiceId, SourceServiceCode: service.SourceServiceCode, ProviderType: service.ProviderType,
+			TempleCode: service.TempleCode, TempleName: service.TempleName, MasterCode: service.MasterCode, MasterName: service.MasterName,
+			Price: service.Price, Status: model.BlessingServiceStatusOnShelf, Description: "制作完成后开光，再寄出。",
+		})
 	}
 	return resp, nil
 }

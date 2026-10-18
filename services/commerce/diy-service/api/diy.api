@@ -187,6 +187,7 @@ type (
     }
 
     DiyOrderCreateReq {
+        ExpectedBlessFee *float64 `json:"expectedBlessFee,optional"`
         UserId          string         `json:"userId"`
         DesignId        int64          `json:"designId"`
         Items           []DiyOrderItem `json:"items"`
@@ -217,6 +218,7 @@ type (
     }
 
     DiyDesignOrderCreateReq {
+        ExpectedBlessFee *float64 `json:"expectedBlessFee,optional"`
         Id               int64  `path:"id"`
         UserId           string `json:"userId"`
         BlessServiceCode string `json:"blessServiceCode,optional"`
@@ -375,6 +377,9 @@ type (
     }
 
     BlessingService {
+        SourceServiceId int64 `json:"sourceServiceId,optional"`
+        SourceServiceCode string `json:"sourceServiceCode,optional"`
+        ProviderType string `json:"providerType,optional"`
         Id          int64   `json:"id"`
         ServiceCode string  `json:"serviceCode"`
         ServiceName string  `json:"serviceName"`
