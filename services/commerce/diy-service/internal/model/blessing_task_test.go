@@ -1,6 +1,12 @@
 package model
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"testing"
+)
 
 // ===== 加持任务状态机测试（DIY侧） =====
 
@@ -37,5 +43,78 @@ func TestCanTransitBlessingTask(t *testing.T) {
 				t.Errorf("CanTransitBlessingTask(%q→%q) 期望 %v, 实际 %v", tt.from, tt.to, tt.expect, got)
 			}
 		})
+	}
+}
+
+func taskRows(state string) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"id", "task_no", "diy_order_no", "temple_code", "master_code", "status", "certificate_urls", "assign_time", "complete_time", "create_time", "update_time"}).AddRow(2, "BT-test", "DIY-test", "T001", "M001", state, "[]", nil, nil, "2026-10-19", "2026-10-19")
+}
+
+func TestStartRollsBackWhenCustomerOrderCannotAdvance(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	m := NewBlessingTaskModel(sqlx.NewSqlConnFromDB(db))
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT .* FOR UPDATE").WithArgs(int64(2)).WillReturnRows(taskRows(BlessingTaskStatusAccepted))
+	mock.ExpectExec("UPDATE askxuan_diy.diy_order").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+	if _, err = m.UpdateStatus(context.Background(), 2, BlessingTaskStatusInProgress); err == nil {
+		t.Fatal("invalid order accepted")
+	}
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCompletionRollsBackBothUpdatesOnCertificateWriteFailure(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	m := NewBlessingTaskModel(sqlx.NewSqlConnFromDB(db))
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT .* FOR UPDATE").WillReturnRows(taskRows(BlessingTaskStatusInProgress))
+	mock.ExpectExec("UPDATE askxuan_diy.diy_order").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("UPDATE askxuan_diy.blessing_task").WillReturnError(errors.New("storage unavailable"))
+	mock.ExpectRollback()
+	if err = m.UpdateComplete(context.Background(), 2, `["https://example.test/certificate.png"]`); err == nil {
+		t.Fatal("write failure ignored")
+	}
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAssignmentRejectsMasterOutsideTemple(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	m := NewBlessingTaskModel(sqlx.NewSqlConnFromDB(db))
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT .* FOR UPDATE").WillReturnRows(taskRows(BlessingTaskStatusDispatched))
+	mock.ExpectQuery("SELECT COUNT.*askxuan_master.master").WithArgs("M002", "T001").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectRollback()
+	if _, err = m.Assign(context.Background(), 2, "M002"); err == nil {
+		t.Fatal("foreign master assigned")
+	}
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCertificateValidation(t *testing.T) {
+	for _, raw := range []string{`[]`, `null`, `bad`, `[""]`, `["javascript:alert(1)"]`, `["https://user:pass@example.test/a"]`} {
+		if validateCertificateURLs(raw) == nil {
+			t.Errorf("accepted invalid certificate %s", raw)
+		}
+	}
+	if err := validateCertificateURLs(`["https://example.test/a.png","http://127.0.0.1:39000/a.png"]`); err != nil {
+		t.Fatal(err)
 	}
 }

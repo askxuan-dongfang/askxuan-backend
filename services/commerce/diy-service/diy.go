@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/askxuan/common"
@@ -103,28 +104,42 @@ func handleBlessingComplete(ctx context.Context, svcCtx *svc.ServiceContext) fun
 		}
 		logx.Infof("收到加持完成回传: taskNo=%s diyOrderId=%s", evt.TaskNo, evt.DiyOrderId)
 
-		// 1. 更新 blessing_task 状态为 completed
 		task, err := svcCtx.BlessingTaskModel.FindByDiyOrderNo(ctx, evt.DiyOrderId)
-		if err != nil {
-			return nil // 幂等，不重投
+		if errors.Is(err, sqlx.ErrNotFound) {
+			return nil
 		}
-		if model.CanTransitBlessingTask(task.Status, model.BlessingTaskStatusCompleted) {
-			_, _ = svcCtx.BlessingTaskModel.UpdateStatus(ctx, task.Id, model.BlessingTaskStatusCompleted)
+		if err != nil {
+			return err
+		}
+		if task.TaskNo != evt.TaskNo || task.MasterCode != evt.MasterCode || task.TempleCode != evt.TempleCode || task.Status != model.BlessingTaskStatusCompleted || len(task.CertificateUrls) == 0 {
+			return nil
 		}
 
 		// 2. 更新 diy_order 状态：awaiting_blessing → blessing_in_progress → blessing_completed → awaiting_shipment
 		order, err := svcCtx.DiyOrderModel.FindByOrderNo(ctx, evt.DiyOrderId)
-		if err != nil {
+		if errors.Is(err, sqlx.ErrNotFound) {
 			return nil
 		}
+		if err != nil {
+			return err
+		}
 		if model.CanDiyTransit(order.Status, model.DiyStatusBlessingInProgress) {
-			order, _ = svcCtx.DiyOrderModel.UpdateStatus(ctx, order.Id, model.DiyStatusBlessingInProgress)
+			order, err = svcCtx.DiyOrderModel.UpdateStatusIfCurrent(ctx, order.Id, order.Status, model.DiyStatusBlessingInProgress)
+			if err != nil {
+				return err
+			}
 		}
 		if model.CanDiyTransit(order.Status, model.DiyStatusBlessingCompleted) {
-			order, _ = svcCtx.DiyOrderModel.UpdateStatus(ctx, order.Id, model.DiyStatusBlessingCompleted)
+			order, err = svcCtx.DiyOrderModel.UpdateStatusIfCurrent(ctx, order.Id, order.Status, model.DiyStatusBlessingCompleted)
+			if err != nil {
+				return err
+			}
 		}
 		if model.CanDiyTransit(order.Status, model.DiyStatusAwaitingShipment) {
-			_, _ = svcCtx.DiyOrderModel.UpdateStatus(ctx, order.Id, model.DiyStatusAwaitingShipment)
+			_, err = svcCtx.DiyOrderModel.UpdateStatusIfCurrent(ctx, order.Id, order.Status, model.DiyStatusAwaitingShipment)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	}

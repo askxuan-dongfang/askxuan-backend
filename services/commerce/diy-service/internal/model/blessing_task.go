@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -225,17 +227,35 @@ func (m *defaultBlessingTaskModel) FindList(ctx context.Context, masterCode, tem
 	return list, total, nil
 }
 
+// UpdateStatus locks the task and advances the customer order in the same transaction.
 func (m *defaultBlessingTaskModel) UpdateStatus(ctx context.Context, id int64, status string) (*BlessingTask, error) {
-	now := time.Now().Format("2006-01-02 15:04:05")
-	// complete_time 仅在 completed 状态时设置，其他状态传 nil 保持 NULL
-	var completeTimeArg interface{}
-	if status == BlessingTaskStatusCompleted {
-		completeTimeArg = now
-	} else {
-		completeTimeArg = nil
+	if status == BlessingTaskStatusCompleted || status == BlessingTaskStatusAssigned {
+		return nil, fmt.Errorf("请使用分配或完成接口")
 	}
-	query := fmt.Sprintf(`UPDATE %s SET status=?, complete_time=?, update_time=? WHERE id=?`, blessingTaskTable)
-	_, err := m.conn.ExecCtx(ctx, query, status, completeTimeArg, now, id)
+	err := m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		var row blessingTaskRow
+		if err := tx.QueryRowCtx(ctx, &row, "SELECT * FROM "+blessingTaskTable+" WHERE id=? FOR UPDATE", id); err != nil {
+			return err
+		}
+		if !CanTransitBlessingTask(row.Status, status) {
+			return fmt.Errorf("任务状态已变化，请刷新后重试")
+		}
+		if status == BlessingTaskStatusInProgress {
+			result, err := tx.ExecCtx(ctx, "UPDATE askxuan_diy.diy_order SET status=?,update_time=NOW() WHERE order_no=? AND status=?", DiyStatusBlessingInProgress, row.DiyOrderNo, DiyStatusAwaitingBlessing)
+			if err != nil {
+				return err
+			}
+			affected, err := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if affected != 1 {
+				return fmt.Errorf("订单状态不允许开始开光")
+			}
+		}
+		_, err := tx.ExecCtx(ctx, "UPDATE "+blessingTaskTable+" SET status=?,update_time=NOW() WHERE id=?", status, id)
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -252,30 +272,81 @@ func (m *defaultBlessingTaskModel) UpdateCertificate(ctx context.Context, id int
 
 // UpdateComplete 完成加持任务：设置状态为 completed + 证书 URL + complete_time
 func (m *defaultBlessingTaskModel) UpdateComplete(ctx context.Context, id int64, certificateUrlsJSON string) error {
-	now := time.Now().Format("2006-01-02 15:04:05")
-	query := fmt.Sprintf(`UPDATE %s SET status=?, certificate_urls=?, complete_time=?, update_time=? WHERE id=?`, blessingTaskTable)
-	_, err := m.conn.ExecCtx(ctx, query, BlessingTaskStatusCompleted, certificateUrlsJSON, now, now, id)
-	return err
+	if err := validateCertificateURLs(certificateUrlsJSON); err != nil {
+		return err
+	}
+	return m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		var row blessingTaskRow
+		if err := tx.QueryRowCtx(ctx, &row, "SELECT * FROM "+blessingTaskTable+" WHERE id=? FOR UPDATE", id); err != nil {
+			return err
+		}
+		if !CanTransitBlessingTask(row.Status, BlessingTaskStatusCompleted) {
+			return fmt.Errorf("任务状态不允许完成开光")
+		}
+		result, err := tx.ExecCtx(ctx, "UPDATE askxuan_diy.diy_order SET status=?,update_time=NOW() WHERE order_no=? AND status IN (?,?)", DiyStatusAwaitingShipment, row.DiyOrderNo, DiyStatusAwaitingBlessing, DiyStatusBlessingInProgress)
+		if err != nil {
+			return err
+		}
+		affected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if affected != 1 {
+			return fmt.Errorf("订单状态不允许完成开光")
+		}
+		_, err = tx.ExecCtx(ctx, "UPDATE "+blessingTaskTable+" SET status=?,certificate_urls=?,complete_time=NOW(),update_time=NOW() WHERE id=?", BlessingTaskStatusCompleted, certificateUrlsJSON, id)
+		return err
+	})
 }
 
-// Assign 分配法师：更新 master_code/status/assign_time，返回更新后的任务
+func validateCertificateURLs(raw string) error {
+	var urls []string
+	if json.Unmarshal([]byte(raw), &urls) != nil || len(urls) == 0 || len(urls) > 9 {
+		return fmt.Errorf("请上传 1 至 9 张开光凭证")
+	}
+	for _, value := range urls {
+		u, err := url.Parse(strings.TrimSpace(value))
+		if err != nil || u == nil || u.Host == "" || (u.Scheme != "https" && u.Scheme != "http") || u.User != nil {
+			return fmt.Errorf("开光凭证地址无效")
+		}
+	}
+	return nil
+}
+
+// Assign validates both task state and the selected master's temple membership.
 func (m *defaultBlessingTaskModel) Assign(ctx context.Context, id int64, masterCode string) (*BlessingTask, error) {
-	task, err := m.FindOne(ctx, id)
+	err := m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		var row blessingTaskRow
+		if err := tx.QueryRowCtx(ctx, &row, "SELECT * FROM "+blessingTaskTable+" WHERE id=? FOR UPDATE", id); err != nil {
+			return err
+		}
+		if !CanTransitBlessingTask(row.Status, BlessingTaskStatusAssigned) {
+			return fmt.Errorf("任务状态不允许分配法师")
+		}
+		var eligible int
+		if row.TempleCode != "" {
+			if err := tx.QueryRowCtx(ctx, &eligible, "SELECT COUNT(*) FROM askxuan_master.master WHERE code=? AND temple_code=? AND manage_by='temple' AND platform_status='normal' AND auth_status='已认证'", masterCode, row.TempleCode); err != nil {
+				return err
+			}
+		} else {
+			// A direct order belongs to the customer-selected independent master.
+			if masterCode != row.MasterCode || masterCode == "" {
+				return fmt.Errorf("不能更换用户所选法师")
+			}
+			if err := tx.QueryRowCtx(ctx, &eligible, "SELECT COUNT(*) FROM askxuan_master.master WHERE code=? AND manage_by='platform' AND platform_status='normal' AND auth_status='已认证'", masterCode); err != nil {
+				return err
+			}
+		}
+		if eligible != 1 {
+			return fmt.Errorf("请选择本寺院可接单的法师")
+		}
+		_, err := tx.ExecCtx(ctx, "UPDATE "+blessingTaskTable+" SET master_code=?,status=?,assign_time=NOW(),update_time=NOW() WHERE id=?", masterCode, BlessingTaskStatusAssigned, id)
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
-	if !CanTransitBlessingTask(task.Status, BlessingTaskStatusAssigned) {
-		return nil, fmt.Errorf("加持任务状态不允许分配法师")
-	}
-	now := time.Now().Format("2006-01-02 15:04:05")
-	query := fmt.Sprintf(`UPDATE %s SET master_code=?, status=?, assign_time=?, update_time=? WHERE id=?`, blessingTaskTable)
-	if _, err := m.conn.ExecCtx(ctx, query, masterCode, BlessingTaskStatusAssigned, now, now, id); err != nil {
-		return nil, err
-	}
-	task.MasterCode = masterCode
-	task.Status = BlessingTaskStatusAssigned
-	task.AssignTime = now
-	return task, nil
+	return m.FindOne(ctx, id)
 }
 
 // rowToBlessingTask 将 DB 行转换为对外结构体

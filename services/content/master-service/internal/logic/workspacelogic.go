@@ -8,8 +8,8 @@ import (
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/middleware"
-	"github.com/askxuan/master-service/internal/mq"
 	"github.com/askxuan/master-service/internal/model"
+	"github.com/askxuan/master-service/internal/mq"
 	"github.com/askxuan/master-service/internal/svc"
 	"github.com/askxuan/master-service/internal/types"
 
@@ -218,6 +218,10 @@ func (l *WorkspaceBlessingCompleteLogic) WorkspaceBlessingComplete(req *types.Bl
 
 	task.Status = model.BlessingTaskStatusCompleted
 	task.CertificateUrls = req.CertificateUrls
+	// Return the persisted completion time and certificate snapshot.
+	if saved, readErr := l.svcCtx.BlessingTaskModel.FindOne(l.ctx, req.Id); readErr == nil {
+		task = saved
+	}
 	resp := toTypeBlessingTask(task)
 	return &resp, nil
 }

@@ -266,7 +266,13 @@ func (l *DiyOrderListLogic) List(req *types.DiyOrderListReq) (*types.DiyOrderLis
 		for _, it := range storedItems {
 			items = append(items, toTypesDiyOrderItem(it))
 		}
-		item := toTypesDiyOrder(o, items, model.BlessingTask{})
+		var task model.BlessingTask
+		if storedTask, taskErr := l.svcCtx.BlessingTaskModel.FindByDiyOrderNo(l.ctx, o.OrderNo); taskErr == nil {
+			task = *storedTask
+		} else if !errors.Is(taskErr, sqlx.ErrNotFound) {
+			return nil, common.ErrSystem
+		}
+		item := toTypesDiyOrder(o, items, task)
 		if row := model.ReadOrderLogistics(l.ctx, l.svcCtx.DB, o.Id); row != nil {
 			item.Logistics = &types.OrderLogistics{ExpressCompany: row.ExpressCompany, TrackingNo: row.TrackingNo, ShipTime: row.ShipTime}
 		}
