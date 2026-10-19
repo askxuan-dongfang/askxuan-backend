@@ -148,8 +148,29 @@ jobs:
           go-version-file: 'go.work'
           cache-dependency-path: '**/go.sum'
       - run: bash scripts/test-growth.sh
+  directory-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: askxuan_temple
+        ports: ['13319:3306']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.work
+          cache-dependency-path: '**/go.sum'
+      - run: go test ./internal/model -run TestDirectoryCascadeMySQL -count=1 -v
+        working-directory: services/content/temple-service
+        env:
+          ASKXUAN_DIRECTORY_TEST_DSN: 'root@tcp(127.0.0.1:13319)/askxuan_temple?charset=utf8mb4'
   deploy:
-    needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql]
+    needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ECS_DEPLOY_ENABLED == 'true'
     environment: production
     runs-on: ubuntu-latest

@@ -12,12 +12,13 @@ import (
 )
 
 type DirectoryTag struct {
-	Code   string `db:"code" json:"code"`
-	Group  string `db:"tag_group" json:"group"`
-	Name   string `db:"name" json:"name"`
-	Value  string `db:"value" json:"value"`
-	Sort   int    `db:"sort" json:"sort"`
-	Status string `db:"status" json:"status"`
+	Code       string `db:"code" json:"code"`
+	Group      string `db:"tag_group" json:"group"`
+	BeliefCode string `db:"belief_code" json:"beliefCode,optional"`
+	Name       string `db:"name" json:"name"`
+	Value      string `db:"value" json:"value"`
+	Sort       int    `db:"sort" json:"sort"`
+	Status     string `db:"status" json:"status"`
 }
 type DirectoryTagModel struct{ conn sqlx.SqlConn }
 
@@ -27,14 +28,27 @@ func NewDirectoryTagModel(conn sqlx.SqlConn) *DirectoryTagModel {
 func ValidateDirectoryTag(p *DirectoryTag) error {
 	p.Name = strings.TrimSpace(p.Name)
 	p.Value = strings.TrimSpace(p.Value)
+	p.BeliefCode = strings.TrimSpace(p.BeliefCode)
+	if p.BeliefCode == "taoism" {
+		p.BeliefCode = "daoism"
+	}
 	if !IsValidBeliefCode(p.Code) || (p.Group != "tradition" && p.Group != "position" && p.Group != "specialty") || p.Name == "" || p.Value == "" || utf8.RuneCountInString(p.Name) > 32 || utf8.RuneCountInString(p.Value) > 64 || strings.Contains(p.Value, ",") || p.Sort < 0 || p.Sort > 9999 || (p.Status != "enabled" && p.Status != "disabled") {
 		return common.NewBizError(40010, "请填写有效的标签分组、编码、名称、匹配值、排序和状态")
+	}
+	if p.Group == "tradition" {
+		switch p.BeliefCode {
+		case "han_buddhism", "tibetan_buddhism", "theravada_buddhism", "daoism", "folk":
+		default:
+			return common.NewBizError(40010, "请选择宗派或信俗所属的信仰类型")
+		}
+	} else if p.BeliefCode != "" {
+		return common.NewBizError(40010, "仅宗派或信俗标签可设置所属信仰类型")
 	}
 	return nil
 }
 func (m *DirectoryTagModel) List(ctx context.Context, admin bool) ([]DirectoryTag, error) {
 	rows := []DirectoryTag{}
-	q := "SELECT code,tag_group,name,value,sort,status FROM askxuan_temple.directory_tag"
+	q := "SELECT code,tag_group,belief_code,name,value,sort,status FROM askxuan_temple.directory_tag"
 	if !admin {
 		q += " WHERE status='enabled'"
 	}
@@ -42,15 +56,15 @@ func (m *DirectoryTagModel) List(ctx context.Context, admin bool) ([]DirectoryTa
 	return rows, err
 }
 func (m *DirectoryTagModel) Save(ctx context.Context, p *DirectoryTag, create bool) error {
-	if err := ValidateDirectoryTag(p); err != nil {
-		return err
-	}
 	var err error
 	if create {
-		_, err = m.conn.ExecCtx(ctx, "INSERT INTO askxuan_temple.directory_tag(code,tag_group,name,value,sort,status) VALUES(?,?,?,?,?,?,?)", p.Code, p.Group, p.Name, p.Value, p.Sort, p.Status)
+		if err := ValidateDirectoryTag(p); err != nil {
+			return err
+		}
+		_, err = m.conn.ExecCtx(ctx, "INSERT INTO askxuan_temple.directory_tag(code,tag_group,belief_code,name,value,sort,status) VALUES(?,?,?,?,?,?,?)", p.Code, p.Group, p.BeliefCode, p.Name, p.Value, p.Sort, p.Status)
 	} else {
 		var existing DirectoryTag
-		if err = m.conn.QueryRowCtx(ctx, &existing, "SELECT code,tag_group,name,value,sort,status FROM askxuan_temple.directory_tag WHERE code=?", p.Code); errors.Is(err, sqlx.ErrNotFound) {
+		if err = m.conn.QueryRowCtx(ctx, &existing, "SELECT code,tag_group,belief_code,name,value,sort,status FROM askxuan_temple.directory_tag WHERE code=?", p.Code); errors.Is(err, sqlx.ErrNotFound) {
 			return common.NewBizError(40410, "标签不存在")
 		}
 		if err != nil {
@@ -59,7 +73,15 @@ func (m *DirectoryTagModel) Save(ctx context.Context, p *DirectoryTag, create bo
 		if p.Group != existing.Group || p.Value != existing.Value {
 			return common.NewBizError(40010, "标签分组与匹配值创建后不可更改")
 		}
-		_, err = m.conn.ExecCtx(ctx, "UPDATE askxuan_temple.directory_tag SET name=?,sort=?,status=? WHERE code=?", p.Name, p.Sort, p.Status, p.Code)
+		// Older admin clients omit the new field; renaming must not erase its parent.
+		preserveParent := p.BeliefCode == ""
+		if preserveParent {
+			p.BeliefCode = existing.BeliefCode
+		}
+		if err := ValidateDirectoryTag(p); err != nil {
+			return err
+		}
+		_, err = m.conn.ExecCtx(ctx, "UPDATE askxuan_temple.directory_tag SET name=?,sort=?,status=?,belief_code=IF(?,belief_code,?) WHERE code=?", p.Name, p.Sort, p.Status, preserveParent, p.BeliefCode, p.Code)
 	}
 	var duplicate *mysql.MySQLError
 	if errors.As(err, &duplicate) && duplicate.Number == 1062 {
@@ -110,7 +132,7 @@ func (m *DirectoryTagModel) Assign(ctx context.Context, kind, id string, codes [
 		// Validate every tag before replacing; a disabled/unknown tag cannot erase old assignments.
 		for _, code := range codes {
 			var tag DirectoryTag
-			err := s.QueryRowCtx(ctx, &tag, "SELECT code,tag_group,name,value,sort,status FROM askxuan_temple.directory_tag WHERE code=? FOR UPDATE", code)
+			err := s.QueryRowCtx(ctx, &tag, "SELECT code,tag_group,belief_code,name,value,sort,status FROM askxuan_temple.directory_tag WHERE code=? FOR UPDATE", code)
 			if errors.Is(err, sqlx.ErrNotFound) {
 				return common.NewBizError(40010, "请选择已启用的宗派或信俗标签")
 			}
