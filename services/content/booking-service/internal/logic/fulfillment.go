@@ -411,7 +411,7 @@ func TransitionWithAudit(ctx context.Context, s *svc.ServiceContext, id, target,
 				return err
 			}
 			if paid.State == "success" {
-				body, _ := json.Marshal(map[string]any{"orderNo": id, "orderType": "booking", "paymentNo": paid.No, "amount": paid.Amount, "reason": "预约取消，退回原支付账户", "returnNo": "BOOKING-" + id})
+				body, _ := json.Marshal(map[string]any{"orderNo": id, "orderType": "booking", "paymentNo": paid.No, "amount": paid.Amount, "amountBasis": "original_full", "reason": "预约取消，退回原支付账户", "returnNo": "BOOKING-" + id})
 				if err = mqoutbox.Enqueue(ctx, tx, "booking:refund:"+id, "booking", id, "refund.request", "order.events", "", string(body)); err != nil {
 					return err
 				}

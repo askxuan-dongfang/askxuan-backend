@@ -182,7 +182,7 @@ func (m *defaultBookingModel) findList(ctx context.Context, userId, status, temp
 	}
 	args = append(args, (page-1)*size, size)
 	var list []*Booking
-	if err := m.conn.QueryRowsCtx(ctx, &list, `SELECT `+bookingSelect+` FROM booking WHERE `+where+` ORDER BY create_time DESC LIMIT ?,?`, args...); err != nil {
+	if err := m.conn.QueryRowsCtx(ctx, &list, `SELECT `+bookingSelect+` FROM booking WHERE `+where+` ORDER BY create_time DESC,id DESC LIMIT ?,?`, args...); err != nil {
 		return nil, 0, err
 	}
 	return list, total, nil

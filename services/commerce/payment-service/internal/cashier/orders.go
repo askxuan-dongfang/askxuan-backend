@@ -7,6 +7,7 @@ import (
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/mqoutbox"
 	"github.com/askxuan/payment-service/internal/balance"
+	"github.com/askxuan/payment-service/internal/growth"
 	"github.com/askxuan/payment-service/internal/model"
 	"github.com/askxuan/payment-service/internal/points"
 	"github.com/google/uuid"
@@ -19,16 +20,20 @@ type OrderRequest struct {
 	OrderNo       string `json:"orderNo"`
 	ExpectedCents int64  `json:"expectedCents"`
 	Channel       string `json:"channel"`
+	QuoteID       string `json:"quoteId"`
+	OfferKind     string `json:"offerKind"`
+	CouponID      int64  `json:"couponId"`
 }
 type Quote struct {
-	Mode           string         `json:"mode"`
-	BalanceChannel string         `json:"balanceChannel"`
-	Payment        *model.Payment `json:"payment,omitempty"`
-	Cents          int64          `json:"amountCents"`
-	Available      int64          `json:"availableCents"`
-	BalanceEnabled bool           `json:"balanceEnabled"`
-	MockEnabled    bool           `json:"mockEnabled"`
-	Experience     bool           `json:"experience"`
+	Mode           string             `json:"mode"`
+	Pricing        *growth.PriceQuote `json:"pricing,omitempty"`
+	BalanceChannel string             `json:"balanceChannel"`
+	Payment        *model.Payment     `json:"payment,omitempty"`
+	Cents          int64              `json:"amountCents"`
+	Available      int64              `json:"availableCents"`
+	BalanceEnabled bool               `json:"balanceEnabled"`
+	MockEnabled    bool               `json:"mockEnabled"`
+	Experience     bool               `json:"experience"`
 }
 type querySession interface {
 	QueryRowCtx(context.Context, any, string, ...any) error
@@ -122,7 +127,21 @@ func (s *Store) Pay(ctx context.Context, user string, r OrderRequest) (*model.Pa
 		if !errors.Is(e, sqlx.ErrNotFound) {
 			return e
 		}
-		if o.Payable != 1 || o.Cents != r.ExpectedCents {
+		if o.Payable != 1 {
+			return balance.ErrConflict
+		}
+		gross := o.Cents
+		if r.QuoteID != "" {
+			if s.Growth == nil || r.Channel != "balance" {
+				return balance.ErrConflict
+			}
+			priced, err := s.Growth.PayableTx(ctx, tx, user, r.OrderType, r.OrderNo, r.QuoteID, gross, r.ExpectedCents)
+			if err != nil {
+				return err
+			}
+			o.Cents = priced.Payable
+		}
+		if o.Cents != r.ExpectedCents {
 			return balance.ErrConflict
 		}
 		no := "P" + strings.ReplaceAll(uuid.NewString(), "-", "")[:30]
@@ -134,6 +153,11 @@ func (s *Store) Pay(ctx context.Context, user string, r OrderRequest) (*model.Pa
 		id, e := res.LastInsertId()
 		if e != nil {
 			return e
+		}
+		if r.Channel == "balance" && s.Growth != nil {
+			if e = s.Growth.PaidTx(ctx, tx, user, r.OrderType, r.OrderNo, id, no, gross, o.Cents, r.QuoteID); e != nil {
+				return e
+			}
 		}
 		if r.Channel == "balance" {
 			if e = balance.Change(ctx, tx, user, "pay:"+no, "payment", no, -o.Cents, 0); e != nil {
@@ -172,4 +196,54 @@ func (s *Store) Pay(ctx context.Context, user string, r OrderRequest) (*model.Pa
 		return nil
 	})
 	return &p, e
+}
+
+// GrowthQuote creates a five-minute preview without reserving money. The order
+// and its owner are checked using exactly the same rules as normal cash checkout.
+func (s *Store) GrowthQuote(ctx context.Context, user string, r OrderRequest) (Quote, error) {
+	quote, err := s.Quote(ctx, user, r)
+	if err != nil {
+		return quote, err
+	}
+	if quote.Payment != nil || s.Growth == nil || s.DemoEnabled || !s.Enabled || quote.Experience {
+		return quote, nil
+	}
+	err = s.DB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		o, e := readOrder(ctx, tx, user, r, true)
+		if e != nil {
+			return e
+		}
+		if o.Payable != 1 {
+			return balance.ErrConflict
+		}
+		p, e := s.Growth.PreviewTx(ctx, tx, user, r.OrderType, r.OrderNo, o.Cents)
+		if e != nil {
+			return e
+		}
+		quote.Pricing = &p
+		quote.Cents = p.Payable
+		return nil
+	})
+	if errors.Is(err, growth.ErrUnavailable) {
+		return quote, nil // Feature shutdown must not block ordinary cash checkout.
+	}
+	return quote, err
+}
+func (s *Store) Reserve(ctx context.Context, user string, r OrderRequest) (*growth.PriceQuote, error) {
+	if s.Growth == nil || s.DemoEnabled || !s.Enabled || common.IsExperienceOrder(r.OrderNo) {
+		return nil, balance.ErrUnavailable
+	}
+	var quote growth.PriceQuote
+	err := s.DB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		o, e := readOrder(ctx, tx, user, r, true)
+		if e != nil {
+			return e
+		}
+		if o.Payable != 1 {
+			return balance.ErrConflict
+		}
+		quote, e = s.Growth.ReserveTx(ctx, tx, user, r.OrderType, r.OrderNo, r.QuoteID, r.OfferKind, r.CouponID, r.ExpectedCents, o.Cents)
+		return e
+	})
+	return &quote, err
 }

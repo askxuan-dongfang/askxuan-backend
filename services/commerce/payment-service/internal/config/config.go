@@ -35,9 +35,10 @@ type AlipayConf struct {
 // Config payment 服务配置
 type Config struct {
 	rest.RestConf
-	AppEnv   string `json:",default=development"`
-	Provider string `json:",default=mock"`
-	Wallet   struct {
+	AppEnv        string `json:",default=development"`
+	Provider      string `json:",default=mock"`
+	GrowthEnabled bool   `json:",default=false"`
+	Wallet        struct {
 		DemoEnabled bool              `json:",default=false"`
 		Enabled     bool              `json:",default=false"`
 		Wechat      paychannel.Config `json:",optional"`

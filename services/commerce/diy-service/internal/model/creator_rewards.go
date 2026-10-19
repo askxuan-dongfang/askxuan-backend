@@ -260,6 +260,31 @@ func processReward(ctx context.Context, db sqlx.SqlConn, id int64) error {
 			_, e := tx.ExecCtx(ctx, "UPDATE creator_reward SET status='excluded',reason='模拟支付或本人购买不参与现金及权益奖励' WHERE id=?", id)
 			return e
 		}
+		// The immutable checkout separates net material payment from platform
+		// subsidy. Historical orders without a quote retain their original base.
+		var materialNet int64
+		netErr := tx.QueryRowCtx(ctx, &materialNet, "SELECT goods_net_cents FROM askxuan_payment.growth_quote WHERE order_type='diy_order' AND order_no=? AND status='paid' ORDER BY created_at DESC LIMIT 1", r.OrderNo)
+		if netErr == nil {
+			if materialNet < 0 || materialNet > r.Base {
+				return common.ErrParam
+			}
+			if r.Kind == "cash" {
+				var policy struct {
+					Rate int64 `db:"rate_bps"`
+					Cap  int64 `db:"cap_cents"`
+				}
+				if e := tx.QueryRowCtx(ctx, &policy, "SELECT rate_bps,cap_cents FROM creator_reward WHERE id=?", r.ID); e != nil {
+					return e
+				}
+				r.Amount = RewardAmount(materialNet, policy.Rate, policy.Cap)
+			}
+			r.Base = materialNet
+			if _, e := tx.ExecCtx(ctx, "UPDATE creator_reward SET base_cents=?,amount_cents=? WHERE id=? AND status='pending'", r.Base, r.Amount, r.ID); e != nil {
+				return e
+			}
+		} else if !errors.Is(netErr, sqlx.ErrNotFound) {
+			return netErr
+		}
 		if o.Status != "completed" || !o.Mature {
 			return nil
 		}

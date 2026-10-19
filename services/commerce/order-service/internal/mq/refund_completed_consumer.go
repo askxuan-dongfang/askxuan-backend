@@ -114,6 +114,9 @@ func NewRefundCompletedHandler(deps RefundCompletedDeps) func([]byte) error {
 			return nil
 		}
 
+		if evt.Amount > 0 {
+			target.RefundAmount = evt.Amount
+		}
 		if deps.Finalize != nil {
 			return deps.Finalize(ctx, o, target)
 		}
@@ -144,6 +147,9 @@ func BuildRefundRequestPayload(r *model.ReturnOrder, amount float64, orderNo ...
 	if len(orderNo) > 0 {
 		evt["orderNo"] = orderNo[0]
 		evt["paymentNo"] = ""
+	}
+	if len(orderNo) > 1 && orderNo[1] == "original_full" {
+		evt["amountBasis"] = "original_full"
 	}
 	body, _ := json.Marshal(evt)
 	return string(body)

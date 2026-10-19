@@ -53,7 +53,7 @@ func (m *creatorEarningModel) RecordPaymentSuccess(ctx context.Context, orderNo,
 }
 
 func enqueueCancelledRefund(ctx context.Context, session sqlx.Session, order DiyOrder) error {
-	body, err := json.Marshal(map[string]interface{}{"orderNo": order.OrderNo, "orderType": "diy_order", "orderId": order.Id, "amount": order.TotalFee, "reason": "定制订单审核未通过，原路退款", "returnNo": "DIY-" + order.OrderNo})
+	body, err := json.Marshal(map[string]interface{}{"orderNo": order.OrderNo, "orderType": "diy_order", "orderId": order.Id, "amount": order.TotalFee, "amountBasis": "original_full", "reason": "定制订单审核未通过，原路退款", "returnNo": "DIY-" + order.OrderNo})
 	if err != nil {
 		return err
 	}

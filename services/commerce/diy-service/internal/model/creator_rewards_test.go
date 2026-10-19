@@ -55,6 +55,8 @@ func TestCreatorRewardsMySQL(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
+	exec("CREATE TABLE IF NOT EXISTS askxuan_payment.growth_quote(quote_id CHAR(32) PRIMARY KEY,order_type VARCHAR(32),order_no VARCHAR(64),status VARCHAR(24),goods_net_cents BIGINT,created_at BIGINT)")
+	exec("DELETE FROM askxuan_payment.growth_quote")
 	for _, table := range []string{"creator_cash_ledger", "creator_cash_account", "creator_withdrawal", "creator_reward_audit", "creator_reward_delivery", "creator_reward", "diy_order", "askxuan_payment.refund", "askxuan_payment.payment", "askxuan_payment.wallet_ledger", "askxuan_payment.wallet_account", "askxuan_marketing.coupon_record", "askxuan_marketing.coupon"} {
 		exec("DELETE FROM " + table)
 	}

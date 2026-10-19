@@ -34,7 +34,7 @@ func (l *RefundLogic) Refund(req *types.RefundReq) (*types.RefundResp, error) {
 		return nil, common.ErrPaymentNotFound
 	}
 
-	created, err := model.AtomicMockRefund(l.ctx, l.svcCtx.DB, p.Id, req.Amount, req.Reason)
+	created, err := model.AtomicMockRefund(l.ctx, l.svcCtx.DB, p.Id, req.Amount, req.Reason, l.svcCtx.Growth)
 	if err != nil {
 		return nil, err
 	}

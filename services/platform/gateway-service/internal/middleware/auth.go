@@ -160,6 +160,10 @@ func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Con
 				}
 			}
 
+			if strings.HasPrefix(r.URL.Path, "/api/v1/payments/growth/") && !growthRoleAllowed(r.URL.Path, claims) {
+				common.JsonError(w, common.ErrRoleForbidden)
+				return
+			}
 			// 注入用户信息到请求头，透传给下游服务
 			r.Header.Set(HeaderUserID, strconv.FormatInt(claims.UserId, 10))
 			if claims.Mobile != "" {
@@ -186,4 +190,14 @@ func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Con
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func growthRoleAllowed(path string, c *common.CustomClaims) bool {
+	if strings.HasPrefix(path, "/api/v1/payments/growth/admin/") {
+		return c.UserType == "admin" && c.HasRole("platform_super")
+	}
+	if strings.HasPrefix(path, "/api/v1/payments/growth/provider/") {
+		return c.UserType == "admin" && ((c.HasRole("master") && c.MasterID > 0) || (c.HasRole("temple_admin") && c.TempleID > 0 && c.TempleCode != ""))
+	}
+	return c.UserType == "user" && c.HasRole("customer")
 }
