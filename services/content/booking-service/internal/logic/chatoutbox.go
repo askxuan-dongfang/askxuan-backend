@@ -48,7 +48,8 @@ func drainChatOutbox(ctx context.Context, s *svc.ServiceContext) {
 			Content      string `db:"content"`
 		}
 		err = s.DB.QueryRowCtx(ctx, &row, "SELECT booking_id,client_message_id,source_type,sender_id,receiver_id,content FROM booking_chat_message WHERE id=?", id)
-		if err == nil {
+		// Temple conversations are synchronized by authenticated HTTP polling.
+		if err == nil && !isTempleChatPair(row.Sender, row.Receiver) {
 			callCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
 			err = s.IMClient.SendMessage(callCtx, &commonim.SendMsgReq{SendID: row.Sender, RecvID: row.Receiver, SenderName: "新消息", SenderPlatformID: 1, SessionType: 1, ContentType: 101, Content: map[string]string{"content": row.Content}, Ex: chatMessageMarker(row.SourceType, row.Conversation, row.ClientID)})
 			cancel()

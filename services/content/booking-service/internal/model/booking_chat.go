@@ -32,6 +32,7 @@ type BookingChatConversation struct {
 	UserId        string `db:"user_id"`
 	MasterCode    string `db:"master_code"`
 	MasterName    string `db:"master_name"`
+	TempleCode    string `db:"temple_code"`
 	TempleName    string `db:"temple_name"`
 	ServiceName   string `db:"service_name"`
 	BookingDate   string `db:"booking_date"`
@@ -51,7 +52,7 @@ type BookingChatModel interface {
 	UpdateDelivery(ctx context.Context, id int64, status, serverMsgId string) error
 	FindByClientMessageID(ctx context.Context, bookingId, clientMessageId string) (*BookingChatMessage, error)
 	ListMessages(ctx context.Context, bookingId string, page, size int) ([]*BookingChatMessage, int64, error)
-	ListConversations(ctx context.Context, userId, masterCode string, page, size int, queryText, reader string, unreadOnly bool) ([]*BookingChatConversation, int64, error)
+	ListConversations(ctx context.Context, userId, masterCode, templeCode string, page, size int, queryText, reader string, unreadOnly bool) ([]*BookingChatConversation, int64, error)
 }
 
 type defaultBookingChatModel struct{ conn sqlx.SqlConn }
@@ -122,29 +123,32 @@ func (m *defaultBookingChatModel) ListMessages(ctx context.Context, bookingId st
 	return list, total, err
 }
 
-func (m *defaultBookingChatModel) ListConversations(ctx context.Context, userId, masterCode string, page, size int, queryText, reader string, unreadOnly bool) ([]*BookingChatConversation, int64, error) {
-	where := `x.payment_status='success' AND x.chat_status<>'closed' AND TRIM(x.master_code)<>''`
+func (m *defaultBookingChatModel) ListConversations(ctx context.Context, userId, masterCode, templeCode string, page, size int, queryText, reader string, unreadOnly bool) ([]*BookingChatConversation, int64, error) {
+	where := `x.payment_status='success' AND x.chat_status<>'closed' AND (TRIM(x.master_code)<>'' OR TRIM(x.temple_code)<>'')`
 	args := []interface{}{}
 	if masterCode != "" {
 		where += ` AND x.master_code=?`
 		args = append(args, masterCode)
+	} else if templeCode != "" {
+		where += ` AND x.temple_code=? AND x.master_code='' AND x.source_type='booking'`
+		args = append(args, templeCode)
 	} else {
 		where += ` AND x.user_id=?`
 		args = append(args, userId)
 	}
 	if queryText != "" {
-		where += ` AND (x.master_name LIKE ? OR x.service_name LIKE ? OR EXISTS(SELECT 1 FROM askxuan_user.user u WHERE CAST(u.id AS CHAR)=x.user_id AND u.nickname LIKE ?) OR EXISTS(SELECT 1 FROM booking_chat_message cm WHERE cm.booking_id=x.source_id AND cm.status='sent' AND cm.content LIKE ?))`
+		where += ` AND (x.master_name LIKE ? OR x.temple_name LIKE ? OR x.service_name LIKE ? OR EXISTS(SELECT 1 FROM askxuan_user.user u WHERE CAST(u.id AS CHAR)=x.user_id AND u.nickname LIKE ?) OR EXISTS(SELECT 1 FROM booking_chat_message cm WHERE cm.booking_id=x.source_id AND cm.status='sent' AND cm.content LIKE ?))`
 		term := "%" + queryText + "%"
-		args = append(args, term, term, term, term)
+		args = append(args, term, term, term, term, term)
 	}
 	if unreadOnly {
 		where += ` AND EXISTS(SELECT 1 FROM booking_chat_message cm WHERE cm.booking_id=x.source_id AND cm.receiver_id=? AND cm.status='sent' AND cm.id>COALESCE((SELECT through_id FROM chat_read_cursor cr WHERE cr.conversation_id=x.source_id AND cr.reader_id=?),0))`
 		args = append(args, reader, reader)
 	}
-	const sources = `(SELECT b.booking_no source_id,'booking' source_type,b.user_id,b.master_code,b.master_name,b.temple_name,b.service_name,DATE_FORMAT(b.booking_date,'%Y-%m-%d') booking_date,'' expires_at,b.payment_status,IF(b.status<>'cancelled','active','closed') chat_status,b.create_time
+	const sources = `(SELECT b.booking_no source_id,'booking' source_type,b.user_id,b.master_code,b.master_name,b.temple_code,b.temple_name,b.service_name,DATE_FORMAT(b.booking_date,'%Y-%m-%d') booking_date,'' expires_at,b.payment_status,IF(b.status<>'cancelled','active','closed') chat_status,b.create_time
 		FROM booking b
 		UNION ALL
-		SELECT c.order_no source_id,'consultation' source_type,c.user_id,c.master_code,c.master_name,c.temple_name,'即时文字咨询' service_name,'' booking_date,COALESCE(DATE_FORMAT(c.expires_at,'%Y-%m-%d %H:%i:%s'),'') expires_at,c.payment_status,CASE WHEN c.status='active' AND c.expires_at>NOW() THEN 'active' WHEN c.status IN ('active','expired','closed') THEN 'expired' ELSE 'closed' END chat_status,c.create_time
+		SELECT c.order_no source_id,'consultation' source_type,c.user_id,c.master_code,c.master_name,c.temple_code,c.temple_name,'即时文字咨询' service_name,'' booking_date,COALESCE(DATE_FORMAT(c.expires_at,'%Y-%m-%d %H:%i:%s'),'') expires_at,c.payment_status,CASE WHEN c.status='active' AND c.expires_at>NOW() THEN 'active' WHEN c.status IN ('active','expired','closed') THEN 'expired' ELSE 'closed' END chat_status,c.create_time
 		FROM consultation_order c) x`
 	var total int64
 	if err := m.conn.QueryRowCtx(ctx, &total, `SELECT COUNT(1) FROM `+sources+` WHERE `+where, args...); err != nil {
@@ -154,7 +158,7 @@ func (m *defaultBookingChatModel) ListConversations(ctx context.Context, userId,
 		return []*BookingChatConversation{}, 0, nil
 	}
 	queryArgs := append(append([]interface{}{}, args...), (page-1)*size, size)
-	const columns = `x.source_id booking_id,x.source_type,x.user_id,x.master_code,x.master_name,x.temple_name,x.service_name,x.booking_date,x.expires_at,x.chat_status,COALESCE(m.content,'付款成功，可开始对话') last_message,COALESCE(DATE_FORMAT(m.create_time,'%Y-%m-%d %H:%i:%s'),DATE_FORMAT(x.create_time,'%Y-%m-%d %H:%i:%s')) last_message_at`
+	const columns = `x.source_id booking_id,x.source_type,x.user_id,x.master_code,x.master_name,x.temple_code,x.temple_name,x.service_name,x.booking_date,x.expires_at,x.chat_status,COALESCE(m.content,'付款成功，可开始对话') last_message,COALESCE(DATE_FORMAT(m.create_time,'%Y-%m-%d %H:%i:%s'),DATE_FORMAT(x.create_time,'%Y-%m-%d %H:%i:%s')) last_message_at`
 	query := `SELECT ` + columns + ` FROM ` + sources + ` LEFT JOIN booking_chat_message m ON m.id=(SELECT MAX(m2.id) FROM booking_chat_message m2 WHERE m2.booking_id=x.source_id AND m2.source_type=x.source_type AND m2.status='sent') WHERE ` + where + ` ORDER BY COALESCE(m.create_time,x.create_time) DESC LIMIT ?,?`
 	var list []*BookingChatConversation
 	if err := m.conn.QueryRowsCtx(ctx, &list, query, queryArgs...); err != nil {

@@ -27,6 +27,9 @@ import (
 type chatTestBookings struct{ model.BookingModel }
 
 func (chatTestBookings) FindOne(ctx context.Context, id string) (*model.Booking, error) {
+	if id == "TEST-WHOLE" {
+		return &model.Booking{Id: id, UserId: "98765001", TempleId: "TCHAT", TempleName: "测试寺院", PaymentStatus: model.PaymentStatusSuccess, Status: model.StatusPending}, nil
+	}
 	return &model.Booking{Id: id, UserId: "98765001", MasterId: "CHATTEST", MasterName: "测试师傅", PaymentStatus: model.PaymentStatusSuccess, Status: model.StatusPending}, nil
 }
 
@@ -57,8 +60,10 @@ func (m *chatTestIM) SendMessage(context.Context, *commonim.SendMsgReq) error {
 }
 func chatTestContext(master bool) context.Context {
 	ctx := context.WithValue(context.Background(), middleware.CtxKeyUserID, int64(98765001))
+	ctx = context.WithValue(ctx, middleware.CtxKeyRoles, []string{"customer"})
 	if master {
 		ctx = context.WithValue(ctx, middleware.CtxKeyMasterID, int64(98765002))
+		ctx = context.WithValue(ctx, middleware.CtxKeyRoles, []string{"master"})
 	}
 	return ctx
 }
@@ -155,6 +160,40 @@ func TestChatIntegration(t *testing.T) {
 		_ = db.QueryRowCtx(ctx, &state, "SELECT notify_status FROM booking_chat_message WHERE id=?", id)
 		if state != "done" {
 			t.Fatal("outbox failed to recover")
+		}
+	})
+
+	t.Run("whole temple messages persist with isolated readers and no IM identity", func(t *testing.T) {
+		temple := context.WithValue(context.Background(), middleware.CtxKeyUserID, int64(7))
+		temple = context.WithValue(temple, middleware.CtxKeyRoles, []string{"temple_admin"})
+		temple = context.WithValue(temple, middleware.CtxKeyTempleCode, "TCHAT")
+		a, err := NewChatMessageSendLogic(customer, s).Send(&types.ChatMessageSendReq{Id: "TEST-WHOLE", ClientMessageId: "customer-1", Content: "请确认全院祈福安排"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := NewChatMessageSendLogic(temple, s).Send(&types.ChatMessageSendReq{Id: "TEST-WHOLE", ClientMessageId: "temple-1", Content: "寺院已收到安排"})
+		if err != nil || b.SenderType != "temple" {
+			t.Fatal("temple response failed", err)
+		}
+		page, err := NewChatMessageListLogic(customer, s).List(&types.ChatMessageListReq{Id: "TEST-WHOLE", Size: 20})
+		if err != nil || len(page.List) != 2 {
+			t.Fatal("missing persisted dialogue", err)
+		}
+		n, _, _, err := chatReadState(temple, s, "TEST-WHOLE", "t_TCHAT", "u_98765001")
+		if err != nil || n != 1 {
+			t.Fatal("wrong temple unread count", n, err)
+		}
+		if _, err = ChatMarkRead(temple, s, &types.ChatReadReq{Id: "TEST-WHOLE", ThroughId: a.Id}); err != nil {
+			t.Fatal(err)
+		}
+		before := fake.count
+		drainChatOutbox(ctx, s)
+		if fake.count != before {
+			t.Fatal("unregistered temple identity reached OpenIM")
+		}
+		var done int
+		if err = db.QueryRowCtx(ctx, &done, "SELECT COUNT(*) FROM booking_chat_message WHERE booking_id='TEST-WHOLE' AND notify_status='done'"); err != nil || done != 2 {
+			t.Fatal("temple notification stuck", done, err)
 		}
 	})
 	t.Run("stable history and monotonic per-reader cursors", func(t *testing.T) {

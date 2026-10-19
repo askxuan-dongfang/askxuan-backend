@@ -169,6 +169,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		},
 	}...)...))
 
+	server.AddRoute(rest.Route{Method: http.MethodPut, Path: "/api/v1/admin/masters/bookings/:id/cancel", Handler: authCfg.AuthFunc(masterBookingCancelHandler(svcCtx))})
 	// Scoped reply route shares the booking domain source of truth.
 	server.AddRoute(rest.Route{Method: http.MethodPut, Path: "/api/v1/admin/masters/bookings/:id/review/reply", Handler: authCfg.AuthFunc(adminReviewReplyHandler(svcCtx))})
 	// ============ 法师工作台分组（需JWT） ============
@@ -831,5 +832,21 @@ func chatIncomingCallHandler(s *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		common.Ok(w, resp)
+	}
+}
+
+func masterBookingCancelHandler(s *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.AdminBookingActionReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		result, err := logic.MasterBookingCancel(r.Context(), s, &req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, result)
+		}
 	}
 }

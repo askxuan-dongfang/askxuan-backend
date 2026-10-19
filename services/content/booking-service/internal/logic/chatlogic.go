@@ -34,6 +34,7 @@ type chatEntitlement struct {
 	MasterCode  string
 	MasterName  string
 	ServiceName string
+	TempleCode  string
 	TempleName  string
 	ExpiresAt   string
 	CanSend     bool
@@ -53,6 +54,7 @@ func (l *ChatListLogic) List(req *types.ChatListReq) (*types.ChatListResp, error
 	page, size := normalizeChatPage(req.Page, req.Size, 20)
 	userID := ""
 	masterCode := ""
+	templeCode := chatTempleCode(l.ctx)
 	isMaster := middleware.MasterIDFromCtx(l.ctx) > 0
 	if isMaster {
 		master, err := l.svcCtx.MasterClient.GetByID(l.ctx, middleware.MasterIDFromCtx(l.ctx))
@@ -60,21 +62,24 @@ func (l *ChatListLogic) List(req *types.ChatListReq) (*types.ChatListResp, error
 			return nil, common.ErrDependencyUnavailable
 		}
 		masterCode = master.Code
-	} else {
+	} else if templeCode == "" {
 		var err error
-		userID, err = authenticatedUserID(l.ctx)
+		userID, err = chatCustomerID(l.ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
 	readerID := "u_" + userID
+	if templeCode != "" {
+		readerID = "t_" + templeCode
+	}
 	if isMaster {
 		readerID = "m_" + strconv.FormatInt(middleware.MasterIDFromCtx(l.ctx), 10)
 	}
 	if len([]rune(req.Query)) > 100 {
 		return nil, common.ErrParamInvalid
 	}
-	rows, total, err := l.svcCtx.ChatModel.ListConversations(l.ctx, userID, masterCode, page, size, strings.TrimSpace(req.Query), readerID, req.UnreadOnly)
+	rows, total, err := l.svcCtx.ChatModel.ListConversations(l.ctx, userID, masterCode, templeCode, page, size, strings.TrimSpace(req.Query), readerID, req.UnreadOnly)
 	if err != nil {
 		l.Errorf("查询付费预约会话失败: %v", err)
 		return nil, common.ErrSystem
@@ -84,9 +89,11 @@ func (l *ChatListLogic) List(req *types.ChatListReq) (*types.ChatListResp, error
 	for _, row := range rows {
 		peerID, peerName := row.MasterCode, row.MasterName
 		peerOpenIMID := ""
-		if isMaster {
+		if isMaster || templeCode != "" {
 			peerID, peerName = row.UserId, "预约用户"
 			peerOpenIMID = "u_" + row.UserId
+		} else if row.MasterCode == "" {
+			peerID, peerName, peerOpenIMID = row.TempleCode, row.TempleName, "t_"+row.TempleCode
 		} else if cached, ok := masterOpenIMIDs[row.MasterCode]; ok {
 			peerOpenIMID = cached
 		} else if master, lookupErr := l.svcCtx.MasterClient.GetByCode(l.ctx, row.MasterCode); lookupErr == nil {
@@ -97,6 +104,9 @@ func (l *ChatListLogic) List(req *types.ChatListReq) (*types.ChatListResp, error
 		}
 		reader := "u_" + row.UserId
 		other := peerOpenIMID
+		if templeCode != "" {
+			reader, other = "t_"+templeCode, "u_"+row.UserId
+		}
 		if isMaster {
 			reader = "m_" + strconv.FormatInt(middleware.MasterIDFromCtx(l.ctx), 10)
 			other = "u_" + row.UserId
@@ -115,7 +125,7 @@ func (l *ChatListLogic) List(req *types.ChatListReq) (*types.ChatListResp, error
 				}
 				return ""
 			}(),
-			PeerId: peerID, PeerOpenIMId: peerOpenIMID, PeerName: name, PeerAvatar: avatar,
+			PeerId: peerID, PeerOpenIMId: chatOpenIMPeer(peerOpenIMID, reader), PeerName: name, PeerAvatar: avatar,
 			TempleName: row.TempleName, ServiceName: row.ServiceName, BookingDate: row.BookingDate,
 			ExpiresAt: row.ExpiresAt, LastMessage: row.LastMessage, LastMessageAt: row.LastMessageAt,
 			CanChat: row.ChatStatus == "active",
@@ -264,7 +274,7 @@ func chatDeliveryDecision(created bool, row *model.BookingChatMessage, requested
 func loadChatEntitlement(ctx context.Context, svcCtx *svc.ServiceContext, sourceID string) (*chatEntitlement, error) {
 	if booking, err := svcCtx.BookingModel.FindOne(ctx, sourceID); err == nil {
 		return &chatEntitlement{SourceType: "booking", SourceID: booking.Id, UserID: booking.UserId,
-			MasterCode: booking.MasterId, MasterName: booking.MasterName, ServiceName: booking.ServiceName, TempleName: booking.TempleName,
+			MasterCode: booking.MasterId, MasterName: booking.MasterName, ServiceName: booking.ServiceName, TempleCode: booking.TempleId, TempleName: booking.TempleName,
 			CanSend: bookingHasChatEntitlement(booking, booking.UserId)}, nil
 	} else if !errors.Is(err, sqlx.ErrNotFound) {
 		return nil, common.ErrSystem
@@ -286,7 +296,7 @@ func loadChatEntitlement(ctx context.Context, svcCtx *svc.ServiceContext, source
 }
 
 func resolveChatParticipant(ctx context.Context, svcCtx *svc.ServiceContext, entitlement *chatEntitlement, requireSend bool) (*chatParticipant, error) {
-	if entitlement == nil || entitlement.MasterCode == "" {
+	if entitlement == nil || (entitlement.MasterCode == "" && (entitlement.SourceType != "booking" || entitlement.TempleCode == "")) {
 		return nil, common.ErrBookingChatUnavailable
 	}
 	if requireSend && !entitlement.CanSend {
@@ -294,6 +304,26 @@ func resolveChatParticipant(ctx context.Context, svcCtx *svc.ServiceContext, ent
 			return nil, common.ErrConsultationExpired
 		}
 		return nil, common.ErrBookingChatUnavailable
+	}
+	if entitlement.MasterCode == "" {
+		if code := chatTempleCode(ctx); code != "" {
+			if code != entitlement.TempleCode {
+				return nil, common.ErrForbidden
+			}
+			return &chatParticipant{SenderType: "temple", SenderID: "t_" + code, ReceiverID: "u_" + entitlement.UserID, SenderName: entitlement.TempleName}, nil
+		}
+		userID, err := chatCustomerID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if userID != entitlement.UserID {
+			return nil, common.ErrForbidden
+		}
+		return &chatParticipant{SenderType: "customer", SenderID: "u_" + userID, ReceiverID: "t_" + entitlement.TempleCode, SenderName: "预约用户"}, nil
+	}
+	// A temple administrator must not enter an assigned master's private chat.
+	if chatTempleCode(ctx) != "" {
+		return nil, common.ErrForbidden
 	}
 	if masterID := middleware.MasterIDFromCtx(ctx); masterID > 0 {
 		master, err := svcCtx.MasterClient.GetByID(ctx, masterID)
@@ -305,7 +335,7 @@ func resolveChatParticipant(ctx context.Context, svcCtx *svc.ServiceContext, ent
 		}
 		return &chatParticipant{SenderType: "master", SenderID: "m_" + strconv.FormatInt(master.Id, 10), ReceiverID: "u_" + entitlement.UserID, SenderName: entitlement.MasterName}, nil
 	}
-	userID, err := authenticatedUserID(ctx)
+	userID, err := chatCustomerID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -323,6 +353,10 @@ func resolveChatParticipant(ctx context.Context, svcCtx *svc.ServiceContext, ent
 // Booking text must carry the server-issued marker so multiple bookings between
 // the same customer and master remain isolated.
 func AuthorizeOpenIMMessage(ctx context.Context, svcCtx *svc.ServiceContext, sendID, recvID, ex string) (*chatEntitlement, error) {
+	// Whole-temple chat uses authenticated business HTTP sync, never an IM identity.
+	if isTempleChatPair(sendID, recvID) {
+		return nil, common.ErrBookingChatUnavailable
+	}
 	userID, masterNumericID, isBookingPair, err := parseOpenIMBookingPair(sendID, recvID)
 	if err != nil {
 		return nil, common.ErrBookingChatUnavailable
@@ -353,7 +387,7 @@ func AuthorizeOpenIMMessage(ctx context.Context, svcCtx *svc.ServiceContext, sen
 }
 
 func bookingHasChatEntitlement(booking *model.Booking, userID string) bool {
-	return booking != nil && booking.UserId == userID && booking.MasterId != "" &&
+	return booking != nil && booking.UserId == userID && (booking.MasterId != "" || booking.TempleId != "") &&
 		booking.PaymentStatus == model.PaymentStatusSuccess && booking.Status != model.StatusCancelled
 }
 
@@ -498,12 +532,15 @@ func ChatDetail(ctx context.Context, s *svc.ServiceContext, id string) (*types.C
 		return nil, common.ErrSystem
 	}
 	name, peerID := ent.MasterName, ent.MasterCode
-	if p.SenderType == "master" {
+	if ent.MasterCode == "" {
+		name, peerID = ent.TempleName, ent.TempleCode
+	}
+	if p.SenderType == "master" || p.SenderType == "temple" {
 		name = "咨询用户"
 		peerID = ent.UserID
 	}
 	name, avatar := chatPeerProfile(ctx, s, p.ReceiverID, name)
-	result := &types.ChatConversation{ConversationId: id, SourceId: id, SourceType: ent.SourceType, PeerId: peerID, PeerName: name, PeerAvatar: avatar, PeerOpenIMId: p.ReceiverID, CanChat: ent.CanSend, ServiceName: ent.ServiceName, TempleName: ent.TempleName, ExpiresAt: ent.ExpiresAt, UnreadCount: unread, ReadThrough: read, PeerReadThrough: peerRead}
+	result := &types.ChatConversation{ConversationId: id, SourceId: id, SourceType: ent.SourceType, PeerId: peerID, PeerName: name, PeerAvatar: avatar, PeerOpenIMId: chatOpenIMPeer(p.ReceiverID, p.SenderID), CanChat: ent.CanSend, ServiceName: ent.ServiceName, TempleName: ent.TempleName, ExpiresAt: ent.ExpiresAt, UnreadCount: unread, ReadThrough: read, PeerReadThrough: peerRead}
 	if ent.SourceType == "booking" {
 		result.BookingId = id
 	}
@@ -539,6 +576,9 @@ func chatPeerProfile(ctx context.Context, s *svc.ServiceContext, id, fallback st
 		query = "SELECT dharma_name name,avatar FROM askxuan_master.master WHERE id=?"
 		key = strings.TrimPrefix(id, "m_")
 	}
+	if strings.HasPrefix(id, "t_") {
+		return fallback, ""
+	}
 	if err := s.DB.QueryRowCtx(ctx, &profile, query, key); err != nil {
 		return fallback, ""
 	}
@@ -559,8 +599,10 @@ func ChatUnread(ctx context.Context, s *svc.ServiceContext) (map[string]int64, e
 		reader = "m_" + strconv.FormatInt(id, 10)
 		key = m.Code
 		where = "x.master_code=?"
+	} else if code := chatTempleCode(ctx); code != "" {
+		reader, key, where = "t_"+code, code, "x.temple_code=? AND x.master_code=''"
 	} else {
-		u, err := authenticatedUserID(ctx)
+		u, err := chatCustomerID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -569,9 +611,44 @@ func ChatUnread(ctx context.Context, s *svc.ServiceContext) (map[string]int64, e
 		where = "x.user_id=?"
 	}
 	var count int64
-	query := `SELECT COUNT(*) FROM booking_chat_message m JOIN (SELECT booking_no id,user_id,master_code FROM booking WHERE payment_status='success' AND status<>'cancelled' AND TRIM(master_code)<>'' UNION ALL SELECT order_no id,user_id,master_code FROM consultation_order WHERE payment_status='success') x ON x.id=m.booking_id LEFT JOIN chat_read_cursor c ON c.conversation_id=m.booking_id AND c.reader_id=? WHERE m.receiver_id=? AND m.status='sent' AND m.id>COALESCE(c.through_id,0) AND ` + where
+	query := `SELECT COUNT(*) FROM booking_chat_message m JOIN (SELECT booking_no id,user_id,master_code,temple_code FROM booking WHERE payment_status='success' AND status<>'cancelled' AND (TRIM(master_code)<>'' OR TRIM(temple_code)<>'') UNION ALL SELECT order_no id,user_id,master_code,temple_code FROM consultation_order WHERE payment_status='success') x ON x.id=m.booking_id LEFT JOIN chat_read_cursor c ON c.conversation_id=m.booking_id AND c.reader_id=? WHERE m.receiver_id=? AND m.status='sent' AND m.id>COALESCE(c.through_id,0) AND ` + where
 	if err := s.DB.QueryRowCtx(ctx, &count, query, reader, reader, key); err != nil {
 		return nil, common.ErrSystem
 	}
 	return map[string]int64{"count": count}, nil
+}
+
+func chatTempleCode(ctx context.Context) string {
+	if middleware.MasterIDFromCtx(ctx) > 0 {
+		return ""
+	}
+	for _, role := range middleware.RolesFromCtx(ctx) {
+		if role == "temple_admin" {
+			return middleware.TempleCodeFromCtx(ctx)
+		}
+	}
+	return ""
+}
+func isTempleChatPair(a, b string) bool {
+	return strings.HasPrefix(a, "t_") || strings.HasPrefix(b, "t_")
+}
+func chatOpenIMPeer(peer, reader string) string {
+	if isTempleChatPair(peer, reader) {
+		return ""
+	}
+	return peer
+}
+
+// User and admin IDs come from separate namespaces; matching numeric IDs alone
+// must never authorize an administrator as the customer in a conversation.
+func chatCustomerID(ctx context.Context) (string, error) {
+	if kind, _ := ctx.Value(middleware.CtxKeyUserType).(string); kind != "" && kind != "user" {
+		return "", common.ErrForbidden
+	}
+	for _, role := range middleware.RolesFromCtx(ctx) {
+		if role == "customer" {
+			return authenticatedUserID(ctx)
+		}
+	}
+	return "", common.ErrForbidden
 }

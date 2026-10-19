@@ -114,12 +114,22 @@ func TestFulfillmentIntegration(t *testing.T) {
 	if _, _, _, e := BookingAccess(master, s, "TEST-MASTER", true); e != nil {
 		t.Fatal(e)
 	}
-	list, total, e := s.ChatModel.ListConversations(ctx, "98765001", "", 1, 20, "", "u_98765001", false)
+	list, total, e := s.ChatModel.ListConversations(ctx, "98765001", "", "", 1, 20, "", "u_98765001", false)
 	if e != nil {
 		t.Fatal(e)
 	}
-	if total != 1 || len(list) != 1 || list[0].BookingId != "TEST-MASTER" {
-		t.Fatalf("whole temple chat leaked: %+v", list)
+	if total != 2 || len(list) != 2 {
+		t.Fatalf("paid whole-temple and assigned-master conversations missing: %+v", list)
+	}
+
+	for _, tc := range []struct {
+		temple, master string
+		count          int64
+	}{{"TTEST", "", 1}, {"OTHER", "", 0}, {"", "CHATTEST", 1}} {
+		rows, n, err := s.ChatModel.ListConversations(ctx, "", tc.master, tc.temple, 1, 20, "", "", false)
+		if err != nil || n != tc.count || int64(len(rows)) != tc.count {
+			t.Fatalf("conversation scope temple=%s master=%s: n=%d err=%v", tc.temple, tc.master, n, err)
+		}
 	}
 	if e := TransitionWithAudit(ctx, s, "TEST-TEMPLE", model.StatusInProgress, "7", "temple_admin", ""); e == nil {
 		t.Fatal("skipped confirmation")
@@ -241,6 +251,38 @@ func TestFulfillmentIntegration(t *testing.T) {
 	ReceiptDownload(w, httptest.NewRequest("GET", "/", nil).WithContext(user), s, "TEST-TEMPLE", file.Id)
 	if !strings.Contains(w.Body.String(), "50034") {
 		t.Fatal("tamper not detected")
+	}
+
+	// The master cancellation endpoint must preserve tenant checks and the common
+	// refund transaction, including a single audit/refund event on repeat calls.
+	for _, initial := range []string{"pending", "confirmed", "in_progress"} {
+		id := "TEST-CANCEL-" + initial
+		create(id, "CHATTEST")
+		if _, e = db.ExecCtx(ctx, "UPDATE booking SET status=?,payment_no='TEST-PAY',total_fee=20 WHERE booking_no=?", initial, id); e != nil {
+			t.Fatal(e)
+		}
+		req := &types.AdminBookingActionReq{Id: id, Remark: "演示取消原因"}
+		for _, denied := range []context.Context{user, temple, contextFor(9, "master", "", 123)} {
+			if _, e = MasterBookingCancel(denied, s, req); e == nil {
+				t.Fatal("unassigned actor cancelled", initial)
+			}
+		}
+		if _, e = MasterBookingCancel(master, s, &types.AdminBookingActionReq{Id: id, Remark: "  "}); e == nil {
+			t.Fatal("empty reason accepted")
+		}
+		if _, e = MasterBookingCancel(master, s, req); e != nil {
+			t.Fatal(e)
+		}
+		if _, e = MasterBookingCancel(master, s, req); e == nil {
+			t.Fatal("duplicate cancellation")
+		}
+		var n int
+		if e = db.QueryRowCtx(ctx, &n, "SELECT COUNT(*) FROM event_outbox WHERE event_key=?", "booking:refund:"+id); e != nil || n != 1 {
+			t.Fatal("refund not enqueued exactly once", n, e)
+		}
+		if e = db.QueryRowCtx(ctx, &n, "SELECT COUNT(*) FROM booking_status_log WHERE booking_id=? AND operator_id='6' AND operator_type='master' AND remark='演示取消原因'", id); e != nil || n != 1 {
+			t.Fatal("master cancellation audit missing", n, e)
+		}
 	}
 	// Audit failure must roll back status as well.
 	if _, e := db.ExecCtx(ctx, "RENAME TABLE booking_status_log TO unavailable_log"); e != nil {
