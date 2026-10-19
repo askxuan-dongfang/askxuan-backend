@@ -35,6 +35,7 @@ type Entry struct {
 	EmbeddingModel string `json:"embeddingModel" db:"embedding_model"`
 }
 type Hit struct {
+	Citation int     `json:"citation,omitempty"`
 	ID       string  `json:"id"`
 	Title    string  `json:"title"`
 	Text     string  `json:"text"`
@@ -201,7 +202,7 @@ func (s *Store) Search(ctx context.Context, kind, owner, q string) (Result, erro
 			continue
 		}
 		hash := sha256.Sum256([]byte(e.Text))
-		out.Hits = append(out.Hits, Hit{e.ID, e.Title, e.Text, e.Source, e.Locator, e.Revision, hex.EncodeToString(hash[:]), score})
+		out.Hits = append(out.Hits, Hit{ID: e.ID, Title: e.Title, Text: e.Text, Source: e.Source, Locator: e.Locator, Revision: e.Revision, Hash: hex.EncodeToString(hash[:]), Score: score})
 	}
 	sort.SliceStable(out.Hits, func(i, j int) bool { return out.Hits[i].Score > out.Hits[j].Score })
 	if len(out.Hits) > 5 {

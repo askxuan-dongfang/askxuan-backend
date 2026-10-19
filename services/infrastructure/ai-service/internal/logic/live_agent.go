@@ -229,7 +229,8 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 		return e
 	}
 	in.ReasoningFallback = provider.ReasoningFallbackOptions(s.Provider, req.ThinkingEnabled, req.Model)
-	bindReferences(s, &in, session.UserId, nil)
+	references := &referenceSnapshots{}
+	bindReferences(s, &in, session.UserId, references.observe)
 	if in.WebSearchRequested && s.WebSearchEnabled && s.AIConfig.WebSearch.Ready() {
 		sessionSearch := s.AIConfig.WebSearch.NewSession()
 		in.WebSearch = sessionSearch.Search
@@ -253,7 +254,7 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 	if e != nil {
 		return e
 	}
-	metadata, _ := json.Marshal(map[string]any{"_agent": map[string]any{"runtime": "harness", "modelCalls": out.ModelCalls, "toolCalls": out.ToolCalls, "clarification": out.Clarification, "context": out.Context}})
+	metadata, _ := json.Marshal(map[string]any{"_agent": map[string]any{"runtime": "harness", "modelCalls": out.ModelCalls, "toolCalls": out.ToolCalls, "clarification": out.Clarification, "context": out.Context, "references": references.snapshot()}})
 	if _, e = s.DB.ExecCtx(ctx, "UPDATE ai_message SET input_json=CAST(? AS JSON) WHERE id=? AND session_id=? AND role='assistant'", string(metadata), pending.Id, session.Id); e != nil {
 		return e
 	}
