@@ -212,3 +212,38 @@ func TestTopicReportsRequireAndReadToolEvidence(t *testing.T) {
 		})
 	}
 }
+
+func TestReportOmitsCalculationsRequiringUnconfirmedFacts(t *testing.T) {
+	skills := reportSkills{}
+	for _, code := range []string{"ziwei", "ziwei_horoscope", "bazi", "bazi_dayun", "qimen", "liuyao", "naming"} {
+		skills = append(skills, &model.AISkill{Code: code, Status: "enabled", InputSchema: reportToolSchema(code)})
+	}
+	facts := map[string]any{"calendarType": "solar", "birthDate": "1990-01-02", "birthTime": "08:30", "gender": "male"}
+	guard := agent.NewGuard(20000, nil)
+	codes := func() map[string]bool {
+		out := map[string]bool{}
+		for _, s := range reportAvailableSkills(skills, facts, "生成专题报告", guard) {
+			out[s.Code] = true
+		}
+		return out
+	}
+	got := codes()
+	for _, code := range []string{"ziwei", "bazi", "bazi_dayun"} {
+		if !got[code] {
+			t.Errorf("lost available calculation %s", code)
+		}
+	}
+	for _, code := range []string{"ziwei_horoscope", "qimen", "liuyao", "naming"} {
+		if got[code] {
+			t.Errorf("exposed calculation without confirmed inputs: %s", code)
+		}
+	}
+	facts["targetDate"] = "2026-10-20"
+	if !codes()["ziwei_horoscope"] {
+		t.Fatal("confirmed target date should enable transits")
+	}
+	facts["targetDate"] = "invalid"
+	if codes()["ziwei_horoscope"] {
+		t.Fatal("invalid target date exposed transits")
+	}
+}

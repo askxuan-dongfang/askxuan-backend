@@ -2,10 +2,15 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/askxuan/ai-service/internal/model"
+	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/svc"
+	"github.com/cloudwego/eino/schema"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -42,5 +47,43 @@ func TestLiveReportQueryUsesOwnerAndSession(t *testing.T) {
 	}
 	if e = m.ExpectationsWereMet(); e != nil {
 		t.Fatal(e)
+	}
+}
+
+func TestImageMessageReachesOpenAICompatibleTransport(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		var body struct {
+			Messages []struct {
+				Role    string `json:"role"`
+				Content []struct {
+					Type     string `json:"type"`
+					Text     string `json:"text"`
+					ImageURL *struct {
+						URL string `json:"url"`
+					} `json:"image_url"`
+				} `json:"content"`
+			} `json:"messages"`
+		}
+		if e := json.NewDecoder(r.Body).Decode(&body); e != nil {
+			t.Errorf("invalid multimodal request: %v", e)
+		} else if len(body.Messages) != 1 || len(body.Messages[0].Content) != 2 || body.Messages[0].Content[0].Text != "合成图像" || body.Messages[0].Content[1].ImageURL == nil {
+			t.Error("text or image lost")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"fixture","object":"chat.completion","model":"fixture","choices":[{"index":0,"message":{"role":"assistant","content":"已读取图片"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`))
+	}))
+	defer server.Close()
+	source := provider.NewOpenAICompatible(server.URL, "fixture", "fixture", "")
+	source.SetHTTPClient(server.Client())
+	source.UseStandardParameters()
+	chat, e := provider.NewEinoModel(context.Background(), source, provider.Request{Model: "fixture", MaxTokens: 128})
+	if e != nil {
+		t.Fatal(e)
+	}
+	answer, e := chat.Generate(context.Background(), []*schema.Message{imageUserMessage("合成图像", []string{"data:image/png;base64,aGVsbG8="})})
+	if e != nil || calls != 1 || answer == nil || answer.Content != "已读取图片" {
+		t.Fatalf("multimodal transport failed calls=%d err=%v", calls, e)
 	}
 }

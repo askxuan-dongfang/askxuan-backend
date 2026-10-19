@@ -26,7 +26,7 @@ func TestCashWalletMySQL(t *testing.T) {
 	db := sqlx.NewMysql(dsn)
 	ddl := []string{
 		`CREATE DATABASE askxuan_order`, `CREATE DATABASE askxuan_diy`, `CREATE DATABASE askxuan_booking`, `CREATE DATABASE askxuan_ai`,
-		`CREATE TABLE payment(id BIGINT PRIMARY KEY AUTO_INCREMENT,payment_no VARCHAR(64) UNIQUE,idempotency_key VARCHAR(128) UNIQUE,user_id VARCHAR(64),order_type VARCHAR(32),order_no VARCHAR(64),amount DECIMAL(12,2),channel VARCHAR(16),status VARCHAR(24),trade_no VARCHAR(96),create_time DATETIME,update_time DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+		`CREATE TABLE payment(id BIGINT PRIMARY KEY AUTO_INCREMENT,payment_no VARCHAR(64) UNIQUE,idempotency_key VARCHAR(128) UNIQUE,user_id VARCHAR(64),order_type VARCHAR(32),order_no VARCHAR(32) NOT NULL,amount DECIMAL(12,2),channel VARCHAR(16),status VARCHAR(24),trade_no VARCHAR(96),create_time DATETIME,update_time DATETIME DEFAULT CURRENT_TIMESTAMP)`,
 		`CREATE TABLE refund(id BIGINT PRIMARY KEY AUTO_INCREMENT,refund_no VARCHAR(64) UNIQUE,payment_id BIGINT,amount DECIMAL(12,2),reason VARCHAR(255),status VARCHAR(24),create_time DATETIME)`,
 		`CREATE TABLE points_payment_award(payment_id BIGINT PRIMARY KEY,user_id VARCHAR(64),awarded BIGINT,reversed BIGINT DEFAULT 0)`,
 		`CREATE TABLE event_outbox(id BIGINT AUTO_INCREMENT PRIMARY KEY,event_key VARCHAR(128) UNIQUE,aggregate_type VARCHAR(32),aggregate_id VARCHAR(64),event_type VARCHAR(64),exchange_name VARCHAR(64),routing_key VARCHAR(64),payload JSON,status VARCHAR(24),retry_count INT,next_retry_at DATETIME,created_at DATETIME,updated_at DATETIME)`,
@@ -41,6 +41,15 @@ func TestCashWalletMySQL(t *testing.T) {
 		if _, e := db.ExecCtx(ctx, q); e != nil {
 			t.Fatal(e)
 		}
+	}
+	// Start with the deployed 32-character column and apply the upgrade, rather
+	// than hiding missing migrations behind a wider test-only schema.
+	orderMigration, e := os.ReadFile("../../../../../scripts/db/20261020_ai_report_payment_order_no.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = db.ExecCtx(ctx, string(orderMigration)); e != nil {
+		t.Fatal(e)
 	}
 	migration, e := os.ReadFile("../../../../../scripts/db/20260926_balance_wallet.sql")
 	if e != nil {
@@ -204,7 +213,7 @@ func TestCashWalletMySQL(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_ai.ai_report VALUES('A1','20',990,0,'ready'),('A2','20',990,1,'ready')`)
+	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_ai.ai_report VALUES('AR0123456789abcdef0123456789abcdef','20',990,0,'ready'),('A2','20',990,1,'ready')`)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -227,12 +236,26 @@ func TestCashWalletMySQL(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	for kind, nos := range map[string][]string{"booking": {"B1", "B2"}, "consultation": {"C1"}, "diy_order": {"D1"}, "ai_report": {"A1"}} {
+	for kind, nos := range map[string][]string{"booking": {"B1", "B2"}, "consultation": {"C1"}, "diy_order": {"D1"}, "ai_report": {"AR0123456789abcdef0123456789abcdef"}} {
 		for _, no := range nos {
 			if _, e = s.Pay(ctx, "20", OrderRequest{OrderType: kind, OrderNo: no, ExpectedCents: 990, Channel: "balance"}); e != nil {
 				t.Fatal(kind, e)
 			}
 		}
+	}
+	// A repeated report checkout must preserve the full identifier and debit once.
+	longReport := OrderRequest{OrderType: "ai_report", OrderNo: "AR0123456789abcdef0123456789abcdef", ExpectedCents: 990, Channel: "balance"}
+	beforeRepeat, e := balance.Read(ctx, db, "20")
+	if e != nil {
+		t.Fatal(e)
+	}
+	reportPayment, e := s.Pay(ctx, "20", longReport)
+	if e != nil || reportPayment.OrderNo != longReport.OrderNo {
+		t.Fatalf("report identifier lost: %+v %v", reportPayment, e)
+	}
+	afterRepeat, e := balance.Read(ctx, db, "20")
+	if e != nil || beforeRepeat.Available != afterRepeat.Available {
+		t.Fatal("report checkout retry debited twice", e)
 	}
 	if _, e = s.Pay(ctx, "20", OrderRequest{OrderType: "ai_report", OrderNo: "A2", ExpectedCents: 990, Channel: "balance"}); e == nil {
 		t.Fatal("points-unlocked report charged again")
