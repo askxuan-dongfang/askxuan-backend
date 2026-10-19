@@ -94,6 +94,7 @@ type SessionDetailReq struct {
 
 // AIMessage 对话消息
 type AIAgentState struct {
+	References    json.RawMessage `json:"references,omitempty"`
 	Context       json.RawMessage `json:"context,omitempty"`
 	Runtime       string          `json:"runtime"`
 	ModelCalls    int             `json:"modelCalls"`

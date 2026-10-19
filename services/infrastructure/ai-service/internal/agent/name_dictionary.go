@@ -63,7 +63,7 @@ func nameCharts(in map[string]any, names []string) []EvidenceChart {
 			}
 			counts = append(counts, k)
 		}
-		charts = append(charts, EvidenceChart{Kind: "table", Title: name + " · 字典笔画", Note: "shunshi-kangxi-core@fad0bdf · 康熙与现代笔画分列；异体字以实际选择的字为准。", Columns: []string{"字", "康熙笔画", "现代笔画", "繁体候选"}, Rows: rows})
+		charts = append(charts, EvidenceChart{Kind: "table", Title: name + " · 字典笔画", Note: "康熙与现代笔画分列；异体字以实际选择的字为准。", Columns: []string{"字", "康熙笔画", "现代笔画", "繁体候选"}, Rows: rows})
 		given := len(counts) - len(surname)
 		if !valid || !strings.HasPrefix(name, string(surname)) || len(surname) < 1 || len(surname) > 2 || given < 1 || given > 2 {
 			continue

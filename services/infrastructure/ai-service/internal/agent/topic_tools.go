@@ -98,7 +98,7 @@ func namingEvidence(in map[string]any) (TopicEvidence, error) {
 	if err != nil {
 		return TopicEvidence{}, err
 	}
-	out := TopicEvidence{Version: "20260929.1", Source: "go-pinyin@v0.21.0 / Unicode", Title: "名字读音与用字核验", Note: "逐字词典读音候选，多音字与姓氏读法须本人确认；不推断生僻程度，附字典笔画和适用范围内的五格；不生成吉凶分数。起名模式仅核验已填姓氏/候选，AI 新建议尚未核验。", Columns: []string{"已填名称", "字符数", "逐字读音候选", "待核对"}, Rows: [][]string{}}
+	out := TopicEvidence{Version: "20260929.1", Source: "汉字读音词典与字符核验", Title: "名字读音与用字核验", Note: "逐字词典读音候选，多音字与姓氏读法须本人确认；不推断生僻程度，附字典笔画和适用范围内的五格；不生成吉凶分数。起名模式仅核验已填姓氏/候选，AI 新建议尚未核验。", Columns: []string{"已填名称", "字符数", "逐字读音候选", "待核对"}, Rows: [][]string{}}
 	out.Charts = nameCharts(in, names)
 	opts := pinyin.NewArgs()
 	opts.Style = pinyin.Tone
@@ -140,7 +140,7 @@ func namingEvidence(in map[string]any) (TopicEvidence, error) {
 	return out, nil
 }
 func spaceEvidence(in map[string]any) TopicEvidence {
-	out := TopicEvidence{Version: "20260929.1", Source: "AskXuan 空间观察编辑规则 SPACE-1", Title: "空间观察与调整清单", Note: "本清单依据用户观察生成，不是建筑、消防验收。确认并校准的户型尺寸及所选下卦飞星另列图表，不推断住宅吉凶。", Columns: []string{"规则编号", "观察维度", "用户已确认", "下一步"}, Rows: [][]string{}}
+	out := TopicEvidence{Version: "20260929.1", Source: "空间观察与调整清单", Title: "空间观察与调整清单", Note: "本清单依据用户观察生成，不是建筑、消防验收。确认并校准的户型尺寸及所选下卦飞星另列图表，不推断住宅吉凶。", Columns: []string{"规则编号", "观察维度", "用户已确认", "下一步"}, Rows: [][]string{}}
 	for _, r := range []struct {
 		key, id, label string
 		values         map[string][2]string
@@ -159,7 +159,7 @@ func spaceEvidence(in map[string]any) TopicEvidence {
 	return out
 }
 func dreamEvidence(in map[string]any) TopicEvidence {
-	out := TopicEvidence{Version: "20260929.1", Source: "AskXuan 梦境记录编辑规则 DREAM-1", Title: "梦境原述与反思线索", Note: "原述按用户填写保留，问题为编辑整理，不是诊断或古籍引文；不自动赋予象征含义，不预告现实事件。", Columns: []string{"规则编号", "线索", "用户原述", "反思问题"}, Rows: [][]string{}}
+	out := TopicEvidence{Version: "20260929.1", Source: "梦境原述与反思问题整理", Title: "梦境原述与反思线索", Note: "原述按用户填写保留，问题为编辑整理，不是诊断或古籍引文；不自动赋予象征含义，不预告现实事件。", Columns: []string{"规则编号", "线索", "用户原述", "反思问题"}, Rows: [][]string{}}
 	for _, r := range [][4]string{{"DREAM-STORY", "梦境内容", "dream", "哪些场景是你最清楚记得的？"}, {"DREAM-FEELING", "醒来感受", "feeling", "这种感受与你近期的体验有没有联系？"}, {"DREAM-CONTEXT", "现实背景", "recentContext", "哪些是已发生的事实，哪些是自己的联想？"}} {
 		v := stringValue(in[r[2]])
 		if v == "" {
@@ -273,7 +273,7 @@ func (c *MCPClient) datesEvidence(ctx context.Context, in map[string]any) (Topic
 	if e != nil {
 		return TopicEvidence{}, e
 	}
-	out := TopicEvidence{Version: "20260929.1", Source: "taibu/almanac + AskXuan DATE-1 精确事项匹配", Title: "日期逐日对照", Note: "只匹配黄历实际宜忌，不作吉日评分；仅星期一至五不包含法定节假日或调休判断。任何日期查询失败则整次不发布，避免以缺失结果推荐。", Columns: []string{"日期", "星期", "事项匹配", "宜", "忌"}, Rows: [][]string{}}
+	out := TopicEvidence{Version: "20260929.1", Source: "传统黄历宜忌逐项对照", Title: "日期逐日对照", Note: "只匹配黄历实际宜忌，不作吉日评分；仅星期一至五不包含法定节假日或调休判断。任何日期查询失败则整次不发布，避免以缺失结果推荐。", Columns: []string{"日期", "星期", "事项匹配", "宜", "忌"}, Rows: [][]string{}}
 	event := strings.TrimSpace(stringValue(in["event"]))
 	if alias := map[string]string{"结婚": "嫁娶", "婚礼": "嫁娶", "开业": "开市", "搬家": "移徙", "入住": "入宅"}[event]; alias != "" {
 		event = alias
@@ -317,10 +317,10 @@ func (c *MCPClient) datesEvidence(ctx context.Context, in map[string]any) (Topic
 	return out, nil
 }
 func (c *MCPClient) fortuneEvidence(ctx context.Context, in map[string]any) (TopicEvidence, error) {
-	out := TopicEvidence{Version: "20260929.1", Source: "taibu/almanac", Title: "黄历与流日依据", Note: "个人模式只结合本人日主与流日，不等于完整命盘旺衰或大运判断；不生成个人吉凶分数。", Columns: []string{"依据", "已计算结果"}, Rows: [][]string{}}
+	out := TopicEvidence{Version: "20260929.1", Source: "传统黄历查询", Title: "黄历与流日依据", Note: "个人模式只结合本人日主与流日，不等于完整命盘旺衰或大运判断；不生成个人吉凶分数。", Columns: []string{"依据", "已计算结果"}, Rows: [][]string{}}
 	args := map[string]any{"date": stringValue(in["targetDate"])}
 	if stringValue(in["fortuneMode"]) == "personal" {
-		out.Source = "taibu/bazi + taibu/almanac"
+		out.Source = "八字日主与传统黄历对照"
 		b, _ := json.Marshal(birthFacts(in))
 		raw, e := BuildToolArguments("bazi", "", string(b), time.Time{})
 		if e != nil {

@@ -109,7 +109,11 @@ func (d *Document) Add(tool, raw string) {
 		b := Block{Kind: "citations", Title: "知识依据", Source: tool, Note: "检索到的资料原文；引用仅在对应版本有效。"}
 		for _, v := range list(m["hits"]) {
 			r := obj(v)
-			b.Items = append(b.Items, Item{scalar(r["id"]), scalar(r["text"]), scalar(r["title"]) + " · " + scalar(r["source"]) + " · " + scalar(r["locator"]) + " · v" + scalar(r["revision"]) + " · SHA256 " + scalar(r["sha256"])})
+			label := scalar(r["id"])
+			if number, ok := r["citation"].(float64); ok && number > 0 {
+				label = "资料" + scalar(number)
+			}
+			b.Items = append(b.Items, Item{label, scalar(r["text"]), scalar(r["title"]) + " · " + scalar(r["source"]) + " · " + scalar(r["locator"]) + " · v" + scalar(r["revision"]) + " · SHA256 " + scalar(r["sha256"])})
 		}
 		if len(b.Items) > 0 {
 			d.Blocks = append(d.Blocks, b)
