@@ -10,12 +10,13 @@ import (
 )
 
 type Snapshot struct {
-	RuleVersion      string  `json:"ruleVersion"`
-	SettingsRevision int64   `json:"settingsRevision"`
-	Level            Level   `json:"level"`
-	Offers           []Offer `json:"offers"`
-	Selected         Offer   `json:"selected"`
-	OrderExpires     int64   `json:"orderExpiresAt"`
+	RuleVersion      string     `json:"ruleVersion"`
+	Rules            RuleConfig `json:"rules"`
+	SettingsRevision int64      `json:"settingsRevision"`
+	Level            Level      `json:"level"`
+	Offers           []Offer    `json:"offers"`
+	Selected         Offer      `json:"selected"`
+	OrderExpires     int64      `json:"orderExpiresAt"`
 }
 type PriceQuote struct {
 	ID           string   `db:"quote_id" json:"quoteId"`
@@ -64,15 +65,24 @@ func (s *Store) candidates(ctx context.Context, tx sqlx.Session, a Account, kind
 	if !cfg.Enabled {
 		return snap, ErrUnavailable
 	}
-	snap.RuleVersion = cfg.Version
+	release, e := ruleAt(ctx, tx, s.now().Unix())
+	if e != nil {
+		return snap, e
+	}
+	snap.RuleVersion = release.Version
+	snap.Rules = release.Config
 	snap.SettingsRevision = cfg.Revision
-	snap.Level = Tier(a.Total)
+	snap.Level = release.Config.Tier(a.Total)
 	lines, expiry, e := sourceLines(ctx, tx, kind, no, gross)
 	if e != nil {
 		return snap, e
 	}
 	snap.OrderExpires = expiry
-	lines, e = applyPolicies(ctx, tx, lines, cfg.Discounts, snap.Level)
+	return s.offersForLines(ctx, tx, a, lines, snap, cfg)
+}
+func (s *Store) offersForLines(ctx context.Context, q reader, a Account, lines []Line, snap Snapshot, cfg Settings) (Snapshot, error) {
+	var e error
+	lines, e = applyPolicies(ctx, q, lines, cfg.Discounts, snap.Level)
 	if e != nil {
 		return snap, e
 	}
@@ -80,23 +90,23 @@ func (s *Store) candidates(ctx context.Context, tx sqlx.Session, a Account, kind
 		Held  int64 `db:"held_cents"`
 		Spent int64 `db:"spent_cents"`
 	}
-	e = tx.QueryRowCtx(ctx, &usage, "SELECT held_cents,spent_cents FROM growth_month_usage WHERE user_id=? AND business_month=?", a.User, BusinessMonth(s.now()))
+	e = q.QueryRowCtx(ctx, &usage, "SELECT held_cents,spent_cents FROM growth_month_usage WHERE user_id=? AND business_month=?", a.User, BusinessMonth(s.now()))
 	if e != nil && !errors.Is(e, sqlx.ErrNotFound) {
 		return snap, e
 	}
 	coupons := []Coupon{}
 	if cfg.Discounts {
-		e = tx.QueryRowsCtx(ctx, &coupons, "SELECT id,level,minimum_cents,value_cents,status,expires_at FROM growth_coupon WHERE user_id=? AND status='unused' AND level<=? AND expires_at>?", a.User, snap.Level.Code, s.now().Unix())
+		e = q.QueryRowsCtx(ctx, &coupons, "SELECT id,level,minimum_cents,value_cents,status,expires_at FROM growth_coupon WHERE user_id=? AND status='unused' AND level<=? AND expires_at>?", a.User, snap.Level.Code, s.now().Unix())
 		if e != nil {
 			return snap, e
 		}
 	}
-	offers, e := Candidates(lines, snap.Level, MonthlyDiscountLimit-usage.Held-usage.Spent, coupons)
+	offers, e := candidatesWithRules(lines, snap.Level, snap.Rules.MonthlyDiscountLimit-usage.Held-usage.Spent, coupons, snap.Rules)
 	if e != nil {
 		return snap, e
 	}
 	var budget Budget
-	e = tx.QueryRowCtx(ctx, &budget, "SELECT kind,total_cents,held_cents,spent_cents,revision FROM growth_budget WHERE kind='level'")
+	e = q.QueryRowCtx(ctx, &budget, "SELECT kind,total_cents,held_cents,spent_cents,revision FROM growth_budget WHERE kind='level'")
 	if e != nil {
 		return snap, e
 	}
@@ -180,7 +190,7 @@ func (s *Store) PreviewTx(ctx context.Context, tx sqlx.Session, user, kind, no s
 		return v, e
 	}
 	now := s.now().Unix()
-	v = PriceQuote{ID: strings.ReplaceAll(uuid.NewString(), "-", ""), User: user, Kind: kind, No: no, Root: kind + ":" + no, Version: RuleVersion, Level: snap.Level.Code, Status: "preview", Gross: gross, Month: BusinessMonth(s.now()), Expires: now + 300, Created: now, Snapshot: snap}
+	v = PriceQuote{ID: strings.ReplaceAll(uuid.NewString(), "-", ""), User: user, Kind: kind, No: no, Root: kind + ":" + no, Version: snap.RuleVersion, Level: snap.Level.Code, Status: "preview", Gross: gross, Month: BusinessMonth(s.now()), Expires: now + 300, Created: now, Snapshot: snap}
 	if snap.OrderExpires > 0 && snap.OrderExpires < v.Expires {
 		v.Expires = snap.OrderExpires
 	}
@@ -222,7 +232,7 @@ func (s *Store) ReserveTx(ctx context.Context, tx sqlx.Session, user, kind, no, 
 	if e != nil {
 		return v, e
 	}
-	if fresh.SettingsRevision != v.Snapshot.SettingsRevision || fresh.Level.Code != v.Level {
+	if fresh.RuleVersion != v.Version || fresh.SettingsRevision != v.Snapshot.SettingsRevision || fresh.Level.Code != v.Level {
 		return v, ErrChanged
 	}
 	var chosen, original *Offer
@@ -257,7 +267,7 @@ func (s *Store) ReserveTx(ctx context.Context, tx sqlx.Session, user, kind, no, 
 		if _, e = tx.ExecCtx(ctx, "INSERT IGNORE INTO growth_month_usage(user_id,business_month) VALUES(?,?)", user, BusinessMonth(s.now())); e != nil {
 			return v, e
 		}
-		res, err := tx.ExecCtx(ctx, "UPDATE growth_month_usage SET held_cents=held_cents+? WHERE user_id=? AND business_month=? AND held_cents+spent_cents+?<=?", chosen.Discount, user, BusinessMonth(s.now()), chosen.Discount, MonthlyDiscountLimit)
+		res, err := tx.ExecCtx(ctx, "UPDATE growth_month_usage SET held_cents=held_cents+? WHERE user_id=? AND business_month=? AND held_cents+spent_cents+?<=?", chosen.Discount, user, BusinessMonth(s.now()), chosen.Discount, fresh.Rules.MonthlyDiscountLimit)
 		if err != nil {
 			return v, err
 		}
@@ -396,12 +406,16 @@ func (s *Store) PaidTx(ctx context.Context, tx sqlx.Session, user, kind, no stri
 		if err != nil {
 			return err
 		}
-		offers, err := Candidates(lines, Tier(a.Total), 0, nil)
+		release, err := ruleAt(ctx, tx, s.now().Unix())
+		if err != nil {
+			return err
+		}
+		offers, err := candidatesWithRules(lines, release.Config.Tier(a.Total), 0, nil, release.Config)
 		if err != nil {
 			return err
 		}
 		normal := offers[0]
-		q = PriceQuote{ID: strings.ReplaceAll(uuid.NewString(), "-", ""), User: user, Kind: kind, No: no, Root: kind + ":" + no, Version: RuleVersion, Level: Tier(a.Total).Code, Status: "paid", Gross: gross, Month: BusinessMonth(s.now()), Created: s.now().Unix(), Payment: paymentNo, Snapshot: Snapshot{RuleVersion: RuleVersion, Level: Tier(a.Total), Offers: []Offer{normal}, Selected: normal}}
+		q = PriceQuote{ID: strings.ReplaceAll(uuid.NewString(), "-", ""), User: user, Kind: kind, No: no, Root: kind + ":" + no, Version: release.Version, Level: release.Config.Tier(a.Total).Code, Status: "paid", Gross: gross, Month: BusinessMonth(s.now()), Created: s.now().Unix(), Payment: paymentNo, Snapshot: Snapshot{RuleVersion: release.Version, Rules: release.Config, Level: release.Config.Tier(a.Total), Offers: []Offer{normal}, Selected: normal}}
 		setOffer(&q, normal)
 		if e = insertQuote(ctx, tx, q); e != nil {
 			return e

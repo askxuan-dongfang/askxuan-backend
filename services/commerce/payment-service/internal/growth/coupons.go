@@ -26,7 +26,11 @@ func (s *Store) syncCoupons(ctx context.Context, tx sqlx.Session, a Account) err
 		return e
 	}
 	now := s.now().Unix()
-	tier := Tier(a.Total)
+	release, e := ruleAt(ctx, tx, now)
+	if e != nil {
+		return e
+	}
+	tier := release.Config.Tier(a.Total)
 	coupons := []Coupon{}
 	e = tx.QueryRowsCtx(ctx, &coupons, "SELECT id,level,minimum_cents,value_cents,status,expires_at FROM growth_coupon WHERE user_id=? ORDER BY level FOR UPDATE", a.User)
 	if e != nil {
@@ -61,8 +65,8 @@ func (s *Store) syncCoupons(ctx context.Context, tx sqlx.Session, a Account) err
 			}
 		}
 	}
-	for _, level := range Levels() {
-		if level.Code < 2 || level.Code > tier.Code || seen[level.Code] {
+	for _, level := range release.Config.Levels {
+		if level.Code < 2 || level.Code > tier.Code || seen[level.Code] || level.CouponValue == 0 {
 			continue
 		}
 		status := "pending_budget"

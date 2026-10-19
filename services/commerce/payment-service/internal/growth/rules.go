@@ -133,11 +133,14 @@ func Allocate(total int64, weights []int64, ids []string) ([]int64, error) {
 	return out, nil
 }
 func Candidates(lines []Line, level Level, remaining int64, coupons []Coupon) ([]Offer, error) {
+	return candidatesWithRules(lines, level, remaining, coupons, DefaultRules())
+}
+func candidatesWithRules(lines []Line, level Level, remaining int64, coupons []Coupon, rules RuleConfig) ([]Offer, error) {
 	if remaining < 0 {
 		remaining = 0
 	}
-	if remaining > MonthlyDiscountLimit {
-		remaining = MonthlyDiscountLimit
+	if remaining > rules.MonthlyDiscountLimit {
+		remaining = rules.MonthlyDiscountLimit
 	}
 	total := int64(0)
 	ids := make([]string, len(lines))
@@ -185,10 +188,10 @@ func Candidates(lines []Line, level Level, remaining int64, coupons []Coupon) ([
 	for _, category := range []string{"goods", "service"} {
 		weights := make([]int64, len(lines))
 		sum := int64(0)
-		cap := int64(10000)
+		cap := rules.GoodsCap
 		rate := level.GoodsRate
 		if category == "service" {
-			cap = 5000
+			cap = rules.ServiceCap
 			rate = level.ServiceRate
 		}
 		if rate < 0 || rate > 10000 {

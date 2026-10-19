@@ -12,30 +12,32 @@ import (
 )
 
 type growthRequest struct {
-	ID           int64            `json:"id"`
-	Revision     int64            `json:"revision"`
-	SessionID    string           `json:"sessionId"`
-	Visible      bool             `json:"visible"`
-	ReachedEnd   bool             `json:"reachedEnd"`
-	Action       string           `json:"action"`
-	Body         string           `json:"body"`
-	Day          string           `json:"day"`
-	BadgeVisible bool             `json:"badgeVisible"`
-	RequestID    string           `json:"requestId"`
-	Category     string           `json:"category"`
-	Kind         string           `json:"kind"`
-	Reason       string           `json:"reason"`
-	Payload      json.RawMessage  `json:"payload"`
-	Approve      bool             `json:"approve"`
-	Content      *growth.Content  `json:"content"`
-	Activity     *growth.Activity `json:"activity"`
-	User         string           `json:"userId"`
-	Evidence     string           `json:"evidence"`
-	Reply        string           `json:"reply"`
-	Urgency      int              `json:"urgency"`
-	ItemType     string           `json:"itemType"`
-	ItemID       string           `json:"itemId"`
-	Consent      bool             `json:"consent"`
+	ID           int64                `json:"id"`
+	Revision     int64                `json:"revision"`
+	SessionID    string               `json:"sessionId"`
+	Visible      bool                 `json:"visible"`
+	ReachedEnd   bool                 `json:"reachedEnd"`
+	Action       string               `json:"action"`
+	Body         string               `json:"body"`
+	Day          string               `json:"day"`
+	BadgeVisible bool                 `json:"badgeVisible"`
+	RequestID    string               `json:"requestId"`
+	Category     string               `json:"category"`
+	Kind         string               `json:"kind"`
+	Reason       string               `json:"reason"`
+	Payload      json.RawMessage      `json:"payload"`
+	Approve      bool                 `json:"approve"`
+	Content      *growth.Content      `json:"content"`
+	Activity     *growth.Activity     `json:"activity"`
+	User         string               `json:"userId"`
+	Evidence     string               `json:"evidence"`
+	Reply        string               `json:"reply"`
+	Urgency      int                  `json:"urgency"`
+	ItemType     string               `json:"itemType"`
+	ItemID       string               `json:"itemId"`
+	Items        []growth.CatalogItem `json:"items"`
+	Rule         *growth.RuleProposal `json:"rule"`
+	Consent      bool                 `json:"consent"`
 }
 
 // Roles and the identity class must both come from the verified JWT. Customer
@@ -64,6 +66,28 @@ func growthIdentity(r *http.Request, surface string) bool {
 	return false
 }
 func registerGrowth(server *rest.Server, s *svc.ServiceContext) {
+	server.AddRoute(rest.Route{Method: "GET", Path: "/api/v1/payments/growth/public/rules", Handler: func(w http.ResponseWriter, r *http.Request) {
+		if s.Growth == nil {
+			common.JsonError(w, growth.ErrUnavailable)
+			return
+		}
+		page := 1
+		var e error
+		if r.URL.Query().Get("page") != "" {
+			page, e = strconv.Atoi(r.URL.Query().Get("page"))
+		}
+		if e != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		v, e := s.Growth.Rules(r.Context(), page, false)
+		if e != nil {
+			cashError(w, e)
+			return
+		}
+		common.Ok(w, v)
+	}})
+
 	auth := &middleware.AuthConfig{Secret: s.Config.Auth.AccessSecret}
 	add := func(method, path, surface string) {
 		server.AddRoute(rest.Route{Method: method, Path: "/api/v1/payments/growth/" + path, Handler: auth.AuthFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +102,7 @@ func registerGrowth(server *rest.Server, s *svc.ServiceContext) {
 			g := s.Growth
 			ctx := r.Context()
 			user := strconv.FormatInt(middleware.UserIDFromCtx(ctx), 10)
-			if surface != "admin" {
+			if surface != "admin" && path != "rules" && path != "provider/rules" {
 				cfg, e := g.Settings(ctx)
 				if e != nil {
 					cashError(w, e)
@@ -100,6 +124,26 @@ func registerGrowth(server *rest.Server, s *svc.ServiceContext) {
 			var err error
 			q := r.URL.Query()
 			switch path {
+			case "rules", "provider/rules", "admin/rules":
+				page := 1
+				if q.Get("page") != "" {
+					page, err = strconv.Atoi(q.Get("page"))
+				}
+				if err == nil {
+					value, err = g.Rules(ctx, page, surface == "admin")
+				}
+			case "catalog/preview":
+				value, err = g.CatalogPrice(ctx, user, req.Items)
+			case "notice/claim":
+				var n *growth.LevelNotice
+				n, err = g.ClaimLevelNotice(ctx, user)
+				value = map[string]any{"notice": n}
+			case "admin/rules/preview":
+				if req.Rule == nil {
+					err = common.ErrParam
+				} else {
+					value, err = g.RulePreview(ctx, *req.Rule)
+				}
 			case "overview":
 				value, err = g.Overview(ctx, user)
 			case "records":
@@ -219,19 +263,19 @@ func registerGrowth(server *rest.Server, s *svc.ServiceContext) {
 			common.Ok(w, value)
 		})})
 	}
-	for _, path := range []string{"overview", "records", "notes", "contents", "activities", "summary", "support", "order"} {
+	for _, path := range []string{"overview", "records", "notes", "contents", "activities", "summary", "support", "order", "rules"} {
 		add("GET", path, "customer")
 	}
-	for _, path := range []string{"profile", "preferences", "notes", "notes/delete", "learning/start", "learning/heartbeat", "activities/register", "support"} {
+	for _, path := range []string{"profile", "preferences", "notes", "notes/delete", "learning/start", "learning/heartbeat", "activities/register", "support", "notice/claim", "catalog/preview"} {
 		add("POST", path, "customer")
 	}
-	for _, path := range []string{"dashboard", "contents", "activities", "support", "audit", "account"} {
+	for _, path := range []string{"dashboard", "contents", "activities", "support", "audit", "account", "rules"} {
 		add("GET", "admin/"+path, "admin")
 	}
-	for _, path := range []string{"proposal", "approve", "contents", "activities", "attendance", "support"} {
+	for _, path := range []string{"proposal", "approve", "contents", "activities", "attendance", "support", "rules/preview"} {
 		add("POST", "admin/"+path, "admin")
 	}
-	for _, path := range []string{"policies", "bills"} {
+	for _, path := range []string{"policies", "bills", "rules"} {
 		add("GET", "provider/"+path, "provider")
 	}
 	add("POST", "provider/consent", "provider")

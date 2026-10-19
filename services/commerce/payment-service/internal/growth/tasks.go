@@ -304,7 +304,11 @@ func (s *Store) RequestSupport(ctx context.Context, user, request, category, bod
 		if count >= 10 {
 			return ErrLimit
 		}
-		_, e = tx.ExecCtx(ctx, "INSERT INTO growth_support(user_id,request_id,category,body,level,urgency,reply,created_at,updated_at) VALUES(?,?,?,?,?,0,'',?,?) ON DUPLICATE KEY UPDATE request_id=request_id", user, request, category, body, Tier(a.Total).Code, s.now().Unix(), s.now().Unix())
+		release, e := ruleAt(ctx, tx, s.now().Unix())
+		if e != nil {
+			return e
+		}
+		_, e = tx.ExecCtx(ctx, "INSERT INTO growth_support(user_id,request_id,category,body,level,urgency,reply,created_at,updated_at) VALUES(?,?,?,?,?,0,'',?,?) ON DUPLICATE KEY UPDATE request_id=request_id", user, request, category, body, release.Config.Tier(a.Total).Code, s.now().Unix(), s.now().Unix())
 		return e
 	})
 }
