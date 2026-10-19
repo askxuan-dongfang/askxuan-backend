@@ -37,6 +37,11 @@ type Settings struct {
 
 func (s *Store) Settings(ctx context.Context) (v Settings, e error) {
 	e = s.DB.QueryRowCtx(ctx, &v, "SELECT enabled,discounts_enabled,revision,rule_version,started_at FROM growth_settings WHERE id=1")
+	if e == nil {
+		var r RuleRelease
+		r, e = ruleAt(ctx, s.DB, s.now().Unix())
+		v.Version = r.Version
+	}
 	return
 }
 
@@ -98,17 +103,19 @@ type Task struct {
 }
 type Overview struct {
 	Account
-	Level            Level    `json:"level"`
-	Levels           []Level  `json:"levels"`
-	Next             int64    `json:"nextThreshold"`
-	Remaining        int64    `json:"remaining"`
-	Pending          int64    `json:"pending"`
-	MonthlyEarned    int64    `json:"monthlyEarned"`
-	MonthlyLimit     int64    `json:"monthlyLimit"`
-	Tasks            []Task   `json:"tasks"`
-	Coupons          []Coupon `json:"coupons"`
-	Version          string   `json:"ruleVersion"`
-	DiscountsEnabled bool     `json:"discountsEnabled"`
+	Level            Level       `json:"level"`
+	Levels           []Level     `json:"levels"`
+	Next             int64       `json:"nextThreshold"`
+	Remaining        int64       `json:"remaining"`
+	Pending          int64       `json:"pending"`
+	MonthlyEarned    int64       `json:"monthlyEarned"`
+	MonthlyLimit     int64       `json:"monthlyLimit"`
+	Tasks            []Task      `json:"tasks"`
+	Coupons          []Coupon    `json:"coupons"`
+	Version          string      `json:"ruleVersion"`
+	DiscountsEnabled bool        `json:"discountsEnabled"`
+	Rule             RuleRelease `json:"rule"`
+	ServerTime       int64       `json:"serverTime"`
 }
 
 func (s *Store) Overview(ctx context.Context, user string) (v Overview, e error) {
@@ -127,11 +134,17 @@ func (s *Store) Overview(ctx context.Context, user string) (v Overview, e error)
 	if e != nil {
 		return v, e
 	}
-	v.Level = Tier(v.Total)
-	v.Levels = Levels()
-	v.Version = cfg.Version
+	v.Rule, e = ruleAt(ctx, s.DB, s.now().Unix())
+	if e != nil {
+		return v, e
+	}
+	rules := v.Rule.Config
+	v.ServerTime = s.now().Unix()
+	v.Level = rules.Tier(v.Total)
+	v.Levels = rules.Levels
+	v.Version = v.Rule.Version
 	v.DiscountsEnabled = cfg.Discounts
-	v.MonthlyLimit = MonthlyGrowthLimit
+	v.MonthlyLimit = rules.MonthlyGrowthLimit
 	v.Tasks = []Task{}
 	v.Coupons = []Coupon{}
 	if v.Level.Code < 5 {
@@ -147,7 +160,8 @@ func (s *Store) Overview(ctx context.Context, user string) (v Overview, e error)
 	if e != nil {
 		return v, e
 	}
-	for _, t := range []Task{{Kind: "profile", Award: 20, Limit: 1, Period: "lifetime", Available: true}, {Kind: "learning", Award: 3, Limit: 1, Period: "day"}, {Kind: "note", Award: 2, Limit: 1, Period: "day", Available: true}, {Kind: "activity", Award: 20, Limit: 2, Period: "month"}, {Kind: "review", Award: 5, Limit: 4, Period: "month", Available: true}} {
+	for _, t := range rules.Tasks {
+		t.Available = t.Kind == "profile" || t.Kind == "note" || t.Kind == "review"
 		query := "SELECT COUNT(*) FROM growth_event WHERE user_id=? AND kind=?"
 		args := []any{user, t.Kind}
 		if t.Period == "day" {
@@ -195,6 +209,19 @@ func (s *Store) awardTask(ctx context.Context, tx sqlx.Session, a *Account, kind
 	return s.awardTaskAt(ctx, tx, a, kind, ref, amount, limit, period, s.now(), false)
 }
 func (s *Store) awardTaskAt(ctx context.Context, tx sqlx.Session, a *Account, kind, ref string, amount, limit int64, period string, now time.Time, recordLimit bool) (Event, error) {
+	release, err := ruleAt(ctx, tx, now.Unix())
+	if err != nil {
+		return Event{}, err
+	}
+	rules := release.Config
+	for _, t := range rules.Tasks {
+		if t.Kind == kind {
+			amount = t.Award
+			limit = t.Limit
+			period = t.Period
+			break
+		}
+	}
 	key := a.User + ":" + kind + ":" + ref
 	var event Event
 	e := tx.QueryRowCtx(ctx, &event, "SELECT "+eventFields+" FROM growth_event WHERE event_key=?", key)
@@ -230,14 +257,14 @@ func (s *Store) awardTaskAt(ctx context.Context, tx sqlx.Session, a *Account, ki
 		if e != nil {
 			return event, e
 		}
-		if amount > MonthlyGrowthLimit-used {
-			amount = MonthlyGrowthLimit - used
+		if amount > rules.MonthlyGrowthLimit-used {
+			amount = rules.MonthlyGrowthLimit - used
 		}
 		if amount < 0 {
 			amount = 0
 		}
 	}
-	result, e := tx.ExecCtx(ctx, "INSERT INTO growth_event(event_key,user_id,kind,reference_no,original_award,current_award,state,business_day,business_month,rule_version,created_at,updated_at) VALUES(?,?,?,?,?,?,'posted',?,?,?,?,?)", key, a.User, kind, ref, amount, amount, BusinessDay(now), BusinessMonth(now), RuleVersion, now.Unix(), now.Unix())
+	result, e := tx.ExecCtx(ctx, "INSERT INTO growth_event(event_key,user_id,kind,reference_no,original_award,current_award,state,business_day,business_month,rule_version,created_at,updated_at) VALUES(?,?,?,?,?,?,'posted',?,?,?,?,?)", key, a.User, kind, ref, amount, amount, BusinessDay(now), BusinessMonth(now), release.Version, now.Unix(), now.Unix())
 	if e != nil {
 		return event, e
 	}
@@ -245,7 +272,7 @@ func (s *Store) awardTaskAt(ctx context.Context, tx sqlx.Session, a *Account, ki
 	if e != nil {
 		return event, e
 	}
-	event = Event{ID: id, User: a.User, Key: key, Kind: kind, Reference: ref, Original: amount, Current: amount, State: "posted", Version: RuleVersion, Created: now.Unix()}
+	event = Event{ID: id, User: a.User, Key: key, Kind: kind, Reference: ref, Original: amount, Current: amount, State: "posted", Version: release.Version, Created: now.Unix()}
 	e = s.applyEvent(ctx, tx, a, &event, amount, "posted")
 	return event, e
 }

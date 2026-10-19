@@ -102,7 +102,7 @@ func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Con
 			}
 			publicRead := false
 			if r.Method == http.MethodGet {
-				publicRead = r.URL.Path == "/api/v1/marketing/activities" || strings.HasPrefix(r.URL.Path, "/api/v1/marketing/activities/")
+				publicRead = r.URL.Path == "/api/v1/payments/growth/public/rules" || r.URL.Path == "/api/v1/marketing/activities" || strings.HasPrefix(r.URL.Path, "/api/v1/marketing/activities/")
 				for _, p := range whitelist {
 					if r.URL.Path == p || strings.HasPrefix(r.URL.Path, p+"/") {
 						publicRead = true
@@ -160,7 +160,7 @@ func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Con
 				}
 			}
 
-			if strings.HasPrefix(r.URL.Path, "/api/v1/payments/growth/") && !growthRoleAllowed(r.URL.Path, claims) {
+			if !(r.Method == http.MethodGet && r.URL.Path == "/api/v1/payments/growth/public/rules") && strings.HasPrefix(r.URL.Path, "/api/v1/payments/growth/") && !growthRoleAllowed(r.URL.Path, claims) {
 				common.JsonError(w, common.ErrRoleForbidden)
 				return
 			}

@@ -49,7 +49,15 @@ func (s *Store) Dashboard(ctx context.Context) (map[string]any, error) {
 	if e = s.DB.QueryRowsCtx(ctx, &proposals, "SELECT "+proposalFields+" FROM growth_proposal ORDER BY id DESC LIMIT 100"); e != nil {
 		return nil, e
 	}
-	return map[string]any{"settings": cfg, "levels": Levels(), "budgets": budgets, "policies": policies, "proposals": proposals}, nil
+	release, e := ruleAt(ctx, s.DB, s.now().Unix())
+	if e != nil {
+		return nil, e
+	}
+	history, e := s.Rules(ctx, 1, true)
+	if e != nil {
+		return nil, e
+	}
+	return map[string]any{"rule": release, "ruleHistory": history, "settings": cfg, "levels": release.Config.Levels, "budgets": budgets, "policies": policies, "proposals": proposals}, nil
 }
 
 // Resolve an item from the catalog, never from caller-supplied owner IDs.
@@ -103,6 +111,23 @@ func (s *Store) Propose(ctx context.Context, operator, kind, reason string, payl
 	}
 	var normalized any
 	switch kind {
+	case "rules":
+		var p RuleProposal
+		if json.Unmarshal(payload, &p) != nil {
+			return 0, common.ErrParam
+		}
+		if e = s.validateRule(p); e != nil {
+			return 0, e
+		}
+		normalized = p
+	case "rule_cancel":
+		var p struct {
+			Version string `json:"version"`
+		}
+		if json.Unmarshal(payload, &p) != nil || p.Version == "" || p.Version == RuleVersion {
+			return 0, common.ErrParam
+		}
+		normalized = p
 	case "settings":
 		var p Settings
 		if json.Unmarshal(payload, &p) != nil {
@@ -176,6 +201,20 @@ func (s *Store) Approve(ctx context.Context, operator string, id int64, approve 
 		if approve {
 			status = "approved"
 			switch p.Kind {
+			case "rules":
+				var v RuleProposal
+				if e = json.Unmarshal([]byte(p.Payload), &v); e != nil {
+					return e
+				}
+				e = s.publishRule(ctx, tx, v, operator)
+			case "rule_cancel":
+				var v struct {
+					Version string `json:"version"`
+				}
+				if e = json.Unmarshal([]byte(p.Payload), &v); e != nil {
+					return e
+				}
+				e = s.cancelRule(ctx, tx, v.Version)
 			case "settings":
 				var v Settings
 				if e = json.Unmarshal([]byte(p.Payload), &v); e != nil {
@@ -478,5 +517,9 @@ func (s *Store) AccountAudit(ctx context.Context, user string, page int) (map[st
 	if more {
 		events = events[:30]
 	}
-	return map[string]any{"exists": true, "userId": user, "total": account.Total, "level": Tier(account.Total), "events": events, "hasMore": more}, nil
+	release, err := ruleAt(ctx, s.DB, s.now().Unix())
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"exists": true, "userId": user, "total": account.Total, "level": release.Config.Tier(account.Total), "events": events, "hasMore": more}, nil
 }

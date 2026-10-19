@@ -111,6 +111,10 @@ func (s *Store) ReconcilePayment(ctx context.Context, id int64) error {
 		if t.Completion == 0 && completed > 0 {
 			t.Completion = completed
 		}
+		quote, e := readQuote(ctx, tx, t.QuoteID, t.User, false)
+		if e != nil {
+			return e
+		}
 		amount := Earned(t.Base)
 		state, reason := "pending", "waiting_completion"
 		eligible := int64(0)
@@ -130,7 +134,7 @@ func (s *Store) ReconcilePayment(ctx context.Context, id int64) error {
 		var event Event
 		e = tx.QueryRowCtx(ctx, &event, "SELECT "+eventFields+" FROM growth_event WHERE event_key=?", key)
 		if errors.Is(e, sqlx.ErrNotFound) {
-			res, err := tx.ExecCtx(ctx, "INSERT INTO growth_event(event_key,user_id,kind,reference_no,original_award,current_award,state,reason,eligible_at,business_day,business_month,rule_version,created_at,updated_at) VALUES(?,?,'purchase',?,?,?,?,?,?,?,?,?,?,?)", key, t.User, t.No, amount, amount, state, reason, eligible, BusinessDay(s.now()), BusinessMonth(s.now()), RuleVersion, s.now().Unix(), s.now().Unix())
+			res, err := tx.ExecCtx(ctx, "INSERT INTO growth_event(event_key,user_id,kind,reference_no,original_award,current_award,state,reason,eligible_at,business_day,business_month,rule_version,created_at,updated_at) VALUES(?,?,'purchase',?,?,?,?,?,?,?,?,?,?,?)", key, t.User, t.No, amount, amount, state, reason, eligible, BusinessDay(s.now()), BusinessMonth(s.now()), quote.Version, s.now().Unix(), s.now().Unix())
 			if err != nil {
 				return err
 			}
@@ -141,7 +145,7 @@ func (s *Store) ReconcilePayment(ctx context.Context, id int64) error {
 			event.User = t.User
 			event.Kind = "purchase"
 			event.Reference = t.No
-			event.Version = RuleVersion
+			event.Version = quote.Version
 			event.Current = amount
 		} else if e != nil {
 			return e
@@ -229,7 +233,11 @@ func (s *Store) reverseLocked(ctx context.Context, tx sqlx.Session, a *Account, 
 			}
 			status := "expired"
 			held := int64(0)
-			if c.Level > Tier(a.Total).Code {
+			release, err := ruleAt(ctx, tx, s.now().Unix())
+			if err != nil {
+				return err
+			}
+			if c.Level > release.Config.Tier(a.Total).Code {
 				status = "revoked"
 			} else if c.Expires > s.now().Unix() {
 				status = "unused"
@@ -326,6 +334,9 @@ func (s *Store) Tick(ctx context.Context) error {
 	if !cfg.Enabled {
 		return nil
 	}
+	if e = s.reconcileRuleAccounts(ctx); e != nil {
+		return e
+	}
 	ids := []int64{}
 	if e = s.DB.QueryRowsCtx(ctx, &ids, "SELECT payment_id FROM growth_transaction WHERE next_check_at<=? ORDER BY next_check_at,payment_id LIMIT 100", s.now().Unix()); e != nil {
 		return e
@@ -358,7 +369,7 @@ func (s *Store) Tick(ctx context.Context) error {
 }
 func (s *Store) Start(ctx context.Context) {
 	go func() {
-		timer := time.NewTicker(time.Minute)
+		timer := time.NewTicker(10 * time.Second)
 		defer timer.Stop()
 		for {
 			run, cancel := context.WithTimeout(ctx, 50*time.Second)
