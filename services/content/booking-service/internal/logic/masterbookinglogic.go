@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/askxuan/booking-service/internal/model"
@@ -221,4 +222,18 @@ func (l *MasterBookingCompleteLogic) MasterBookingComplete(req *types.AdminBooki
 	}
 	operatorId := master.Code
 	return transitBookingStatus(l.Logger, l.ctx, l.svcCtx, req.Id, model.StatusCompleted, req.Remark, operatorId, model.OperatorTypeMaster, "completed")
+}
+
+// MasterBookingCancel rejects a pending booking or cancels an accepted booking.
+// Assignment is checked before entering the common transactional state machine.
+func MasterBookingCancel(ctx context.Context, s *svc.ServiceContext, req *types.AdminBookingActionReq) (*types.StatusResp, error) {
+	remark := strings.TrimSpace(req.Remark)
+	if remark == "" || len([]rune(remark)) > 255 {
+		return nil, common.ErrParamInvalid
+	}
+	b, err := NewMasterBookingDetailLogic(ctx, s).MasterBookingDetail(&types.DetailReq{Id: req.Id})
+	if err != nil {
+		return nil, err
+	}
+	return transitBookingStatus(logx.WithContext(ctx), ctx, s, req.Id, model.StatusCancelled, remark, b.MasterId, model.OperatorTypeMaster, "cancelled")
 }

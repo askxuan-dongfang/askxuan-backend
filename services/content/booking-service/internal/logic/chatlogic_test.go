@@ -1,6 +1,9 @@
 package logic
 
 import (
+	"context"
+	"github.com/askxuan/booking-service/internal/svc"
+	"github.com/askxuan/common/middleware"
 	"testing"
 
 	"github.com/askxuan/booking-service/internal/model"
@@ -103,5 +106,57 @@ func TestChatDeliveryDecision(t *testing.T) {
 	}
 	if deliver, content := chatDeliveryDecision(false, &model.BookingChatMessage{Status: "failed", Content: "original"}, "changed"); !deliver || content != "original" {
 		t.Fatalf("failed retry decision = %v %q", deliver, content)
+	}
+}
+
+func TestWholeTempleChatParticipants(t *testing.T) {
+	ent := &chatEntitlement{SourceType: "booking", SourceID: "B1", UserID: "42", TempleCode: "T001", CanSend: true}
+	ctx := func(id int64, role, temple string, master int64) context.Context {
+		c := context.WithValue(context.Background(), middleware.CtxKeyUserID, id)
+		c = context.WithValue(c, middleware.CtxKeyRoles, []string{role})
+		c = context.WithValue(c, middleware.CtxKeyTempleCode, temple)
+		return context.WithValue(c, middleware.CtxKeyMasterID, master)
+	}
+	for _, tc := range []struct {
+		name             string
+		c                context.Context
+		sender, receiver string
+		allowed          bool
+	}{
+		{"owner", ctx(42, "customer", "", 0), "u_42", "t_T001", true},
+		{"own temple", ctx(2, "temple_admin", "T001", 0), "t_T001", "u_42", true},
+		{"other customer", ctx(7, "customer", "", 0), "", "", false},
+		{"other temple", ctx(3, "temple_admin", "T002", 0), "", "", false},
+		{"master from same temple", ctx(4, "master", "T001", 4), "", "", false},
+		{"customer with temple claim", ctx(7, "customer", "T001", 0), "", "", false},
+		{"admin id collides with customer id", ctx(42, "platform_super", "", 0), "", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p, err := resolveChatParticipant(tc.c, &svc.ServiceContext{}, ent, true)
+			if (err == nil) != tc.allowed {
+				t.Fatalf("allowed=%v err=%v", tc.allowed, err)
+			}
+			if err == nil && (p.SenderID != tc.sender || p.ReceiverID != tc.receiver) {
+				t.Fatalf("wrong participant: %+v", p)
+			}
+		})
+	}
+	own := ctx(2, "temple_admin", "T001", 0)
+	ent.CanSend = false
+	if _, err := resolveChatParticipant(own, &svc.ServiceContext{}, ent, true); err == nil {
+		t.Fatal("cancelled order allowed send")
+	}
+	if _, err := resolveChatParticipant(own, &svc.ServiceContext{}, ent, false); err != nil {
+		t.Fatal("cancelled history unavailable", err)
+	}
+	ent.MasterCode = "M001"
+	if _, err := resolveChatParticipant(own, &svc.ServiceContext{}, ent, false); err == nil {
+		t.Fatal("temple accessed assigned master's private chat")
+	}
+	if _, err := AuthorizeOpenIMMessage(context.Background(), nil, "t_T001", "u_42", ""); err == nil {
+		t.Fatal("temple identity bypassed business API")
+	}
+	if !bookingHasChatEntitlement(&model.Booking{UserId: "42", TempleId: "T001", PaymentStatus: model.PaymentStatusSuccess, Status: model.StatusPending}, "42") {
+		t.Fatal("paid temple chat missing")
 	}
 }

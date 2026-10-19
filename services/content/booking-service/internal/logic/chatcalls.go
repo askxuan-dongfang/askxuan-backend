@@ -54,7 +54,7 @@ func ChatCallCapabilities(ctx context.Context, s *svc.ServiceContext, id string)
 	}
 	urls, secret := os.Getenv("CHAT_TURN_URLS"), os.Getenv("CHAT_TURN_SECRET")
 	servers := []map[string]any{}
-	enabled := urls != "" && secret != ""
+	enabled := urls != "" && secret != "" && !isTempleChatPair(p.SenderID, p.ReceiverID)
 	if enabled {
 		username := fmt.Sprintf("%d:%s", time.Now().Add(2*time.Hour).Unix(), p.SenderID)
 		mac := hmac.New(sha1.New, []byte(secret))
@@ -127,6 +127,9 @@ func ChatCallAction(ctx context.Context, s *svc.ServiceContext, req *ChatCallReq
 		return nil, common.ErrSystem
 	}
 	if req.Action == "start" {
+		if isTempleChatPair(p.SenderID, p.ReceiverID) {
+			return nil, common.NewBizError(50331, "寺院暂不支持语音视频通话")
+		}
 		if os.Getenv("CHAT_TURN_SECRET") == "" || os.Getenv("CHAT_TURN_URLS") == "" {
 			return nil, common.NewBizError(50331, "通话服务暂不可用")
 		}
