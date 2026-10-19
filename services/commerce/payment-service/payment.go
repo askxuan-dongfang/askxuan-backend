@@ -54,6 +54,9 @@ func main() {
 	startRefundRequestConsumer(ctx, c, svcCtx)
 	mq.StartOutbox(ctx, svcCtx.DB, svcCtx.MqProducer)
 	svcCtx.Cashier.Start(ctx)
+	if svcCtx.Growth != nil {
+		svcCtx.Growth.Start(ctx)
+	}
 
 	// 优雅退出
 	go func() {
@@ -121,6 +124,12 @@ func startRefundRequestConsumer(ctx context.Context, c config.Config, svcCtx *sv
 			EnableDeadLetter: true,
 			Handler: mq.NewRefundRequestHandler(mq.RefundRequestDeps{
 				RefundFunc: refundFunc,
+				NormalizeAmount: func(ctx context.Context, p mq.RefundRequestPayload) (float64, error) {
+					if svcCtx.Growth == nil {
+						return p.Amount, nil
+					}
+					return svcCtx.Growth.FullRefundAmount(ctx, p.PaymentNo, p.OrderType, p.OrderNo, p.Amount)
+				},
 				ResolvePayment: func(ctx context.Context, kind, no string) (string, error) {
 					p, err := svcCtx.PaymentModel.FindByOrder(ctx, kind, no)
 					if err != nil {

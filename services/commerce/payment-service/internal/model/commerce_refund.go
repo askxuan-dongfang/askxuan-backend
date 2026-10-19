@@ -6,6 +6,7 @@ import (
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/mqoutbox"
 	"github.com/askxuan/payment-service/internal/balance"
+	"github.com/askxuan/payment-service/internal/growth"
 	"github.com/askxuan/payment-service/internal/points"
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -15,7 +16,7 @@ import (
 
 // AtomicMockRefund commits the refund, payment state and points reversal together.
 // One refund per payment is supported; identical retries return the original record.
-func AtomicMockRefund(ctx context.Context, db sqlx.SqlConn, paymentID int64, amount float64, reason string) (*Refund, error) {
+func AtomicMockRefund(ctx context.Context, db sqlx.SqlConn, paymentID int64, amount float64, reason string, growthStores ...*growth.Store) (*Refund, error) {
 	if math.IsNaN(amount) || math.IsInf(amount, 0) || amount <= 0 || len([]rune(reason)) > 255 {
 		return nil, common.ErrParam
 	}
@@ -78,6 +79,11 @@ func AtomicMockRefund(ctx context.Context, db sqlx.SqlConn, paymentID int64, amo
 		result.Id, err = res.LastInsertId()
 		if err != nil {
 			return err
+		}
+		if p.Channel == "balance" && len(growthStores) > 0 && growthStores[0] != nil {
+			if err := growthStores[0].ReverseTx(ctx, tx, paymentID); err != nil {
+				return err
+			}
 		}
 		if p.Channel == "balance" {
 			if err := balance.Change(ctx, tx, p.User, "refund:"+result.RefundNo, "order_refund", p.No, int64(math.Round(amount*100)), 0); err != nil {

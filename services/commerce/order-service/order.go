@@ -165,7 +165,7 @@ func startConsumer(ctx context.Context, svcCtx *svc.ServiceContext) {
 						}
 					}
 					return svcCtx.DB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
-						if _, err := tx.ExecCtx(ctx, `UPDATE return_order SET status='completed',update_time=NOW() WHERE id=? AND status='refunding'`, r.Id); err != nil {
+						if _, err := tx.ExecCtx(ctx, `UPDATE return_order SET status='completed',refund_amount=?,update_time=NOW() WHERE id=? AND status='refunding'`, r.RefundAmount, r.Id); err != nil {
 							return err
 						}
 						_, err := tx.ExecCtx(ctx, `UPDATE shop_order SET status='cancelled',update_time=NOW() WHERE id=? AND status='in_return'`, o.Id)

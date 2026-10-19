@@ -25,7 +25,13 @@ func registerCashier(server *rest.Server, s *svc.ServiceContext) {
 	auth := &middleware.AuthConfig{Secret: s.Config.Auth.AccessSecret}
 	role := &middleware.AdminAuthConfig{AllowedRoles: []string{"customer"}}
 	add := func(method, path string, fn http.HandlerFunc) {
-		server.AddRoute(rest.Route{Method: method, Path: "/api/v1/payments/" + path, Handler: auth.AuthFunc(role.AdminAuthFunc(fn))})
+		server.AddRoute(rest.Route{Method: method, Path: "/api/v1/payments/" + path, Handler: auth.AuthFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !growthIdentity(r, "customer") {
+				common.JsonError(w, common.ErrRoleForbidden)
+				return
+			}
+			role.AdminAuthFunc(fn)(w, r)
+		})})
 	}
 	user := func(r *http.Request) string { return strconv.FormatInt(middleware.UserIDFromCtx(r.Context()), 10) }
 	decode := func(w http.ResponseWriter, r *http.Request, v any) bool {
@@ -37,6 +43,31 @@ func registerCashier(server *rest.Server, s *svc.ServiceContext) {
 	}
 	add("GET", "checkout", func(w http.ResponseWriter, r *http.Request) {
 		q, e := s.Cashier.Quote(r.Context(), user(r), cashier.OrderRequest{OrderType: r.URL.Query().Get("orderType"), OrderNo: r.URL.Query().Get("orderNo")})
+		if e != nil {
+			cashError(w, e)
+			return
+		}
+		common.Ok(w, q)
+	})
+
+	add("POST", "checkout/quote", func(w http.ResponseWriter, r *http.Request) {
+		var req cashier.OrderRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		q, e := s.Cashier.GrowthQuote(r.Context(), user(r), req)
+		if e != nil {
+			cashError(w, e)
+			return
+		}
+		common.Ok(w, q)
+	})
+	add("POST", "checkout/reserve", func(w http.ResponseWriter, r *http.Request) {
+		var req cashier.OrderRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		q, e := s.Cashier.Reserve(r.Context(), user(r), req)
 		if e != nil {
 			cashError(w, e)
 			return

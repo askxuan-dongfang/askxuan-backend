@@ -299,7 +299,11 @@ func (l *AdminReturnRefundLogic) Refund(req *types.AdminReturnRefundReq) (*types
 	if err != nil {
 		return nil, common.ErrOrderNotFound
 	}
-	payload := mq.BuildRefundRequestPayload(r, req.Amount, order.OrderNo)
+	basis := ""
+	if math.Abs(req.Amount-order.PayAmount) < 0.005 {
+		basis = "original_full"
+	}
+	payload := mq.BuildRefundRequestPayload(r, req.Amount, order.OrderNo, basis)
 	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, session sqlx.Session) error {
 		res, err := session.ExecCtx(ctx, `UPDATE return_order SET status='refunding',refund_amount=?,update_time=NOW() WHERE id=? AND status='return_received'`, req.Amount, req.Id)
 		if err != nil {

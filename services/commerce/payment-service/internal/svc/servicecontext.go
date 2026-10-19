@@ -3,6 +3,7 @@ package svc
 import (
 	"github.com/askxuan/payment-service/internal/cashier"
 	"github.com/askxuan/payment-service/internal/config"
+	"github.com/askxuan/payment-service/internal/growth"
 	"github.com/askxuan/payment-service/internal/model"
 	"github.com/askxuan/payment-service/internal/mq"
 	"github.com/askxuan/payment-service/internal/paychannel"
@@ -15,6 +16,7 @@ import (
 
 // ServiceContext payment 服务依赖容器
 type ServiceContext struct {
+	Growth          *growth.Store
 	Cashier         *cashier.Store
 	Config          config.Config
 	DB              sqlx.SqlConn
@@ -43,8 +45,13 @@ func NewServiceContext(c config.Config) *ServiceContext {
 			channels[name] = gateway
 		}
 	}
+	var growthStore *growth.Store
+	if c.GrowthEnabled {
+		growthStore = &growth.Store{DB: db}
+	}
 	return &ServiceContext{
-		Cashier:         &cashier.Store{DB: db, Enabled: c.Wallet.Enabled, DemoEnabled: c.Wallet.DemoEnabled, Mock: c.Provider == "mock", Channels: channels},
+		Growth:          growthStore,
+		Cashier:         &cashier.Store{DB: db, Growth: growthStore, Enabled: c.Wallet.Enabled, DemoEnabled: c.Wallet.DemoEnabled, Mock: c.Provider == "mock", Channels: channels},
 		Config:          c,
 		DB:              db,
 		Redis:           redis.MustNewRedis(c.Redis),

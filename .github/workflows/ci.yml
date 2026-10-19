@@ -133,8 +133,18 @@ jobs:
         env:
           FINANCE_DEMO_TEST_DSN: 'root@tcp(127.0.0.1:3306)/askxuan_payment?charset=utf8mb4'
           WALLET_TEST_ISOLATED: '1'
+  growth-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: 'go.work'
+          cache-dependency-path: '**/go.sum'
+      - run: bash scripts/test-growth.sh
   deploy:
-    needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql]
+    needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ECS_DEPLOY_ENABLED == 'true'
     environment: production
     runs-on: ubuntu-latest

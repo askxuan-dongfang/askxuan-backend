@@ -33,21 +33,23 @@ const (
 // RefundRequestPayload refund.request 消息体。
 // 字段与 order-service 的 BuildRefundRequestPayload 保持一致。
 type RefundRequestPayload struct {
-	OrderNo   string  `json:"orderNo"`
-	ReturnNo  string  `json:"returnNo"`  // 退货单号
-	ReturnId  int64   `json:"returnId"`  // 退货单 ID
-	OrderId   int64   `json:"orderId"`   // 业务订单 ID
-	PaymentNo string  `json:"paymentNo"` // 支付单号
-	OrderType string  `json:"orderType"` // 订单类型 shop_order/booking/diy_order
-	Amount    float64 `json:"amount"`    // 退款金额
-	Reason    string  `json:"reason"`    // 退款原因
-	Time      string  `json:"time"`      // 发起时间
+	AmountBasis string  `json:"amountBasis"` // original_full explicitly requests the original checkout in full
+	OrderNo     string  `json:"orderNo"`
+	ReturnNo    string  `json:"returnNo"`  // 退货单号
+	ReturnId    int64   `json:"returnId"`  // 退货单 ID
+	OrderId     int64   `json:"orderId"`   // 业务订单 ID
+	PaymentNo   string  `json:"paymentNo"` // 支付单号
+	OrderType   string  `json:"orderType"` // 订单类型 shop_order/booking/diy_order
+	Amount      float64 `json:"amount"`    // 退款金额
+	Reason      string  `json:"reason"`    // 退款原因
+	Time        string  `json:"time"`      // 发起时间
 }
 
 // RefundRequestDeps refund.request handler 的依赖。
 // 通过显式注入 RefundFunc 避免 mq ↔ logic ↔ svc 循环依赖。
 type RefundRequestDeps struct {
-	ResolvePayment func(context.Context, string, string) (string, error)
+	ResolvePayment  func(context.Context, string, string) (string, error)
+	NormalizeAmount func(context.Context, RefundRequestPayload) (float64, error)
 	// RefundFunc 执行退款逻辑，返回退款单号。
 	// 通常由 main 包装 logic.NewRefundLogic(ctx, svcCtx).Refund(...) 实现。
 	RefundFunc func(ctx context.Context, paymentNo string, amount float64, reason string) (refundNo string, err error)
@@ -91,6 +93,10 @@ func NewRefundRequestHandler(deps RefundRequestDeps) func([]byte) error {
 			return nil
 		}
 
+		if payload.AmountBasis != "" && (payload.AmountBasis != "original_full" || deps.NormalizeAmount == nil) {
+			return common.ErrParam
+		}
+
 		logx.Infof("收到退款请求: paymentNo=%s returnNo=%s amount=%.2f reason=%s",
 			payload.PaymentNo, payload.ReturnNo, payload.Amount, payload.Reason)
 
@@ -115,6 +121,18 @@ func NewRefundRequestHandler(deps RefundRequestDeps) func([]byte) error {
 			}
 		}
 
+		// Resolve only explicitly marked whole-order requests; arbitrary amount
+		// requests retain their exact monetary meaning.
+		if payload.AmountBasis != "" {
+			amount, e := deps.NormalizeAmount(ctx, payload)
+			if e != nil {
+				if deps.Redis != nil {
+					_, _ = deps.Redis.Del(processingKey)
+				}
+				return e
+			}
+			payload.Amount = amount
+		}
 		// 3. 调用退款逻辑
 		refundNo, err := deps.RefundFunc(ctx, payload.PaymentNo, payload.Amount, payload.Reason)
 

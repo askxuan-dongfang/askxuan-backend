@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/askxuan/common"
 	"github.com/askxuan/payment-service/internal/balance"
+	"github.com/askxuan/payment-service/internal/growth"
 	"github.com/askxuan/payment-service/internal/paychannel"
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -14,6 +15,7 @@ import (
 )
 
 type Store struct {
+	Growth                     *growth.Store
 	DB                         sqlx.SqlConn
 	Enabled, Mock, DemoEnabled bool
 	Channels                   map[string]paychannel.Gateway
