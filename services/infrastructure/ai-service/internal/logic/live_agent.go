@@ -159,11 +159,7 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 		}
 		remaining -= len(loaded)
 		// Only the latest image-bearing turn is injected; its text travels with it.
-		msg := schema.UserMessage(m.Content)
-		msg.MultiContent = []schema.ChatMessagePart{{Type: schema.ChatMessagePartTypeText, Text: m.Content}}
-		for _, u := range loaded {
-			msg.MultiContent = append(msg.MultiContent, schema.ChatMessagePart{Type: schema.ChatMessagePartTypeImageURL, ImageURL: &schema.ChatMessageImageURL{URL: u, Detail: schema.ImageURLDetailAuto}})
-		}
+		msg := imageUserMessage(m.Content, loaded)
 		for j := len(in.Messages) - 1; j >= 0; j-- {
 			if in.Messages[j].Role == schema.User && in.Messages[j].Content == m.Content {
 				in.Messages[j] = msg
@@ -283,4 +279,15 @@ func liveInputSchema(ctx context.Context, s *svc.ServiceContext) (string, error)
 		return "", e
 	}
 	return askagent.PartialSchema(skills)
+}
+
+// Eino's OpenAI adapter requires text-only Content and image MultiContent to be
+// mutually exclusive. Keep the accompanying text inside the multimodal parts.
+func imageUserMessage(text string, urls []string) *schema.Message {
+	msg := schema.UserMessage("")
+	msg.MultiContent = []schema.ChatMessagePart{{Type: schema.ChatMessagePartTypeText, Text: text}}
+	for _, u := range urls {
+		msg.MultiContent = append(msg.MultiContent, schema.ChatMessagePart{Type: schema.ChatMessagePartTypeImageURL, ImageURL: &schema.ChatMessageImageURL{URL: u, Detail: schema.ImageURLDetailAuto}})
+	}
+	return msg
 }
