@@ -75,7 +75,11 @@ func (l *DesignListLogic) List(req *types.DesignListReq) (*types.DesignListResp,
 	}
 	resp := &types.DesignListResp{Total: total, Page: req.Page, Size: req.Size}
 	for _, d := range list {
-		resp.List = append(resp.List, toTypesDesign(d))
+		out, err := designResponse(l.ctx, l.svcCtx, d, false)
+		if err != nil {
+			return nil, err
+		}
+		resp.List = append(resp.List, *out)
 	}
 	return resp, nil
 }
@@ -108,13 +112,18 @@ func (l *MyDesignListLogic) List(userId string, page, size int) (*types.MyDesign
 	}
 	resp := &types.MyDesignListResp{Total: total, Page: page, Size: size}
 	for _, d := range list {
+		out, err := designResponse(l.ctx, l.svcCtx, &d.DiyDesign, true)
+		if err != nil {
+			return nil, err
+		}
 		resp.List = append(resp.List, types.MyDesignItem{
+			PublicationEligibility: out.PublicationEligibility, Publication: out.Publication, DraftChanged: out.DraftChanged, SourcePublicationId: d.SourcePublicationId,
 			Id: d.Id, Revision: d.Revision, SourceDesignId: d.SourceDesignId, Description: d.Description,
 			DesignNo:         d.DesignNo,
 			Name:             d.Name,
 			DesignData:       d.DesignData,
 			TotalPrice:       d.TotalPrice,
-			Status:           d.Status,
+			Status:           out.Status,
 			BlessServiceCode: d.BlessServiceCode,
 			CreateTime:       d.CreateTime,
 			UpdateTime:       d.UpdateTime,
@@ -160,11 +169,18 @@ func (l *DesignDetailLogic) Detail(req *types.DesignDetailReq) (*types.DiyDesign
 		l.Errorf("查询设计详情失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	if !canReadDesign(d, studioUser(l.ctx)) {
-		return nil, ErrDesignNotFound
+	user := studioUser(l.ctx)
+	if req.View != "" && req.View != "published" {
+		return nil, common.ErrParam
 	}
-	t := toTypesDesign(d)
-	return &t, nil
+	if req.View == "published" || d.UserId != user {
+		published, _, err := model.PublishedDesign(l.ctx, l.svcCtx.DB, d)
+		if err != nil {
+			return nil, ErrDesignNotFound
+		}
+		return designResponse(l.ctx, l.svcCtx, published, false)
+	}
+	return designResponse(l.ctx, l.svcCtx, d, true)
 }
 
 // MaterialListLogic 材料库列表
@@ -201,7 +217,7 @@ func (l *MaterialListLogic) List(req *types.MaterialListReq) (*types.MaterialLis
 
 func toTypesDesign(d *model.DiyDesign) types.DiyDesign {
 	return types.DiyDesign{
-		Id: d.Id, Revision: d.Revision, SourceDesignId: d.SourceDesignId, Description: d.Description,
+		Id: d.Id, Revision: d.Revision, SourceDesignId: d.SourceDesignId, SourcePublicationId: d.SourcePublicationId, Description: d.Description,
 		DesignNo:         d.DesignNo,
 		UserId:           d.UserId,
 		Name:             d.Name,
@@ -321,4 +337,31 @@ func toTypesDiyOrderDetailWithTask(ctx context.Context, svcCtx *svc.ServiceConte
 		t.Logistics = &types.OrderLogistics{ExpressCompany: row.ExpressCompany, TrackingNo: row.TrackingNo, ShipTime: row.ShipTime}
 	}
 	return &t
+}
+
+func designResponse(ctx context.Context, svcCtx *svc.ServiceContext, d *model.DiyDesign, owner bool) (*types.DiyDesign, error) {
+	out := toTypesDesign(d)
+	if owner {
+		eligible, _, err := model.ReadPublicationEligibility(ctx, svcCtx.DB, d, false)
+		if err != nil {
+			return nil, common.ErrSystem
+		}
+		out.PublicationEligibility = &types.PublicationEligibility{CanPublish: eligible.CanPublish, Reason: eligible.Reason, Message: eligible.Message, OrderId: eligible.OrderId, OrderNo: eligible.OrderNo, DesignRevision: eligible.DesignRevision}
+	}
+	if d.Status == model.DesignStatusPublic {
+		p, err := model.FindPublication(ctx, svcCtx.DB, d.PublicationId, false)
+		if err != nil {
+			if err != sqlx.ErrNotFound {
+				return nil, common.ErrSystem
+			}
+			if !owner {
+				return nil, ErrDesignNotFound
+			}
+			out.Status = model.DesignStatusPrivate
+		} else {
+			out.Publication = &types.DesignPublication{Id: p.Id, DesignRevision: p.DesignRevision, MaterialFee: p.MaterialFee, PublishedAt: p.PublishedAt}
+			out.DraftChanged = owner && model.DraftDiffers(d, p)
+		}
+	}
+	return &out, nil
 }

@@ -6,7 +6,7 @@ import (
 )
 
 // UpdateOwned uses a revision compare-and-swap so editing on another device cannot
-// silently replace a newer design. Published designs become private when edited.
+// silently replace a newer design. A published snapshot is independent of edits.
 func (m *defaultDiyDesignModel) UpdateOwned(ctx context.Context, d *DiyDesign, revision int64) error {
 	result, err := m.conn.ExecCtx(ctx, `UPDATE askxuan_diy.diy_design SET name=?,design_data=?,total_price=?,description=?,status=?,revision=revision+1,update_time=NOW() WHERE id=? AND user_id=? AND revision=?`, d.Name, d.DesignData, d.TotalPrice, d.Description, d.Status, d.Id, d.UserId, revision)
 	if err != nil {

@@ -45,8 +45,12 @@ func (l *DiyOrderAvailabilityLogic) Check(req *types.DiyOrderAvailabilityReq) (*
 			}
 			return nil, common.ErrSystem
 		}
-		if !canReadDesign(design, studioUser(l.ctx)) {
-			return nil, ErrDesignNotFound
+		if design.UserId != studioUser(l.ctx) {
+			published, _, e := model.PublishedDesign(l.ctx, l.svcCtx.DB, design)
+			if e != nil {
+				return nil, ErrDesignNotFound
+			}
+			design = published
 		}
 		items, err = parseDesignOrderItems(design.DesignData)
 		if err != nil || len(items) == 0 {
@@ -92,7 +96,7 @@ func (l *DiyOrderCreateLogic) Create(req *types.DiyOrderCreateReq) (*types.DiyOr
 	result, err := model.CreatePricedOrder(l.ctx, l.svcCtx.DB, l.svcCtx.DiyOrderModel, l.svcCtx.DiyOrderItemModel, model.PricedOrderInput{
 		UserId: req.UserId, Design: design, Items: toPricedInputs(req.Items), BlessServiceCode: req.BlessServiceCode,
 		ExpectedBlessFee: req.ExpectedBlessFee,
-		AddressId:        req.AddressId, Source: "custom", CreatorId: attribution(l.ctx, l.svcCtx, design, req.UserId),
+		AddressId:        req.AddressId, Source: "custom",
 	})
 	if err != nil {
 		return nil, mapPricingError(err)
@@ -124,9 +128,11 @@ func (l *DiyDesignOrderCreateLogic) Create(req *types.DiyDesignOrderCreateReq) (
 		l.Errorf("查询DIY设计失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	if design.Status != model.DesignStatusPublic && design.Status != model.DesignStatusApproved {
-		return nil, common.NewBizError(40907, "作品尚未上架，无法下单")
+	published, _, publicationErr := model.PublishedDesign(l.ctx, l.svcCtx.DB, design)
+	if publicationErr != nil {
+		return nil, model.ErrPublicationUnavailable
 	}
+	design = published
 
 	items, err := parseDesignOrderItems(design.DesignData)
 	if err != nil || len(items) == 0 {
@@ -137,7 +143,7 @@ func (l *DiyDesignOrderCreateLogic) Create(req *types.DiyDesignOrderCreateReq) (
 	result, err := model.CreatePricedOrder(l.ctx, l.svcCtx.DB, l.svcCtx.DiyOrderModel, l.svcCtx.DiyOrderItemModel, model.PricedOrderInput{
 		UserId: req.UserId, Design: design, Items: toPricedInputs(items), BlessServiceCode: req.BlessServiceCode,
 		ExpectedBlessFee: req.ExpectedBlessFee,
-		AddressId:        req.AddressId, Source: "design_square", CreatorId: attribution(l.ctx, l.svcCtx, design, req.UserId),
+		AddressId:        req.AddressId, Source: "design_square",
 	})
 	if err != nil {
 		l.Errorf("设计广场下单失败 designId=%d: %v", design.Id, err)
@@ -158,6 +164,10 @@ func toPricedInputs(items []types.DiyOrderItem) []model.PricedOrderItemInput {
 }
 
 func mapPricingError(err error) error {
+	var biz *common.BizError
+	if errors.As(err, &biz) {
+		return biz
+	}
 	switch {
 	case errors.Is(err, model.ErrOrderMaterialUnavailable):
 		var unavailable *model.OrderMaterialUnavailableError
@@ -305,27 +315,4 @@ func (l *DiyOrderDetailLogic) Detail(req *types.DiyOrderDetailReq) (*types.DiyOr
 		return nil, common.ErrDiyOrderNotFound
 	}
 	return toTypesDiyOrderDetail(l.ctx, l.svcCtx, o), nil
-}
-
-// Follow server-owned copy lineage. A client cannot nominate a beneficiary.
-func attribution(ctx context.Context, s *svc.ServiceContext, d *model.DiyDesign, buyer string) string {
-	seen := map[int64]bool{}
-	for depth := 0; depth < 32; depth++ {
-		if seen[d.Id] {
-			return ""
-		}
-		seen[d.Id] = true
-		if d.SourceDesignId == 0 {
-			if d.UserId != buyer {
-				return d.UserId
-			}
-			return ""
-		}
-		next, e := s.DiyDesignModel.FindOne(ctx, d.SourceDesignId)
-		if e != nil {
-			return ""
-		}
-		d = next
-	}
-	return ""
 }

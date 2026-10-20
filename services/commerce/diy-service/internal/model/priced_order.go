@@ -30,14 +30,16 @@ type PricedOrderItemInput struct {
 }
 
 type PricedOrderInput struct {
-	UserId           string
-	Design           *DiyDesign
-	Items            []PricedOrderItemInput
-	BlessServiceCode string
-	ExpectedBlessFee *float64
-	AddressId        int64
-	Source           string
-	CreatorId        string
+	RewardPublicationId int64
+	RewardDesignId      int64
+	UserId              string
+	Design              *DiyDesign
+	Items               []PricedOrderItemInput
+	BlessServiceCode    string
+	ExpectedBlessFee    *float64
+	AddressId           int64
+	Source              string
+	CreatorId           string
 }
 
 type PricedOrderResult struct {
@@ -91,6 +93,9 @@ func CreatePricedOrder(ctx context.Context, conn sqlx.SqlConn, orderModel DiyOrd
 	}
 
 	err = conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		if err := validateOrderDesign(ctx, session, &in); err != nil {
+			return err
+		}
 		items := make([]*DiyOrderItem, 0, len(in.Items))
 		var materialFee, originalMaterialFee float64
 		for _, requested := range in.Items {
@@ -126,7 +131,11 @@ func CreatePricedOrder(ctx context.Context, conn sqlx.SqlConn, orderModel DiyOrd
 
 		snapshotDesign := *in.Design
 		snapshotDesign.BlessServiceCode = in.BlessServiceCode
-		designSnapshot, marshalErr := json.Marshal(snapshotDesign)
+		designSnapshot, marshalErr := json.Marshal(struct {
+			DiyDesign
+			RewardPublicationId int64 `json:"rewardPublicationId,omitempty"`
+			RewardDesignId      int64 `json:"rewardDesignId,omitempty"`
+		}{snapshotDesign, in.RewardPublicationId, in.RewardDesignId})
 		if marshalErr != nil {
 			return marshalErr
 		}

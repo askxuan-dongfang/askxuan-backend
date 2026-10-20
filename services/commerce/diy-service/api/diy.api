@@ -10,7 +10,25 @@ info (
 // ==================== 公共类型 ====================
 
 type (
+    PublicationEligibility {
+        CanPublish bool `json:"canPublish"`
+        Reason string `json:"reason"`
+        Message string `json:"message"`
+        OrderId int64 `json:"orderId,optional"`
+        OrderNo string `json:"orderNo,optional"`
+        DesignRevision int64 `json:"designRevision,optional"`
+    }
+    DesignPublication {
+        Id int64 `json:"id"`
+        DesignRevision int64 `json:"designRevision"`
+        MaterialFee float64 `json:"materialFee"`
+        PublishedAt string `json:"publishedAt"`
+    }
     DiyDesign {
+        PublicationEligibility *PublicationEligibility `json:"publicationEligibility,optional"`
+        Publication *DesignPublication `json:"publication,optional"`
+        DraftChanged bool `json:"draftChanged"`
+        SourcePublicationId int64 `json:"sourcePublicationId"`
         Revision int64 `json:"revision"`
         SourceDesignId int64 `json:"sourceDesignId"`
         Description string `json:"description"`
@@ -109,6 +127,10 @@ type (
 
     // MyDesignItem 我的设计（含最新订单信息）
     MyDesignItem {
+        PublicationEligibility *PublicationEligibility `json:"publicationEligibility,optional"`
+        Publication *DesignPublication `json:"publication,optional"`
+        DraftChanged bool `json:"draftChanged"`
+        SourcePublicationId int64 `json:"sourcePublicationId"`
         Revision int64 `json:"revision"`
         SourceDesignId int64 `json:"sourceDesignId"`
         Description string `json:"description"`
@@ -158,6 +180,7 @@ type (
     }
 
     DesignDetailReq {
+        View string `form:"view,optional"`
         Id int64 `path:"id"`
     }
 

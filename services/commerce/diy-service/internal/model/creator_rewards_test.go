@@ -68,7 +68,7 @@ func TestCreatorRewardsMySQL(t *testing.T) {
 		exec("INSERT INTO askxuan_payment.payment VALUES(?,?,'diy_order','buyer','success',?)", id, no, channel)
 		exec("UPDATE creator_reward_policy SET kind=?", kind)
 		e := db.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
-			return SnapshotReward(ctx, tx, &DiyOrder{Id: id, OrderNo: no, DesignId: 9, UserId: "buyer", CreatorId: "artist", MaterialFee: 100})
+			return SnapshotReward(ctx, tx, &DiyOrder{Id: id, OrderNo: no, DesignId: 9, UserId: "buyer", CreatorId: "artist", MaterialFee: 100, DesignSnapshot: `{"rewardPublicationId":1,"rewardDesignId":9}`})
 		})
 		if e != nil {
 			t.Fatal(e)

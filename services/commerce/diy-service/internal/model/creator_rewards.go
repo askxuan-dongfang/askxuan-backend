@@ -80,39 +80,16 @@ func SnapshotReward(ctx context.Context, tx sqlx.Session, o *DiyOrder) error {
 	if !p.Enabled {
 		return nil
 	}
-	designID := o.DesignId
-	var design DiyDesign
-	if json.Unmarshal([]byte(o.DesignSnapshot), &design) == nil && design.SourceDesignId > 0 {
-		seen := map[int64]bool{}
-		for depth := 0; depth < 32; depth++ {
-			next := design.SourceDesignId
-			if next == 0 {
-				break
-			}
-			if seen[next] {
-				return common.ErrParam
-			}
-			seen[next] = true
-			var source struct {
-				ID     int64 `db:"id"`
-				Source int64 `db:"source_design_id"`
-			}
-			if e := tx.QueryRowCtx(ctx, &source, "SELECT id,source_design_id FROM diy_design WHERE id=?", next); e != nil {
-				return e
-			}
-			design.SourceDesignId = source.Source
-			designID = source.ID
-		}
-		if design.SourceDesignId != 0 {
-			return common.ErrParam
-		}
+	publicationID, designID := publicationSnapshotForReward(o.DesignSnapshot)
+	if publicationID < 1 || designID < 1 {
+		return nil
 	}
 	base := int64(math.Round(o.MaterialFee * 100))
 	amount := RewardAmount(base, p.RateBps, p.Cap)
 	if amount <= 0 && p.Kind != "coupon" {
 		return nil
 	}
-	_, e = tx.ExecCtx(ctx, `INSERT INTO creator_reward(order_id,order_no,design_id,creator_id,kind,rate_bps,cap_cents,wait_days,coupon_id,policy_revision,base_cents,amount_cents) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, o.Id, o.OrderNo, designID, o.CreatorId, p.Kind, p.RateBps, p.Cap, p.WaitDays, p.CouponID, p.Revision, base, amount)
+	_, e = tx.ExecCtx(ctx, `INSERT INTO creator_reward(order_id,order_no,design_id,creator_id,kind,rate_bps,cap_cents,wait_days,coupon_id,policy_revision,base_cents,amount_cents,source_publication_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, o.Id, o.OrderNo, designID, o.CreatorId, p.Kind, p.RateBps, p.Cap, p.WaitDays, p.CouponID, p.Revision, base, amount, publicationID)
 	return e
 }
 
