@@ -13,18 +13,26 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
 
-// Opt-in test: ONLY uses the disposable local database on port 13386.
-// Provision the four DIY tables and 20260911_diy_studio.sql before running.
+// Opt-in test: ONLY uses the disposable database created by the publication
+// script, or the historical dedicated local test port 13386.
 func TestStudioIntegration(t *testing.T) {
 	if os.Getenv("DIY_STUDIO_TEST") != "1" {
 		t.Skip("requires disposable MySQL on 127.0.0.1:13386")
 	}
 	ctx := context.Background()
-	db := sqlx.NewMysql("root:@tcp(127.0.0.1:13386)/askxuan_diy?charset=utf8mb4&parseTime=false&loc=Local")
+	dsn := os.Getenv("DIY_PUBLICATION_TEST_DSN")
+	if dsn == "" {
+		dsn = "root:@tcp(127.0.0.1:13386)/askxuan_diy?charset=utf8mb4&parseTime=false&loc=Local"
+	}
+	if !strings.Contains(dsn, "tcp(127.0.0.1:") || !strings.Contains(dsn, "/askxuan_diy?") {
+		t.Fatal("local test schema only")
+	}
+	db := sqlx.NewMysql(dsn)
 	for _, table := range []string{"diy_order", "diy_design", "material_sku", "material"} {
 		if _, err := db.ExecCtx(ctx, "DELETE FROM "+table); err != nil {
 			t.Fatal(err)
@@ -124,10 +132,40 @@ func TestStudioIntegration(t *testing.T) {
 	call("POST", path+"/copy", other, map[string]any{}, false)
 	call("POST", "/diy/orders/availability", other, map[string]any{"designId": id}, false)
 	call("PUT", path+"/status", other, map[string]any{"revision": 1, "status": "public"}, false)
+	call("PUT", path+"/status", owner, map[string]any{"revision": 1, "status": "public"}, false)
+	if d["publicationEligibility"].(map[string]any)["reason"] != "order_required" {
+		t.Fatal("missing authoritative publishing gate", d)
+	}
+	// Fixture a confirmed, genuinely payable channel in the isolated database.
+	// This is an integration state fixture, not a real payment gateway execution.
+	design, err := s.DiyDesignModel.FindOne(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	designSnapshot, _ := json.Marshal(design)
+	priceSnapshot, _ := json.Marshal(map[string]any{"materialFee": 28, "blessFee": 0, "totalFee": 28, "items": []map[string]any{
+		{"materialId": mat.Id, "spec": "10mm", "quantity": 1, "unitPrice": 25},
+		{"materialId": cord.Id, "spec": "1mm", "quantity": 1, "unitPrice": 3},
+	}})
+	order, err := s.DiyOrderModel.Insert(ctx, &model.DiyOrder{OrderNo: fmt.Sprintf("PUBHTTP%d", time.Now().UnixNano()), UserId: "99001", DesignId: id, MaterialFee: 28, TotalFee: 28, Status: model.DiyStatusPendingReview, PaymentStatus: "success", AddressId: 1, DesignSnapshot: string(designSnapshot), PricingSnapshot: string(priceSnapshot)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = db.ExecCtx(ctx, "INSERT INTO askxuan_payment.payment(payment_no,user_id,order_type,order_no,amount,channel,status) VALUES(?,'99001','diy_order',?,28,'alipay','success')", order.OrderNo, order.OrderNo); err != nil {
+		t.Fatal(err)
+	}
+	call("PUT", path+"/status", owner, map[string]any{"revision": 1, "status": "public"}, false)
+	if _, err = db.ExecCtx(ctx, "UPDATE diy_order SET status='in_making' WHERE id=?", order.Id); err != nil {
+		t.Fatal(err)
+	}
 	call("PUT", path+"/status", owner, map[string]any{"revision": 1, "status": "public"}, true)
+	public := call("GET", path+"?view=published", owner, nil, true)
+	if public["publicationEligibility"] != nil || public["publication"] == nil {
+		t.Fatal("published view leaked eligibility or omitted fixed version", public)
+	}
 	call("GET", path, "", nil, true)
 	copy := call("POST", path+"/copy", other, map[string]any{}, true)
-	if copy["userId"] != "99002" || copy["status"] != "private" || int64(copy["sourceDesignId"].(float64)) != id {
+	if copy["userId"] != "99002" || copy["status"] != "private" || int64(copy["sourceDesignId"].(float64)) != id || copy["sourcePublicationId"].(float64) < 1 || copy["publicationEligibility"].(map[string]any)["canPublish"] != false {
 		t.Fatalf("copy ownership: %#v", copy)
 	}
 	save["id"] = id
@@ -137,6 +175,10 @@ func TestStudioIntegration(t *testing.T) {
 	call("GET", "/admin/diy/designs", admin, nil, true)
 	call("PUT", "/admin"+path+"/status", admin, map[string]any{"revision": 2, "status": "rejected"}, true)
 	call("GET", path, "", nil, false)
+	moderated := call("GET", path, owner, nil, true)["publicationEligibility"].(map[string]any)
+	if moderated["canPublish"] != false || moderated["reason"] != "moderation_required" {
+		t.Fatal("moderation missing from authoritative eligibility", moderated)
+	}
 	call("GET", fmt.Sprintf("/diy/designs/%.0f", copy["id"]), other, nil, true)
 	call("PUT", path+"/status", owner, map[string]any{"revision": 3, "status": "public"}, false)
 	save["revision"] = 3
@@ -144,12 +186,41 @@ func TestStudioIntegration(t *testing.T) {
 	if _, err = db.ExecCtx(ctx, "UPDATE material_sku SET stock=0 WHERE material_id=?", mat.Id); err != nil {
 		t.Fatal(err)
 	}
-	call("PUT", path+"/status", owner, map[string]any{"revision": 4, "status": "public"}, false)
+	call("PUT", path+"/status", owner, map[string]any{"revision": 4, "status": "public"}, true)
+	availability := call("POST", "/diy/orders/availability", other, map[string]any{"designId": id}, true)
+	if availability["orderable"] != false {
+		t.Fatal("publishing reserved or bypassed depleted stock")
+	}
 	if _, err = db.ExecCtx(ctx, "UPDATE material_sku SET stock=50 WHERE material_id=?", mat.Id); err != nil {
 		t.Fatal(err)
 	}
-	call("PUT", path+"/status", owner, map[string]any{"revision": 4, "status": "public"}, true)
-	t.Log("PASS: verified JWT ownership, canonical pricing/quantities, private access, publish, share read, copy isolation, stale revision, moderation and stock gates")
+	frozen := call("GET", path+"?view=published", owner, nil, true)
+	save["revision"], save["name"], save["status"] = 5, "草稿新名字", "private"
+	call("POST", "/diy/designs", owner, save, true)
+	draft := call("GET", path, owner, nil, true)
+	stillPublished := call("GET", path+"?view=published", owner, nil, true)
+	if draft["status"] != "public" || draft["draftChanged"] != true || draft["name"] != "草稿新名字" || stillPublished["name"] != frozen["name"] || stillPublished["designData"] != frozen["designData"] {
+		t.Fatal("saving draft altered public snapshot")
+	}
+	afterEditCopy := call("POST", path+"/copy", other, map[string]any{}, true)
+	if afterEditCopy["name"] != frozen["name"].(string)+" · 副本" {
+		t.Fatal("copy took mutable owner draft")
+	}
+	call("PUT", path+"/status", owner, map[string]any{"revision": 6, "status": "private"}, true)
+	call("GET", path+"?view=published", owner, nil, false)
+	var stored string
+	if err = db.QueryRowCtx(ctx, &stored, "SELECT design_snapshot FROM diy_order WHERE id=?", order.Id); err != nil || stored != string(designSnapshot) {
+		t.Fatal("unpublishing changed paid order", err)
+	}
+	if _, err = db.ExecCtx(ctx, "UPDATE diy_design SET status='public',publication_id=0 WHERE id=?", id); err != nil {
+		t.Fatal(err)
+	}
+	legacy := call("GET", path, owner, nil, true)
+	if legacy["status"] != "private" || legacy["publication"] != nil || legacy["draftChanged"] != false {
+		t.Fatal("unqualified legacy work mislabelled as published")
+	}
+	call("GET", path, "", nil, false)
+	t.Log("PASS: JWT ownership, canonical pricing, paid and approved gate, fixed published view, copy isolation, CAS, moderation, stock checkout gate, draft/public independence, unpublish and legacy response")
 	if fixture := os.Getenv("DIY_STUDIO_BROWSER_FIXTURE"); fixture != "" {
 		raw, _ := json.Marshal(map[string]any{"owner": owner, "other": other, "admin": admin, "designId": id, "materialId": mat.Id, "cordId": cord.Id})
 		if err = os.WriteFile(fixture, raw, 0600); err != nil {

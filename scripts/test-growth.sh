@@ -20,6 +20,7 @@ docker exec -i "$container" mysql -uroot askxuan < db/init.sql
 sed '/^GRANT /,$d' scripts/db/20260926_balance_wallet.sql | docker exec -i "$container" mysql -uroot
 # Creator rewards predate growth but their additive tables are not in init.sql.
 sed -n '/^CREATE TABLE IF NOT EXISTS askxuan_diy.creator_reward_policy/,$p' scripts/db/20261013_wishes_creator_rewards.sql | sed '/^GRANT /d' | docker exec -i "$container" mysql -uroot
+docker exec -i "$container" mysql -uroot < scripts/db/20261020_diy_publication_gate.sql
 port=$(docker port "$container" 3306/tcp | sed 's/.*://')
 export GROWTH_TEST_ISOLATED=1
 export GROWTH_TEST_DSN="root@tcp(127.0.0.1:$port)/askxuan_payment?charset=utf8mb4&parseTime=false"

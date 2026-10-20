@@ -2,18 +2,22 @@ package types
 
 // DiyDesign DIY设计
 type DiyDesign struct {
-	Revision         int64   `json:"revision"`
-	SourceDesignId   int64   `json:"sourceDesignId"`
-	Description      string  `json:"description"`
-	Id               int64   `json:"id"`
-	DesignNo         string  `json:"designNo"`
-	UserId           string  `json:"userId"`
-	Name             string  `json:"name"`
-	DesignData       string  `json:"designData"`
-	TotalPrice       float64 `json:"totalPrice"`
-	Status           string  `json:"status"`
-	BlessServiceCode string  `json:"blessServiceCode"`
-	CreateTime       string  `json:"createTime"`
+	PublicationEligibility *PublicationEligibility `json:"publicationEligibility,omitempty"`
+	Publication            *DesignPublication      `json:"publication,omitempty"`
+	DraftChanged           bool                    `json:"draftChanged"`
+	SourcePublicationId    int64                   `json:"sourcePublicationId"`
+	Revision               int64                   `json:"revision"`
+	SourceDesignId         int64                   `json:"sourceDesignId"`
+	Description            string                  `json:"description"`
+	Id                     int64                   `json:"id"`
+	DesignNo               string                  `json:"designNo"`
+	UserId                 string                  `json:"userId"`
+	Name                   string                  `json:"name"`
+	DesignData             string                  `json:"designData"`
+	TotalPrice             float64                 `json:"totalPrice"`
+	Status                 string                  `json:"status"`
+	BlessServiceCode       string                  `json:"blessServiceCode"`
+	CreateTime             string                  `json:"createTime"`
 }
 
 // DiyOrder DIY订单
@@ -120,20 +124,24 @@ type DesignListReq struct {
 
 // MyDesignItem 我的设计（含最新订单信息）
 type MyDesignItem struct {
-	Revision         int64   `json:"revision"`
-	SourceDesignId   int64   `json:"sourceDesignId"`
-	Description      string  `json:"description"`
-	Id               int64   `json:"id"`
-	DesignNo         string  `json:"designNo"`
-	Name             string  `json:"name"`
-	DesignData       string  `json:"designData"`
-	TotalPrice       float64 `json:"totalPrice"`
-	Status           string  `json:"status"`
-	BlessServiceCode string  `json:"blessServiceCode,omitempty"`
-	CreateTime       string  `json:"createTime"`
-	UpdateTime       string  `json:"updateTime"`
-	OrderNo          string  `json:"orderNo,omitempty"`
-	OrderStatus      string  `json:"orderStatus,omitempty"`
+	PublicationEligibility *PublicationEligibility `json:"publicationEligibility,omitempty"`
+	Publication            *DesignPublication      `json:"publication,omitempty"`
+	DraftChanged           bool                    `json:"draftChanged"`
+	SourcePublicationId    int64                   `json:"sourcePublicationId"`
+	Revision               int64                   `json:"revision"`
+	SourceDesignId         int64                   `json:"sourceDesignId"`
+	Description            string                  `json:"description"`
+	Id                     int64                   `json:"id"`
+	DesignNo               string                  `json:"designNo"`
+	Name                   string                  `json:"name"`
+	DesignData             string                  `json:"designData"`
+	TotalPrice             float64                 `json:"totalPrice"`
+	Status                 string                  `json:"status"`
+	BlessServiceCode       string                  `json:"blessServiceCode,omitempty"`
+	CreateTime             string                  `json:"createTime"`
+	UpdateTime             string                  `json:"updateTime"`
+	OrderNo                string                  `json:"orderNo,omitempty"`
+	OrderStatus            string                  `json:"orderStatus,omitempty"`
 }
 
 // MyDesignListResp 我的设计列表
@@ -181,7 +189,8 @@ type DesignSaveResp struct {
 }
 
 type DesignDetailReq struct {
-	Id int64 `path:"id"`
+	Id   int64  `path:"id"`
+	View string `form:"view,optional"`
 }
 
 type MaterialListReq struct {
@@ -420,4 +429,20 @@ type OrderLogistics struct {
 	ExpressCompany string `json:"expressCompany"`
 	TrackingNo     string `json:"trackingNo"`
 	ShipTime       string `json:"shipTime"`
+}
+
+// PublicationEligibility is server-authoritative and owner-only.
+type PublicationEligibility struct {
+	CanPublish     bool   `json:"canPublish"`
+	Reason         string `json:"reason"`
+	Message        string `json:"message"`
+	OrderId        int64  `json:"orderId,omitempty"`
+	OrderNo        string `json:"orderNo,omitempty"`
+	DesignRevision int64  `json:"designRevision,omitempty"`
+}
+type DesignPublication struct {
+	Id             int64   `json:"id"`
+	DesignRevision int64   `json:"designRevision"`
+	MaterialFee    float64 `json:"materialFee"`
+	PublishedAt    string  `json:"publishedAt"`
 }

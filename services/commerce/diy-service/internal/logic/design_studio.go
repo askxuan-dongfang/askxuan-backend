@@ -29,9 +29,6 @@ func studioUser(ctx context.Context) string {
 	}
 	return strconv.FormatInt(id, 10)
 }
-func canReadDesign(d *model.DiyDesign, user string) bool {
-	return d != nil && (d.Status == model.DesignStatusPublic || (user != "" && d.UserId == user))
-}
 
 type studioBead struct {
 	SlotId       string  `json:"slotId"`
@@ -176,6 +173,11 @@ func (l *DesignStudio) Save(req *types.DesignSaveReq) (*types.DesignSaveResp, er
 	d := &model.DiyDesign{Id: req.Id, UserId: user, Name: name, DesignData: raw, TotalPrice: price, Status: model.DesignStatusPrivate, Description: strings.TrimSpace(req.Description)}
 	if previous != nil {
 		d.SourceDesignId = previous.SourceDesignId
+		d.SourcePublicationId = previous.SourcePublicationId
+		d.PublicationId = previous.PublicationId
+		if previous.Status == model.DesignStatusPublic {
+			d.Status = model.DesignStatusPublic
+		}
 		err = l.svc.DiyDesignModel.UpdateOwned(l.ctx, d, req.Revision)
 	} else {
 		d, err = l.svc.DiyDesignModel.Insert(l.ctx, d)
@@ -201,42 +203,14 @@ func (l *DesignStudio) ChangeStatus(id, revision int64, status string, admin boo
 	if status != model.DesignStatusPublic && status != model.DesignStatusPrivate && !(admin && status == model.DesignStatusRejected) {
 		return nil, common.ErrParam
 	}
-	if !admin && d.Status == model.DesignStatusRejected && status == model.DesignStatusPublic {
-		return nil, common.NewBizError(40014, "请修改被下架的作品后重新发布")
-	}
 	if revision < 1 {
 		return nil, common.ErrParam
 	}
-	if status == model.DesignStatusPublic {
-		// Stock and current prices are checked before listing; final checkout still
-		// checks them again transactionally, without reserving inventory here.
-		items, e := parseDesignOrderItems(d.DesignData)
-		if e != nil || len(items) == 0 {
-			return nil, common.ErrParam
-		}
-		availability, e := model.CheckPricedOrderItems(l.ctx, l.svc.DB, toPricedInputs(items))
-		if e != nil {
-			return nil, common.ErrSystem
-		}
-		if !availability.Orderable {
-			return nil, common.NewBizError(40014, "部分材料缺货或已下架，请替换后发布")
-		}
-		if doc, e := decodeStudioDocument(d.DesignData); e == nil && doc.Version == 2 {
-			raw, price, e := l.canonical(d.DesignData)
-			if e != nil {
-				return nil, e
-			}
-			d.DesignData, d.TotalPrice = raw, price
-		} else {
-			d.TotalPrice = availability.MaterialFee
-		}
-	}
-	d.Status = status
-	if err = l.svc.DiyDesignModel.UpdateOwned(l.ctx, d, revision); err != nil {
+	updated, err := model.ChangePublicationStatus(l.ctx, l.svc.DB, id, revision, user, status, admin)
+	if err != nil {
 		return nil, err
 	}
-	t := toTypesDesign(d)
-	return &t, nil
+	return designResponse(l.ctx, l.svc, updated, user == updated.UserId)
 }
 
 func (l *DesignStudio) Copy(id int64) (*types.DiyDesign, error) {
@@ -245,17 +219,30 @@ func (l *DesignStudio) Copy(id int64) (*types.DiyDesign, error) {
 		return nil, common.ErrUnauthorized
 	}
 	source, e := l.svc.DiyDesignModel.FindOne(l.ctx, id)
-	if e != nil || !canReadDesign(source, user) {
+	if e != nil {
 		return nil, ErrDesignNotFound
+	}
+	if source.Status == model.DesignStatusPublic {
+		published, _, err := model.PublishedDesign(l.ctx, l.svc.DB, source)
+		if err == nil {
+			source = published
+		} else if source.UserId != user {
+			return nil, ErrDesignNotFound
+		}
+	} else if source.UserId != user {
+		return nil, ErrDesignNotFound
+	}
+	sourcePublicationId := source.SourcePublicationId
+	if source.PublicationId > 0 && source.Status == model.DesignStatusPublic {
+		sourcePublicationId = source.PublicationId
 	}
 	name := []rune(source.Name)
 	if len(name) > 55 {
 		name = name[:55]
 	}
-	d, e := l.svc.DiyDesignModel.Insert(l.ctx, &model.DiyDesign{UserId: user, Name: string(name) + " · 副本", DesignData: source.DesignData, TotalPrice: source.TotalPrice, Status: model.DesignStatusPrivate, SourceDesignId: source.Id, Description: source.Description})
+	d, e := l.svc.DiyDesignModel.Insert(l.ctx, &model.DiyDesign{UserId: user, Name: string(name) + " · 副本", DesignData: source.DesignData, TotalPrice: source.TotalPrice, Status: model.DesignStatusPrivate, SourceDesignId: source.Id, SourcePublicationId: sourcePublicationId, Description: source.Description})
 	if e != nil {
 		return nil, common.ErrSystem
 	}
-	t := toTypesDesign(d)
-	return &t, nil
+	return designResponse(l.ctx, l.svc, d, true)
 }

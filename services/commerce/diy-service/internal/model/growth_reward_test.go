@@ -44,7 +44,7 @@ func TestCreatorNetGrowthMySQL(t *testing.T) {
 	check(db.QueryRowCtx(ctx, &orderID, "SELECT id FROM diy_order WHERE order_no=?", no))
 	exec("UPDATE creator_reward_policy SET enabled=1,kind='cash',rate_bps=500,cap_cents=2000,wait_days=7")
 	check(db.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
-		return SnapshotReward(ctx, tx, &DiyOrder{Id: orderID, OrderNo: no, DesignId: 9, UserId: "buyer", CreatorId: creator, MaterialFee: 100})
+		return SnapshotReward(ctx, tx, &DiyOrder{Id: orderID, OrderNo: no, DesignId: 9, UserId: "buyer", CreatorId: creator, MaterialFee: 100, DesignSnapshot: `{"rewardPublicationId":1,"rewardDesignId":9}`})
 	}))
 	exec("INSERT INTO askxuan_payment.payment(payment_no,user_id,order_type,order_no,amount,channel,status) VALUES(?,'buyer','diy_order',?,92,'balance','success')", no, no)
 	exec("INSERT INTO askxuan_payment.growth_quote(quote_id,user_id,order_type,order_no,root_checkout_id,rule_version,level,status,selected_kind,gross_cents,discount_cents,payable_cents,growth_base_cents,goods_net_cents,business_month,snapshot_json,expires_at,created_at) VALUES(?,'buyer','diy_order',?,?,'growth-v1',5,'paid','level',10000,800,9200,9200,9200,'2026-10','{}',0,1)", no, no, no)

@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"regexp"
 	"strings"
@@ -28,6 +29,7 @@ func TestCreatePricedOrderIgnoresSnapshotPrice(t *testing.T) {
 	conn := sqlx.NewSqlConnFromDB(db)
 
 	mock.ExpectBegin()
+	expectOrderDraft(mock, 2)
 	mock.ExpectQuery("SELECT id,name,spec,unit_price.*FROM material").WithArgs(int64(1)).WillReturnRows(
 		sqlmock.NewRows([]string{"id", "name", "spec", "unit_price", "unit", "category", "five_elements", "image", "stock", "status"}).
 			AddRow(1, "紫檀", "10mm", 28.0, "颗", "main_bead", "wood", "", 10, MaterialStatusOnShelf),
@@ -37,16 +39,14 @@ func TestCreatePricedOrderIgnoresSnapshotPrice(t *testing.T) {
 	)
 	mock.ExpectExec("UPDATE material SET stock=stock-").WithArgs(2, int64(1), MaterialStatusOnShelf, 2).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("UPDATE material_sku SET stock=stock-").WithArgs(2, int64(7), 2).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery("SELECT config_value FROM diy_config").WillReturnRows(sqlmock.NewRows([]string{"config_value"}).AddRow("0"))
 	mock.ExpectExec("INSERT INTO askxuan_diy.diy_order").WillReturnResult(sqlmock.NewResult(11, 1))
 	mock.ExpectExec("INSERT INTO askxuan_diy.diy_order_item").WillReturnResult(sqlmock.NewResult(21, 1))
-	mock.ExpectQuery("SELECT enabled,kind,rate_bps").WillReturnRows(sqlmock.NewRows([]string{"enabled","kind","rate_bps","cap_cents","wait_days","min_withdraw_cents","coupon_id","revision"}).AddRow(false,"cash",500,2000,7,100,0,1))
- mock.ExpectCommit()
+	mock.ExpectCommit()
 
 	result, err := CreatePricedOrder(context.Background(), conn, NewDiyOrderModel(conn), NewDiyOrderItemModel(conn), PricedOrderInput{
-		UserId: "buyer", Design: &DiyDesign{Id: 9, UserId: "creator", TotalPrice: 2},
+		UserId: "buyer", Design: testOrderDraft(2),
 		Items:     []PricedOrderItemInput{{MaterialId: 1, Spec: "10mm", Quantity: 2, SnapshotUnitPrice: 1}},
-		AddressId: 1, Source: "design_square", CreatorId: "creator",
+		AddressId: 1, Source: "custom",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -128,6 +128,7 @@ func TestCreatePricedOrderRollsBackWhenItemInsertFails(t *testing.T) {
 	conn := sqlx.NewSqlConnFromDB(db)
 
 	mock.ExpectBegin()
+	expectOrderDraft(mock, 1)
 	mock.ExpectQuery("SELECT id,name,spec,unit_price.*FROM material").WillReturnRows(
 		sqlmock.NewRows([]string{"id", "name", "spec", "unit_price", "unit", "category", "five_elements", "image", "stock", "status"}).
 			AddRow(1, "紫檀", "10mm", 28.0, "颗", "main_bead", "wood", "", 10, MaterialStatusOnShelf),
@@ -139,7 +140,7 @@ func TestCreatePricedOrderRollsBackWhenItemInsertFails(t *testing.T) {
 	mock.ExpectRollback()
 
 	_, err = CreatePricedOrder(context.Background(), conn, NewDiyOrderModel(conn), NewDiyOrderItemModel(conn), PricedOrderInput{
-		UserId: "buyer", Design: &DiyDesign{Id: 9},
+		UserId: "buyer", Design: testOrderDraft(1),
 		Items:     []PricedOrderItemInput{{MaterialId: 1, Spec: "10mm", Quantity: 1, SnapshotUnitPrice: 28}},
 		AddressId: 1, Source: "custom",
 	})
@@ -237,4 +238,17 @@ func TestCancelAndRestockRollsBackOnInventoryFailure(t *testing.T) {
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func testOrderDraft(quantity int) *DiyDesign {
+	beads := make([]map[string]any, quantity)
+	for i := range beads {
+		beads[i] = map[string]any{"materialId": 1, "spec": "10mm"}
+	}
+	raw, _ := json.Marshal(map[string]any{"version": 2, "wristSizeMm": 160, "fitAllowanceMm": 8, "beads": beads})
+	return &DiyDesign{Id: 9, UserId: "buyer", TotalPrice: 2, Revision: 1, Status: DesignStatusPrivate, DesignData: string(raw), BlessServiceCode: "E001"}
+}
+func expectOrderDraft(mock sqlmock.Sqlmock, quantity int) {
+	d := testOrderDraft(quantity)
+	mock.ExpectQuery("SELECT .* FROM askxuan_diy.diy_design WHERE id=.*FOR UPDATE").WithArgs(d.Id).WillReturnRows(sqlmock.NewRows(strings.Split(strings.ReplaceAll(designFields, " ", ""), ",")).AddRow(d.Id, "D9", d.UserId, "test", d.DesignData, d.TotalPrice, d.Status, d.BlessServiceCode, "2026-10-20 00:00:00", "2026-10-20 00:00:00", d.Revision, int64(0), "", int64(0), int64(0)))
 }

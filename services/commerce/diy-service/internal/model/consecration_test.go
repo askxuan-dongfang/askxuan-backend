@@ -47,6 +47,7 @@ func TestConsecrationPricingAndSnapshot(t *testing.T) {
 			conn := sqlx.NewSqlConnFromDB(db)
 			ctx := context.Background()
 			mock.ExpectBegin()
+			expectOrderDraft(mock, 1)
 			mock.ExpectQuery("SELECT id,name,spec,unit_price.*FROM material").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "spec", "unit_price", "unit", "category", "five_elements", "image", "stock", "status"}).AddRow(1, "珠子", "10mm", 28, "颗", "main_bead", "wood", "", 10, "on_shelf"))
 			mock.ExpectQuery("SELECT id,material_id,spec,price,stock FROM material_sku").WillReturnRows(sqlmock.NewRows([]string{"id", "material_id", "spec", "price", "stock"}))
 			mock.ExpectExec("UPDATE material SET stock=stock-").WillReturnResult(sqlmock.NewResult(0, 1))
@@ -64,7 +65,7 @@ func TestConsecrationPricingAndSnapshot(t *testing.T) {
 				mock.ExpectExec("INSERT INTO askxuan_diy.diy_order_item").WillReturnResult(sqlmock.NewResult(21, 1))
 				mock.ExpectCommit()
 			}
-			design := &DiyDesign{Id: 9, BlessServiceCode: "E001"}
+			design := testOrderDraft(1)
 			result, err := CreatePricedOrder(ctx, conn, NewDiyOrderModel(conn), NewDiyOrderItemModel(conn), PricedOrderInput{UserId: "buyer", Design: design, Items: []PricedOrderItemInput{{MaterialId: 1, Spec: "10mm", Quantity: 1, SnapshotUnitPrice: 28}}, BlessServiceCode: tc.code, ExpectedBlessFee: &tc.expected, AddressId: 1, Source: "custom"})
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("got %v want %v", err, tc.want)
@@ -132,9 +133,14 @@ func TestConsecrationMySQL(t *testing.T) {
 	if len(selected) != 2 || selected["temple"].Price != 39.50 || selected["master"].Price != 0 {
 		t.Fatalf("wrong catalog %+v", selected)
 	}
+	design, e := NewDiyDesignModel(db).Insert(ctx, &DiyDesign{UserId: "consecration-test", Name: "consecration fixture",
+		DesignData: testOrderDraft(1).DesignData, TotalPrice: 28, Status: DesignStatusPrivate})
+	if e != nil {
+		t.Fatal(e)
+	}
 	for _, provider := range []string{"temple", "master"} {
 		service := selected[provider]
-		in := PricedOrderInput{UserId: "consecration-test", Design: &DiyDesign{Id: 1, BlessServiceCode: "E001"}, Items: []PricedOrderItemInput{{MaterialId: 1, Spec: "10mm", Quantity: 1, SnapshotUnitPrice: 28}}, BlessServiceCode: service.ServiceCode, ExpectedBlessFee: &service.Price, AddressId: 1, Source: "custom"}
+		in := PricedOrderInput{UserId: "consecration-test", Design: design, Items: []PricedOrderItemInput{{MaterialId: 1, Spec: "10mm", Quantity: 1, SnapshotUnitPrice: 28}}, BlessServiceCode: service.ServiceCode, ExpectedBlessFee: &service.Price, AddressId: 1, Source: "custom"}
 		result, e := CreatePricedOrder(ctx, db, NewDiyOrderModel(db), NewDiyOrderItemModel(db), in)
 		if e != nil {
 			t.Fatal(e)

@@ -19,25 +19,27 @@ const (
 	DesignStatusRejected      = "rejected"       // 审核驳回
 )
 
-const designFields = "id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description"
+const designFields = "id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description, publication_id, source_publication_id"
 
 const diyDesignTable = "askxuan_diy.diy_design"
 
 // DiyDesign DIY设计表
 type DiyDesign struct {
-	Revision         int64   `db:"revision" json:"revision"`
-	SourceDesignId   int64   `db:"source_design_id" json:"sourceDesignId"`
-	Description      string  `db:"description" json:"description"`
-	Id               int64   `db:"id" json:"id"`
-	DesignNo         string  `db:"design_no" json:"designNo"`
-	UserId           string  `db:"user_id" json:"userId"`
-	Name             string  `db:"name" json:"name"`
-	DesignData       string  `db:"design_data" json:"designData"`
-	TotalPrice       float64 `db:"total_price" json:"totalPrice"`
-	Status           string  `db:"status" json:"status"`
-	BlessServiceCode string  `db:"bless_service_code" json:"blessServiceCode"`
-	CreateTime       string  `db:"create_time" json:"createTime"`
-	UpdateTime       string  `db:"update_time" json:"updateTime"`
+	PublicationId       int64   `db:"publication_id" json:"publicationId"`
+	SourcePublicationId int64   `db:"source_publication_id" json:"sourcePublicationId"`
+	Revision            int64   `db:"revision" json:"revision"`
+	SourceDesignId      int64   `db:"source_design_id" json:"sourceDesignId"`
+	Description         string  `db:"description" json:"description"`
+	Id                  int64   `db:"id" json:"id"`
+	DesignNo            string  `db:"design_no" json:"designNo"`
+	UserId              string  `db:"user_id" json:"userId"`
+	Name                string  `db:"name" json:"name"`
+	DesignData          string  `db:"design_data" json:"designData"`
+	TotalPrice          float64 `db:"total_price" json:"totalPrice"`
+	Status              string  `db:"status" json:"status"`
+	BlessServiceCode    string  `db:"bless_service_code" json:"blessServiceCode"`
+	CreateTime          string  `db:"create_time" json:"createTime"`
+	UpdateTime          string  `db:"update_time" json:"updateTime"`
 }
 
 // DiyDesignWithOrder 我的设计（含最新订单信息，无订单时 OrderNo/OrderStatus 为空）
@@ -82,8 +84,8 @@ func (m *defaultDiyDesignModel) Insert(ctx context.Context, data *DiyDesign) (*D
 	data.CreateTime = now
 	data.UpdateTime = now
 
-	query := fmt.Sprintf(`INSERT INTO %s (design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, diyDesignTable)
-	result, err := m.conn.ExecCtx(ctx, query, data.DesignNo, data.UserId, data.Name, data.DesignData, data.TotalPrice, data.Status, data.BlessServiceCode, data.CreateTime, data.UpdateTime, data.Revision, data.SourceDesignId, data.Description)
+	query := fmt.Sprintf(`INSERT INTO %s (design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description, publication_id, source_publication_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, diyDesignTable)
+	result, err := m.conn.ExecCtx(ctx, query, data.DesignNo, data.UserId, data.Name, data.DesignData, data.TotalPrice, data.Status, data.BlessServiceCode, data.CreateTime, data.UpdateTime, data.Revision, data.SourceDesignId, data.Description, data.PublicationId, data.SourcePublicationId)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +99,7 @@ func (m *defaultDiyDesignModel) Insert(ctx context.Context, data *DiyDesign) (*D
 
 func (m *defaultDiyDesignModel) FindOne(ctx context.Context, id int64) (*DiyDesign, error) {
 	var d DiyDesign
-	query := fmt.Sprintf(`SELECT id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description FROM %s WHERE id = ?`, diyDesignTable)
+	query := fmt.Sprintf(`SELECT id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description, publication_id, source_publication_id FROM %s WHERE id = ?`, diyDesignTable)
 	err := m.conn.QueryRowCtx(ctx, &d, query, id)
 	if err != nil {
 		return nil, err
@@ -106,22 +108,7 @@ func (m *defaultDiyDesignModel) FindOne(ctx context.Context, id int64) (*DiyDesi
 }
 
 func (m *defaultDiyDesignModel) FindListPublic(ctx context.Context, page, size int) ([]*DiyDesign, int64, error) {
-	countQuery := fmt.Sprintf(`SELECT COUNT(1) FROM %s WHERE status = ?`, diyDesignTable)
-	var total int64
-	if err := m.conn.QueryRowCtx(ctx, &total, countQuery, DesignStatusPublic); err != nil {
-		return nil, 0, err
-	}
-	if total == 0 {
-		return []*DiyDesign{}, 0, nil
-	}
-
-	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description FROM %s WHERE status = ? ORDER BY create_time DESC LIMIT ?, ?`, diyDesignTable)
-	var list []*DiyDesign
-	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, DesignStatusPublic, offset, size); err != nil {
-		return nil, 0, err
-	}
-	return list, total, nil
+	return findPublishedDesigns(ctx, m.conn, page, size)
 }
 
 func (m *defaultDiyDesignModel) FindListByUserWithOrders(ctx context.Context, userId string, page, size int) ([]*DiyDesignWithOrder, int64, error) {
@@ -135,11 +122,11 @@ func (m *defaultDiyDesignModel) FindListByUserWithOrders(ctx context.Context, us
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT d.id, d.design_no, d.user_id, d.name, d.design_data, d.total_price, d.status, d.bless_service_code, d.create_time, d.update_time, d.revision, d.source_design_id, d.description,
+	listQuery := fmt.Sprintf(`SELECT d.id, d.design_no, d.user_id, d.name, d.design_data, d.total_price, d.status, d.bless_service_code, d.create_time, d.update_time, d.revision, d.source_design_id, d.description, d.publication_id, d.source_publication_id,
 		COALESCE(o.order_no,'') AS order_no, COALESCE(o.status,'') AS order_status
 		FROM %s d
-		LEFT JOIN askxuan_diy.diy_order o ON o.design_id = d.id
-			AND o.id = (SELECT MAX(id) FROM askxuan_diy.diy_order o2 WHERE o2.design_id = d.id)
+		LEFT JOIN askxuan_diy.diy_order o ON o.design_id = d.id AND o.user_id = d.user_id
+			AND o.id = (SELECT MAX(id) FROM askxuan_diy.diy_order o2 WHERE o2.design_id = d.id AND o2.user_id = d.user_id)
 		WHERE d.user_id = ? ORDER BY d.update_time DESC LIMIT ?, ?`, diyDesignTable)
 	var list []*DiyDesignWithOrder
 	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, userId, offset, size); err != nil {

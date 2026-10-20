@@ -5,6 +5,11 @@ on:
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
+    inputs:
+      recovery:
+        description: 'Build a private draft package after all checks for operator relay'
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -12,6 +17,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
+    if: github.event_name != 'workflow_dispatch' || inputs.recovery != true
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -24,6 +30,7 @@ jobs:
           cache-dependency-path: '**/go.sum'
       - run: python3 scripts/ci/release.py backend
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: github.event_name != 'pull_request'
         with:
           name: ecs-release
           path: release.tgz
@@ -169,8 +176,19 @@ jobs:
         working-directory: services/content/temple-service
         env:
           ASKXUAN_DIRECTORY_TEST_DSN: 'root@tcp(127.0.0.1:13319)/askxuan_temple?charset=utf8mb4'
+  diy-publication-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.work
+          cache-dependency-path: '**/go.sum'
+      - name: Verify paid publication, frozen versions and creator attribution
+        run: bash scripts/test-diy-publication.sh
   deploy:
-    needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql]
+    needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql, diy-publication-mysql]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ECS_DEPLOY_ENABLED == 'true'
     environment: production
     runs-on: ubuntu-latest
@@ -186,3 +204,32 @@ jobs:
           ECS_DEPLOY_KEY: ${{ secrets.ECS_DEPLOY_KEY }}
           ECS_KNOWN_HOSTS: ${{ secrets.ECS_KNOWN_HOSTS }}
         run: bash scripts/ci/publish.sh release.tgz
+  recover-package:
+    if: github.event_name == 'workflow_dispatch' && inputs.recovery == true && github.ref == 'refs/heads/main' && vars.ECS_DEPLOY_ENABLED == 'true'
+    needs: [test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql, diy-publication-mysql]
+    environment: production
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.work
+          cache-dependency-path: '**/go.sum'
+      - run: python3 scripts/ci/release.py backend
+      - name: Retain verified package for operator relay
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
+        run: |
+          test "$PRIVATE_REPOSITORY" = true
+          tag="ci-backend-relay-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          sha256sum release.tgz > release.sha256
+          gh release create "$tag" release.tgz release.sha256 --draft --target "$GITHUB_SHA" \
+            --title "Verified backend package $GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT" \
+            --notes "Private operator relay after all backend test jobs. Apply the reviewed additive schema migration and receiver contract baseline first, then verify source and manifest hashes and publish through the existing ECS receiver."
