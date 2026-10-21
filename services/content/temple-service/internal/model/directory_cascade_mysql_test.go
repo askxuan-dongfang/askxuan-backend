@@ -32,6 +32,9 @@ func TestDirectoryCascadeMySQL(t *testing.T) {
 		}
 	}
 	exec("CREATE TABLE IF NOT EXISTS directory_tag(code VARCHAR(32) PRIMARY KEY,tag_group VARCHAR(16),name VARCHAR(32),value VARCHAR(64),sort INT,status VARCHAR(16))")
+	// Reparenting also verifies existing provider relationships, including when
+	// this isolated catalog fixture has no providers yet.
+	exec("CREATE TABLE IF NOT EXISTS provider_directory_tag(provider_kind VARCHAR(16) NOT NULL,provider_code VARCHAR(64) NOT NULL,tag_code VARCHAR(32) NOT NULL,PRIMARY KEY(provider_kind,provider_code,tag_code)) ENGINE=InnoDB")
 	exec("DELETE FROM directory_tag WHERE code IN ('chan','quanzhen','test_tradition')")
 	exec("INSERT INTO directory_tag(code,tag_group,name,value,sort,status) VALUES('chan','tradition','禅宗','chan',10,'enabled'),('quanzhen','tradition','全真派','quanzhen',20,'enabled')")
 	migration, err := os.ReadFile("../../../../../scripts/db/20261019_directory_belief_cascade.sql")
