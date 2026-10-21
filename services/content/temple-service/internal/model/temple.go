@@ -56,14 +56,15 @@ type Temple struct {
 
 // TempleFilter 列表查询过滤条件
 type TempleFilter struct {
-	ServiceCode string
-	RegionCode  string
-	BeliefCode  string
-	Sect        string
-	Type        string
-	Region      string
-	Status      string // 为空时不筛选状态
-	Statuses    []string
+	TraditionCode string
+	ServiceCode   string
+	RegionCode    string
+	BeliefCode    string
+	Sect          string
+	Type          string
+	Region        string
+	Status        string // 为空时不筛选状态
+	Statuses      []string
 }
 
 func TemplePublicStatuses() []string {
@@ -167,10 +168,33 @@ func (m *defaultTempleModel) FindListByStatus(ctx context.Context, status string
 // Update 更新寺院信息
 func (m *defaultTempleModel) Update(ctx context.Context, data *Temple) error {
 	const query = `UPDATE ` + templeTable + ` SET name = ?, region = ?, type = ?, belief_code = ?, sect = ?, status = ?, address = ?, cover_image = ?, rating = ?, description = ? WHERE id = ?`
-	_, err := m.conn.ExecCtx(ctx, query,
-		data.Name, data.Region, data.Type, data.BeliefCode, data.Sect, data.Status,
-		data.Address, data.CoverImage, data.Rating, data.Description, data.Id)
-	return err
+	return m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		var previous string
+		if err := tx.QueryRowCtx(ctx, &previous, "SELECT belief_code FROM temple WHERE id=? AND code=? FOR UPDATE", data.Id, data.Code); err != nil {
+			return err
+		}
+		canonical, err := common.CanonicalBelief(data.BeliefCode)
+		if err != nil && previous != data.BeliefCode {
+			return err
+		}
+		old, _ := common.CanonicalBelief(previous)
+		if err == nil {
+			data.BeliefCode = canonical
+		}
+		if canonical != old {
+			existing, err := common.ProviderTraditions(ctx, tx, "temple", data.Code)
+			if err != nil {
+				return err
+			}
+			if err := common.ValidateTraditions(ctx, tx, canonical, existing, existing, previous, false); err != nil {
+				return err
+			}
+		}
+		_, err = tx.ExecCtx(ctx, query,
+			data.Name, data.Region, data.Type, data.BeliefCode, data.Sect, data.Status,
+			data.Address, data.CoverImage, data.Rating, data.Description, data.Id)
+		return err
+	})
 }
 
 // UpdateStatus 更新寺院状态
@@ -195,13 +219,20 @@ func buildTempleWhere(filter TempleFilter) (string, []interface{}) {
 		where += " AND EXISTS (SELECT 1 FROM temple_service ts WHERE ts.temple_code=temple.code AND ts.service_code=? AND ts.status='on_shelf')"
 		args = append(args, filter.ServiceCode)
 	}
-	if filter.BeliefCode != "" {
+	if filter.BeliefCode == "daoism" || filter.BeliefCode == "taoism" {
+		where += " AND belief_code IN (?,?)"
+		args = append(args, "daoism", "taoism")
+	} else if filter.BeliefCode != "" {
 		where += " AND belief_code = ?"
 		args = append(args, filter.BeliefCode)
 	}
 	if filter.Sect != "" {
 		where += " AND sect = ?"
 		args = append(args, filter.Sect)
+	}
+	if filter.TraditionCode != "" {
+		where += " AND EXISTS (SELECT 1 FROM askxuan_temple.provider_directory_tag pdt WHERE pdt.provider_kind='temple' AND pdt.provider_code=temple.code AND pdt.tag_code=?)"
+		args = append(args, filter.TraditionCode)
 	}
 	if filter.Type != "" {
 		where += " AND type = ?"

@@ -10,6 +10,7 @@ info (
 // ============ 法师基础 ============
 type (
     Master {
+        TraditionCodes []string `json:"traditionCodes,optional"`
         RegionCode string `json:"regionCode"`
         RegionName string `json:"regionName"`
         RegionInherited bool `json:"regionInherited"`
@@ -52,6 +53,7 @@ type (
     }
 
     PlatformMasterListReq {
+        TraditionCode string `form:"traditionCode,optional"`
         RegionCode string `form:"regionCode,optional"`
         BeliefCode     string `form:"beliefCode,optional"`
         Sect           string `form:"sect,optional"`
@@ -94,13 +96,14 @@ type (
     }
 
     AdminMasterCreateReq {
+        TraditionCodes []string `json:"traditionCodes,optional"`
         DharmaName  string   `json:"dharmaName"`
         LayName     string   `json:"layName"`
         TempleId    string   `json:"templeId"`
         TempleName  string   `json:"templeName,optional"`
         Position    string   `json:"position"`
         BeliefCode  string   `json:"beliefCode"`
-        Sect        string   `json:"sect"`
+        Sect        string   `json:"sect,optional"`
         Type        string   `json:"type"`
         Specialties []string `json:"specialties"`
         Avatar      string   `json:"avatar,optional"`
@@ -115,12 +118,13 @@ type (
     }
 
     AdminMasterUpdateReq {
+        TraditionCodes []string `json:"traditionCodes,optional"`
         Id          string   `path:"id"`
         DharmaName  string   `json:"dharmaName,optional"`
         LayName     string   `json:"layName,optional"`
         Position    string   `json:"position,optional"`
         BeliefCode  string   `json:"beliefCode,optional"`
-        Sect        string   `json:"sect,optional"`
+        Sect        *string   `json:"sect,optional"`
         Specialties []string `json:"specialties,optional"`
         Avatar      string   `json:"avatar,optional"`
         ConsultEnabled bool   `json:"consultEnabled,optional"`
@@ -272,6 +276,7 @@ type (
         Rating      float64  `json:"rating"`
     }
     MasterProfileUpdateReq {
+        TraditionCodes []string `json:"traditionCodes,optional"`
         Bio         *string   `json:"bio,optional"`
         Specialties []string `json:"specialties,optional"`
         Avatar      *string   `json:"avatar,optional"`

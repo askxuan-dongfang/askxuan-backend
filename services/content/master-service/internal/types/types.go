@@ -56,6 +56,7 @@ type ListResp struct {
 
 // PlatformMasterListReq 平台法师全量列表请求。
 type PlatformMasterListReq struct {
+	TraditionCode  string `form:"traditionCode,optional"`
 	RegionCode     string `form:"regionCode,optional"`
 	BeliefCode     string `form:"beliefCode,optional"`
 	Sect           string `form:"sect,optional"`
@@ -101,13 +102,14 @@ type AdminMasterListResp struct {
 
 // AdminMasterCreateReq 创建法师请求
 type AdminMasterCreateReq struct {
+	TraditionCodes         []string `json:"traditionCodes,optional"`
 	DharmaName             string   `json:"dharmaName"`
 	LayName                string   `json:"layName"`
 	TempleId               string   `json:"templeId"`
 	TempleName             string   `json:"templeName,optional"`
 	Position               string   `json:"position"`
 	BeliefCode             string   `json:"beliefCode"`
-	Sect                   string   `json:"sect"`
+	Sect                   string   `json:"sect,optional"`
 	Type                   string   `json:"type"`
 	Specialties            []string `json:"specialties"`
 	Avatar                 string   `json:"avatar,optional"`
@@ -129,12 +131,13 @@ type AdminMasterDetailReq struct {
 
 // AdminMasterUpdateReq 更新法师请求
 type AdminMasterUpdateReq struct {
+	TraditionCodes         []string `json:"traditionCodes,optional"`
 	Id                     string   `path:"id"`
 	DharmaName             string   `json:"dharmaName,optional"`
 	LayName                string   `json:"layName,optional"`
 	Position               string   `json:"position,optional"`
 	BeliefCode             string   `json:"beliefCode,optional"`
-	Sect                   string   `json:"sect,optional"`
+	Sect                   *string  `json:"sect,optional"`
 	Specialties            []string `json:"specialties,optional"`
 	Avatar                 string   `json:"avatar,optional"`
 	ConsultEnabled         bool     `json:"consultEnabled,optional"`
@@ -162,12 +165,13 @@ type PlatformMasterDetailReq struct {
 
 // PlatformMasterUpdateReq 平台编辑法师请求（野生大师无寺庙归属，平台为唯一管理方）
 type PlatformMasterUpdateReq struct {
+	TraditionCodes         []string `json:"traditionCodes,optional"`
 	Id                     string   `path:"id"`
 	DharmaName             string   `json:"dharmaName,optional"`
 	LayName                string   `json:"layName,optional"`
 	Position               string   `json:"position,optional"`
 	BeliefCode             string   `json:"beliefCode,optional"`
-	Sect                   string   `json:"sect,optional"`
+	Sect                   *string  `json:"sect,optional"`
 	Type                   string   `json:"type,optional"`
 	Specialties            []string `json:"specialties,optional"`
 	Avatar                 string   `json:"avatar,optional"`
@@ -335,10 +339,11 @@ type MasterProfileResp struct {
 
 // MasterProfileUpdateReq 法师资料更新请求
 type MasterProfileUpdateReq struct {
-	Bio         *string  `json:"bio,optional"`
-	Specialties []string `json:"specialties,optional"`
-	Avatar      *string  `json:"avatar,optional"`
-	Pricing     *string  `json:"pricing,optional"`
+	TraditionCodes []string `json:"traditionCodes,optional"`
+	Bio            *string  `json:"bio,optional"`
+	Specialties    []string `json:"specialties,optional"`
+	Avatar         *string  `json:"avatar,optional"`
+	Pricing        *string  `json:"pricing,optional"`
 }
 
 // ============ 平台审核 ============
@@ -408,11 +413,12 @@ type MasterServiceTagsResp struct {
 
 // PlatformMasterCreateReq 平台创建野生大师（无寺庙，需资质审核后上架）
 type PlatformMasterCreateReq struct {
+	TraditionCodes         []string `json:"traditionCodes,optional"`
 	DharmaName             string   `json:"dharmaName"`
 	LayName                string   `json:"layName,optional"`
 	Position               string   `json:"position,optional"`
 	BeliefCode             string   `json:"beliefCode"`
-	Sect                   string   `json:"sect"`
+	Sect                   string   `json:"sect,optional"`
 	Type                   string   `json:"type"`
 	Specialties            []string `json:"specialties,optional"`
 	Avatar                 string   `json:"avatar,optional"`

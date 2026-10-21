@@ -38,7 +38,10 @@ func (l *PlatformMasterListLogic) PlatformMasterList(req *types.PlatformMasterLi
 	if size < 1 || size > 100 {
 		size = 20
 	}
-	list, total, err := l.svcCtx.MasterModel.FindPlatformList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, req.AuthStatus, req.ShelfStatus, req.PlatformStatus, req.RegionCode, page, size)
+	if err := common.ValidateTraditionCodeShape(optionalTradition(req.TraditionCode), false); err != nil {
+		return nil, err
+	}
+	list, total, err := l.svcCtx.MasterModel.FindPlatformList(l.ctx, req.BeliefCode, req.Sect, req.Type, req.TempleId, req.AuthStatus, req.ShelfStatus, req.PlatformStatus, req.RegionCode, req.TraditionCode, page, size)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +90,15 @@ func NewPlatformMasterCreateLogic(ctx context.Context, svcCtx *svc.ServiceContex
 }
 
 func (l *PlatformMasterCreateLogic) Create(req *types.PlatformMasterCreateReq) (*types.PlatformMasterCreateResp, error) {
-	if req.DharmaName == "" || req.BeliefCode == "" || req.Sect == "" || req.Type == "" {
+	if req.DharmaName == "" || req.Type == "" {
 		return nil, common.ErrParamMissing
+	}
+	belief, err := common.CanonicalBelief(req.BeliefCode)
+	if err != nil {
+		return nil, err
+	}
+	if err := common.ValidateTraditionCodeShape(req.TraditionCodes, true); err != nil {
+		return nil, err
 	}
 	code, err := l.svcCtx.MasterModel.NextWildCode(l.ctx)
 	if err != nil {
@@ -100,7 +110,7 @@ func (l *PlatformMasterCreateLogic) Create(req *types.PlatformMasterCreateReq) (
 		LayName:                req.LayName,
 		TempleCode:             "",
 		Position:               req.Position,
-		BeliefCode:             model.NormalizeBeliefCode(req.BeliefCode, req.Type, req.Sect),
+		BeliefCode:             belief,
 		Sect:                   req.Sect,
 		Type:                   req.Type,
 		AuthStatus:             model.MasterAuthStatusPending,
@@ -114,9 +124,9 @@ func (l *PlatformMasterCreateLogic) Create(req *types.PlatformMasterCreateReq) (
 		ConsultValidHours:      req.ConsultValidHours,
 		ConsultResponseMinutes: req.ConsultResponseMinutes,
 	}
-	if _, err := l.svcCtx.MasterModel.Insert(l.ctx, master); err != nil {
+	if _, err := l.svcCtx.MasterModel.InsertWithAffiliation(l.ctx, master, req.TraditionCodes); err != nil {
 		l.Errorf("创建独立执业大师失败: %v", err)
-		return nil, common.ErrSystem
+		return nil, err
 	}
 	return &types.PlatformMasterCreateResp{Id: code}, nil
 }
@@ -345,6 +355,9 @@ func NewPlatformMasterUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContex
 
 // PlatformMasterUpdate 平台编辑法师资料（req.Id 为法师编码 code）
 func (l *PlatformMasterUpdateLogic) PlatformMasterUpdate(req *types.PlatformMasterUpdateReq) (*types.Master, error) {
+	if req.TraditionCodes != nil && !canEditMasterAffiliation(l.ctx) {
+		return nil, common.ErrForbidden
+	}
 	master, err := l.svcCtx.MasterModel.FindByCode(l.ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
@@ -362,13 +375,14 @@ func (l *PlatformMasterUpdateLogic) PlatformMasterUpdate(req *types.PlatformMast
 		master.Position = req.Position
 	}
 	if req.BeliefCode != "" {
-		if !model.IsValidBeliefCode(req.BeliefCode) {
-			return nil, common.ErrParamInvalid
+		belief, err := common.CanonicalBelief(req.BeliefCode)
+		if err != nil {
+			return nil, err
 		}
-		master.BeliefCode = model.NormalizeBeliefCode(req.BeliefCode, req.Type, req.Sect)
+		master.BeliefCode = belief
 	}
-	if req.Sect != "" {
-		master.Sect = req.Sect
+	if req.Sect != nil {
+		master.Sect = *req.Sect
 	}
 	if req.Type != "" {
 		master.Type = req.Type
@@ -390,12 +404,28 @@ func (l *PlatformMasterUpdateLogic) PlatformMasterUpdate(req *types.PlatformMast
 		master.ConsultResponseMinutes = req.ConsultResponseMinutes
 	}
 
-	if err := l.svcCtx.MasterModel.Update(l.ctx, master); err != nil {
+	if err := l.svcCtx.MasterModel.UpdateWithAffiliation(l.ctx, master, req.TraditionCodes); err != nil {
 		return nil, err
 	}
 	templeName, _ := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, master.TempleCode)
 	resp := toTypeMasterWithTempleName(master, templeName)
 	return &resp, nil
+}
+
+func canEditMasterAffiliation(ctx context.Context) bool {
+	for _, role := range middleware.RolesFromCtx(ctx) {
+		if role == "platform_super" {
+			return true
+		}
+	}
+	return false
+}
+
+func optionalTradition(code string) []string {
+	if code == "" {
+		return nil
+	}
+	return []string{code}
 }
 
 // PlatformMasterServiceTagsLogic 平台查看大师服务标签

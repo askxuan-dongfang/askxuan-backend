@@ -52,6 +52,9 @@ func NewAdminTempleUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 func (l *AdminTempleUpdateLogic) AdminTempleUpdate(req *types.TempleUpdateReq) (*types.Temple, error) {
+	if req.TraditionCodes != nil {
+		return nil, common.ErrForbidden
+	}
 	t, err := getCurrentTemple(l.ctx, l.svcCtx)
 	if err != nil {
 		return nil, err
@@ -67,13 +70,14 @@ func (l *AdminTempleUpdateLogic) AdminTempleUpdate(req *types.TempleUpdateReq) (
 		t.Type = req.Type
 	}
 	if req.BeliefCode != "" {
-		if !model.IsValidBeliefCode(req.BeliefCode) {
-			return nil, common.ErrParamInvalid
+		belief, err := common.CanonicalBelief(req.BeliefCode)
+		if err != nil {
+			return nil, err
 		}
-		t.BeliefCode = req.BeliefCode
+		t.BeliefCode = belief
 	}
-	if req.Sect != "" {
-		t.Sect = req.Sect
+	if req.Sect != nil {
+		t.Sect = *req.Sect
 	}
 	if req.Address != "" {
 		t.Address = req.Address
@@ -86,7 +90,7 @@ func (l *AdminTempleUpdateLogic) AdminTempleUpdate(req *types.TempleUpdateReq) (
 	}
 	if err := l.svcCtx.TempleModel.Update(l.ctx, t); err != nil {
 		l.Errorf("更新寺院信息失败: %v", err)
-		return nil, common.ErrSystem
+		return nil, err
 	}
 	resp := toTypeTemple(t)
 	return &resp, nil

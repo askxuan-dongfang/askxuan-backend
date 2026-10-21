@@ -30,6 +30,7 @@ type (
     }
 
     Temple {
+        TraditionCodes []string `json:"traditionCodes,optional"`
         RegionCode string `json:"regionCode"`
         RegionName string `json:"regionName"`
         Id           string   `json:"id"`
@@ -55,6 +56,7 @@ type (
     }
 
     ListReq {
+        TraditionCode string `form:"traditionCode,optional"`
         RegionCode string `form:"regionCode,optional"`
         BeliefCode  string `form:"beliefCode,optional"`
         Sect        string `form:"sect,optional"`
@@ -197,12 +199,13 @@ type (
 // ============ 寺院信息编辑 ============
 type (
     TempleUpdateReq {
+        TraditionCodes []string `json:"traditionCodes,optional"`
         Id          string `json:"id"`
         Name        string `json:"name,optional"`
         Region      string `json:"region,optional"`
         Type        string `json:"type,optional"`
         BeliefCode  string `json:"beliefCode,optional"`
-        Sect        string `json:"sect,optional"`
+        Sect        *string `json:"sect,optional"`
         Address     string `json:"address,optional"`
         CoverImage  string `json:"coverImage,optional"`
         Description string `json:"description,optional"`
