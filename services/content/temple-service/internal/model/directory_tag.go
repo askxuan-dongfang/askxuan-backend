@@ -63,25 +63,36 @@ func (m *DirectoryTagModel) Save(ctx context.Context, p *DirectoryTag, create bo
 		}
 		_, err = m.conn.ExecCtx(ctx, "INSERT INTO askxuan_temple.directory_tag(code,tag_group,belief_code,name,value,sort,status) VALUES(?,?,?,?,?,?,?)", p.Code, p.Group, p.BeliefCode, p.Name, p.Value, p.Sort, p.Status)
 	} else {
-		var existing DirectoryTag
-		if err = m.conn.QueryRowCtx(ctx, &existing, "SELECT code,tag_group,belief_code,name,value,sort,status FROM askxuan_temple.directory_tag WHERE code=?", p.Code); errors.Is(err, sqlx.ErrNotFound) {
-			return common.NewBizError(40410, "标签不存在")
-		}
-		if err != nil {
+		err = m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+			var existing DirectoryTag
+			if err := tx.QueryRowCtx(ctx, &existing, "SELECT code,tag_group,belief_code,name,value,sort,status FROM askxuan_temple.directory_tag WHERE code=? FOR UPDATE", p.Code); errors.Is(err, sqlx.ErrNotFound) {
+				return common.NewBizError(40410, "标签不存在")
+			} else if err != nil {
+				return err
+			}
+			if p.Group != existing.Group || p.Value != existing.Value {
+				return common.NewBizError(40010, "标签分组与匹配值创建后不可更改")
+			}
+			// Older admin clients omit the new field; renaming preserves its parent.
+			if p.BeliefCode == "" {
+				p.BeliefCode = existing.BeliefCode
+			}
+			if err := ValidateDirectoryTag(p); err != nil {
+				return err
+			}
+			oldParent, _ := common.CanonicalBelief(existing.BeliefCode)
+			if p.Group == "tradition" && p.BeliefCode != oldParent {
+				var count int64
+				if err := tx.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM askxuan_temple.provider_directory_tag WHERE tag_code=?", p.Code); err != nil {
+					return err
+				}
+				if count > 0 {
+					return common.NewBizError(40910, "标签已关联寺院或师傅，请先复核关联再变更所属信仰类型")
+				}
+			}
+			_, err := tx.ExecCtx(ctx, "UPDATE askxuan_temple.directory_tag SET name=?,sort=?,status=?,belief_code=? WHERE code=?", p.Name, p.Sort, p.Status, p.BeliefCode, p.Code)
 			return err
-		}
-		if p.Group != existing.Group || p.Value != existing.Value {
-			return common.NewBizError(40010, "标签分组与匹配值创建后不可更改")
-		}
-		// Older admin clients omit the new field; renaming must not erase its parent.
-		preserveParent := p.BeliefCode == ""
-		if preserveParent {
-			p.BeliefCode = existing.BeliefCode
-		}
-		if err := ValidateDirectoryTag(p); err != nil {
-			return err
-		}
-		_, err = m.conn.ExecCtx(ctx, "UPDATE askxuan_temple.directory_tag SET name=?,sort=?,status=?,belief_code=IF(?,belief_code,?) WHERE code=?", p.Name, p.Sort, p.Status, preserveParent, p.BeliefCode, p.Code)
+		})
 	}
 	var duplicate *mysql.MySQLError
 	if errors.As(err, &duplicate) && duplicate.Number == 1062 {
@@ -114,6 +125,11 @@ func (m *DirectoryTagModel) Assign(ctx context.Context, kind, id string, codes [
 	if id == "" || len(id) > 64 || len(codes) > 12 {
 		return common.ErrParamInvalid
 	}
+	// An omitted/null replacement is a compatibility no-op. Only an explicit
+	// empty array from the existing privileged endpoint clears assignments.
+	if codes == nil {
+		return nil
+	}
 	seen := map[string]bool{}
 	for _, code := range codes {
 		if !IsValidBeliefCode(code) || seen[code] {
@@ -122,26 +138,18 @@ func (m *DirectoryTagModel) Assign(ctx context.Context, kind, id string, codes [
 		seen[code] = true
 	}
 	return m.conn.TransactCtx(ctx, func(ctx context.Context, s sqlx.Session) error {
-		var count int
-		if err := s.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM "+table+" WHERE code=?", id); err != nil {
+		var belief string
+		if err := s.QueryRowCtx(ctx, &belief, "SELECT belief_code FROM "+table+" WHERE code=? FOR SHARE", id); errors.Is(err, sqlx.ErrNotFound) {
+			return common.NewBizError(40410, "寺院或师傅不存在")
+		} else if err != nil {
 			return err
 		}
-		if count == 0 {
-			return common.NewBizError(40410, "寺院或师傅不存在")
+		existing, err := common.ProviderTraditions(ctx, s, kind, id)
+		if err != nil {
+			return err
 		}
-		// Validate every tag before replacing; a disabled/unknown tag cannot erase old assignments.
-		for _, code := range codes {
-			var tag DirectoryTag
-			err := s.QueryRowCtx(ctx, &tag, "SELECT code,tag_group,belief_code,name,value,sort,status FROM askxuan_temple.directory_tag WHERE code=? FOR UPDATE", code)
-			if errors.Is(err, sqlx.ErrNotFound) {
-				return common.NewBizError(40010, "请选择已启用的宗派或信俗标签")
-			}
-			if err != nil {
-				return err
-			}
-			if tag.Group != "tradition" || tag.Status != "enabled" {
-				return common.NewBizError(40010, "请选择已启用的宗派或信俗标签")
-			}
+		if err := common.ValidateTraditions(ctx, s, belief, codes, existing, belief, false); err != nil {
+			return err
 		}
 		if _, err := s.ExecCtx(ctx, "DELETE FROM askxuan_temple.provider_directory_tag WHERE provider_kind=? AND provider_code=?", kind, id); err != nil {
 			return err

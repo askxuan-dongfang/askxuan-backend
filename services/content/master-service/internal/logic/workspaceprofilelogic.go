@@ -74,6 +74,9 @@ func NewWorkspaceProfileUpdateLogic(ctx context.Context, svcCtx *svc.ServiceCont
 
 // WorkspaceProfileUpdate 法师更新可编辑字段（bio, specialties, avatar, pricing）
 func (l *WorkspaceProfileUpdateLogic) WorkspaceProfileUpdate(req *types.MasterProfileUpdateReq) (*types.MasterProfileResp, error) {
+	if req.TraditionCodes != nil {
+		return nil, common.ErrForbidden
+	}
 	masterCode, err := currentMasterCode(l.ctx, l.svcCtx)
 	if err != nil {
 		return nil, err
@@ -88,14 +91,15 @@ func (l *WorkspaceProfileUpdateLogic) WorkspaceProfileUpdate(req *types.MasterPr
 		return nil, common.ErrSystem
 	}
 
-	// 仅更新可编辑字段：specialties / avatar（通过 MasterModel.Update 持久化到 DB）
+	// Persist only fields owned by this surface; a stale read cannot restore an
+	// older belief after an administrator atomically changes its relationships.
 	if req.Specialties != nil {
 		master.Specialties = joinSpecialties(req.Specialties)
 	}
 	if req.Avatar != nil {
 		master.Avatar = *req.Avatar
 	}
-	if err := l.svcCtx.MasterModel.Update(l.ctx, master); err != nil {
+	if err := l.svcCtx.MasterModel.UpdateWorkspaceProfile(l.ctx, master); err != nil {
 		l.Errorf("更新法师资料失败: %v", err)
 		return nil, common.ErrSystem
 	}

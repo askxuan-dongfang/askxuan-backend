@@ -105,12 +105,15 @@ type MasterModel interface {
 	// FindAll 平台查询所有法师（按 shelfStatus 筛选，空则全部）
 	FindAll(ctx context.Context, shelfStatus string, page, size int) ([]*Master, int64, error)
 	// FindPlatformList 平台查询全量法师，不应用 C 端可见性条件。
-	FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus, regionCode string, page, size int) ([]*Master, int64, error)
+	FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus, regionCode, traditionCode string, page, size int) ([]*Master, int64, error)
 	// FindCList C端公开列表（仅 on_shelf + normal），按 sect/type/templeCode/manageBy/serviceCode 筛选
 	FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy, serviceCode, regionCode string, page, size int) ([]*Master, int64, error)
 	FindTempleNameByCode(ctx context.Context, templeCode string) (string, error)
 	Insert(ctx context.Context, data *Master) (int64, error)
+	InsertWithAffiliation(ctx context.Context, data *Master, codes []string) (int64, error)
 	Update(ctx context.Context, data *Master) error
+	UpdateWorkspaceProfile(ctx context.Context, data *Master) error
+	UpdateWithAffiliation(ctx context.Context, data *Master, codes []string) error
 	UpdateShelfStatus(ctx context.Context, id int64, status string) error
 	UpdatePlatformStatus(ctx context.Context, id int64, status string) error
 	UpdateAuthStatus(ctx context.Context, code, status string) error
@@ -177,20 +180,31 @@ func (m *masterModel) FindAll(ctx context.Context, shelfStatus string, page, siz
 	return m.queryPage(ctx, where, args, "ORDER BY id DESC", page, size)
 }
 
-func (m *masterModel) FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus, regionCode string, page, size int) ([]*Master, int64, error) {
+func (m *masterModel) FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus, regionCode, traditionCode string, page, size int) ([]*Master, int64, error) {
+	where, args := buildPlatformMasterWhere(beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus, regionCode, traditionCode)
+	return m.queryPage(ctx, where, args, "ORDER BY id DESC", page, size)
+}
+
+func buildPlatformMasterWhere(beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus, regionCode, traditionCode string) (string, []interface{}) {
 	where := "WHERE 1 = 1"
 	args := make([]interface{}, 0, 7)
 	filters := []struct {
 		column string
 		value  string
 	}{
-		{"belief_code", beliefCode},
 		{"sect", sect},
 		{"type", mtype},
 		{"temple_code", templeCode},
 		{"auth_status", authStatus},
 		{"shelf_status", shelfStatus},
 		{"platform_status", platformStatus},
+	}
+	if beliefCode == "daoism" || beliefCode == "taoism" {
+		where += " AND belief_code IN (?,?)"
+		args = append(args, "daoism", "taoism")
+	} else if beliefCode != "" {
+		where += " AND belief_code = ?"
+		args = append(args, beliefCode)
 	}
 	for _, filter := range filters {
 		if filter.value != "" {
@@ -202,7 +216,11 @@ func (m *masterModel) FindPlatformList(ctx context.Context, beliefCode, sect, mt
 		where += " AND " + masterRegionCode + " = ?"
 		args = append(args, regionCode)
 	}
-	return m.queryPage(ctx, where, args, "ORDER BY id DESC", page, size)
+	if traditionCode != "" {
+		where += " AND EXISTS (SELECT 1 FROM askxuan_temple.provider_directory_tag pdt WHERE pdt.provider_kind='master' AND pdt.provider_code=master.code AND pdt.tag_code=?)"
+		args = append(args, traditionCode)
+	}
+	return where, args
 }
 
 func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy, serviceCode, regionCode string, page, size int) ([]*Master, int64, error) {
@@ -280,8 +298,12 @@ func (m *masterModel) queryPage(ctx context.Context, where string, args []interf
 }
 
 func (m *masterModel) Insert(ctx context.Context, data *Master) (int64, error) {
-	query := fmt.Sprintf("INSERT INTO %s (code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, manage_by, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table)
-	res, err := m.conn.ExecCtx(ctx, query,
+	return insertMaster(ctx, m.conn, data)
+}
+
+func insertMaster(ctx context.Context, session sqlx.Session, data *Master) (int64, error) {
+	query := "INSERT INTO master (code, dharma_name, lay_name, temple_code, position, belief_code, sect, type, auth_status, shelf_status, platform_status, manage_by, specialties, avatar, rating, consult_enabled, consult_fee, consult_valid_hours, consult_response_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	res, err := session.ExecCtx(ctx, query,
 		data.Code, data.DharmaName, data.LayName, data.TempleCode, data.Position, data.BeliefCode,
 		data.Sect, data.Type, data.AuthStatus, data.ShelfStatus, data.PlatformStatus, data.ManageBy,
 		data.Specialties, data.Avatar, data.Rating, data.ConsultEnabled, data.ConsultFee,
@@ -297,8 +319,19 @@ func (m *masterModel) Insert(ctx context.Context, data *Master) (int64, error) {
 }
 
 func (m *masterModel) Update(ctx context.Context, data *Master) error {
-	query := fmt.Sprintf("UPDATE %s SET dharma_name = ?, lay_name = ?, position = ?, belief_code = ?, sect = ?, type = ?, specialties = ?, avatar = ?, consult_enabled = ?, consult_fee = ?, consult_valid_hours = ?, consult_response_minutes = ? WHERE id = ?", m.table)
-	_, err := m.conn.ExecCtx(ctx, query,
+	return updateMaster(ctx, m.conn, data)
+}
+
+// A self-service profile request may have read the entity before a concurrent
+// administrator changed its affiliation. Only persist fields this surface owns.
+func (m *masterModel) UpdateWorkspaceProfile(ctx context.Context, data *Master) error {
+	_, err := m.conn.ExecCtx(ctx, "UPDATE master SET specialties=?,avatar=? WHERE id=? AND code=?", data.Specialties, data.Avatar, data.Id, data.Code)
+	return err
+}
+
+func updateMaster(ctx context.Context, session sqlx.Session, data *Master) error {
+	query := "UPDATE master SET dharma_name = ?, lay_name = ?, position = ?, belief_code = ?, sect = ?, type = ?, specialties = ?, avatar = ?, consult_enabled = ?, consult_fee = ?, consult_valid_hours = ?, consult_response_minutes = ? WHERE id = ?"
+	_, err := session.ExecCtx(ctx, query,
 		data.DharmaName, data.LayName, data.Position, data.BeliefCode, data.Sect, data.Type,
 		data.Specialties, data.Avatar, data.ConsultEnabled, data.ConsultFee,
 		data.ConsultValidHours, data.ConsultResponseMinutes, data.Id)

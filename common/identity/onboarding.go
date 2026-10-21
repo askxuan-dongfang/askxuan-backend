@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/askxuan/common"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -33,6 +34,7 @@ type WorkProfile struct {
 	Address            string   `json:"address"`
 	Belief             string   `json:"belief"`
 	Sect               string   `json:"sect"`
+	TraditionCodes     []string `json:"traditionCodes"`
 	Position           string   `json:"position"`
 	RegistrationNumber string   `json:"registrationNumber"`
 	Description        string   `json:"description"`
@@ -64,6 +66,14 @@ func (a Application) MarshalJSON() ([]byte, error) {
 	}
 	if p.EvidenceIDs == nil {
 		p.EvidenceIDs = []string{}
+	}
+	if p.TraditionCodes == nil {
+		p.TraditionCodes = []string{}
+	}
+	if p.Belief != "" {
+		if canonical, err := common.CanonicalBelief(p.Belief); err == nil {
+			p.Belief = canonical
+		}
 	}
 	return json.Marshal(struct {
 		row
@@ -152,6 +162,9 @@ func (s *Accounts) RegisterWork(ctx context.Context, kind, email, username, pass
 	return id, nil
 }
 func validateWorkProfile(p WorkProfile, kind string, submit bool) error {
+	if err := common.ValidateTraditionCodeShape(p.TraditionCodes, submit); err != nil {
+		return err
+	}
 	for _, v := range []struct {
 		s string
 		n int
@@ -164,8 +177,8 @@ func validateWorkProfile(p WorkProfile, kind string, submit bool) error {
 		return fmt.Errorf("最多提交 8 份证明材料")
 	}
 	if submit {
-		if strings.TrimSpace(p.Name) == "" || strings.TrimSpace(p.LegalName) == "" || strings.TrimSpace(p.Contact) == "" || strings.TrimSpace(p.Region) == "" || strings.TrimSpace(p.Sect) == "" || len(p.EvidenceIDs) == 0 {
-			return fmt.Errorf("请补齐名称、本人／经办人姓名、联系方式、地区、宗派和证明材料")
+		if strings.TrimSpace(p.Name) == "" || strings.TrimSpace(p.LegalName) == "" || strings.TrimSpace(p.Contact) == "" || strings.TrimSpace(p.Region) == "" || len(p.EvidenceIDs) == 0 {
+			return fmt.Errorf("请补齐名称、本人／经办人姓名、联系方式、地区和证明材料")
 		}
 		if kind == "temple" && (strings.TrimSpace(p.Address) == "" || strings.TrimSpace(p.RegistrationNumber) == "") {
 			return fmt.Errorf("请补齐寺院地址和登记证号，并上传机构证明、管理授权")
@@ -173,10 +186,8 @@ func validateWorkProfile(p WorkProfile, kind string, submit bool) error {
 		if kind == "master" && strings.TrimSpace(p.Position) == "" {
 			return fmt.Errorf("请填写身份／职务")
 		}
-		switch p.Belief {
-		case "han_buddhism", "tibetan_buddhism", "taoism", "folk":
-		default:
-			return fmt.Errorf("请选择信仰流派")
+		if _, err := common.CanonicalBelief(p.Belief); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -193,8 +204,25 @@ func (s *Accounts) SaveWorkApplication(ctx context.Context, account int64, p Wor
 		if a.Status != "draft" && a.Status != "rejected" {
 			return fmt.Errorf("当前申请不可修改")
 		}
+		if p.TraditionCodes == nil {
+			var previous WorkProfile
+			if err := json.Unmarshal([]byte(a.ProfileJSON), &previous); err != nil {
+				return err
+			}
+			p.TraditionCodes = previous.TraditionCodes
+		}
+		if p.Belief != "" {
+			if canonical, err := common.CanonicalBelief(p.Belief); err == nil {
+				p.Belief = canonical
+			}
+		}
 		if e := validateWorkProfile(p, a.Kind, submit); e != nil {
 			return e
+		}
+		if submit {
+			if err := common.ValidateTraditions(ctx, tx, p.Belief, p.TraditionCodes, nil, "", true); err != nil {
+				return err
+			}
 		}
 		for _, id := range p.EvidenceIDs {
 			var n int64
@@ -254,6 +282,10 @@ func (s *Accounts) ReviewWorkApplication(ctx context.Context, reviewer, id int64
 			if e := validateWorkProfile(profile, a.Kind, true); e != nil {
 				return e
 			}
+			profile.Belief, _ = common.CanonicalBelief(profile.Belief)
+			if err := common.ValidateTraditions(ctx, tx, profile.Belief, profile.TraditionCodes, nil, "", true); err != nil {
+				return err
+			}
 			role := a.Kind
 			if a.Kind == "temple" {
 				role = "temple_admin"
@@ -263,14 +295,20 @@ func (s *Accounts) ReviewWorkApplication(ctx context.Context, reviewer, id int64
 				return e
 			}
 			var currentRole string
-			if e := tx.QueryRowCtx(ctx, &currentRole, "SELECT r.code FROM admin_account a JOIN role r ON r.id=a.role_id WHERE a.id=? AND a.status='enabled' FOR UPDATE", a.AccountID); e != nil {
+			var currentRoleID int64
+			// Lock the mutable applicant row separately. A joined FOR UPDATE also
+			// requires role-catalog write privileges, which auth_user must not gain.
+			if e := tx.QueryRowCtx(ctx, &currentRoleID, "SELECT role_id FROM admin_account WHERE id=? AND status='enabled' FOR UPDATE", a.AccountID); e != nil {
+				return e
+			}
+			if e := tx.QueryRowCtx(ctx, &currentRole, "SELECT code FROM role WHERE id=? FOR SHARE", currentRoleID); e != nil {
 				return e
 			}
 			if currentRole != ApplicantRole(a.Kind) {
 				return ErrOnboardingDenied
 			}
 			p := profile
-			beliefName := map[string]string{"han_buddhism": "汉传佛教", "tibetan_buddhism": "藏传佛教", "taoism": "道教", "folk": "民间信仰"}[p.Belief]
+			beliefName := common.BeliefDisplayName(p.Belief)
 			entity = "N" + strings.ToUpper(RandomID()[:14])
 			if a.Kind == "master" {
 				_, e := tx.ExecCtx(ctx, `INSERT INTO askxuan_master.master(code,dharma_name,lay_name,temple_code,position,belief_code,sect,type,auth_status,shelf_status,platform_status,manage_by,specialties,avatar,rating,consult_enabled,consult_fee,consult_valid_hours,consult_response_minutes) VALUES (?,?,?,'',?,?,?,?,'已认证','off_shelf','normal','platform',?,'',0,0,0,72,30)`, entity, p.Name, p.LegalName, p.Position, p.Belief, p.Sect, beliefName, "")
@@ -296,6 +334,9 @@ func (s *Accounts) ReviewWorkApplication(ctx context.Context, reviewer, id int64
 				}
 			} else {
 				return ErrOnboardingDenied
+			}
+			if err := common.InsertProviderTraditions(ctx, tx, a.Kind, entity, p.TraditionCodes); err != nil {
+				return err
 			}
 			// Existing applicant sessions cannot gain workbench privileges by refresh.
 			if _, e := s.Challenges.Redis.IncrCtx(ctx, EpochKey("admin", a.AccountID)); e != nil {

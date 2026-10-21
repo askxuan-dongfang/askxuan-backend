@@ -21,6 +21,10 @@ func TestDualTrackOnboardingIntegration(t *testing.T) {
 	mail := &testMailer{}
 	s := Accounts{DB: db, Challenges: &Challenges{Redis: r, Secret: RandomID()}, Mailer: mail}
 	prefix := "onboard_" + RandomID()[:12]
+	traditionCode := prefix + "tag"
+	if _, err := db.ExecCtx(ctx, "INSERT INTO askxuan_temple.directory_tag(code,tag_group,belief_code,name,value,status) VALUES (?,'tradition','han_buddhism',?,?,'enabled')", traditionCode, traditionCode, traditionCode); err != nil {
+		t.Fatal(err)
+	}
 	password := "Onboarding-test-password-2026!"
 	ids := []int64{}
 	entities := []string{}
@@ -35,10 +39,12 @@ func TestDualTrackOnboardingIntegration(t *testing.T) {
 			db.ExecCtx(ctx, "DELETE FROM admin_account WHERE id=?", id)
 		}
 		for _, code := range entities {
+			db.ExecCtx(ctx, "DELETE FROM askxuan_temple.provider_directory_tag WHERE provider_code=?", code)
 			db.ExecCtx(ctx, "DELETE FROM askxuan_master.master_profile_ext WHERE master_code=?", code)
 			db.ExecCtx(ctx, "DELETE FROM askxuan_master.master WHERE code=?", code)
 			db.ExecCtx(ctx, "DELETE FROM askxuan_temple.temple WHERE code=?", code)
 		}
+		db.ExecCtx(ctx, "DELETE FROM askxuan_temple.directory_tag WHERE code=?", traditionCode)
 	}()
 	create := func(kind, suffix string) int64 {
 		t.Helper()
@@ -68,7 +74,7 @@ func TestDualTrackOnboardingIntegration(t *testing.T) {
 		if _, e := db.ExecCtx(ctx, "INSERT INTO onboarding_evidence(id,account_id,filename,media_type,content) VALUES (?,?,'fixture.pdf','application/pdf',?)", evidence, id, []byte("%PDF-fixture")); e != nil {
 			t.Fatal(e)
 		}
-		return WorkProfile{Name: "测试名称", LegalName: "测试本人", Contact: "测试联系方式", Region: "测试地区", Address: "测试地址", RegistrationNumber: "TEST-REGISTRATION", Belief: "han_buddhism", Sect: "测试宗派", Position: "测试职务", EvidenceIDs: []string{evidence}}
+		return WorkProfile{Name: "测试名称", LegalName: "测试本人", Contact: "测试联系方式", Region: "测试地区", Address: "测试地址", RegistrationNumber: "TEST-REGISTRATION", Belief: "han_buddhism", Sect: "测试宗派", TraditionCodes: []string{traditionCode}, Position: "测试职务", EvidenceIDs: []string{evidence}}
 	}
 	mprofile := profile(master, "master")
 	tprofile := profile(temple, "temple")

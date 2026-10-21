@@ -73,11 +73,15 @@ func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateR
 	if templeCode == "" {
 		return nil, common.ErrUnauthorized
 	}
-	if req.DharmaName == "" || req.Position == "" || req.Sect == "" || req.Type == "" {
+	if req.DharmaName == "" || req.Position == "" || req.Type == "" {
 		return nil, common.ErrParamMissing
 	}
-	if req.BeliefCode != "" && !model.IsValidBeliefCode(req.BeliefCode) {
-		return nil, common.ErrParamInvalid
+	belief, err := common.CanonicalBelief(req.BeliefCode)
+	if err != nil {
+		return nil, err
+	}
+	if err := common.ValidateTraditionCodeShape(req.TraditionCodes, true); err != nil {
+		return nil, err
 	}
 	if _, err := l.svcCtx.MasterModel.FindTempleNameByCode(l.ctx, templeCode); err != nil {
 		if errors.Is(err, sqlx.ErrNotFound) {
@@ -97,12 +101,13 @@ func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateR
 		LayName:                req.LayName,
 		TempleCode:             templeCode,
 		Position:               req.Position,
-		BeliefCode:             model.NormalizeBeliefCode(req.BeliefCode, req.Type, req.Sect),
+		BeliefCode:             belief,
 		Sect:                   req.Sect,
 		Type:                   req.Type,
 		AuthStatus:             model.MasterAuthStatusPending, // 新建法师默认待审核
 		ShelfStatus:            model.MasterShelfStatusOffShelf,
 		PlatformStatus:         model.MasterPlatformStatusNormal,
+		ManageBy:               "temple",
 		Specialties:            joinSpecialties(req.Specialties),
 		Avatar:                 req.Avatar,
 		ConsultEnabled:         true,
@@ -121,16 +126,10 @@ func (l *AdminMasterCreateLogic) AdminMasterCreate(req *types.AdminMasterCreateR
 		master.ConsultResponseMinutes = req.ConsultResponseMinutes
 	}
 
-	_, err = l.svcCtx.MasterModel.Insert(l.ctx, master)
+	_, err = l.svcCtx.MasterModel.InsertWithAffiliation(l.ctx, master, req.TraditionCodes)
 	if err != nil {
 		return nil, err
 	}
-
-	// 触发资质审核流程：插入一条 pending 审核记录
-	_, _ = l.svcCtx.MasterAuditModel.InsertAuditLog(l.ctx, &model.MasterAudit{
-		MasterCode: code,
-		TempleCode: templeCode,
-	})
 
 	return &types.AdminMasterCreateResp{Id: code}, nil
 }
@@ -150,6 +149,9 @@ func NewAdminMasterUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 func (l *AdminMasterUpdateLogic) AdminMasterUpdate(req *types.AdminMasterUpdateReq, templeCode string) (*types.Master, error) {
 	if templeCode == "" {
 		return nil, common.ErrUnauthorized
+	}
+	if req.TraditionCodes != nil {
+		return nil, common.ErrForbidden
 	}
 	master, err := l.svcCtx.MasterModel.FindByCode(l.ctx, req.Id)
 	if err != nil {
@@ -173,13 +175,14 @@ func (l *AdminMasterUpdateLogic) AdminMasterUpdate(req *types.AdminMasterUpdateR
 		master.Position = req.Position
 	}
 	if req.BeliefCode != "" {
-		if !model.IsValidBeliefCode(req.BeliefCode) {
-			return nil, common.ErrParamInvalid
+		belief, err := common.CanonicalBelief(req.BeliefCode)
+		if err != nil {
+			return nil, err
 		}
-		master.BeliefCode = req.BeliefCode
+		master.BeliefCode = belief
 	}
-	if req.Sect != "" {
-		master.Sect = req.Sect
+	if req.Sect != nil {
+		master.Sect = *req.Sect
 	}
 	if req.Specialties != nil {
 		master.Specialties = joinSpecialties(req.Specialties)
@@ -198,7 +201,7 @@ func (l *AdminMasterUpdateLogic) AdminMasterUpdate(req *types.AdminMasterUpdateR
 		master.ConsultResponseMinutes = req.ConsultResponseMinutes
 	}
 
-	if err := l.svcCtx.MasterModel.Update(l.ctx, master); err != nil {
+	if err := l.svcCtx.MasterModel.UpdateWithAffiliation(l.ctx, master, nil); err != nil {
 		return nil, err
 	}
 	resp := toTypeMaster(master)

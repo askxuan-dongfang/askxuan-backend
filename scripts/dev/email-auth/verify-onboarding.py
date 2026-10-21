@@ -31,7 +31,7 @@ for kind in ['master','temple']:
     payload=('--'+boundary+'\r\nContent-Disposition: form-data; name="file"; filename="local-fixture.pdf"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.4\n% local fixture, no personal documents\n%%EOF\r\n--'+boundary+'--\r\n').encode()
     req=urllib.request.Request(origin+'evidence',data=payload,headers={'Authorization':'Bearer '+token,'Content-Type':'multipart/form-data; boundary='+boundary})
     with urllib.request.urlopen(req) as r:ev=ok(json.load(r))
-    p={'name':'本地'+('大师' if kind=='master' else '寺院')+'验收','legalName':'测试经办人','contact':'仅本地测试','region':'本地验收','address':'本地测试地址','registrationNumber':'LOCAL-FIXTURE','belief':'han_buddhism','sect':'禅宗','position':'文化交流','description':'隔离环境自动验收记录','evidenceIds':[ev['id']]}
+    p={'name':'本地'+('大师' if kind=='master' else '寺院')+'验收','legalName':'测试经办人','contact':'仅本地测试','region':'本地验收','address':'本地测试地址','registrationNumber':'LOCAL-FIXTURE','belief':'han_buddhism','sect':'禅宗','traditionCodes':['chan'],'position':'文化交流','description':'隔离环境自动验收记录','evidenceIds':[ev['id']]}
     a=ok(call('application',{'profile':p,'revision':a['revision'],'submit':False},token));yes(kind+' draft saved',a['profile']['name']==p['name'])
     a=ok(call('application',{'profile':p,'revision':a['revision'],'submit':True},token));yes(kind+' submitted',a['status']=='submitted')
     yes(kind+' submitted cannot mutate',call('application',{'profile':p,'revision':a['revision'],'submit':False},token).get('code')!=0)

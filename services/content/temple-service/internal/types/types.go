@@ -75,14 +75,15 @@ type TempleDetail struct {
 
 // ListReq 列表查询请求
 type ListReq struct {
-	RegionCode  string `form:"regionCode,optional"`
-	BeliefCode  string `form:"beliefCode,optional"`
-	Sect        string `form:"sect,optional"`
-	Type        string `form:"type,optional"`
-	Region      string `form:"region,optional"`
-	ServiceCode string `form:"serviceCode,optional"`
-	Page        int    `form:"page,default=1"`
-	Size        int    `form:"size,default=20"`
+	TraditionCode string `form:"traditionCode,optional"`
+	RegionCode    string `form:"regionCode,optional"`
+	BeliefCode    string `form:"beliefCode,optional"`
+	Sect          string `form:"sect,optional"`
+	Type          string `form:"type,optional"`
+	Region        string `form:"region,optional"`
+	ServiceCode   string `form:"serviceCode,optional"`
+	Page          int    `form:"page,default=1"`
+	Size          int    `form:"size,default=20"`
 }
 
 // ListResp 列表查询响应
@@ -247,15 +248,16 @@ type TempleServiceStatusResp struct {
 
 // TempleUpdateReq 编辑寺院信息请求
 type TempleUpdateReq struct {
-	Id          string `json:"id"`
-	Name        string `json:"name,optional"`
-	Region      string `json:"region,optional"`
-	Type        string `json:"type,optional"`
-	BeliefCode  string `json:"beliefCode,optional"`
-	Sect        string `json:"sect,optional"`
-	Address     string `json:"address,optional"`
-	CoverImage  string `json:"coverImage,optional"`
-	Description string `json:"description,optional"`
+	TraditionCodes []string `json:"traditionCodes,optional"`
+	Id             string   `json:"id"`
+	Name           string   `json:"name,optional"`
+	Region         string   `json:"region,optional"`
+	Type           string   `json:"type,optional"`
+	BeliefCode     string   `json:"beliefCode,optional"`
+	Sect           *string  `json:"sect,optional"`
+	Address        string   `json:"address,optional"`
+	CoverImage     string   `json:"coverImage,optional"`
+	Description    string   `json:"description,optional"`
 }
 
 // ============ 加持任务（修复 Gap-3） ============

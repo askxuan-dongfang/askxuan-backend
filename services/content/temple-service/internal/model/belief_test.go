@@ -17,10 +17,10 @@ func TestIsValidBeliefCode(t *testing.T) {
 
 func TestBuildTempleWhereBeliefAndSect(t *testing.T) {
 	where, args := buildTempleWhere(TempleFilter{BeliefCode: BeliefDaoism, Sect: "全真派"})
-	if where != "1=1 AND belief_code = ? AND sect = ?" {
+	if where != "1=1 AND belief_code IN (?,?) AND sect = ?" {
 		t.Fatalf("unexpected where: %s", where)
 	}
-	if len(args) != 2 || args[0] != BeliefDaoism || args[1] != "全真派" {
+	if len(args) != 3 || args[0] != BeliefDaoism || args[1] != "taoism" || args[2] != "全真派" {
 		t.Fatalf("unexpected args: %#v", args)
 	}
 }
