@@ -5,6 +5,7 @@ import (
 	"github.com/askxuan/booking-service/internal/svc"
 	"github.com/askxuan/booking-service/internal/types"
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/adminpolicy"
 	"github.com/askxuan/common/middleware"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -19,11 +20,11 @@ func templeBookingGuard(s *svc.ServiceContext) rest.Middleware {
 		return func(w http.ResponseWriter, r *http.Request) {
 			allowed := false
 			for _, role := range middleware.RolesFromCtx(r.Context()) {
-				if role == "temple_admin" && middleware.TempleCodeFromCtx(r.Context()) == "" {
+				if adminpolicy.IsTempleRole(role) && middleware.TempleCodeFromCtx(r.Context()) == "" {
 					common.JsonError(w, common.ErrTempleIsolation)
 					return
 				}
-				if role == "temple_admin" || role == "platform_super" {
+				if adminpolicy.IsTempleRole(role) || role == "platform_super" {
 					allowed = true
 				}
 			}
@@ -45,6 +46,7 @@ func templeBookingGuard(s *svc.ServiceContext) rest.Middleware {
 	}
 }
 func registerFulfillment(server *rest.Server, s *svc.ServiceContext, auth *middleware.AuthConfig) {
+	registerTempleExceptions(server, s, auth)
 	route := func(method, path string, handler http.HandlerFunc) {
 		server.AddRoute(rest.Route{Method: method, Path: path, Handler: auth.AuthFunc(handler)}, rest.WithMaxBytes(21<<20))
 	}

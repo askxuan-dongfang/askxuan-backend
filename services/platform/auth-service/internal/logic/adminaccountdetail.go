@@ -10,6 +10,7 @@ import (
 	"github.com/askxuan/auth-service/internal/svc"
 	"github.com/askxuan/auth-service/internal/types"
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/adminpolicy"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -97,11 +98,11 @@ func AdminAccountDetail(ctx context.Context, s *svc.ServiceContext, id int64) (*
 			return nil, common.ErrSystem
 		} else {
 			out.Bindings = append(out.Bindings, types.AccountBinding{Type: "temple", Id: a.TempleId, Name: t.Name, Status: t.Status, AuthStatus: t.Auth, PlatformStatus: t.Platform, ShelfStatus: t.Shelf})
-			if (role.Code == model.RoleCodeTempleAdmin || role.Code == model.RoleCodeMaster) && (t.Auth != "certified" || t.Platform != "normal") {
+			if (adminpolicy.IsTempleRole(role.Code) || role.Code == model.RoleCodeMaster) && (t.Auth != "certified" || t.Platform != "normal") {
 				out.BlockedReasons = append(out.BlockedReasons, "关联寺院未通过审核或已被封禁")
 			}
 		}
-	} else if role.Code == model.RoleCodeTempleAdmin {
+	} else if adminpolicy.IsTempleRole(role.Code) {
 		out.BlockedReasons = append(out.BlockedReasons, "寺院工作身份尚未关联寺院")
 	}
 	if a.MasterId != "" {

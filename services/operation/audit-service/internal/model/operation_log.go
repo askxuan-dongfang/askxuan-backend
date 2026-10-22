@@ -101,7 +101,7 @@ func validOperationAction(action string) bool {
 		}
 	}
 	switch action {
-	case "admin.write", "ai.admin.write", "growth.admin.write", "onboarding.admin.write":
+	case "admin.write", "ai.admin.write", "growth.admin.write", "onboarding.admin.write", "temple.team.manage":
 		return true
 	}
 	return false
@@ -110,6 +110,9 @@ func validOperationAction(action string) bool {
 func validOperationRoute(method, route string) bool {
 	if !validOperationMethod(method) {
 		return false
+	}
+	if route == "/api/v1/auth/temple/team" {
+		return method == "POST" || method == "PUT"
 	}
 	if known, ok := adminpolicy.Match(method, route); ok && known.Template == route {
 		return true

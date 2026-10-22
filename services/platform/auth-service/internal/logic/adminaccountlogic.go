@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"errors"
+	"github.com/askxuan/common/adminpolicy"
 
 	"github.com/askxuan/auth-service/internal/model"
 	"github.com/askxuan/auth-service/internal/svc"
@@ -300,7 +301,7 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 			return nil, common.NewBizError(40003, "请先完成本人激活或由所属寺院恢复账号分配")
 		}
 	}
-	if req.Status == model.AccountStatusEnabled && role.Code == model.RoleCodeTempleAdmin {
+	if req.Status == model.AccountStatusEnabled && adminpolicy.IsTempleRole(role.Code) {
 		status, err := templeStatus(l.ctx, l.svcCtx, account.TempleId)
 		if err != nil {
 			return nil, err
@@ -353,7 +354,7 @@ func validateAdminAccountBinding(ctx context.Context, svcCtx *svc.ServiceContext
 	}
 
 	switch role.Code {
-	case model.RoleCodeTempleAdmin:
+	case "temple_reception", "temple_operations", "temple_finance", model.RoleCodeTempleAdmin:
 		if templeId == "" {
 			return nil, common.ErrParamMissing
 		}

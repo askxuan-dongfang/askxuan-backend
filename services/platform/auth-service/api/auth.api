@@ -20,6 +20,12 @@ type (
     }
 
     // LoginResp 登录响应
+    IMTokenReq {
+        PlatformID int `json:"platformId,optional"`
+    }
+    IMTokenResp {
+        IMToken string `json:"imToken"`
+    }
     LoginResp {
         AccessToken  string `json:"accessToken"`
         RefreshToken string `json:"refreshToken"`
@@ -231,7 +237,7 @@ type (
     group: auth
     prefix: /api/v1/auth
 )
-service auth-service {
+service auth-api {
     @handler login
     post /login (LoginReq) returns (LoginResp)
 
@@ -254,11 +260,11 @@ service auth-service {
 
 // ============ 管理台分组（需JWT + 平台超管角色） ============
 @server (
-    group: auth.admin
+    group: "auth.admin"
     prefix: /api/v1/admin/auth
     jwt: Auth
 )
-service auth-service {
+service auth-api {
     @handler adminAccountList
     get /accounts (AdminAccountListReq) returns (AdminAccountListResp)
 
@@ -294,6 +300,8 @@ service auth-service {
 // Fixed roles remain immutable. User access contains no administrative permissions.
 type (
     AdminAccessResp {
+        TempleCode string `json:"templeCode"`
+        TempleName string `json:"templeName"`
         UserId int64 `json:"userId"`
         Roles []string `json:"roles"`
         ClientId string `json:"clientId"`
@@ -317,14 +325,45 @@ type (
     }
 )
 @server (
-    group: auth.access
+    group: "auth.access"
     prefix: /api/v1
 )
-service auth-service {
+service auth-api {
     @handler adminAccess
     get /auth/access returns (AdminAccessResp)
     @handler rolePermissionsGet
     get /admin/auth/roles/:id/permissions (RolePermissionsReq) returns (RolePermissionsResp)
     @handler rolePermissionsUpdate
     put /admin/auth/roles/:id/permissions (RolePermissionsUpdateReq) returns (RolePermissionsResp)
+}
+
+type (
+ TempleTeamMember { ID int64 `json:"id"`
+        Account string `json:"account"`
+        Name string `json:"name"`
+        Role string `json:"role"`
+        Status string `json:"status"`
+        PlatformDisabled bool `json:"platformDisabled"`
+        Revision int64 `json:"revision"` }
+ TempleTeamInput { ID int64 `json:"id"`
+        Revision int64 `json:"revision"`
+        Account string `json:"account"`
+        Password string `json:"password"`
+        Name string `json:"name"`
+        Role string `json:"role"`
+        Status string `json:"status"` }
+ TempleTeamListResp { List []TempleTeamMember `json:"list"` }
+ TempleTeamSaveResp { ID int64 `json:"id"` }
+)
+@server (
+    prefix: /api/v1/auth/temple
+    group: templeTeam
+)
+service auth-api {
+ @handler templeTeamList
+ get /team returns (TempleTeamListResp)
+ @handler templeTeamCreate
+ post /team (TempleTeamInput) returns (TempleTeamSaveResp)
+ @handler templeTeamUpdate
+ put /team (TempleTeamInput) returns (TempleTeamSaveResp)
 }

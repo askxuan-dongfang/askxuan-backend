@@ -20,6 +20,7 @@ func effectiveRoleScope(r *model.Role) string {
 func authorizationSnapshot(ctx context.Context, s *svc.ServiceContext, a *model.AdminAccount, r *model.Role) (common.TokenInfo, error) {
 	info := common.TokenInfo{RoleID: r.Id, AccountVersion: a.AuthzVersion, RoleVersion: r.AuthzVersion, AuthzScope: effectiveRoleScope(r), Permissions: []string{}}
 	if adminpolicy.Builtin(r.Code) {
+		info.Permissions = adminpolicy.TemplePermissions(r.Code)
 		return info, nil
 	}
 	if info.AuthzScope != "platform" || s.DB == nil {

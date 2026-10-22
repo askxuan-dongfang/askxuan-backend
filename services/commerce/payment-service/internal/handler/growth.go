@@ -61,7 +61,7 @@ func growthIdentity(r *http.Request, surface string) bool {
 	case "admin":
 		return t == "admin" && has("platform_super")
 	case "provider":
-		return t == "admin" && ((has("master") && middleware.MasterIDFromCtx(r.Context()) > 0) || (has("temple_admin") && middleware.TempleIDFromCtx(r.Context()) > 0 && middleware.TempleCodeFromCtx(r.Context()) != ""))
+		return t == "admin" && ((has("master") && middleware.MasterIDFromCtx(r.Context()) > 0) || ((has("temple_admin") || has("temple_operations")) && middleware.TempleIDFromCtx(r.Context()) > 0 && middleware.TempleCodeFromCtx(r.Context()) != ""))
 	}
 	return false
 }

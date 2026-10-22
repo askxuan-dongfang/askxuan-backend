@@ -298,7 +298,7 @@ func (l *WorkspaceScheduleUpdateLogic) WorkspaceScheduleUpdate(req *types.Schedu
 		ScheduleDate: req.Date,
 		TimeSlots:    marshalStrSlice(req.TimeSlots),
 		Status:       status,
-	})
+	}, req.Revision)
 	if err != nil {
 		return nil, err
 	}
@@ -362,6 +362,7 @@ func toTypeBlessingTask(t *model.BlessingTask) types.BlessingTask {
 // toTypeSchedule 将 model.MasterSchedule 转为 types.MasterSchedule
 func toTypeSchedule(s *model.MasterSchedule) types.MasterSchedule {
 	return types.MasterSchedule{
+		Revision:   s.Revision,
 		Id:         s.Id,
 		MasterCode: s.MasterCode,
 		Date:       s.ScheduleDate,
@@ -447,3 +448,5 @@ func WorkspaceUpdateServiceTags(ctx context.Context, svcCtx *svc.ServiceContext,
 	}
 	return WorkspaceServiceTags(ctx, svcCtx)
 }
+
+func ScheduleResponse(s *model.MasterSchedule) types.MasterSchedule { return toTypeSchedule(s) }

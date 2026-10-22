@@ -23,6 +23,7 @@ type MySQLConf struct {
 // Config temple 服务配置
 type Config struct {
 	rest.RestConf
+	AuthSecret string `json:",optional"`
 	// Fixed internal auth URL; absent configuration disables subject-state writes.
 	AuthServiceURL string `json:",optional"`
 	RabbitMQ       RabbitMQConf

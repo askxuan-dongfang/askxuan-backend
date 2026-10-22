@@ -69,7 +69,7 @@ func BookingAccess(ctx context.Context, s *svc.ServiceContext, id string, provid
 			if !providerOnly && actor == b.UserId {
 				return b, actor, model.OperatorTypeUser, nil
 			}
-		case "temple_admin":
+		case "temple_reception", "temple_operations", "temple_finance", "temple_admin":
 			if code := middleware.TempleCodeFromCtx(ctx); code != "" && code == b.TempleId {
 				return b, actor, model.OperatorTypeTempleAdmin, nil
 			}

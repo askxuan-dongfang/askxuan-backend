@@ -63,6 +63,7 @@ type CreateResp struct {
 }
 
 type AvailabilityReq struct {
+	MasterId    string `form:"masterId,optional"`
 	TempleId    string `form:"templeId"`
 	ServiceId   string `form:"serviceId"`
 	BookingDate string `form:"date"`
@@ -90,11 +91,17 @@ type AdminBookingReportReq struct {
 	EndTime   string `form:"endTime,optional"`
 }
 type BookingTrendPoint struct {
-	Date     string  `json:"date"`
-	Bookings int     `json:"bookings"`
-	Revenue  float64 `json:"revenue"`
+	ContractCents int64   `json:"contractCents"`
+	TempleCents   int64   `json:"templeCents"`
+	MasterCents   int64   `json:"masterCents"`
+	Date          string  `json:"date"`
+	Bookings      int     `json:"bookings"`
+	Revenue       float64 `json:"revenue"`
 }
 type BookingRevenueStats struct {
+	ContractCents   int64   `json:"contractCents"`
+	TempleCents     int64   `json:"templeCents"`
+	MasterCents     int64   `json:"masterCents"`
 	TotalRevenue    float64 `json:"totalRevenue"`
 	BookingCount    int     `json:"bookingCount"`
 	AvgBookingValue float64 `json:"avgBookingValue"`
@@ -106,10 +113,13 @@ type BookingServiceDist struct {
 	Percentage  float64 `json:"percentage"`
 }
 type BookingMasterRank struct {
-	MasterCode   string  `json:"masterCode"`
-	MasterName   string  `json:"masterName"`
-	BookingCount int     `json:"bookingCount"`
-	Revenue      float64 `json:"revenue"`
+	ContractCents int64   `json:"contractCents"`
+	TempleCents   int64   `json:"templeCents"`
+	MasterCents   int64   `json:"masterCents"`
+	MasterCode    string  `json:"masterCode"`
+	MasterName    string  `json:"masterName"`
+	BookingCount  int     `json:"bookingCount"`
+	Revenue       float64 `json:"revenue"`
 }
 type AdminBookingReportResp struct {
 	BookingTrend        []BookingTrendPoint  `json:"bookingTrend"`

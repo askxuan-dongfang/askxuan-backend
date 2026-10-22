@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"github.com/askxuan/common/adminpolicy"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -162,6 +163,27 @@ func (c *CustomClaims) HasRole(role string) bool {
 
 // IsAdmin 判断用户是否为平台/寺院/商城管理角色，不包含法师工作台角色
 func (c *CustomClaims) IsAdmin() bool {
-	return c.HasRole("temple_admin") || c.HasRole("shop_admin") ||
+	return c.HasTempleRole() || c.HasRole("shop_admin") ||
 		c.HasRole("platform_super") || c.HasRole("platform_service")
+}
+
+// HasTempleRole identifies the institution scope, never the owner's authority.
+func (c *CustomClaims) HasTempleRole() bool {
+	for _, role := range c.Roles {
+		if adminpolicy.IsTempleRole(role) {
+			return true
+		}
+	}
+	return false
+}
+func (c *CustomClaims) IsTempleStaff() bool {
+	for _, role := range c.Roles {
+		if adminpolicy.IsTempleStaff(role) {
+			return true
+		}
+	}
+	return false
+}
+func (c *CustomClaims) TempleStaffAllowed(method, path string) bool {
+	return c.UserType == "admin" && c.ClientID == "temple-admin" && c.AuthzScope == "temple" && c.TempleID > 0 && c.TempleCode != "" && len(c.Roles) == 1 && adminpolicy.TempleAllowed(method, path, c.Roles[0], c.Permissions)
 }

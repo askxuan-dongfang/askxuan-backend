@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/adminpolicy"
 	"github.com/askxuan/common/middleware"
 	"github.com/askxuan/finance-service/internal/model"
 	"github.com/askxuan/finance-service/internal/svc"
@@ -19,7 +20,7 @@ func walletOwner(ctx context.Context, kind string) (string, bool) {
 		if kind == "master" && role == "master" && middleware.MasterIDFromCtx(ctx) > 0 {
 			return strconv.FormatInt(middleware.MasterIDFromCtx(ctx), 10), true
 		}
-		if kind == "temple" && role == "temple_admin" && middleware.TempleCodeFromCtx(ctx) != "" {
+		if kind == "temple" && adminpolicy.IsTempleRole(role) && middleware.TempleCodeFromCtx(ctx) != "" {
 			return middleware.TempleCodeFromCtx(ctx), true
 		}
 	}

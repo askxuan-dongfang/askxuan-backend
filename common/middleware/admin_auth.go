@@ -52,7 +52,7 @@ func (c *AdminAuthConfig) hasAllowedRole(roles []string) bool {
 	// 未配置 AllowedRoles 时，允许所有管理台角色
 	if len(c.AllowedRoles) == 0 {
 		for _, role := range roles {
-			if role == "temple_admin" || role == "master" ||
+			if adminpolicy.IsTempleRole(role) || role == "master" ||
 				role == "shop_admin" || role == "platform_super" || role == "platform_service" {
 				return true
 			}
@@ -62,7 +62,7 @@ func (c *AdminAuthConfig) hasAllowedRole(roles []string) bool {
 	// 配置了 AllowedRoles 时，精确匹配
 	for _, allowed := range c.AllowedRoles {
 		for _, role := range roles {
-			if role == allowed {
+			if role == allowed || (allowed == "temple_admin" && adminpolicy.IsTempleStaff(role)) {
 				return true
 			}
 		}

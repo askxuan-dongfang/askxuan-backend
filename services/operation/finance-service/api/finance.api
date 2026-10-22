@@ -212,11 +212,11 @@ type (
 )
 
 @server (
-    group: finance.master
+    group: "finance.master"
     prefix: /api/v1/admin/finance/withdrawals
     jwt: Auth
 )
-service finance-service {
+service finance-api {
     @handler withdrawalApply
     post /apply (WithdrawalApplyReq) returns (WithdrawalApplyResp)
 }
@@ -225,7 +225,7 @@ service finance-service {
     group: finance
     prefix: /api/v1/admin/finance
 )
-service finance-service {
+service finance-api {
     @handler overview
     get /overview (OverviewReq) returns (OverviewResp)
 
@@ -322,7 +322,7 @@ type (
     group: payoutSandbox
     jwt: Auth
 )
-service finance-service {
+service finance-api {
     @handler payoutSandboxList
     get /payout-sandbox (PayoutSandboxListReq) returns (PayoutSandboxListResp)
     @handler payoutSandboxDetail
@@ -331,4 +331,26 @@ service finance-service {
     post /payout-sandbox (PayoutSandboxCreateReq) returns (PayoutSandboxRecord)
     @handler payoutSandboxAction
     post /payout-sandbox/:id/actions (PayoutSandboxActionReq) returns (PayoutSandboxRecord)
+}
+
+type (
+ TempleSettlementReportReq { StartTime string `form:"startTime,optional"`
+        EndTime string `form:"endTime,optional"`
+        Mode string `form:"mode,optional"` }
+ TempleSettlementGroup { SourceType string `json:"sourceType"`
+        Status string `json:"status"`
+        Count int64 `json:"count"`
+        GrossCents int64 `json:"grossCents"`
+        CommissionCents int64 `json:"commissionCents"`
+        NetCents int64 `json:"netCents"` }
+ TempleSettlementReportResp { Groups []TempleSettlementGroup `json:"groups"`
+        RecordMode string `json:"recordMode"` }
+)
+@server (
+    prefix: /api/v1/finance/wallet/temple
+    group: templeReport
+)
+service finance-api {
+ @handler templeSettlementReport
+ get /report (TempleSettlementReportReq) returns (TempleSettlementReportResp)
 }

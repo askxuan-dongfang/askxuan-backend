@@ -2,7 +2,9 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/askxuan/common/scheduling"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -17,20 +19,21 @@ const (
 
 // MasterSchedule 法师排班（对应 master_schedule 表）
 type MasterSchedule struct {
-	Id         int64  `db:"id" json:"id"`
-	MasterCode string `db:"master_code" json:"masterCode"`
-	ScheduleDate string `db:"schedule_date" json:"date"` // 日期 YYYY-MM-DD
-	TimeSlots  string `db:"time_slots" json:"timeSlots"` // JSON 数组字符串
-	Status     string `db:"status" json:"status"`
-	CreateTime string `db:"create_time" json:"createTime"`
-	UpdateTime string `db:"update_time" json:"updateTime"`
+	Revision     int64  `db:"revision" json:"revision"`
+	Id           int64  `db:"id" json:"id"`
+	MasterCode   string `db:"master_code" json:"masterCode"`
+	ScheduleDate string `db:"schedule_date" json:"date"`   // 日期 YYYY-MM-DD
+	TimeSlots    string `db:"time_slots" json:"timeSlots"` // JSON 数组字符串
+	Status       string `db:"status" json:"status"`
+	CreateTime   string `db:"create_time" json:"createTime"`
+	UpdateTime   string `db:"update_time" json:"updateTime"`
 }
 
 // MasterScheduleModel 法师排班模型接口
 type MasterScheduleModel interface {
 	FindByMasterId(ctx context.Context, masterCode, date string, page, size int) ([]*MasterSchedule, int64, error)
 	BatchUpsert(ctx context.Context, schedules []*MasterSchedule) error
-	Upsert(ctx context.Context, schedule *MasterSchedule) (int64, error)
+	Upsert(ctx context.Context, schedule *MasterSchedule, expected ...*int64) (int64, error)
 }
 
 type masterScheduleModel struct {
@@ -43,7 +46,7 @@ func NewMasterScheduleModel(conn sqlx.SqlConn) MasterScheduleModel {
 	return &masterScheduleModel{conn: conn, table: "master_schedule"}
 }
 
-const masterScheduleRows = "id, master_code, schedule_date, time_slots, status, create_time, update_time"
+const masterScheduleRows = "id, master_code, DATE_FORMAT(schedule_date,'%Y-%m-%d') schedule_date, time_slots, status, revision, create_time, update_time"
 
 func (m *masterScheduleModel) FindByMasterId(ctx context.Context, masterCode, date string, page, size int) ([]*MasterSchedule, int64, error) {
 	if page < 1 {
@@ -81,29 +84,56 @@ func (m *masterScheduleModel) FindByMasterId(ctx context.Context, masterCode, da
 }
 
 // Upsert 按 master_code + schedule_date 唯一键更新或插入
-func (m *masterScheduleModel) Upsert(ctx context.Context, schedule *MasterSchedule) (int64, error) {
-	query := fmt.Sprintf("INSERT INTO %s (master_code, schedule_date, time_slots, status) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE time_slots = VALUES(time_slots), status = VALUES(status)", m.table)
-	res, err := m.conn.ExecCtx(ctx, query,
-		schedule.MasterCode, schedule.ScheduleDate, schedule.TimeSlots, schedule.Status)
-	if err != nil {
+func (m *masterScheduleModel) Upsert(ctx context.Context, schedule *MasterSchedule, expected ...*int64) (int64, error) {
+	var revision *int64
+	if len(expected) > 0 {
+		revision = expected[0]
+	}
+	var slots []string
+	if json.Unmarshal([]byte(schedule.TimeSlots), &slots) != nil {
+		return 0, scheduling.ErrConflict
+	}
+	if err := scheduling.Validate(schedule.ScheduleDate, schedule.Status, slots); err != nil {
 		return 0, err
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
+	var id int64
+	err := m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		if err := scheduling.LockMaster(ctx, tx, schedule.MasterCode); err != nil {
+			return err
+		}
+		var old struct {
+			ID       int64 `db:"id"`
+			Revision int64 `db:"revision"`
+		}
+		err := tx.QueryRowCtx(ctx, &old, `SELECT id,revision FROM master_schedule WHERE master_code=? AND schedule_date=? FOR UPDATE`, schedule.MasterCode, schedule.ScheduleDate)
+		if err == sqlx.ErrNotFound {
+			if revision != nil && *revision != 0 {
+				return scheduling.ErrConflict
+			}
+			res, e := tx.ExecCtx(ctx, `INSERT INTO master_schedule(master_code,schedule_date,time_slots,status,revision) VALUES(?,?,?,?,1)`, schedule.MasterCode, schedule.ScheduleDate, schedule.TimeSlots, schedule.Status)
+			if e != nil {
+				return e
+			}
+			id, e = res.LastInsertId()
+			return e
+		}
+		if err != nil {
+			return err
+		}
+		if revision == nil || *revision != old.Revision {
+			return scheduling.ErrConflict
+		}
+		_, err = tx.ExecCtx(ctx, `UPDATE master_schedule SET time_slots=?,status=?,revision=revision+1 WHERE id=?`, schedule.TimeSlots, schedule.Status, old.ID)
+		id = old.ID
+		return err
+	})
+	return id, err
 }
 
-// BatchUpsert 批量更新或插入排班
+// BatchUpsert uses the same validation and revision checks for every day.
 func (m *masterScheduleModel) BatchUpsert(ctx context.Context, schedules []*MasterSchedule) error {
-	if len(schedules) == 0 {
-		return nil
-	}
-	query := fmt.Sprintf("INSERT INTO %s (master_code, schedule_date, time_slots, status) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE time_slots = VALUES(time_slots), status = VALUES(status)", m.table)
 	for _, s := range schedules {
-		_, err := m.conn.ExecCtx(ctx, query, s.MasterCode, s.ScheduleDate, s.TimeSlots, s.Status)
-		if err != nil {
+		if _, err := m.Upsert(ctx, s); err != nil {
 			return err
 		}
 	}

@@ -2,7 +2,9 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/askxuan/booking-service/internal/model"
+	"github.com/askxuan/booking-service/internal/mq"
 	"github.com/askxuan/booking-service/internal/svc"
 	"github.com/askxuan/booking-service/internal/types"
 	"github.com/askxuan/common/middleware"
@@ -55,7 +57,7 @@ func TestReviewTransactionIntegration(t *testing.T) {
 	user := context.WithValue(ctx, middleware.CtxKeyUserID, int64(1))
 	user = context.WithValue(user, middleware.CtxKeyRoles, []string{"customer"})
 	insert := func(id, status string) {
-		_, err := db.ExecCtx(ctx, `INSERT INTO booking(booking_no,user_id,temple_code,temple_name,master_code,master_name,service_code,service_name,booking_date,time_slot,status,payment_status) VALUES(?,1,'TTEST','Test','','','S','Service',CURDATE(),'09:00',?,'success')`, id, status)
+		_, err := db.ExecCtx(ctx, `INSERT INTO booking(booking_no,user_id,temple_code,temple_name,master_code,master_name,service_code,service_name,booking_date,time_slot,status,payment_status,service_fee,merit_money,total_fee) VALUES(?,1,'TTEST','Test','','','S','Service','2099-10-22','09:00',?,'success',100.50,20.25,120.75)`, id, status)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -90,6 +92,10 @@ func TestReviewTransactionIntegration(t *testing.T) {
 	var payload string
 	if err := db.QueryRowCtx(ctx, &payload, "SELECT CAST(payload AS CHAR) FROM event_outbox LIMIT 1"); err != nil || !strings.Contains(payload, "TTEST") {
 		t.Fatal("missing temple metadata", err)
+	}
+	var event mq.BookingNotify
+	if err := json.Unmarshal([]byte(payload), &event); err != nil || event.BookingDate != "2099-10-22" || event.ServiceFee != 100.50 || event.MeritMoney != 20.25 || event.TotalFee != 120.75 {
+		t.Fatalf("settlement price snapshot missing: %+v, %v", event, err)
 	}
 	insert("BFAIL", "completed")
 	if _, err := db.ExecCtx(ctx, "RENAME TABLE event_outbox TO event_outbox_unavailable"); err != nil {

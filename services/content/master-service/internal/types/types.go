@@ -232,6 +232,7 @@ type BlessingTaskCompleteReq struct {
 
 // MasterSchedule 法师日程
 type MasterSchedule struct {
+	Revision   int64    `json:"revision"`
 	Id         int64    `json:"id"`
 	MasterCode string   `json:"masterCode"`
 	Date       string   `json:"date"`
@@ -257,6 +258,7 @@ type ScheduleListResp struct {
 
 // ScheduleUpdateReq 更新日程请求
 type ScheduleUpdateReq struct {
+	Revision  *int64   `json:"revision,optional"`
 	Date      string   `json:"date"`
 	TimeSlots []string `json:"timeSlots"`
 	Status    string   `json:"status"`

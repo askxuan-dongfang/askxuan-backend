@@ -6,15 +6,21 @@ import (
 )
 
 type BookingReportStats struct {
+	ContractCents  int64   `db:"contract_cents"`
+	TempleCents    int64   `db:"temple_cents"`
+	MasterCents    int64   `db:"master_cents"`
 	BookingCount   int     `db:"booking_count"`
 	CompletedCount int     `db:"completed_count"`
 	MeritMoney     float64 `db:"merit_money"`
 }
 
 type BookingReportTrend struct {
-	Date       string  `db:"date"`
-	Bookings   int     `db:"bookings"`
-	MeritMoney float64 `db:"merit_money"`
+	ContractCents int64   `db:"contract_cents"`
+	TempleCents   int64   `db:"temple_cents"`
+	MasterCents   int64   `db:"master_cents"`
+	Date          string  `db:"date"`
+	Bookings      int     `db:"bookings"`
+	MeritMoney    float64 `db:"merit_money"`
 }
 
 type BookingReportService struct {
@@ -23,10 +29,13 @@ type BookingReportService struct {
 }
 
 type BookingReportMaster struct {
-	MasterCode string  `db:"master_code"`
-	MasterName string  `db:"master_name"`
-	Count      int     `db:"count"`
-	MeritMoney float64 `db:"merit_money"`
+	ContractCents int64   `db:"contract_cents"`
+	TempleCents   int64   `db:"temple_cents"`
+	MasterCents   int64   `db:"master_cents"`
+	MasterCode    string  `db:"master_code"`
+	MasterName    string  `db:"master_name"`
+	Count         int     `db:"count"`
+	MeritMoney    float64 `db:"merit_money"`
 }
 
 func (m *defaultBookingModel) Report(ctx context.Context, templeID, start, end string) (BookingReportStats, []*BookingReportTrend, []*BookingReportService, []*BookingReportMaster, error) {
@@ -34,12 +43,18 @@ func (m *defaultBookingModel) Report(ctx context.Context, templeID, start, end s
 	var stats BookingReportStats
 	if err := m.conn.QueryRowCtx(ctx, &stats, `SELECT COUNT(*) booking_count,
 		COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') THEN 1 ELSE 0 END),0) completed_count,
-		COALESCE(SUM(merit_money),0) merit_money FROM booking WHERE `+where, args...); err != nil {
+		COALESCE(SUM(merit_money),0) merit_money,
+ CAST(ROUND(COALESCE(SUM(total_fee),0)*100) AS SIGNED) contract_cents,
+ CAST(ROUND(COALESCE(SUM(merit_money),0)*100) AS SIGNED) temple_cents,
+ CAST(ROUND(COALESCE(SUM(service_fee),0)*100) AS SIGNED) master_cents FROM booking WHERE `+where, args...); err != nil {
 		return stats, nil, nil, nil, err
 	}
 	var trend []*BookingReportTrend
 	if err := m.conn.QueryRowsCtx(ctx, &trend, `SELECT DATE_FORMAT(create_time,'%Y-%m-%d') date,
-		COUNT(*) bookings,COALESCE(SUM(merit_money),0) merit_money FROM booking WHERE `+where+
+		COUNT(*) bookings,COALESCE(SUM(merit_money),0) merit_money,
+ CAST(ROUND(COALESCE(SUM(total_fee),0)*100) AS SIGNED) contract_cents,
+ CAST(ROUND(COALESCE(SUM(merit_money),0)*100) AS SIGNED) temple_cents,
+ CAST(ROUND(COALESCE(SUM(service_fee),0)*100) AS SIGNED) master_cents FROM booking WHERE `+where+
 		` GROUP BY DATE_FORMAT(create_time,'%Y-%m-%d') ORDER BY date`, args...); err != nil {
 		return stats, nil, nil, nil, err
 	}
@@ -50,7 +65,10 @@ func (m *defaultBookingModel) Report(ctx context.Context, templeID, start, end s
 	}
 	var masters []*BookingReportMaster
 	if err := m.conn.QueryRowsCtx(ctx, &masters, `SELECT master_code,MAX(master_name) master_name,COUNT(*) count,
-		COALESCE(SUM(merit_money),0) merit_money FROM booking WHERE `+where+
+		COALESCE(SUM(merit_money),0) merit_money,
+ CAST(ROUND(COALESCE(SUM(total_fee),0)*100) AS SIGNED) contract_cents,
+ CAST(ROUND(COALESCE(SUM(merit_money),0)*100) AS SIGNED) temple_cents,
+ CAST(ROUND(COALESCE(SUM(service_fee),0)*100) AS SIGNED) master_cents FROM booking WHERE `+where+
 		` AND master_code<>'' GROUP BY master_code ORDER BY merit_money DESC,count DESC`, args...); err != nil {
 		return stats, nil, nil, nil, err
 	}
