@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/adminpolicy"
 )
 
 // 网关透传给下游服务的请求头
@@ -90,14 +91,23 @@ func roleAllowedForAdminPath(path string, claims *common.CustomClaims) bool {
 // - 公开 GET 允许访客访问；携带 token 时验证并透传身份（GET 白名单支持子路径）
 // - 校验 Authorization: Bearer <token>，解析后将用户信息注入请求头透传下游
 // - /api/v1/admin/* 路径额外校验管理台角色
-func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Context, *common.CustomClaims) error) func(http.Handler) http.Handler {
+type AuthOptions struct {
+	SessionChecks  []func(context.Context, *common.CustomClaims) error
+	ValidateAccess func(context.Context, string, *common.CustomClaims) error
+	Recorder       OperationRecorder
+}
+
+func Auth(secret string, noAuthPaths []string, checks ...func(context.Context, *common.CustomClaims) error) func(http.Handler) http.Handler {
+	return AuthWithOptions(secret, noAuthPaths, AuthOptions{SessionChecks: checks})
+}
+func AuthWithOptions(secret string, noAuthPaths []string, options AuthOptions) func(http.Handler) http.Handler {
 	whitelist := append(append([]string{}, noAuthPaths...), "/api/v1/reviews", "/api/v1/auth/options", "/api/v1/auth/captcha", "/api/v1/auth/email/code", "/api/v1/auth/email/register", "/api/v1/auth/password/reset", "/api/v1/auth/work/register", "/api/v1/auth/work/activate")
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Only verified JWT claims may establish a downstream identity, including
 			// on public routes. Never retain client-supplied identity headers.
-			for _, header := range []string{HeaderUserID, HeaderUserMobile, HeaderUserType, HeaderRoles, HeaderClientID, HeaderTempleID, HeaderTempleCode, HeaderMasterID} {
+			for _, header := range []string{HeaderUserID, HeaderUserMobile, HeaderUserType, HeaderRoles, HeaderClientID, HeaderTempleID, HeaderTempleCode, HeaderMasterID, "X-User-Permissions", "X-Authz-Scope", "X-Admin-Audit-Pending"} {
 				r.Header.Del(header)
 			}
 			publicRead := false
@@ -140,8 +150,22 @@ func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Con
 				return
 			}
 
+			audited, finish, auditErr := auditBegin(r.Context(), r, claims, options.Recorder, w)
+			if auditErr != nil {
+				common.JsonError(w, common.ErrSystem)
+				return
+			}
+			w = audited
+			defer finish()
+			if claims.UserType == "admin" && options.ValidateAccess != nil {
+				if err := options.ValidateAccess(r.Context(), tokenStr, claims); err != nil {
+					common.JsonError(w, err)
+					return
+				}
+			}
+
 			if claims.UserType != "service" {
-				for _, check := range sessionChecks {
+				for _, check := range options.SessionChecks {
 					if e := check(r.Context(), claims); e != nil {
 						common.JsonError(w, common.ErrTokenInvalid)
 						return
@@ -154,7 +178,11 @@ func Auth(secret string, noAuthPaths []string, sessionChecks ...func(context.Con
 			}
 			// 管理台/工作台路径角色校验：/api/v1/admin/* 需要管理台角色，法师工作台也使用该前缀
 			if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") || r.URL.Path == "/api/v1/ai/admin" || strings.HasPrefix(r.URL.Path, "/api/v1/ai/admin/") {
-				if !roleAllowedForAdminPath(r.URL.Path, claims) {
+				allowed := roleAllowedForAdminPath(r.URL.Path, claims)
+				if claims.UserType == "admin" && claims.ClientID == "platform-admin" && claims.AuthzScope == "platform" && len(claims.Roles) == 1 && !adminpolicy.Builtin(claims.Roles[0]) {
+					allowed = adminpolicy.Allowed(r.Method, r.URL.Path, claims.Permissions)
+				}
+				if !allowed {
 					common.JsonError(w, common.ErrRoleForbidden)
 					return
 				}

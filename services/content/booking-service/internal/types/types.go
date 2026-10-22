@@ -421,3 +421,53 @@ type ChatReadReq struct {
 type ChatDetailReq struct {
 	Id string `path:"id"`
 }
+
+// PlatformServiceOrderListReq filters persisted order snapshots, not current
+// provider profile values. From/To are inclusive creation dates (YYYY-MM-DD).
+type PlatformServiceOrderListReq struct {
+	Q             string `form:"q,optional"`
+	Status        string `form:"status,optional"`
+	PaymentStatus string `form:"paymentStatus,optional"`
+	TempleID      string `form:"templeId,optional"`
+	MasterID      string `form:"masterId,optional"`
+	From          string `form:"from,optional"`
+	To            string `form:"to,optional"`
+	Page          int    `form:"page,default=1"`
+	Size          int    `form:"size,default=20"`
+}
+
+type PlatformServiceReceiptFile struct {
+	Id          string `json:"id"`
+	ReceiptId   string `json:"receiptId"`
+	Name        string `json:"name"`
+	ContentType string `json:"contentType"`
+	Size        int64  `json:"size"`
+	SHA256      string `json:"sha256"`
+}
+
+type PlatformServiceReceipt struct {
+	Id           string                       `json:"id"`
+	Summary      string                       `json:"summary"`
+	OperatorId   string                       `json:"operatorId"`
+	OperatorType string                       `json:"operatorType"`
+	Digest       string                       `json:"digest"`
+	CreatedAt    string                       `json:"createdAt"`
+	Files        []PlatformServiceReceiptFile `json:"files"`
+}
+
+type PlatformServiceProgressRecord struct {
+	Id           string                       `json:"id"`
+	Kind         string                       `json:"kind"`
+	Content      string                       `json:"content"`
+	OperatorId   string                       `json:"operatorId"`
+	OperatorType string                       `json:"operatorType"`
+	CreatedAt    string                       `json:"createdAt"`
+	Files        []PlatformServiceReceiptFile `json:"files"`
+}
+
+type PlatformServiceFulfillmentResp struct {
+	Status   string                          `json:"status"`
+	Logs     []BookingStatusLog              `json:"logs"`
+	Receipts []PlatformServiceReceipt        `json:"receipts"`
+	Records  []PlatformServiceProgressRecord `json:"records"`
+}

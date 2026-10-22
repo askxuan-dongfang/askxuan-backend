@@ -33,11 +33,13 @@ const (
 
 // Role 角色实体（依据 init.sql role 表）
 type Role struct {
-	Id          int64  `db:"id" json:"id"`
-	Name        string `db:"name" json:"name"`
-	Code        string `db:"code" json:"code"`
-	Description string `db:"description" json:"description"`
-	CreateTime  string `db:"create_time" json:"createTime"`
+	AuthzScope   string `db:"authz_scope" json:"authzScope"`
+	AuthzVersion int64  `db:"authz_version" json:"authzVersion"`
+	Id           int64  `db:"id" json:"id"`
+	Name         string `db:"name" json:"name"`
+	Code         string `db:"code" json:"code"`
+	Description  string `db:"description" json:"description"`
+	CreateTime   string `db:"create_time" json:"createTime"`
 }
 
 // Permission 权限实体（依据 init.sql permission 表）
@@ -82,7 +84,7 @@ func NewPermissionModel(conn sqlx.SqlConn) PermissionModel {
 
 // AllRoles 返回全部角色
 func (m *defaultRoleModel) AllRoles(ctx context.Context) ([]*Role, error) {
-	query := fmt.Sprintf(`SELECT id, name, code, description, create_time FROM %s ORDER BY id ASC`, roleTable)
+	query := fmt.Sprintf(`SELECT id, name, code, description, authz_scope, authz_version, create_time FROM %s ORDER BY id ASC`, roleTable)
 	var list []*Role
 	if err := m.conn.QueryRowsCtx(ctx, &list, query); err != nil {
 		return nil, err
@@ -93,7 +95,7 @@ func (m *defaultRoleModel) AllRoles(ctx context.Context) ([]*Role, error) {
 // FindByID 按主键查询角色
 func (m *defaultRoleModel) FindByID(ctx context.Context, id int64) (*Role, error) {
 	var r Role
-	query := fmt.Sprintf(`SELECT id, name, code, description, create_time FROM %s WHERE id = ?`, roleTable)
+	query := fmt.Sprintf(`SELECT id, name, code, description, authz_scope, authz_version, create_time FROM %s WHERE id = ?`, roleTable)
 	err := m.conn.QueryRowCtx(ctx, &r, query, id)
 	if err != nil {
 		return nil, err
@@ -103,7 +105,7 @@ func (m *defaultRoleModel) FindByID(ctx context.Context, id int64) (*Role, error
 
 // Insert 新建角色，返回自增 ID
 func (m *defaultRoleModel) Insert(ctx context.Context, data *Role) (int64, error) {
-	query := fmt.Sprintf(`INSERT INTO %s (name, code, description) VALUES (?, ?, ?)`, roleTable)
+	query := fmt.Sprintf(`INSERT INTO %s (name, code, description, authz_scope) VALUES (?, ?, ?, 'platform')`, roleTable)
 	res, err := m.conn.ExecCtx(ctx, query, data.Name, data.Code, data.Description)
 	if err != nil {
 		return 0, err

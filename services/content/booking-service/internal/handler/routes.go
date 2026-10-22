@@ -35,6 +35,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	})
 
 	registerFulfillment(server, svcCtx, authCfg)
+	registerPlatformServiceOrders(server, svcCtx, authCfg)
 	// ============ C端分组（需JWT） ============
 	server.AddRoutes(rest.WithMiddleware(authCfg.AuthFunc, []rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/bookings/eligibility", Handler: bookingEligibilityHandler(svcCtx)},

@@ -100,7 +100,7 @@ func (s *Accounts) ActivateManagedMaster(ctx context.Context, email, password, c
 		if _, e := tx.ExecCtx(ctx, "INSERT INTO auth_identity(domain,user_id,username,email,password_hash,agreement_version,verified_at) VALUES ('admin',?,?,?,?,?,NOW())", inv.AccountID, inv.Username, email, hash, agreement); e != nil {
 			return fmt.Errorf("邮箱或用户名已被使用，请联系寺院管理员")
 		}
-		if _, e := tx.ExecCtx(ctx, "UPDATE admin_account SET password=?,status='enabled' WHERE id=? AND master_id=? AND temple_id=?", hash, inv.AccountID, inv.MasterCode, inv.TempleCode); e != nil {
+		if _, e := tx.ExecCtx(ctx, "UPDATE admin_account SET authz_version=authz_version+1,password=?,status='enabled' WHERE id=? AND master_id=? AND temple_id=?", hash, inv.AccountID, inv.MasterCode, inv.TempleCode); e != nil {
 			return e
 		}
 		_, e := tx.ExecCtx(ctx, "UPDATE master_invitation SET status='activated' WHERE id=?", inv.ID)
@@ -120,7 +120,7 @@ func (s *Accounts) RevokeManagedMaster(ctx context.Context, temple string, id in
 		if n != 1 {
 			return ErrOnboardingDenied
 		}
-		if _, e := tx.ExecCtx(ctx, "UPDATE admin_account SET status='disabled' WHERE id=?", inv.AccountID); e != nil {
+		if _, e := tx.ExecCtx(ctx, "UPDATE admin_account SET authz_version=authz_version+1,status='disabled' WHERE id=?", inv.AccountID); e != nil {
 			return e
 		}
 		if _, e := s.Challenges.Redis.IncrCtx(ctx, EpochKey("admin", inv.AccountID)); e != nil {
@@ -156,7 +156,7 @@ func (s *Accounts) RestoreManagedMaster(ctx context.Context, temple string, id i
 		if _, e := s.Challenges.Redis.IncrCtx(ctx, EpochKey("admin", inv.AccountID)); e != nil {
 			return e
 		}
-		if _, e := tx.ExecCtx(ctx, "UPDATE admin_account SET status=? WHERE id=?", accountStatus, inv.AccountID); e != nil {
+		if _, e := tx.ExecCtx(ctx, "UPDATE admin_account SET authz_version=authz_version+1,status=? WHERE id=?", accountStatus, inv.AccountID); e != nil {
 			return e
 		}
 		_, e := tx.ExecCtx(ctx, "UPDATE master_invitation SET status=? WHERE id=?", status, id)

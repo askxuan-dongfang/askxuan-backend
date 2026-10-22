@@ -1,0 +1,33 @@
+-- Additive RBAC revision migration. Run before new auth/gateway. No account reassignment or credential changes.
+USE askxuan_auth;
+SET @ddl=IF((SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='role' AND column_name='authz_scope')=0, 'ALTER TABLE `role` ADD COLUMN `authz_scope` VARCHAR(16) NOT NULL DEFAULT ''platform''', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl=IF((SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='role' AND column_name='authz_version')=0, 'ALTER TABLE `role` ADD COLUMN `authz_version` BIGINT UNSIGNED NOT NULL DEFAULT 0', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl=IF((SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='admin_account' AND column_name='authz_version')=0, 'ALTER TABLE `admin_account` ADD COLUMN `authz_version` BIGINT UNSIGNED NOT NULL DEFAULT 0', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+-- Existing fixed roles retain their historical data scope. This is not a role grant.
+UPDATE role SET authz_scope=CASE code WHEN 'temple_admin' THEN 'temple' WHEN 'temple_applicant' THEN 'temple' WHEN 'master' THEN 'master' WHEN 'master_applicant' THEN 'master' WHEN 'shop_admin' THEN 'shop' ELSE 'platform' END WHERE code IN ('platform_super','platform_service','temple_admin','temple_applicant','master','master_applicant','shop_admin');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.temples.read','寺院档案·查看','temples','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.temples.write','寺院运营状态·管理','temples','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.masters.read','师傅档案·查看','masters','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.masters.write','师傅运营状态、咨询与服务·管理','masters','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.users.read','信众管理·查看','users','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.users.write','信众管理·管理','users','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.products.read','商品管理·查看','products','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.products.write','商品管理·管理','products','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.orders.read','商城订单·查看','orders','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.orders.write','商城订单·管理','orders','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.diy.read','DIY材料与订单·查看','diy','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.diy.write','DIY材料与订单·管理','diy','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.points.read','积分商城·查看','points','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.points.write','积分商城·管理','points','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.logistics.read','物流管理·查看','logistics','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.logistics.write','物流管理·管理','logistics','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.finance.read','财务审核与汇总·查看','finance','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.finance.write','财务审核与汇总·管理','finance','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.marketing.read','营销活动·查看','marketing','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.marketing.write','营销活动·管理','marketing','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.moderation.read','举报与敏感词·查看','moderation','read');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.moderation.write','举报与敏感词·管理','moderation','write');
+INSERT IGNORE INTO permission(code,name,resource,action) VALUES ('platform.operations.read','操作日志·查看','operations','read');

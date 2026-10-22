@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/askxuan/audit-service/internal/logic"
@@ -16,6 +17,7 @@ import (
 // RegisterHandlers 注册 audit 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
+	registerAdminOperations(server, svcCtx)
 
 	server.AddRoutes([]rest.Route{
 		{
@@ -106,14 +108,26 @@ func auditQueueDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 }
 
 func auditApproveHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return auditApproveWithAction(svcCtx, func(ctx context.Context, req *types.AuditApproveReq) (*types.AuditApproveResp, error) {
+		return logic.NewAuditApproveLogic(ctx, svcCtx).AuditApprove(req)
+	})
+}
+
+func auditApproveWithAction(svcCtx *svc.ServiceContext, action func(context.Context, *types.AuditApproveReq) (*types.AuditApproveResp, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		actor, err := humanAuditActor(r, svcCtx.Config.Auth.AccessSecret, true)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
 		var req types.AuditApproveReq
 		if err := httpx.Parse(r, &req); err != nil {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
-		l := logic.NewAuditApproveLogic(r.Context(), svcCtx)
-		resp, err := l.AuditApprove(&req)
+		// Retain the old JSON field for clients, but only the signed human may act.
+		req.AuditorId = actor
+		resp, err := action(r.Context(), &req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {
@@ -123,14 +137,25 @@ func auditApproveHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 }
 
 func auditRejectHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return auditRejectWithAction(svcCtx, func(ctx context.Context, req *types.AuditRejectReq) (*types.AuditRejectResp, error) {
+		return logic.NewAuditRejectLogic(ctx, svcCtx).AuditReject(req)
+	})
+}
+
+func auditRejectWithAction(svcCtx *svc.ServiceContext, action func(context.Context, *types.AuditRejectReq) (*types.AuditRejectResp, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		actor, err := humanAuditActor(r, svcCtx.Config.Auth.AccessSecret, true)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
 		var req types.AuditRejectReq
 		if err := httpx.Parse(r, &req); err != nil {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
-		l := logic.NewAuditRejectLogic(r.Context(), svcCtx)
-		resp, err := l.AuditReject(&req)
+		req.AuditorId = actor
+		resp, err := action(r.Context(), &req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {
@@ -157,14 +182,25 @@ func reportListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 }
 
 func reportHandleHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return reportHandleWithAction(svcCtx, func(ctx context.Context, req *types.ReportHandleReq) (*types.ReportHandleResp, error) {
+		return logic.NewReportHandleLogic(ctx, svcCtx).ReportHandle(req)
+	})
+}
+
+func reportHandleWithAction(svcCtx *svc.ServiceContext, action func(context.Context, *types.ReportHandleReq) (*types.ReportHandleResp, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		actor, err := humanAuditActor(r, svcCtx.Config.Auth.AccessSecret, false)
+		if err != nil {
+			common.JsonError(w, err)
+			return
+		}
 		var req types.ReportHandleReq
 		if err := httpx.Parse(r, &req); err != nil {
 			common.JsonError(w, common.ErrParam)
 			return
 		}
-		l := logic.NewReportHandleLogic(r.Context(), svcCtx)
-		resp, err := l.ReportHandle(&req)
+		req.HandlerId = actor
+		resp, err := action(r.Context(), &req)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

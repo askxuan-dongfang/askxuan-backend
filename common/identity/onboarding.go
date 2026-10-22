@@ -318,7 +318,7 @@ func (s *Accounts) ReviewWorkApplication(ctx context.Context, reviewer, id int64
 				if _, e = tx.ExecCtx(ctx, "INSERT INTO askxuan_master.master_profile_ext(master_code,bio,pricing) VALUES (?,?,'')", entity, p.Description); e != nil {
 					return e
 				}
-				if _, e = tx.ExecCtx(ctx, "UPDATE admin_account SET role_id=?,name=?,master_id=?,temple_id='' WHERE id=?", roleID, p.Name, entity, a.AccountID); e != nil {
+				if _, e = tx.ExecCtx(ctx, "UPDATE admin_account SET authz_version=authz_version+1,role_id=?,name=?,master_id=?,temple_id='' WHERE id=?", roleID, p.Name, entity, a.AccountID); e != nil {
 					return e
 				}
 			} else if a.Kind == "temple" {
@@ -326,7 +326,7 @@ func (s *Accounts) ReviewWorkApplication(ctx context.Context, reviewer, id int64
 				if e != nil {
 					return e
 				}
-				if _, e = tx.ExecCtx(ctx, "UPDATE admin_account SET role_id=?,name=?,temple_id=?,master_id='' WHERE id=?", roleID, p.LegalName, entity, a.AccountID); e != nil {
+				if _, e = tx.ExecCtx(ctx, "UPDATE admin_account SET authz_version=authz_version+1,role_id=?,name=?,temple_id=?,master_id='' WHERE id=?", roleID, p.LegalName, entity, a.AccountID); e != nil {
 					return e
 				}
 				if _, e = tx.ExecCtx(ctx, "INSERT INTO askxuan_temple.temple_admin(temple_code,account_id,role) VALUES (?,?,'admin')", entity, a.AccountID); e != nil {

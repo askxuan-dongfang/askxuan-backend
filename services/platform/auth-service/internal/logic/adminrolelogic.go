@@ -3,6 +3,9 @@ package logic
 import (
 	"context"
 	"errors"
+	"github.com/askxuan/common/adminpolicy"
+	"regexp"
+	"strings"
 
 	"github.com/askxuan/auth-service/internal/model"
 	"github.com/askxuan/auth-service/internal/svc"
@@ -36,7 +39,7 @@ func (l *AdminRoleListLogic) AdminRoleList() (*types.RoleListResp, error) {
 	out := make([]types.Role, 0, len(list))
 	for _, r := range list {
 		out = append(out, types.Role{
-			Id:          r.Id,
+			Id: r.Id, AuthzScope: effectiveRoleScope(r), AuthzVersion: r.AuthzVersion, Editable: !adminpolicy.Builtin(r.Code) && effectiveRoleScope(r) == "platform",
 			Name:        r.Name,
 			Code:        r.Code,
 			Description: r.Description,
@@ -59,6 +62,11 @@ func NewAdminRoleCreateLogic(ctx context.Context, svcCtx *svc.ServiceContext) *A
 }
 
 func (l *AdminRoleCreateLogic) AdminRoleCreate(req *types.RoleCreateReq) (*types.RoleCreateResp, error) {
+	req.Code = strings.TrimSpace(req.Code)
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" || len(req.Name) > 64 || !regexp.MustCompile(`^[a-z][a-z0-9_]{2,49}$`).MatchString(req.Code) || adminpolicy.Builtin(req.Code) || strings.HasPrefix(req.Code, "platform_") || len(req.Description) > 255 {
+		return nil, common.ErrParam
+	}
 	id, err := l.svcCtx.RoleModel.Insert(l.ctx, &model.Role{
 		Name:        req.Name,
 		Code:        req.Code,
@@ -113,7 +121,7 @@ func (l *AdminRoleUpdateLogic) AdminRoleUpdate(req *types.RoleUpdateReq) (*types
 	}
 
 	return &types.Role{
-		Id:          updated.Id,
+		Id: updated.Id, AuthzScope: effectiveRoleScope(exist), AuthzVersion: exist.AuthzVersion, Editable: !adminpolicy.Builtin(exist.Code) && effectiveRoleScope(exist) == "platform",
 		Name:        updated.Name,
 		Code:        exist.Code,
 		Description: updated.Description,
@@ -135,22 +143,18 @@ func NewAdminPermissionListLogic(ctx context.Context, svcCtx *svc.ServiceContext
 }
 
 func (l *AdminPermissionListLogic) AdminPermissionList() (*types.PermissionListResp, error) {
-	list, err := l.svcCtx.PermissionModel.AllPermissions(l.ctx)
+	rows, err := l.svcCtx.PermissionModel.AllPermissions(l.ctx)
 	if err != nil {
-		l.Errorf("查询权限列表失败: %v", err)
 		return nil, common.ErrSystem
 	}
-
-	out := make([]types.Permission, 0, len(list))
-	for _, p := range list {
-		out = append(out, types.Permission{
-			Id:       p.Id,
-			Code:     p.Code,
-			Name:     p.Name,
-			Resource: p.Resource,
-			Action:   p.Action,
-		})
+	ids := map[string]int64{}
+	for _, row := range rows {
+		ids[row.Code] = row.Id
 	}
-
+	out := make([]types.Permission, 0, len(adminpolicy.Catalog))
+	for _, p := range adminpolicy.Catalog {
+		// Locked directory items have no grantable DB row and use zero, never a fake ID.
+		out = append(out, types.Permission{Id: ids[p.Code], Code: p.Code, Name: p.Name, Resource: p.Resource, Action: p.Action, Assignable: p.Assignable})
+	}
 	return &types.PermissionListResp{List: out}, nil
 }

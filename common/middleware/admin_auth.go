@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/adminpolicy"
 )
 
 // AdminAuthConfig 管理台角色鉴权中间件配置
@@ -22,7 +23,7 @@ func (c *AdminAuthConfig) AdminAuth(next http.Handler) http.Handler {
 			common.JsonError(w, common.ErrForbidden)
 			return
 		}
-		if !c.hasAllowedRole(roles) {
+		if !c.hasAllowedRole(roles) && !delegatedRequestAllowed(r) {
 			common.JsonError(w, common.ErrRoleForbidden)
 			return
 		}
@@ -38,7 +39,7 @@ func (c *AdminAuthConfig) AdminAuthFunc(next http.HandlerFunc) http.HandlerFunc 
 			common.JsonError(w, common.ErrForbidden)
 			return
 		}
-		if !c.hasAllowedRole(roles) {
+		if !c.hasAllowedRole(roles) && !delegatedRequestAllowed(r) {
 			common.JsonError(w, common.ErrRoleForbidden)
 			return
 		}
@@ -67,4 +68,14 @@ func (c *AdminAuthConfig) hasAllowedRole(roles []string) bool {
 		}
 	}
 	return false
+}
+
+// Delegation applies only to platform APIs explicitly catalogued for this method.
+// A token for a provider/customer route cannot use this to change its identity domain.
+func delegatedRequestAllowed(r *http.Request) bool {
+	c := AdminClaimsFromCtx(r.Context())
+	if c == nil || c.UserType != "admin" || c.ClientID != "platform-admin" || c.AuthzScope != "platform" || len(c.Roles) != 1 || adminpolicy.Builtin(c.Roles[0]) {
+		return false
+	}
+	return adminpolicy.Allowed(r.Method, r.URL.Path, c.Permissions)
 }

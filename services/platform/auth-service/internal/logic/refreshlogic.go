@@ -10,6 +10,7 @@ import (
 	"github.com/askxuan/auth-service/internal/svc"
 	"github.com/askxuan/auth-service/internal/types"
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/adminpolicy"
 	"github.com/askxuan/common/identity"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -103,7 +104,7 @@ func (l *RefreshLogic) refreshIdentity(claims *common.CustomClaims) (common.Toke
 	if err != nil {
 		return common.TokenInfo{}, refreshLookupError(err)
 	}
-	if role == nil || !refreshRoleMatchesDomain(claims.UserType, role.Code) {
+	if role == nil || !refreshRoleMatchesDomain(claims.UserType, role.Code) || !authorizationVersionMatches(claims, acc, role) {
 		return common.TokenInfo{}, common.ErrTokenInvalid
 	}
 
@@ -147,6 +148,15 @@ func (l *RefreshLogic) refreshIdentity(claims *common.CustomClaims) (common.Toke
 			return common.TokenInfo{}, err
 		}
 	}
+	snapshot, err := authorizationSnapshot(l.ctx, l.svcCtx, acc, role)
+	if err != nil {
+		return common.TokenInfo{}, err
+	}
+	info.RoleID = snapshot.RoleID
+	info.AccountVersion = snapshot.AccountVersion
+	info.RoleVersion = snapshot.RoleVersion
+	info.AuthzScope = snapshot.AuthzScope
+	info.Permissions = snapshot.Permissions
 	return info, nil
 }
 
@@ -161,7 +171,7 @@ func refreshRoleMatchesDomain(domain, role string) bool {
 	case model.RoleCodePlatformSuper, model.RoleCodePlatformService, model.RoleCodeTempleAdmin, model.RoleCodeShopAdmin, "master_applicant", "temple_applicant":
 		return true
 	default:
-		return false
+		return !adminpolicy.Builtin(role) // Custom roles still require signed scope + role ID + live versions.
 	}
 }
 

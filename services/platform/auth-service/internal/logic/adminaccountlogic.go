@@ -120,7 +120,7 @@ func (l *AdminAccountCreateLogic) AdminAccountCreate(req *types.AdminAccountCrea
 		return nil, err
 	}
 
-	// MVP-1 明文存储密码。账号与寺院管理员关系必须在同一事务写入。
+	// Password hashing and business binding are persisted together.
 	account := &model.AdminAccount{
 		Account:  req.Account,
 		Password: req.Password,
@@ -217,6 +217,9 @@ func (l *AdminAccountUpdateLogic) AdminAccountUpdate(req *types.AdminAccountUpda
 
 	if err := updateAdminAccountWithBinding(l.ctx, l.svcCtx.DB, updated, binding.templeAdmin); err != nil {
 		l.Errorf("更新账号失败 id=%d: %v", req.Id, err)
+		if errors.Is(err, ErrLastSuper) {
+			return nil, err
+		}
 		return nil, common.ErrSystem
 	}
 
@@ -290,8 +293,11 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 		}
 	}
 
-	if err := l.svcCtx.AdminAccountModel.UpdateStatus(l.ctx, req.Id, req.Status); err != nil {
+	if err := updateAccountStatus(l.ctx, l.svcCtx, account, req.Status); err != nil {
 		l.Errorf("更新账号状态失败 id=%d: %v", req.Id, err)
+		if errors.Is(err, ErrLastSuper) {
+			return nil, err
+		}
 		return nil, common.ErrSystem
 	}
 
@@ -351,6 +357,9 @@ func validateAdminAccountBinding(ctx context.Context, svcCtx *svc.ServiceContext
 		return &adminAccountBinding{}, nil
 
 	default:
+		if effectiveRoleScope(role) == "platform" {
+			return &adminAccountBinding{}, nil
+		}
 		return nil, common.ErrParam
 	}
 }
@@ -484,7 +493,10 @@ func insertAdminAccountWithBinding(ctx context.Context, db sqlx.SqlConn, account
 
 func updateAdminAccountWithBinding(ctx context.Context, db sqlx.SqlConn, account *model.AdminAccount, templeAdmin bool) error {
 	return db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
-		if _, err := session.ExecCtx(ctx, `UPDATE admin_account SET name=?,role_id=?,temple_id=?,master_id=?,shop_id=?,status=? WHERE id=?`,
+		if err := guardLastSuper(ctx, session, account.Id, account.RoleId, account.Status); err != nil {
+			return err
+		}
+		if _, err := session.ExecCtx(ctx, `UPDATE admin_account SET authz_version=authz_version+1,name=?,role_id=?,temple_id=?,master_id=?,shop_id=?,status=? WHERE id=?`,
 			account.Name, account.RoleId, account.TempleId, account.MasterId, account.ShopId, account.Status, account.Id); err != nil {
 			return err
 		}

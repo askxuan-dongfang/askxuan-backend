@@ -8,6 +8,7 @@ func CorsHeaders(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With,X-User-Id,X-User-Mobile")
 	w.Header().Set("Access-Control-Max-Age", "3600")
+	w.Header().Set("Access-Control-Expose-Headers", "X-Admin-Audit-Pending")
 }
 
 // Cors 网关层 CORS 中间件

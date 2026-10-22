@@ -195,3 +195,83 @@ service audit-service {
     @handler statistics
     get /statistics (StatisticsReq) returns (StatisticsResp)
 }
+
+// These handlers perform their own strict JWT identity/permission checks.
+// Do not replace them with generated unguarded CRUD handlers.
+type (
+    OperationStartReq {
+        RequestId string `json:"requestId"`
+        ActorId int64 `json:"actorId"`
+        ActorRoles []string `json:"actorRoles"`
+        Action string `json:"action"`
+        Method string `json:"method"`
+        RouteTemplate string `json:"routeTemplate"`
+        TargetType string `json:"targetType"`
+        TargetId string `json:"targetId"`
+    }
+    OperationFinishReq {
+        RequestId string `json:"requestId"`
+        Result string `json:"result"`
+        HttpStatus int `json:"httpStatus"`
+        BusinessCode int `json:"businessCode"`
+        DurationMs int64 `json:"durationMs"`
+    }
+    OperationReceipt {
+        RequestId string `json:"requestId"`
+        Result string `json:"result"`
+    }
+    OperationListReq {
+        ActorId int64 `form:"actorId,optional"`
+        Action string `form:"action,optional"`
+        Method string `form:"method,optional"`
+        TargetType string `form:"targetType,optional"`
+        Result string `form:"result,optional"`
+        StartTime string `form:"startTime,optional"`
+        EndTime string `form:"endTime,optional"`
+        Page int `form:"page,default=1"`
+        Size int `form:"size,default=20"`
+    }
+    OperationLog {
+        RequestId string `json:"requestId"`
+        ActorId int64 `json:"actorId"`
+        ActorRoles []string `json:"actorRoles"`
+        Action string `json:"action"`
+        Method string `json:"method"`
+        RouteTemplate string `json:"routeTemplate"`
+        TargetType string `json:"targetType"`
+        TargetId string `json:"targetId"`
+        Result string `json:"result"`
+        HttpStatus int `json:"httpStatus"`
+        BusinessCode int `json:"businessCode"`
+        DurationMs int64 `json:"durationMs"`
+        StartedAt string `json:"startedAt"`
+        FinishedAt string `json:"finishedAt"`
+    }
+    OperationListResp {
+        List []OperationLog `json:"list"`
+        Total int64 `json:"total"`
+        Page int `json:"page"`
+        Size int `json:"size"`
+    }
+)
+
+@server (
+    group: adminOperations
+    prefix: /api/v1/admin/audit
+)
+service audit-service {
+    @handler operationList
+    get /operations (OperationListReq) returns (OperationListResp)
+}
+
+@server (
+    group: internalAdminOperations
+    prefix: /api/v1/internal/admin-operations
+)
+service audit-service {
+    @handler operationStart
+    post /start (OperationStartReq) returns (OperationReceipt)
+
+    @handler operationFinish
+    post /finish (OperationFinishReq) returns (OperationReceipt)
+}

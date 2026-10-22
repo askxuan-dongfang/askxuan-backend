@@ -19,6 +19,9 @@ type MySQLConf struct {
 // Config audit 服务配置
 type Config struct {
 	rest.RestConf
+	Auth struct {
+		AccessSecret string
+	}
 	MySQL    MySQLConf
 	RabbitMQ RabbitMQConf
 }

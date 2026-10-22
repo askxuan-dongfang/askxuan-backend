@@ -127,6 +127,19 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		}
 	}
 
+	snapshot, snapshotErr := authorizationSnapshot(l.ctx, l.svcCtx, acc, role)
+	if snapshotErr != nil {
+		return nil, snapshotErr
+	}
+	// A concurrent account/role change must never be signed under the old revision.
+	freshAcc, freshErr := l.svcCtx.AdminAccountModel.FindByID(l.ctx, acc.Id)
+	freshRole, roleErr := l.svcCtx.RoleModel.FindByID(l.ctx, role.Id)
+	if freshErr != nil || roleErr != nil {
+		return nil, common.ErrSystem
+	}
+	if freshAcc.Status != model.AccountStatusEnabled || freshAcc.RoleId != acc.RoleId || freshAcc.AuthzVersion != snapshot.AccountVersion || freshRole.AuthzVersion != snapshot.RoleVersion {
+		return nil, common.ErrTokenInvalid
+	}
 	sid := ""
 	if l.svcCtx.SessionRedis != nil {
 		if l.svcCtx.Accounts != nil {
@@ -142,6 +155,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	access, err := common.GenAccessToken(
 		l.svcCtx.Config.Auth.AccessSecret,
 		common.TokenInfo{
+			RoleID: snapshot.RoleID, AccountVersion: snapshot.AccountVersion, RoleVersion: snapshot.RoleVersion, AuthzScope: snapshot.AuthzScope, Permissions: snapshot.Permissions,
 			SessionID:  sid,
 			UserId:     acc.Id,
 			Mobile:     acc.Account,
@@ -166,7 +180,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	}
 	refresh, err := common.GenRefreshToken(
 		l.svcCtx.Config.Auth.AccessSecret,
-		common.TokenInfo{SessionID: sid, UserId: acc.Id, UserType: refreshDomain},
+		common.TokenInfo{SessionID: sid, UserId: acc.Id, UserType: refreshDomain, Roles: []string{role.Code}, ClientID: clientID, RoleID: snapshot.RoleID, AccountVersion: snapshot.AccountVersion, RoleVersion: snapshot.RoleVersion, AuthzScope: snapshot.AuthzScope},
 		l.svcCtx.Config.Auth.RefreshExpire,
 	)
 	if err != nil {

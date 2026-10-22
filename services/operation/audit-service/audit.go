@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/askxuan/common"
 
 	"github.com/askxuan/audit-service/internal/config"
 	"github.com/askxuan/audit-service/internal/handler"
@@ -19,6 +20,11 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	if err := common.ValidateJWTSecret(c.Auth.AccessSecret); err != nil {
+		panic(err)
+	}
+	// The default slow/error request dump may include bearer credentials.
+	c.Middlewares.Log = false
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

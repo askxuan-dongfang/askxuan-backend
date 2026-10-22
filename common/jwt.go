@@ -9,30 +9,40 @@ import (
 
 // CustomClaims JWT 自定义声明，携带用户身份信息
 type CustomClaims struct {
-	SessionID  string   `json:"sid,omitempty"`
-	UserId     int64    `json:"userId"`
-	Mobile     string   `json:"mobile,omitempty"`
-	UserType   string   `json:"userType,omitempty"`   // user / master / admin
-	Roles      []string `json:"roles,omitempty"`      // 角色列表：customer/temple_admin/master/shop_admin/platform_super/platform_service
-	ClientID   string   `json:"clientId,omitempty"`   // 端标识：customer/temple-admin/master/shop-admin/platform-admin
-	TempleID   int64    `json:"templeId,omitempty"`   // 寺院ID（temple_admin 专用）
-	TempleCode string   `json:"templeCode,omitempty"` // 寺院编码（如 T001，temple_admin 专用，服务端隔离依据）
-	MasterID   int64    `json:"masterId,omitempty"`   // 法师ID（master 专用）
-	Type       string   `json:"type,omitempty"`       // access / refresh
+	RoleID         int64    `json:"roleId,omitempty"`
+	AccountVersion int64    `json:"accountVersion,omitempty"`
+	RoleVersion    int64    `json:"roleVersion,omitempty"`
+	AuthzScope     string   `json:"authzScope,omitempty"`
+	Permissions    []string `json:"permissions,omitempty"`
+	SessionID      string   `json:"sid,omitempty"`
+	UserId         int64    `json:"userId"`
+	Mobile         string   `json:"mobile,omitempty"`
+	UserType       string   `json:"userType,omitempty"`   // user / master / admin
+	Roles          []string `json:"roles,omitempty"`      // 角色列表：customer/temple_admin/master/shop_admin/platform_super/platform_service
+	ClientID       string   `json:"clientId,omitempty"`   // 端标识：customer/temple-admin/master/shop-admin/platform-admin
+	TempleID       int64    `json:"templeId,omitempty"`   // 寺院ID（temple_admin 专用）
+	TempleCode     string   `json:"templeCode,omitempty"` // 寺院编码（如 T001，temple_admin 专用，服务端隔离依据）
+	MasterID       int64    `json:"masterId,omitempty"`   // 法师ID（master 专用）
+	Type           string   `json:"type,omitempty"`       // access / refresh
 	jwt.RegisteredClaims
 }
 
 // TokenInfo 签发 Access Token 所需的用户信息
 type TokenInfo struct {
-	SessionID  string
-	UserId     int64
-	Mobile     string
-	UserType   string
-	Roles      []string
-	ClientID   string
-	TempleID   int64
-	TempleCode string
-	MasterID   int64
+	RoleID         int64
+	AccountVersion int64
+	RoleVersion    int64
+	AuthzScope     string
+	Permissions    []string
+	SessionID      string
+	UserId         int64
+	Mobile         string
+	UserType       string
+	Roles          []string
+	ClientID       string
+	TempleID       int64
+	TempleCode     string
+	MasterID       int64
 }
 
 // JWT 签发与校验工具
@@ -44,6 +54,7 @@ type TokenInfo struct {
 func GenAccessToken(secret string, info TokenInfo, expireSeconds int64) (string, error) {
 	now := time.Now()
 	claims := CustomClaims{
+		RoleID: info.RoleID, AccountVersion: info.AccountVersion, RoleVersion: info.RoleVersion, AuthzScope: info.AuthzScope, Permissions: info.Permissions,
 		SessionID:  info.SessionID,
 		UserId:     info.UserId,
 		Mobile:     info.Mobile,
@@ -77,6 +88,8 @@ func GenRefreshToken(secret string, identity TokenInfo, expireSeconds int64) (st
 	}
 	now := time.Now()
 	claims := CustomClaims{
+
+		RoleID: identity.RoleID, AccountVersion: identity.AccountVersion, RoleVersion: identity.RoleVersion, AuthzScope: identity.AuthzScope,
 		SessionID: identity.SessionID,
 		UserId:    identity.UserId,
 		UserType:  identity.UserType,
