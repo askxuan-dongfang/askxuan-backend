@@ -29,6 +29,8 @@ var (
 	ErrTokenExpired   = &BizError{Code: 40103, Msg: "token 已过期"}
 	ErrPwdWrong       = &BizError{Code: 40104, Msg: "手机号或密码错误"}
 	ErrRefreshExpired = &BizError{Code: 40105, Msg: "refresh token 已过期，请重新登录"}
+	// 40105 is terminal: clients clear credentials instead of refreshing a revoked session.
+	ErrSessionRevoked = &BizError{Code: 40105, Msg: "会话已失效，请重新登录"}
 
 	// 权限错误 40301-40399
 	ErrForbidden       = &BizError{Code: 40301, Msg: "无权限访问"}

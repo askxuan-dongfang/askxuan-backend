@@ -38,6 +38,7 @@ type AdminAccountModel interface {
 	FindByAccount(ctx context.Context, account string) (*AdminAccount, error)
 	FindByID(ctx context.Context, id int64) (*AdminAccount, error)
 	FindList(ctx context.Context, keyword, status string, page, size int) ([]*AdminAccount, int64, error)
+	FindFilteredList(ctx context.Context, filter AdminAccountFilter, page, size int) ([]*AdminAccount, int64, error)
 	Insert(ctx context.Context, data *AdminAccount) (int64, error)
 	Update(ctx context.Context, data *AdminAccount) error
 	UpdateStatus(ctx context.Context, id int64, status string) error
@@ -80,7 +81,32 @@ func (m *defaultAdminAccountModel) FindByID(ctx context.Context, id int64) (*Adm
 
 // FindList 账号列表查询，支持 keyword（account/name 模糊搜索）+ status 筛选 + 分页
 func (m *defaultAdminAccountModel) FindList(ctx context.Context, keyword, status string, page, size int) ([]*AdminAccount, int64, error) {
-	where, args := buildAdminAccountWhere(keyword, status)
+	return m.FindFilteredList(ctx, AdminAccountFilter{Keyword: keyword, Status: status}, page, size)
+}
+
+type AdminAccountFilter struct {
+	Keyword, Status, TempleID, MasterID string
+	RoleID, ShopID                      int64
+}
+
+func (m *defaultAdminAccountModel) FindFilteredList(ctx context.Context, filter AdminAccountFilter, page, size int) ([]*AdminAccount, int64, error) {
+	where, args := buildAdminAccountWhere(filter.Keyword, filter.Status)
+	if filter.RoleID > 0 {
+		where += " AND role_id=?"
+		args = append(args, filter.RoleID)
+	}
+	if filter.TempleID != "" {
+		where += " AND temple_id=?"
+		args = append(args, filter.TempleID)
+	}
+	if filter.MasterID != "" {
+		where += " AND master_id=?"
+		args = append(args, filter.MasterID)
+	}
+	if filter.ShopID > 0 {
+		where += " AND shop_id=?"
+		args = append(args, filter.ShopID)
+	}
 
 	countQuery := fmt.Sprintf(`SELECT COUNT(1) FROM %s WHERE %s`, adminAccountTable, where)
 	var total int64

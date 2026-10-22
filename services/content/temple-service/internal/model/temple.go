@@ -35,6 +35,11 @@ const templeTable = "temple"
 
 // Temple 寺院实体（依据 init.sql temple 表）
 type Temple struct {
+	AuthStatus     string  `db:"auth_status" json:"authStatus"`
+	PlatformStatus string  `db:"platform_status" json:"platformStatus"`
+	ShelfStatus    string  `db:"shelf_status" json:"shelfStatus"`
+	Recommended    bool    `db:"recommended" json:"recommended"`
+	StateVersion   int64   `db:"state_version" json:"stateVersion"`
 	TraditionCodes string  `db:"tradition_codes"`
 	RegionCode     string  `db:"region_code" json:"regionCode"`
 	RegionName     string  `db:"region_name" json:"regionName"`
@@ -64,6 +69,7 @@ type TempleFilter struct {
 	Type          string
 	Region        string
 	Status        string // 为空时不筛选状态
+	PublicOnly    bool
 	Statuses      []string
 }
 
@@ -100,10 +106,10 @@ func NewTempleModel(conn sqlx.SqlConn) TempleModel {
 
 // Insert 新建寺院，返回自增 ID
 func (m *defaultTempleModel) Insert(ctx context.Context, data *Temple) (int64, error) {
-	const query = `INSERT INTO ` + templeTable + ` (code, name, region, type, belief_code, sect, status, address, cover_image, rating, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	const query = `INSERT INTO ` + templeTable + ` (code, name, region, type, belief_code, sect, status, address, cover_image, rating, description,auth_status,platform_status,shelf_status,recommended) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?,?)`
 	res, err := m.conn.ExecCtx(ctx, query,
 		data.Code, data.Name, data.Region, data.Type, data.BeliefCode, data.Sect,
-		data.Status, data.Address, data.CoverImage, data.Rating, data.Description)
+		data.Status, data.Address, data.CoverImage, data.Rating, data.Description, initialTempleAuth(data.Status), initialTemplePlatform(data.Status), "on_shelf", data.Status == TempleStatusRecommend)
 	if err != nil {
 		return 0, err
 	}
@@ -117,7 +123,7 @@ func (m *defaultTempleModel) Insert(ctx context.Context, data *Temple) (int64, e
 // FindOne 按寺院编码查询
 func (m *defaultTempleModel) FindOne(ctx context.Context, code string) (*Temple, error) {
 	var t Temple
-	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+", "+common.DirectoryTagColumns("temple", "temple.code")+` FROM %s WHERE code = ?`, templeTable)
+	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, auth_status, platform_status, shelf_status, recommended, state_version, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+", "+common.DirectoryTagColumns("temple", "temple.code")+` FROM %s WHERE code = ?`, templeTable)
 	err := m.conn.QueryRowCtx(ctx, &t, query, code)
 	if err != nil {
 		return nil, err
@@ -128,7 +134,7 @@ func (m *defaultTempleModel) FindOne(ctx context.Context, code string) (*Temple,
 // FindOneByPk 按自增主键查询（管理台从 JWT 取 templeId 后使用）
 func (m *defaultTempleModel) FindOneByPk(ctx context.Context, id int64) (*Temple, error) {
 	var t Temple
-	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+", "+common.DirectoryTagColumns("temple", "temple.code")+` FROM %s WHERE id = ?`, templeTable)
+	query := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, auth_status, platform_status, shelf_status, recommended, state_version, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+", "+common.DirectoryTagColumns("temple", "temple.code")+` FROM %s WHERE id = ?`, templeTable)
 	err := m.conn.QueryRowCtx(ctx, &t, query, id)
 	if err != nil {
 		return nil, err
@@ -150,7 +156,7 @@ func (m *defaultTempleModel) FindList(ctx context.Context, filter TempleFilter, 
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+", "+common.DirectoryTagColumns("temple", "temple.code")+` FROM %s WHERE %s ORDER BY id ASC LIMIT ?, ?`,
+	listQuery := fmt.Sprintf(`SELECT id, code, name, region, type, belief_code, sect, status, auth_status, platform_status, shelf_status, recommended, state_version, address, cover_image, rating, description, create_time, update_time, `+templeRegionColumns("temple.code")+", "+common.DirectoryTagColumns("temple", "temple.code")+` FROM %s WHERE %s ORDER BY id ASC LIMIT ?, ?`,
 		templeTable, where)
 	listArgs := append(args, offset, size)
 	var list []*Temple
@@ -167,7 +173,7 @@ func (m *defaultTempleModel) FindListByStatus(ctx context.Context, status string
 
 // Update 更新寺院信息
 func (m *defaultTempleModel) Update(ctx context.Context, data *Temple) error {
-	const query = `UPDATE ` + templeTable + ` SET name = ?, region = ?, type = ?, belief_code = ?, sect = ?, status = ?, address = ?, cover_image = ?, rating = ?, description = ? WHERE id = ?`
+	const query = `UPDATE ` + templeTable + ` SET name = ?, region = ?, type = ?, belief_code = ?, sect = ?, address = ?, cover_image = ?, rating = ?, description = ? WHERE id = ?`
 	return m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
 		var previous string
 		if err := tx.QueryRowCtx(ctx, &previous, "SELECT belief_code FROM temple WHERE id=? AND code=? FOR UPDATE", data.Id, data.Code); err != nil {
@@ -191,7 +197,7 @@ func (m *defaultTempleModel) Update(ctx context.Context, data *Temple) error {
 			}
 		}
 		_, err = tx.ExecCtx(ctx, query,
-			data.Name, data.Region, data.Type, data.BeliefCode, data.Sect, data.Status,
+			data.Name, data.Region, data.Type, data.BeliefCode, data.Sect,
 			data.Address, data.CoverImage, data.Rating, data.Description, data.Id)
 		return err
 	})
@@ -199,9 +205,7 @@ func (m *defaultTempleModel) Update(ctx context.Context, data *Temple) error {
 
 // UpdateStatus 更新寺院状态
 func (m *defaultTempleModel) UpdateStatus(ctx context.Context, id int64, status string) error {
-	const query = `UPDATE ` + templeTable + ` SET status = ? WHERE id = ?`
-	_, err := m.conn.ExecCtx(ctx, query, status, id)
-	return err
+	return m.updateLegacyState(ctx, id, status)
 }
 
 // Delete 删除寺院
@@ -214,6 +218,9 @@ func (m *defaultTempleModel) Delete(ctx context.Context, id int64) error {
 // buildTempleWhere 构建寺院列表 WHERE 子句
 func buildTempleWhere(filter TempleFilter) (string, []interface{}) {
 	where := "1=1"
+	if filter.PublicOnly {
+		where += " AND auth_status='certified' AND platform_status='normal' AND shelf_status='on_shelf'"
+	}
 	var args []interface{}
 	if filter.ServiceCode != "" {
 		where += " AND EXISTS (SELECT 1 FROM temple_service ts WHERE ts.temple_code=temple.code AND ts.service_code=? AND ts.status='on_shelf')"

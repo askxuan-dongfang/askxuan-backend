@@ -45,3 +45,7 @@ TempleRpc:
     Hosts:
       - localhost:2379
     Key: temple.rpc
+
+# Fixed direct internal auth authority for platform state/status writes.
+# Empty/missing disables these writes; public discovery and fulfillment keep their own access rules.
+AuthServiceURL: "http://auth-service:8081"

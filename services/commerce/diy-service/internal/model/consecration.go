@@ -35,7 +35,7 @@ const consecrationCatalog = `(
  s.id source_service_id, s.service_code source_service_code, 'temple' provider_type,
  t.code temple_code, t.name temple_name, '' master_code, '' master_name, s.price
  FROM askxuan_temple.temple_service s JOIN askxuan_temple.temple t ON t.code=s.temple_code
- WHERE s.service_code='S006' AND s.status='on_shelf' AND s.price>=0 AND t.status IN ('正常','推荐')
+ WHERE s.service_code='S006' AND s.status='on_shelf' AND s.price>=0 AND t.status IN ('正常','推荐') AND t.auth_status='certified' AND t.platform_status='normal' AND t.shelf_status='on_shelf'
  UNION ALL
  SELECT -s.id, CONCAT('consecration:master:',s.id), '开光', s.id, s.service_code, 'master',
  '', '', m.code, m.dharma_name, s.price

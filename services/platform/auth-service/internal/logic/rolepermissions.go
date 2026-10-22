@@ -153,6 +153,18 @@ func guardLastSuper(ctx context.Context, tx sqlx.Session, id, newRoleID int64, n
 }
 func updateAccountStatus(ctx context.Context, s *svc.ServiceContext, a *model.AdminAccount, status string) error {
 	return s.DB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		// Managed activation/revocation uses invitation -> account lock order.
+		// Recheck inside this transaction so a concurrent revoke cannot be undone.
+		if status == model.AccountStatusEnabled {
+			var invitationStatus string
+			err := tx.QueryRowCtx(ctx, &invitationStatus, `SELECT status FROM master_invitation WHERE account_id=? FOR UPDATE`, a.Id)
+			if err != nil && !errors.Is(err, sqlx.ErrNotFound) {
+				return err
+			}
+			if err == nil && (invitationStatus == "pending" || invitationStatus == "revoked") {
+				return common.NewBizError(40003, "请先完成本人激活或由所属寺院恢复账号分配")
+			}
+		}
 		if err := guardLastSuper(ctx, tx, a.Id, a.RoleId, status); err != nil {
 			return err
 		}

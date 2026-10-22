@@ -39,7 +39,10 @@ func (l *RefreshLogic) Refresh(req *types.RefreshReq) (*types.RefreshResp, error
 
 	if l.svcCtx.SessionRedis != nil {
 		if e := identity.CheckSession(l.ctx, l.svcCtx.SessionRedis, claims.SessionID, identity.SessionDomain(claims.UserType, claims.Roles), claims.UserId); e != nil {
-			return nil, common.ErrTokenInvalid
+			if errors.Is(e, identity.ErrSessionInvalid) {
+				return nil, common.ErrSessionRevoked
+			}
+			return nil, common.ErrDependencyUnavailable
 		}
 	}
 	// A failed revocation lookup is a temporary service error, never permission to renew.
@@ -84,10 +87,15 @@ func (l *RefreshLogic) refreshIdentity(claims *common.CustomClaims) (common.Toke
 		if err != nil {
 			return common.TokenInfo{}, refreshLookupError(err)
 		}
-		if u == nil || u.Id != claims.UserId || u.Status == userStatusBanned {
+		if u == nil || u.Id != claims.UserId {
 			return common.TokenInfo{}, common.ErrTokenInvalid
 		}
-		return common.TokenInfo{UserId: u.Id, Mobile: u.Mobile, UserType: "user", Roles: []string{model.RoleCodeCustomer}, ClientID: "customer"}, nil
+		// The durable revision changes atomically with every ban/unban. An old
+		// access or refresh token can never become usable again after restoration.
+		if u.Status != 1 || u.AuthzVersion != claims.AccountVersion {
+			return common.TokenInfo{}, common.ErrSessionRevoked
+		}
+		return common.TokenInfo{UserId: u.Id, Mobile: u.Mobile, UserType: "user", Roles: []string{model.RoleCodeCustomer}, ClientID: "customer", AccountVersion: u.AuthzVersion}, nil
 	}
 	// Never infer this branch from an absent or unrecognized identity domain.
 	if claims.UserType != "admin" && claims.UserType != "master" {
@@ -168,7 +176,9 @@ func refreshRoleMatchesDomain(domain, role string) bool {
 		return false
 	}
 	switch role {
-	case model.RoleCodePlatformSuper, model.RoleCodePlatformService, model.RoleCodeTempleAdmin, model.RoleCodeShopAdmin, "master_applicant", "temple_applicant":
+	case model.RoleCodePlatformService:
+		return false
+	case model.RoleCodePlatformSuper, model.RoleCodeTempleAdmin, model.RoleCodeShopAdmin, "master_applicant", "temple_applicant":
 		return true
 	default:
 		return !adminpolicy.Builtin(role) // Custom roles still require signed scope + role ID + live versions.

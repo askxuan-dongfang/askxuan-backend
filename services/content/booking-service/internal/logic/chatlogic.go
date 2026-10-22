@@ -352,7 +352,7 @@ func resolveChatParticipant(ctx context.Context, svcCtx *svc.ServiceContext, ent
 // AuthorizeOpenIMMessage is used by OpenIM's synchronous before-send webhook.
 // Booking text must carry the server-issued marker so multiple bookings between
 // the same customer and master remain isolated.
-func AuthorizeOpenIMMessage(ctx context.Context, svcCtx *svc.ServiceContext, sendID, recvID, ex string) (*chatEntitlement, error) {
+func AuthorizeOpenIMMessage(ctx context.Context, svcCtx *svc.ServiceContext, sendID, recvID, ex string, callbackContent ...string) (*chatEntitlement, error) {
 	// Whole-temple chat uses authenticated business HTTP sync, never an IM identity.
 	if isTempleChatPair(sendID, recvID) {
 		return nil, common.ErrBookingChatUnavailable
@@ -362,25 +362,54 @@ func AuthorizeOpenIMMessage(ctx context.Context, svcCtx *svc.ServiceContext, sen
 		return nil, common.ErrBookingChatUnavailable
 	}
 	if !isBookingPair {
+		// Human chat has a committed business-history contract; arbitrary IM
+		// pairs cannot create an alternate channel with an old external token.
+		if strings.HasPrefix(sendID, "u_") || strings.HasPrefix(sendID, "m_") {
+			return nil, common.ErrBookingChatUnavailable
+		}
 		return nil, nil
+	}
+	// OpenIM tokens outlive the HTTP session; validate the consumer at every
+	// synchronous before-send callback, including messages sent by the provider.
+	if svcCtx == nil || svcCtx.DB == nil {
+		return nil, common.ErrDependencyUnavailable
+	}
+	var active int64
+	if err := svcCtx.DB.QueryRowCtx(ctx, &active, "SELECT COUNT(*) FROM askxuan_user.user WHERE id=? AND status=1", userID); err != nil {
+		return nil, common.ErrDependencyUnavailable
+	}
+	if active != 1 {
+		return nil, common.ErrSessionRevoked
 	}
 	sourceType, sourceID, clientID, marked := parseChatMessageMarker(ex)
 	if !marked {
 		return nil, common.ErrBookingChatUnavailable
 	}
 	entitlement, err := loadChatEntitlement(ctx, svcCtx, sourceID)
-	if err != nil || entitlement.SourceType != sourceType || entitlement.UserID != userID {
+	if err != nil || !entitlement.CanSend || entitlement.SourceType != sourceType || entitlement.UserID != userID {
 		return nil, common.ErrBookingChatUnavailable
 	}
 	master, err := svcCtx.MasterClient.GetByCode(ctx, entitlement.MasterCode)
 	if err != nil {
 		return nil, common.ErrDependencyUnavailable
 	}
-	if master.Id != masterNumericID {
+	if master.Id != masterNumericID || (master.PlatformStatus != "" && master.PlatformStatus != "normal") {
 		return nil, common.ErrBookingChatUnavailable
 	}
 	row, rowErr := svcCtx.ChatModel.FindByClientMessageID(ctx, sourceID, clientID)
 	if rowErr != nil || row.SenderId != sendID || row.ReceiverId != recvID || row.Status != "sent" {
+		return nil, common.ErrBookingChatUnavailable
+	}
+	// Only the leased server outbox may notify the exact committed content.
+	// Old markers cannot be replayed to inject new text after a ban/unban.
+	if len(callbackContent) != 1 || decodeOpenIMText(callbackContent[0]) != row.Content {
+		return nil, common.ErrBookingChatUnavailable
+	}
+	var leased int64
+	if err := svcCtx.DB.QueryRowCtx(ctx, &leased, "SELECT COUNT(*) FROM booking_chat_message WHERE id=? AND notify_status='working' AND notify_after>NOW()", row.Id); err != nil {
+		return nil, common.ErrDependencyUnavailable
+	}
+	if leased != 1 {
 		return nil, common.ErrBookingChatUnavailable
 	}
 	return entitlement, nil

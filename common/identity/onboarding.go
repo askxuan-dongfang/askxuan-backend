@@ -322,7 +322,7 @@ func (s *Accounts) ReviewWorkApplication(ctx context.Context, reviewer, id int64
 					return e
 				}
 			} else if a.Kind == "temple" {
-				_, e := tx.ExecCtx(ctx, `INSERT INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,address,description) VALUES (?,?,?,?,?,?,'正常',?,?)`, entity, p.Name, p.Region, beliefName, p.Belief, p.Sect, p.Address, p.Description)
+				_, e := tx.ExecCtx(ctx, `INSERT INTO askxuan_temple.temple(code,name,region,type,belief_code,sect,status,auth_status,platform_status,shelf_status,address,description) VALUES (?,?,?,?,?,?,'正常','certified','normal','on_shelf',?,?)`, entity, p.Name, p.Region, beliefName, p.Belief, p.Sect, p.Address, p.Description)
 				if e != nil {
 					return e
 				}

@@ -36,7 +36,7 @@ func (l *ServiceListLogic) ServiceList(req *types.TempleServiceListReq) (*types.
 		l.Errorf("查询寺院失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	if !model.IsTemplePublicStatus(t.Status) {
+	if !model.IsTemplePublic(t) {
 		return nil, common.ErrTempleNotFound
 	}
 

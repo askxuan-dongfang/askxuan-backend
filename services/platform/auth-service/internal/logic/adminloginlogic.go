@@ -75,6 +75,10 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		l.Errorf("查询角色失败 roleId=%d: %v", acc.RoleId, err)
 		return nil, common.ErrSystem
 	}
+	// Machine integration credentials never establish a human login session.
+	if role.Code == model.RoleCodePlatformService {
+		return nil, common.ErrRoleForbidden
+	}
 	if role.Code == model.RoleCodeTempleAdmin {
 		status, statusErr := templeStatus(l.ctx, l.svcCtx, acc.TempleId)
 		if statusErr != nil {

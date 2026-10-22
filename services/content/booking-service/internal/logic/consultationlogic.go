@@ -56,6 +56,9 @@ func (l *ConsultationLogic) Create(req *types.ConsultationCreateReq) (*types.Con
 			if req.ManualPayment {
 				return consultationResponse(existing), nil
 			}
+			if err := l.existingPaymentEligibility(existing.MasterId); err != nil {
+				return nil, err
+			}
 			return l.autoPay(existing), nil
 		}
 		return consultationResponse(existing), nil
@@ -97,7 +100,23 @@ func (l *ConsultationLogic) Pay(req *types.ConsultationPayReq) (*types.Consultat
 	if row.Status != model.ConsultationStatusPendingPayment {
 		return nil, common.ErrStatusInvalid
 	}
+	if err := l.existingPaymentEligibility(row.MasterId); err != nil {
+		return nil, err
+	}
 	return l.autoPay(row), nil
+}
+
+// Existing orders retain their agreed price and may settle after display-only
+// delisting. Certification and platform bans still block a new charge.
+func (l *ConsultationLogic) existingPaymentEligibility(masterCode string) error {
+	master, err := l.svcCtx.MasterClient.GetByCode(l.ctx, masterCode)
+	if err != nil {
+		return common.ErrDependencyUnavailable
+	}
+	if master.PlatformStatus != "normal" {
+		return common.ErrConsultationUnavailable
+	}
+	return nil
 }
 
 func (l *ConsultationLogic) autoPay(row *model.Consultation) *types.Consultation {

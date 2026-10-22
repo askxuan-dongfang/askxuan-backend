@@ -222,7 +222,7 @@ func TestRefreshRechecksAvailabilityAndFailsClosed(t *testing.T) {
 		change       func(*refreshFixture)
 		want         error
 	}{
-		{"user-disabled", "user", func(f *refreshFixture) { f.users.user.Status = 0 }, common.ErrTokenInvalid},
+		{"user-disabled", "user", func(f *refreshFixture) { f.users.user.Status = 0 }, common.ErrSessionRevoked},
 		{"user-deleted", "user", func(f *refreshFixture) { f.users.err = sqlx.ErrNotFound }, common.ErrTokenInvalid},
 		{"user-missing", "user", func(f *refreshFixture) { f.users.user = nil }, common.ErrTokenInvalid},
 		{"user-id-mismatch", "user", func(f *refreshFixture) { f.users.user.Id = 8 }, common.ErrTokenInvalid},

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/adminpolicy"
@@ -95,6 +96,8 @@ type AuthOptions struct {
 	SessionChecks  []func(context.Context, *common.CustomClaims) error
 	ValidateAccess func(context.Context, string, *common.CustomClaims) error
 	Recorder       OperationRecorder
+	// RecheckInterval bounds long-running human requests without extra reads on short ones.
+	RecheckInterval time.Duration
 }
 
 func Auth(secret string, noAuthPaths []string, checks ...func(context.Context, *common.CustomClaims) error) func(http.Handler) http.Handler {
@@ -145,7 +148,7 @@ func AuthWithOptions(secret string, noAuthPaths []string, options AuthOptions) f
 				common.JsonError(w, common.ErrTokenInvalid)
 				return
 			}
-			if claims.IsRefreshToken() {
+			if claims.IsRefreshToken() || (claims.UserType != "user" && claims.UserType != "admin" && claims.UserType != "service") || (claims.UserType != "service" && claims.UserId <= 0) {
 				common.JsonError(w, common.ErrTokenInvalid)
 				return
 			}
@@ -157,7 +160,7 @@ func AuthWithOptions(secret string, noAuthPaths []string, options AuthOptions) f
 			}
 			w = audited
 			defer finish()
-			if claims.UserType == "admin" && options.ValidateAccess != nil {
+			if (claims.UserType == "admin" || claims.UserType == "user") && options.ValidateAccess != nil {
 				if err := options.ValidateAccess(r.Context(), tokenStr, claims); err != nil {
 					common.JsonError(w, err)
 					return
@@ -167,7 +170,11 @@ func AuthWithOptions(secret string, noAuthPaths []string, options AuthOptions) f
 			if claims.UserType != "service" {
 				for _, check := range options.SessionChecks {
 					if e := check(r.Context(), claims); e != nil {
-						common.JsonError(w, common.ErrTokenInvalid)
+						if e == common.ErrSessionRevoked || e == common.ErrDependencyUnavailable {
+							common.JsonError(w, e)
+						} else {
+							common.JsonError(w, common.ErrTokenInvalid)
+						}
 						return
 					}
 				}
@@ -191,6 +198,15 @@ func AuthWithOptions(secret string, noAuthPaths []string, options AuthOptions) f
 			if !(r.Method == http.MethodGet && r.URL.Path == "/api/v1/payments/growth/public/rules") && strings.HasPrefix(r.URL.Path, "/api/v1/payments/growth/") && !growthRoleAllowed(r.URL.Path, claims) {
 				common.JsonError(w, common.ErrRoleForbidden)
 				return
+			}
+			// Cancel the upstream context on a later revocation. Do not append
+			// an error envelope after SSE/download headers or bytes were sent.
+			// ReverseProxy propagates cancellation and closes the current stream.
+			if claims.UserType != "service" && options.ValidateAccess != nil && options.RecheckInterval > 0 {
+				ctx, cancel := context.WithCancel(r.Context())
+				defer cancel()
+				r = r.WithContext(ctx)
+				go monitorHumanAccess(ctx, cancel, options, tokenStr, claims)
 			}
 			// 注入用户信息到请求头，透传给下游服务
 			r.Header.Set(HeaderUserID, strconv.FormatInt(claims.UserId, 10))
@@ -228,4 +244,35 @@ func growthRoleAllowed(path string, c *common.CustomClaims) bool {
 		return c.UserType == "admin" && ((c.HasRole("master") && c.MasterID > 0) || (c.HasRole("temple_admin") && c.TempleID > 0 && c.TempleCode != ""))
 	}
 	return c.UserType == "user" && c.HasRole("customer")
+}
+
+// monitorHumanAccess is request-scoped. A completed request cancels the context,
+// stopping the timer without an additional query. Both credential revocation and
+// an unavailable authority fail closed for an established long-running request.
+func monitorHumanAccess(ctx context.Context, cancel context.CancelFunc, options AuthOptions, token string, claims *common.CustomClaims) {
+	timer := time.NewTicker(options.RecheckInterval)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			// A three-second production cadence plus this two-second total
+			// authority deadline bounds cancellation to five seconds.
+			checkCtx, stopCheck := context.WithTimeout(ctx, 2*time.Second)
+			err := options.ValidateAccess(checkCtx, token, claims)
+			if err == nil {
+				for _, check := range options.SessionChecks {
+					if err = check(checkCtx, claims); err != nil {
+						break
+					}
+				}
+			}
+			stopCheck()
+			if err != nil {
+				cancel()
+				return
+			}
+		}
+	}
 }

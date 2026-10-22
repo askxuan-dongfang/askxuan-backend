@@ -19,9 +19,23 @@ type MasterInvitation struct {
 
 const invitationColumns = "id,account_id,temple_code,master_code,email,username,status"
 
-func (s *Accounts) ManagedInvitations(ctx context.Context, temple string) ([]MasterInvitation, error) {
-	rows := []MasterInvitation{}
-	e := s.DB.QueryRowsCtx(ctx, &rows, "SELECT "+invitationColumns+" FROM master_invitation WHERE temple_code=? ORDER BY id DESC LIMIT 200", temple)
+// ManagedMasterInvitation separates activation from the current login switch.
+// An activated invitation never implies that a platform-disabled account works.
+type ManagedMasterInvitation struct {
+	ID               int64  `db:"id" json:"id"`
+	AccountID        int64  `db:"account_id" json:"accountId"`
+	TempleCode       string `db:"temple_code" json:"templeCode"`
+	MasterCode       string `db:"master_code" json:"masterCode"`
+	Email            string `db:"email" json:"email"`
+	Username         string `db:"username" json:"username"`
+	Status           string `db:"status" json:"status"`
+	ActivationStatus string `db:"activation_status" json:"activationStatus"`
+	AccountStatus    string `db:"account_status" json:"accountStatus"`
+}
+
+func (s *Accounts) ManagedInvitations(ctx context.Context, temple string) ([]ManagedMasterInvitation, error) {
+	rows := []ManagedMasterInvitation{}
+	e := s.DB.QueryRowsCtx(ctx, &rows, `SELECT i.id,i.account_id,i.temple_code,i.master_code,i.email,i.username,i.status,i.status activation_status,a.status account_status FROM master_invitation i JOIN admin_account a ON a.id=i.account_id WHERE i.temple_code=? AND a.temple_id=? ORDER BY i.id DESC LIMIT 200`, temple, temple)
 	return rows, e
 }
 func (s *Accounts) InviteManagedMaster(ctx context.Context, actor int64, temple, master, email, username string) error {

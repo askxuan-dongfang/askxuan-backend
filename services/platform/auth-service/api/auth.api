@@ -73,6 +73,9 @@ type (
 type (
     // AdminAccount 管理台账号
     AdminAccount {
+        RoleCode string `json:"roleCode"`
+        AuthzScope string `json:"authzScope"`
+        AuthzVersion int64 `json:"authzVersion"`
         Id            int64  `json:"id"`
         Account       string `json:"account"`
         Name          string `json:"name"`
@@ -87,10 +90,47 @@ type (
     }
 
     AdminAccountListReq {
+        RoleId int64 `form:"roleId,optional"`
+        TempleId string `form:"templeId,optional"`
+        MasterId string `form:"masterId,optional"`
+        ShopId int64 `form:"shopId,optional"`
         Keyword string `form:"keyword,optional"` // 按账号/姓名模糊搜索
         Status  string `form:"status,optional"`
         Page    int    `form:"page,default=1"`
         Size    int    `form:"size,default=20"`
+    }
+
+    AccountIdentity {
+        Email string `json:"email"`
+        EmailVerified bool `json:"emailVerified"`
+        VerifiedAt string `json:"verifiedAt"`
+        CredentialState string `json:"credentialState"`
+        ActivationStatus string `json:"activationStatus"`
+        InvitationEmail string `json:"invitationEmail"`
+        CanResetPassword bool `json:"canResetPassword"`
+    }
+    AccountBinding {
+        Type string `json:"type"`
+        Id string `json:"id"`
+        Name string `json:"name"`
+        Status string `json:"status"`
+        AuthStatus string `json:"authStatus"`
+        ShelfStatus string `json:"shelfStatus"`
+        PlatformStatus string `json:"platformStatus"`
+    }
+    AdminAccountDetailReq {
+        Id int64 `path:"id"`
+    }
+    AdminAccountDetailResp {
+        Account AdminAccount `json:"account"`
+        Identity AccountIdentity `json:"identity"`
+        Bindings []AccountBinding `json:"bindings"`
+        LoginAllowed bool `json:"loginAllowed"`
+        BlockedReasons []string `json:"blockedReasons"`
+    }
+    AdminAccountRevokeResp {
+        Id int64 `json:"id"`
+        Success bool `json:"success"`
     }
 
     AdminAccountListResp {
@@ -220,6 +260,12 @@ service auth-service {
     @handler adminAccountList
     get /accounts (AdminAccountListReq) returns (AdminAccountListResp)
 
+    @handler adminAccountDetail
+    get /accounts/:id (AdminAccountDetailReq) returns (AdminAccountDetailResp)
+
+    @handler adminAccountRevoke
+    post /accounts/:id/revoke-sessions (AdminAccountDetailReq) returns (AdminAccountRevokeResp)
+
     @handler adminAccountCreate
     post /accounts (AdminAccountCreateReq) returns (AdminAccountCreateResp)
 
@@ -242,7 +288,8 @@ service auth-service {
     get /permissions returns (PermissionListResp)
 }
 
-// Live authorization snapshot and custom platform-role grants. Fixed roles remain immutable.
+// Live human access snapshot for user/admin domains and custom platform-role grants.
+// Fixed roles remain immutable. User access contains no administrative permissions.
 type (
     AdminAccessResp {
         UserId int64 `json:"userId"`

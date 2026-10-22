@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/askxuan/temple-service/internal/model"
 
 	"github.com/askxuan/temple-service/internal/svc"
 	"github.com/askxuan/temple-service/rpc/temple"
@@ -38,5 +39,11 @@ func (s *TempleBookingServer) GetBookingService(ctx context.Context, req *temple
 	for _, slot := range service.Slots {
 		slots = append(slots, &temple.BookingSlot{Code: slot.Code, Label: slot.Label, StartTime: slot.StartTime, EndTime: slot.EndTime, Capacity: int64(slot.Capacity), Status: slot.Status})
 	}
-	return &temple.BookingService{TempleCode: t.Code, TempleName: t.Name, TempleStatus: t.Status, ServiceCode: service.ServiceCode, ServiceName: service.ServiceName, Price: service.Price, ServiceStatus: service.Status, Slots: slots}, nil
+	templeStatus := t.Status
+	if !model.IsTemplePublic(t) {
+		templeStatus = "不可预约"
+	} else {
+		templeStatus = model.TempleStatusNormal
+	}
+	return &temple.BookingService{TempleCode: t.Code, TempleName: t.Name, TempleStatus: templeStatus, ServiceCode: service.ServiceCode, ServiceName: service.ServiceName, Price: service.Price, ServiceStatus: service.Status, Slots: slots}, nil
 }

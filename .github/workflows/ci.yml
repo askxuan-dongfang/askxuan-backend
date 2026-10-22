@@ -187,8 +187,43 @@ jobs:
           cache-dependency-path: '**/go.sum'
       - name: Verify paid publication, frozen versions and creator attribution
         run: bash scripts/test-diy-publication.sh
+  account-system-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: askxuan_account_test
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      ACCOUNT_SYSTEM_TEST_DSN: 'root@tcp(127.0.0.1:3306)/askxuan_account_test?charset=utf8mb4&parseTime=false'
+      ACCOUNT_SYSTEM_TEST_ISOLATED: '1'
+      ACCOUNT_SYSTEM_TEST_REDIS: '127.0.0.1:6379'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.work
+          cache-dependency-path: '**/go.sum'
+      - run: go test ./internal/model -count=1 -v
+        working-directory: services/platform/user-service
+      - run: go test ./internal/logic ./internal/handler -count=1 -v
+        working-directory: services/platform/auth-service
+      - run: go test ./internal/model ./internal/handler -run 'TestTempleState' -count=1 -v
+        working-directory: services/content/temple-service
+      - run: go test ./internal/logic -run 'TestOpenIMBanAndReplayMySQL' -count=1 -v
+        working-directory: services/content/booking-service
+      - run: go test ./internal/model -run 'TestParentTempleNewBusinessGateMySQL' -count=1 -v
+        working-directory: services/content/master-service
   deploy:
-    needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql, diy-publication-mysql]
+    needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql, diy-publication-mysql, account-system-mysql]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ECS_DEPLOY_ENABLED == 'true'
     environment: production
     runs-on: ubuntu-latest
@@ -206,7 +241,7 @@ jobs:
         run: bash scripts/ci/publish.sh release.tgz
   recover-package:
     if: github.event_name == 'workflow_dispatch' && inputs.recovery == true && github.ref == 'refs/heads/main' && vars.ECS_DEPLOY_ENABLED == 'true'
-    needs: [test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql, diy-publication-mysql]
+    needs: [test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql, diy-publication-mysql, account-system-mysql]
     environment: production
     permissions:
       contents: write

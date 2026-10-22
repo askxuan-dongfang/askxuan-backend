@@ -48,7 +48,7 @@ func (l *LoginLogic) IssueCustomer(id int64, verifiedHash ...string) (*types.Log
 		return nil, common.ErrUserNotFound
 	}
 	// 校验用户状态
-	if u.Status == userStatusBanned {
+	if u.Status != 1 {
 		return nil, common.ErrUserDisabled
 	}
 
@@ -63,16 +63,30 @@ func (l *LoginLogic) IssueCustomer(id int64, verifiedHash ...string) (*types.Log
 			return nil, common.ErrSystem
 		}
 	}
+	// A login delayed across a ban/unban cannot be presented as successful.
+	// If a change happens after this read, the signed old revision is still
+	// rejected by the next live introspection rather than gaining new access.
+	fresh, stateErr := l.svcCtx.UserReadonlyModel.FindByID(l.ctx, u.Id)
+	if stateErr != nil || fresh == nil {
+		return nil, common.ErrSystem
+	}
+	if fresh.Status != 1 || fresh.AuthzVersion != u.AuthzVersion {
+		if sid != "" {
+			_ = identity.RevokeSession(l.ctx, l.svcCtx.SessionRedis, sid)
+		}
+		return nil, common.ErrSessionRevoked
+	}
 	// 签发 Access Token（2h）
 	access, err := common.GenAccessToken(
 		l.svcCtx.Config.Auth.AccessSecret,
 		common.TokenInfo{
-			SessionID: sid,
-			UserId:    u.Id,
-			Mobile:    u.Mobile,
-			UserType:  "user",
-			Roles:     []string{"customer"},
-			ClientID:  "customer",
+			SessionID:      sid,
+			AccountVersion: u.AuthzVersion,
+			UserId:         u.Id,
+			Mobile:         u.Mobile,
+			UserType:       "user",
+			Roles:          []string{"customer"},
+			ClientID:       "customer",
 		},
 		l.svcCtx.Config.Auth.AccessExpire,
 	)
@@ -84,7 +98,7 @@ func (l *LoginLogic) IssueCustomer(id int64, verifiedHash ...string) (*types.Log
 	// 签发 Refresh Token（7d）
 	refresh, err := common.GenRefreshToken(
 		l.svcCtx.Config.Auth.AccessSecret,
-		common.TokenInfo{SessionID: sid, UserId: u.Id, UserType: "user"},
+		common.TokenInfo{SessionID: sid, UserId: u.Id, UserType: "user", AccountVersion: u.AuthzVersion},
 		l.svcCtx.Config.Auth.RefreshExpire,
 	)
 	if err != nil {

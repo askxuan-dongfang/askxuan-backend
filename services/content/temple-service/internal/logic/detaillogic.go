@@ -39,7 +39,7 @@ func (l *DetailLogic) Detail(req *types.DetailReq) (*types.TempleDetail, error) 
 		l.Errorf("查询寺院详情失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	if !model.IsTemplePublicStatus(t.Status) {
+	if !model.IsTemplePublic(t) {
 		return nil, common.ErrTempleNotFound
 	}
 
