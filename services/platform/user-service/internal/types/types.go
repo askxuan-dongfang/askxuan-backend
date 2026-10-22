@@ -116,15 +116,17 @@ type AdminUserListReq struct {
 
 // AdminUserItem 平台用户列表项
 type AdminUserItem struct {
-	UserId      int64   `json:"userId"`
-	Nickname    string  `json:"nickname"`
-	Mobile      string  `json:"mobile"`
-	Avatar      string  `json:"avatar"`
-	Region      string  `json:"region"`
-	Status      string  `json:"status"`
-	TotalOrders int     `json:"totalOrders"`
-	TotalSpent  float64 `json:"totalSpent"`
-	CreateTime  string  `json:"createTime"`
+	StatsScope     string  `json:"statsScope"`
+	StatsUpdatedAt string  `json:"statsUpdatedAt"`
+	UserId         int64   `json:"userId"`
+	Nickname       string  `json:"nickname"`
+	Mobile         string  `json:"mobile"`
+	Avatar         string  `json:"avatar"`
+	Region         string  `json:"region"`
+	Status         string  `json:"status"`
+	TotalOrders    int     `json:"totalOrders"`
+	TotalSpent     float64 `json:"totalSpent"`
+	CreateTime     string  `json:"createTime"`
 }
 
 // AdminUserListResp 平台用户列表响应
@@ -142,12 +144,15 @@ type AdminUserDetailReq struct {
 
 // AdminUserDetailResp 用户详情响应（含画像）
 type AdminUserDetailResp struct {
-	User           UserProfile `json:"user"`
-	PreferenceTags []string    `json:"preferenceTags"`
-	TotalOrders    int         `json:"totalOrders"`
-	TotalSpent     float64     `json:"totalSpent"`
-	LastActiveTime string      `json:"lastActiveTime"`
-	Status         string      `json:"status"`
+	StatsScope     string         `json:"statsScope"`
+	StatsUpdatedAt string         `json:"statsUpdatedAt"`
+	Identity       UserCredential `json:"identity"`
+	User           UserProfile    `json:"user"`
+	PreferenceTags []string       `json:"preferenceTags"`
+	TotalOrders    int            `json:"totalOrders"`
+	TotalSpent     float64        `json:"totalSpent"`
+	LastActiveTime string         `json:"lastActiveTime"`
+	Status         string         `json:"status"`
 }
 
 // AdminUserStatusReq 封禁/解封请求
@@ -160,4 +165,13 @@ type AdminUserStatusReq struct {
 type AdminUserStatusResp struct {
 	Id     int64  `json:"id"`
 	Status string `json:"status"`
+}
+
+// UserCredential contains no password material and never links identity domains by email.
+type UserCredential struct {
+	Email            string `json:"email"`
+	EmailVerified    bool   `json:"emailVerified"`
+	VerifiedAt       string `json:"verifiedAt"`
+	CredentialState  string `json:"credentialState"`
+	CanResetPassword bool   `json:"canResetPassword"`
 }

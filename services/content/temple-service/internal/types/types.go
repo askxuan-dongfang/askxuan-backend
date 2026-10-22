@@ -47,6 +47,11 @@ type BeliefStatusReq struct {
 
 // Temple 寺院
 type Temple struct {
+	AuthStatus     string   `json:"authStatus"`
+	PlatformStatus string   `json:"platformStatus"`
+	ShelfStatus    string   `json:"shelfStatus"`
+	Recommended    bool     `json:"recommended"`
+	StateVersion   int64    `json:"stateVersion"`
 	TraditionCodes []string `json:"traditionCodes"`
 	RegionCode     string   `json:"regionCode"`
 	RegionName     string   `json:"regionName"`

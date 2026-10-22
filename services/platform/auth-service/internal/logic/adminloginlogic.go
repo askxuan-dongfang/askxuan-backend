@@ -62,7 +62,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	if err != nil || acc == nil || !identity.CheckPassword(hash, req.Password) {
 		return nil, common.ErrPwdWrong
 	}
-	if acc.Status != model.AccountStatusEnabled {
+	if acc.PlatformDisabled || acc.Status != model.AccountStatusEnabled {
 		return nil, common.ErrUserDisabled
 	}
 
@@ -75,6 +75,10 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		}
 		l.Errorf("查询角色失败 roleId=%d: %v", acc.RoleId, err)
 		return nil, common.ErrSystem
+	}
+	// Machine integration credentials never establish a human login session.
+	if role.Code == model.RoleCodePlatformService {
+		return nil, common.ErrRoleForbidden
 	}
 	if adminpolicy.IsTempleRole(role.Code) {
 		status, statusErr := templeStatus(l.ctx, l.svcCtx, acc.TempleId)
@@ -138,7 +142,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	if freshErr != nil || roleErr != nil {
 		return nil, common.ErrSystem
 	}
-	if freshAcc.Status != model.AccountStatusEnabled || freshAcc.RoleId != acc.RoleId || freshAcc.AuthzVersion != snapshot.AccountVersion || freshRole.AuthzVersion != snapshot.RoleVersion {
+	if freshAcc.PlatformDisabled || freshAcc.Status != model.AccountStatusEnabled || freshAcc.RoleId != acc.RoleId || freshAcc.AuthzVersion != snapshot.AccountVersion || freshRole.AuthzVersion != snapshot.RoleVersion {
 		return nil, common.ErrTokenInvalid
 	}
 	sid := ""

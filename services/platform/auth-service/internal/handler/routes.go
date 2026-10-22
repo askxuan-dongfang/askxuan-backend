@@ -20,6 +20,7 @@ import (
 // RegisterHandlers 注册 auth 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	registerAdminAccess(server, svcCtx)
+	registerAccountDetails(server, svcCtx)
 	registerIdentityHandlers(server, svcCtx)
 	registerOnboardingHandlers(server, svcCtx)
 	// CORS 中间件
@@ -162,6 +163,12 @@ func imTokenHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.IMTokenReq
 		_ = httpx.Parse(r, &req)
+		// This path is also safe when reached directly on the auth service:
+		// neither a still-valid SID nor an old IM token can bypass a user ban.
+		if _, _, authErr := currentHumanClaims(svcCtx, r); authErr != nil {
+			common.JsonError(w, authErr)
+			return
+		}
 		openimUserID, authErr := authenticatedIMIdentity(r, svcCtx.Config.Auth.AccessSecret, svcCtx.SessionRedis)
 		if authErr != nil {
 			common.JsonError(w, authErr)

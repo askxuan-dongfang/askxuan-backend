@@ -47,6 +47,7 @@ func (l *ListLogic) List(req *types.ListReq) (*types.ListResp, error) {
 		Type:          req.Type,
 		Region:        req.Region,
 		Statuses:      model.TemplePublicStatuses(),
+		PublicOnly:    true,
 	}, page, size)
 	if err != nil {
 		l.Errorf("查询寺院列表失败: %v", err)

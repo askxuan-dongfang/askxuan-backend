@@ -134,15 +134,16 @@ func guardLastSuper(ctx context.Context, tx sqlx.Session, id, newRoleID int64, n
 		return err
 	}
 	var current struct {
-		RoleID int64  `db:"role_id"`
-		Status string `db:"status"`
+		RoleID           int64  `db:"role_id"`
+		Status           string `db:"status"`
+		PlatformDisabled bool   `db:"platform_disabled"`
 	}
-	if err := tx.QueryRowCtx(ctx, &current, `SELECT role_id,status FROM admin_account WHERE id=? FOR UPDATE`, id); err != nil {
+	if err := tx.QueryRowCtx(ctx, &current, `SELECT role_id,status,platform_disabled FROM admin_account WHERE id=? FOR UPDATE`, id); err != nil {
 		return err
 	}
-	if current.RoleID == superID && current.Status == model.AccountStatusEnabled && (newRoleID != superID || newStatus != model.AccountStatusEnabled) {
+	if current.RoleID == superID && current.Status == model.AccountStatusEnabled && !current.PlatformDisabled && (newRoleID != superID || newStatus != model.AccountStatusEnabled) {
 		var count int64
-		if err := tx.QueryRowCtx(ctx, &count, `SELECT COUNT(*) FROM admin_account WHERE role_id=? AND status='enabled'`, superID); err != nil {
+		if err := tx.QueryRowCtx(ctx, &count, `SELECT COUNT(*) FROM admin_account WHERE role_id=? AND status='enabled' AND platform_disabled=0`, superID); err != nil {
 			return err
 		}
 		if count <= 1 {
@@ -153,10 +154,35 @@ func guardLastSuper(ctx context.Context, tx sqlx.Session, id, newRoleID int64, n
 }
 func updateAccountStatus(ctx context.Context, s *svc.ServiceContext, a *model.AdminAccount, status string) error {
 	return s.DB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		invitationStatus := ""
+		if status == model.AccountStatusEnabled {
+			err := tx.QueryRowCtx(ctx, &invitationStatus, `SELECT status FROM master_invitation WHERE account_id=? FOR UPDATE`, a.Id)
+			if err != nil && !errors.Is(err, sqlx.ErrNotFound) {
+				return err
+			}
+		}
 		if err := guardLastSuper(ctx, tx, a.Id, a.RoleId, status); err != nil {
 			return err
 		}
-		_, err := tx.ExecCtx(ctx, `UPDATE admin_account SET status=?,authz_version=authz_version+1 WHERE id=?`, status, a.Id)
+		var live struct {
+			Status           string `db:"status"`
+			PlatformDisabled bool   `db:"platform_disabled"`
+		}
+		if err := tx.QueryRowCtx(ctx, &live, `SELECT status,platform_disabled FROM admin_account WHERE id=?`, a.Id); err != nil {
+			return err
+		}
+		platformDisabled := status == model.AccountStatusDisabled
+		actualStatus := status
+		if !platformDisabled && (invitationStatus == "pending" || invitationStatus == "revoked") {
+			if !live.PlatformDisabled {
+				return common.NewBizError(40003, "请先完成本人激活或由所属寺院恢复账号分配")
+			}
+			actualStatus = model.AccountStatusDisabled
+		}
+		if actualStatus == live.Status && platformDisabled == live.PlatformDisabled {
+			return nil
+		}
+		_, err := tx.ExecCtx(ctx, `UPDATE admin_account SET status=?,platform_disabled=?,authz_version=authz_version+1 WHERE id=?`, actualStatus, platformDisabled, a.Id)
 		return err
 	})
 }

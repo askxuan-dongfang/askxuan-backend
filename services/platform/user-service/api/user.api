@@ -106,6 +106,8 @@ type (
     }
 
     AdminUserItem {
+        StatsScope string `json:"statsScope"`
+        StatsUpdatedAt string `json:"statsUpdatedAt"`
         UserId      int64   `json:"userId"`
         Nickname    string  `json:"nickname"`
         Mobile      string  `json:"mobile"`     // 脱敏
@@ -128,7 +130,18 @@ type (
         Id int64 `path:"id"`
     }
 
+    UserCredential {
+        Email string `json:"email"`
+        EmailVerified bool `json:"emailVerified"`
+        VerifiedAt string `json:"verifiedAt"`
+        CredentialState string `json:"credentialState"`
+        CanResetPassword bool `json:"canResetPassword"`
+    }
+
     AdminUserDetailResp {
+        StatsScope string `json:"statsScope"`
+        StatsUpdatedAt string `json:"statsUpdatedAt"`
+        Identity UserCredential `json:"identity"`
         User          UserProfile `json:"user"`
         PreferenceTags []string   `json:"preferenceTags"`
         TotalOrders   int         `json:"totalOrders"`

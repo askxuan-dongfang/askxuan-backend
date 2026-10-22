@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -12,24 +13,44 @@ import (
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
-func currentAdminClaims(s *svc.ServiceContext, r *http.Request) (*common.CustomClaims, common.TokenInfo, error) {
+// currentHumanClaims is shared by gateway introspection and direct IM-token
+// issuance. Signature and SID alone are insufficient after an account is banned.
+func currentHumanClaims(s *svc.ServiceContext, r *http.Request) (*common.CustomClaims, common.TokenInfo, error) {
 	raw := r.Header.Get("Authorization")
 	if !strings.HasPrefix(raw, "Bearer ") {
 		return nil, common.TokenInfo{}, common.ErrUnauthorized
 	}
 	claims, err := common.ParseToken(s.Config.Auth.AccessSecret, strings.TrimPrefix(raw, "Bearer "))
-	if err != nil || claims.IsRefreshToken() || claims.UserType != "admin" {
+	if err != nil || claims.IsRefreshToken() || (claims.UserType != "admin" && claims.UserType != "user") {
 		return nil, common.TokenInfo{}, common.ErrTokenInvalid
 	}
-	// Production access introspection must never fall back to signature-only mode.
 	if s.SessionRedis == nil {
-		return nil, common.TokenInfo{}, common.ErrSystem
+		return nil, common.TokenInfo{}, common.ErrDependencyUnavailable
 	}
 	if err = identity.CheckSession(r.Context(), s.SessionRedis, claims.SessionID, identity.SessionDomain(claims.UserType, claims.Roles), claims.UserId); err != nil {
-		return nil, common.TokenInfo{}, common.ErrTokenInvalid
+		if errors.Is(err, identity.ErrSessionInvalid) {
+			return nil, common.TokenInfo{}, common.ErrSessionRevoked
+		}
+		return nil, common.TokenInfo{}, common.ErrDependencyUnavailable
 	}
-	info, err := logic.CurrentAdminAccess(r.Context(), s, claims)
+	var info common.TokenInfo
+	if claims.UserType == "user" {
+		info, err = logic.CurrentCustomerAccess(r.Context(), s, claims)
+	} else {
+		info, err = logic.CurrentAdminAccess(r.Context(), s, claims)
+	}
 	return claims, info, err
+}
+
+func currentAdminClaims(s *svc.ServiceContext, r *http.Request) (*common.CustomClaims, common.TokenInfo, error) {
+	claims, info, err := currentHumanClaims(s, r)
+	if err != nil {
+		return nil, common.TokenInfo{}, err
+	}
+	if claims.UserType != "admin" {
+		return nil, common.TokenInfo{}, common.ErrRoleForbidden
+	}
+	return claims, info, nil
 }
 func registerAdminAccess(server *rest.Server, s *svc.ServiceContext) {
 	registerTempleTeam(server, s)
@@ -51,7 +72,7 @@ func registerAdminAccess(server *rest.Server, s *svc.ServiceContext) {
 		}
 	})
 	server.AddRoute(rest.Route{Method: http.MethodGet, Path: "/api/v1/auth/access", Handler: func(w http.ResponseWriter, r *http.Request) {
-		_, info, err := currentAdminClaims(s, r)
+		_, info, err := currentHumanClaims(s, r)
 		if err != nil {
 			common.JsonError(w, err)
 			return

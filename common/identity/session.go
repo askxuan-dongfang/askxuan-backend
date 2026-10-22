@@ -3,11 +3,14 @@ package identity
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"strconv"
 	"strings"
 )
+
+// ErrSessionInvalid distinguishes revoked/missing sessions from a Redis outage.
+var ErrSessionInvalid = errors.New("会话已失效")
 
 type Session struct {
 	Domain string `json:"domain"`
@@ -30,7 +33,7 @@ func CreateSession(ctx context.Context, r *redis.Redis, domain string, id int64,
 }
 func CheckSession(ctx context.Context, r *redis.Redis, sid, domain string, id int64) error {
 	if sid == "" {
-		return fmt.Errorf("会话无效")
+		return ErrSessionInvalid
 	}
 	b, e := r.GetCtx(ctx, "identity:session:"+sid)
 	if e != nil {
@@ -38,14 +41,14 @@ func CheckSession(ctx context.Context, r *redis.Redis, sid, domain string, id in
 	}
 	var s Session
 	if json.Unmarshal([]byte(b), &s) != nil || s.Domain != domain || s.UserID != id {
-		return fmt.Errorf("会话已失效")
+		return ErrSessionInvalid
 	}
 	epoch, e := r.GetCtx(ctx, EpochKey(domain, id))
 	if e != nil {
 		return e
 	}
 	if epoch != s.Epoch {
-		return fmt.Errorf("会话已失效")
+		return ErrSessionInvalid
 	}
 	return nil
 }

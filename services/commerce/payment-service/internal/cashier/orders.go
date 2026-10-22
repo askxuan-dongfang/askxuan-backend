@@ -81,6 +81,15 @@ func readOrder(ctx context.Context, q querySession, user string, r OrderRequest,
 	if o.Cents <= 0 || o.Cents > balance.MaxCents {
 		return o, balance.ErrConflict
 	}
+	if o.Payable == 1 {
+		allowed, err := providerAllowsExistingPayment(ctx, q, r, lock)
+		if err != nil {
+			return o, err
+		}
+		if !allowed {
+			o.Payable = 0
+		}
+	}
 	return o, nil
 }
 func (s *Store) Quote(ctx context.Context, user string, r OrderRequest) (Quote, error) {

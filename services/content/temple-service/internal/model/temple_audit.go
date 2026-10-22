@@ -232,7 +232,7 @@ func (m *defaultTempleAuditModel) FinalPass(ctx context.Context, id int64, templ
 			return fmt.Errorf("temple audit final pass affected %d rows", affected)
 		}
 
-		result, err = session.ExecCtx(ctx, `UPDATE temple SET status = ? WHERE code = ?`, TempleStatusNormal, templeCode)
+		result, err = session.ExecCtx(ctx, `UPDATE temple SET auth_status='certified',state_version=state_version+1,status=CASE WHEN platform_status='banned' THEN '封禁' WHEN recommended=1 THEN '推荐' ELSE '正常' END WHERE code = ?`, templeCode)
 		if err != nil {
 			return err
 		}

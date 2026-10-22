@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -109,8 +110,15 @@ func main() {
 		timeout = 3 * time.Second
 	}
 	security := &middleware.SecurityClient{AuthURL: internalURL(authTarget), AuditURL: internalURL(auditTarget), Secret: c.Auth.AccessSecret, Client: &http.Client{Timeout: timeout}}
-	handler = middleware.AuthWithOptions(c.Auth.AccessSecret, c.NoAuthPaths, middleware.AuthOptions{ValidateAccess: security.ValidateAccess, Recorder: security, SessionChecks: []func(context.Context, *common.CustomClaims) error{func(ctx context.Context, claims *common.CustomClaims) error {
-		return identity.CheckSession(ctx, sessionRedis, claims.SessionID, identity.SessionDomain(claims.UserType, claims.Roles), claims.UserId)
+	handler = middleware.AuthWithOptions(c.Auth.AccessSecret, c.NoAuthPaths, middleware.AuthOptions{ValidateAccess: security.ValidateAccess, Recorder: security, RecheckInterval: 3 * time.Second, SessionChecks: []func(context.Context, *common.CustomClaims) error{func(ctx context.Context, claims *common.CustomClaims) error {
+		err := identity.CheckSession(ctx, sessionRedis, claims.SessionID, identity.SessionDomain(claims.UserType, claims.Roles), claims.UserId)
+		if err == nil {
+			return nil
+		}
+		if errors.Is(err, identity.ErrSessionInvalid) {
+			return common.ErrSessionRevoked
+		}
+		return common.ErrDependencyUnavailable
 	}}})(handler)
 	handler = middleware.Cors(handler)
 

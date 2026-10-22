@@ -645,6 +645,7 @@ func getCurrentTemple(ctx context.Context, svcCtx *svc.ServiceContext) (*model.T
 // toTypeTemple model.Temple -> types.Temple（types.Id 为 code 字符串）
 func toTypeTemple(t *model.Temple) types.Temple {
 	return types.Temple{
+		AuthStatus: t.AuthStatus, PlatformStatus: t.PlatformStatus, ShelfStatus: t.ShelfStatus, Recommended: t.Recommended, StateVersion: t.StateVersion,
 		TraditionCodes: common.SplitDirectoryTags(t.TraditionCodes),
 		RegionCode:     t.RegionCode, RegionName: t.RegionName,
 		Id:           t.Code,

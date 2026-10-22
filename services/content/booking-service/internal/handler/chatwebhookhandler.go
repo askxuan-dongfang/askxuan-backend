@@ -40,7 +40,7 @@ func bookingChatWebhookHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			command = strings.TrimPrefix(r.URL.Path, "/openim/booking-chat-webhook/")
 		}
 		if strings.Contains(strings.ToLower(command), "beforesendsinglemsg") {
-			if _, err := logic.AuthorizeOpenIMMessage(r.Context(), svcCtx, req.SendID, req.RecvID, req.Ex); err != nil {
+			if _, err := logic.AuthorizeOpenIMMessage(r.Context(), svcCtx, req.SendID, req.RecvID, req.Ex, req.Content); err != nil {
 				code, message := int32(common.ErrBookingChatUnavailable.Code), common.ErrBookingChatUnavailable.Msg
 				if bizErr, ok := err.(*common.BizError); ok {
 					code, message = int32(bizErr.Code), bizErr.Msg

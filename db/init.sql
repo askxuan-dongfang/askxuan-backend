@@ -22,6 +22,11 @@ CREATE TABLE `temple` (
   `belief_code` VARCHAR(32) NOT NULL DEFAULT 'han_buddhism' COMMENT '一级信仰流派编码',
   `sect` VARCHAR(32) NOT NULL COMMENT '宗派 禅宗/全真派/格鲁派/正一派',
   `status` VARCHAR(16) NOT NULL DEFAULT '正常' COMMENT '状态 正常/待审核',
+  `auth_status` VARCHAR(24) NOT NULL DEFAULT 'pending',
+  `platform_status` VARCHAR(16) NOT NULL DEFAULT 'normal',
+  `shelf_status` VARCHAR(16) NOT NULL DEFAULT 'on_shelf',
+  `recommended` TINYINT(1) NOT NULL DEFAULT 0,
+  `state_version` BIGINT NOT NULL DEFAULT 0,
   `address` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '地址',
   `cover_image` VARCHAR(500) NOT NULL DEFAULT '' COMMENT '封面图',
   `rating` DECIMAL(3,2) NOT NULL DEFAULT 0.00 COMMENT '评分',
@@ -44,6 +49,8 @@ INSERT INTO `temple` (`code`,`name`,`region`,`type`,`belief_code`,`sect`,`status
 ('T008','雍和宫','北京东城','藏传佛教','tibetan_buddhism','格鲁派','正常','北京市东城区雍和宫大街12号','https://101.96.228.71/objects/askxuan/temp/20260813173803_T008.jpg',4.80,'雍和宫位于北京东城区，前身为清代皇家府邸，后改为藏传佛教寺院，是北京现存重要的藏传佛教建筑群。'),
 ('T009','青城山天师洞','四川都江堰','道教','daoism','正一派','正常','四川省成都市都江堰市青城山景区','https://101.96.228.71/objects/askxuan/temp/20260813174114_T009.jpg',4.70,'天师洞位于青城山前山，是青城山道教宫观与古建筑群的重要组成部分，现存建筑依山布局。'),
 ('T010','湄洲妈祖祖庙','福建莆田','民间信仰','folk','妈祖信俗','正常','福建省莆田市秀屿区湄洲北大道988号','https://101.96.228.71/objects/askxuan/temp/20260813173801_T010.jpg',4.90,'湄洲妈祖祖庙始建于北宋雍熙四年（987年），位于湄洲岛，是妈祖信俗的重要发祥地和传承场所。');
+
+UPDATE temple SET auth_status=CASE WHEN status IN ('正常','推荐') THEN 'certified' WHEN status='封禁' THEN 'legacy_unknown' ELSE 'pending' END,platform_status=IF(status='封禁','banned','normal'),shelf_status=IF(status IN ('正常','推荐'),'on_shelf','off_shelf'),recommended=IF(status='推荐',1,0);
 
 DROP TABLE IF EXISTS `belief_profile`;
 CREATE TABLE `belief_profile` (
@@ -268,6 +275,7 @@ CREATE TABLE `user` (
   `region` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '所在地',
   `bio` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '简介',
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '1正常 0禁用',
+  `authz_version` BIGINT UNSIGNED NOT NULL DEFAULT 0,
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -394,6 +402,7 @@ CREATE TABLE IF NOT EXISTS `admin_account` (
   `master_id` VARCHAR(16) NOT NULL DEFAULT '' COMMENT '所属法师编码',
   `shop_id` BIGINT NOT NULL DEFAULT 0 COMMENT '所属商铺ID',
   `status` VARCHAR(32) NOT NULL DEFAULT 'enabled' COMMENT 'enabled/disabled',
+  `platform_disabled` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '平台独立停用，不被本人激活或寺院恢复覆盖',
   `last_login_time` DATETIME DEFAULT NULL COMMENT '最后登录时间',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -530,8 +539,8 @@ USE `askxuan_temple`;
 -- 核心寺院、服务类型与流派资料由默认库同步到寺院服务分库。
 -- CREATE TABLE ... LIKE 不复制外键，避免分库初始化依赖默认库约束。
 CREATE TABLE IF NOT EXISTS `temple` LIKE `askxuan`.`temple`;
-INSERT IGNORE INTO `temple` (`id`,`code`,`name`,`region`,`type`,`sect`,`status`,`address`,`cover_image`,`rating`,`description`,`create_time`,`update_time`)
-SELECT `id`,`code`,`name`,`region`,`type`,`sect`,`status`,`address`,`cover_image`,`rating`,`description`,`create_time`,`update_time` FROM `askxuan`.`temple`;
+INSERT IGNORE INTO `temple` (`id`,`code`,`name`,`region`,`type`,`sect`,`status`,`auth_status`,`platform_status`,`shelf_status`,`recommended`,`state_version`,`address`,`cover_image`,`rating`,`description`,`create_time`,`update_time`)
+SELECT `id`,`code`,`name`,`region`,`type`,`sect`,`status`,`auth_status`,`platform_status`,`shelf_status`,`recommended`,`state_version`,`address`,`cover_image`,`rating`,`description`,`create_time`,`update_time` FROM `askxuan`.`temple`;
 CREATE TABLE IF NOT EXISTS `service_type` LIKE `askxuan`.`service_type`;
 INSERT IGNORE INTO `service_type` SELECT * FROM `askxuan`.`service_type`;
 CREATE TABLE IF NOT EXISTS `belief_profile` LIKE `askxuan`.`belief_profile`;

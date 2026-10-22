@@ -30,7 +30,7 @@ func TestTempleTeamIsolationAndRevocationIntegration(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
-	exec(`INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,sect,status) VALUES('T_OPS','岗位测试','测试地区','汉传佛教','禅宗','正常')`)
+	exec(`INSERT IGNORE INTO askxuan_temple.temple(code,name,region,type,sect,status,auth_status,platform_status,shelf_status) VALUES('T_OPS','岗位测试','测试地区','汉传佛教','禅宗','正常','certified','normal','on_shelf')`)
 	exec(`INSERT IGNORE INTO admin_account(account,password,name,role_id,temple_id,master_id,shop_id,status) SELECT 'templeops-owner','unused','岗位测试管理员',id,'T_OPS','',0,'enabled' FROM role WHERE code='temple_admin'`)
 	var owner model.AdminAccount
 	accountModel := model.NewAdminAccountModel(db)
@@ -99,5 +99,22 @@ func TestTempleTeamIsolationAndRevocationIntegration(t *testing.T) {
 	}
 	if _, e := CurrentAdminAccess(ctx, s, staff); e == nil {
 		t.Fatal("disabled member retained access")
+	}
+	exec(`UPDATE admin_account SET platform_disabled=1,authz_version=authz_version+1 WHERE id=?`, id)
+	rows, e = TempleTeamList(ctx, s, c)
+	if e != nil || len(rows) != 1 || !rows[0].PlatformDisabled {
+		t.Fatal("platform suspension not exposed", e)
+	}
+	update := TempleTeamInput{ID: id, Revision: rows[0].Revision, Name: "平台停用成员", Role: "temple_finance", Status: "enabled"}
+	if _, e := SaveTempleTeam(ctx, s, c, update); e == nil {
+		t.Fatal("temple restored a platform-suspended account")
+	}
+	update.Status = "disabled"
+	if _, e := SaveTempleTeam(ctx, s, c, update); e != nil {
+		t.Fatal("safe profile edit rejected", e)
+	}
+	a, e = accountModel.FindByID(ctx, id)
+	if e != nil || a.Status != "disabled" || !a.PlatformDisabled {
+		t.Fatal("profile edit removed platform suspension", e)
 	}
 }

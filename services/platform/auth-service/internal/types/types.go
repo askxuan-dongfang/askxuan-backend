@@ -77,25 +77,33 @@ type AdminLoginReq struct {
 
 // AdminAccount 管理台账号
 type AdminAccount struct {
-	Id            int64  `json:"id"`
-	Account       string `json:"account"`
-	Name          string `json:"name"`
-	RoleId        int64  `json:"roleId"`
-	RoleName      string `json:"roleName,optional"`
-	TempleId      string `json:"templeId,optional"`
-	MasterId      string `json:"masterId,optional"`
-	ShopId        int64  `json:"shopId,optional"`
-	Status        string `json:"status"`
-	LastLoginTime string `json:"lastLoginTime,optional"`
-	CreateTime    string `json:"createTime"`
+	PlatformDisabled bool   `json:"platformDisabled"`
+	RoleCode         string `json:"roleCode"`
+	AuthzScope       string `json:"authzScope"`
+	AuthzVersion     int64  `json:"authzVersion"`
+	Id               int64  `json:"id"`
+	Account          string `json:"account"`
+	Name             string `json:"name"`
+	RoleId           int64  `json:"roleId"`
+	RoleName         string `json:"roleName,optional"`
+	TempleId         string `json:"templeId,optional"`
+	MasterId         string `json:"masterId,optional"`
+	ShopId           int64  `json:"shopId,optional"`
+	Status           string `json:"status"`
+	LastLoginTime    string `json:"lastLoginTime,optional"`
+	CreateTime       string `json:"createTime"`
 }
 
 // AdminAccountListReq 账号列表请求
 type AdminAccountListReq struct {
-	Keyword string `form:"keyword,optional"`
-	Status  string `form:"status,optional"`
-	Page    int    `form:"page,default=1"`
-	Size    int    `form:"size,default=20"`
+	RoleId   int64  `form:"roleId,optional"`
+	TempleId string `form:"templeId,optional"`
+	MasterId string `form:"masterId,optional"`
+	ShopId   int64  `form:"shopId,optional"`
+	Keyword  string `form:"keyword,optional"`
+	Status   string `form:"status,optional"`
+	Page     int    `form:"page,default=1"`
+	Size     int    `form:"size,default=20"`
 }
 
 // AdminAccountListResp 账号列表响应
@@ -140,8 +148,9 @@ type AdminAccountStatusReq struct {
 
 // AdminAccountStatusResp 启停账号响应
 type AdminAccountStatusResp struct {
-	Id     int64  `json:"id"`
-	Status string `json:"status"`
+	PlatformDisabled bool   `json:"platformDisabled"`
+	Id               int64  `json:"id"`
+	Status           string `json:"status"`
 }
 
 // ============ 角色管理 ============
@@ -197,4 +206,39 @@ type Permission struct {
 // PermissionListResp 权限列表响应
 type PermissionListResp struct {
 	List []Permission `json:"list"`
+}
+
+// AccountIdentity is a read-only credential projection. Emails in separate
+// domains never imply one person or combine financial/business records.
+type AccountIdentity struct {
+	Email            string `json:"email"`
+	EmailVerified    bool   `json:"emailVerified"`
+	VerifiedAt       string `json:"verifiedAt"`
+	CredentialState  string `json:"credentialState"`
+	ActivationStatus string `json:"activationStatus"`
+	InvitationEmail  string `json:"invitationEmail"`
+	CanResetPassword bool   `json:"canResetPassword"`
+}
+type AccountBinding struct {
+	Type           string `json:"type"`
+	Id             string `json:"id"`
+	Name           string `json:"name"`
+	Status         string `json:"status"`
+	AuthStatus     string `json:"authStatus"`
+	ShelfStatus    string `json:"shelfStatus"`
+	PlatformStatus string `json:"platformStatus"`
+}
+type AdminAccountDetailReq struct {
+	Id int64 `path:"id"`
+}
+type AdminAccountDetailResp struct {
+	Account        AdminAccount     `json:"account"`
+	Identity       AccountIdentity  `json:"identity"`
+	Bindings       []AccountBinding `json:"bindings"`
+	LoginAllowed   bool             `json:"loginAllowed"`
+	BlockedReasons []string         `json:"blockedReasons"`
+}
+type AdminAccountRevokeResp struct {
+	Id      int64 `json:"id"`
+	Success bool  `json:"success"`
 }

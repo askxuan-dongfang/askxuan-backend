@@ -30,6 +30,11 @@ type (
     }
 
     Temple {
+        AuthStatus string `json:"authStatus"`
+        PlatformStatus string `json:"platformStatus"`
+        ShelfStatus string `json:"shelfStatus"`
+        Recommended bool `json:"recommended"`
+        StateVersion int64 `json:"stateVersion"`
         TraditionCodes []string `json:"traditionCodes,optional"`
         RegionCode string `json:"regionCode"`
         RegionName string `json:"regionName"`
@@ -508,4 +513,18 @@ service temple-service {
     put /:code (RegionUpdateReq) returns (RegionTag)
     @handler adminProviderRegion
     put /providers/:kind/:id (ProviderRegionReq) returns (ProviderRegionResp)
+}
+
+// Lifecycle dimensions are independent; certification is changed only by review.
+type TempleStateReq {
+ Id string `path:"id"`
+ Version int64 `json:"version"`
+ PlatformStatus *string `json:"platformStatus,optional"`
+ ShelfStatus *string `json:"shelfStatus,optional"`
+ Recommended *bool `json:"recommended,optional"`
+}
+@server(group: temple.platform.state prefix: /api/v1/admin/platform/temples)
+service temple-api {
+ @handler platformTempleState
+ put /:id/state (TempleStateReq) returns (Temple)
 }

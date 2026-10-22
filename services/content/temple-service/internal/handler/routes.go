@@ -18,6 +18,7 @@ import (
 // RegisterHandlers 注册 temple 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	registerRegionRoutes(server, svcCtx)
+	registerTempleState(server, svcCtx)
 	registerDirectoryTagRoutes(server, svcCtx)
 	server.AddRoute(rest.Route{Method: http.MethodGet, Path: "/api/v1/temples/:id/favorite", Handler: func(w http.ResponseWriter, r *http.Request) {
 		userID, err := strconv.ParseInt(r.Header.Get("X-User-Id"), 10, 64)
@@ -205,7 +206,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{
 			Method:  http.MethodPut,
 			Path:    "/api/v1/admin/platform/temples/:id/status",
-			Handler: platformTempleStatusHandler(svcCtx),
+			Handler: authorizeTempleState(svcCtx, platformTempleStatusHandler(svcCtx)),
 		},
 	}
 	platformRoles := &middleware.AdminAuthConfig{AllowedRoles: []string{"platform_super"}}

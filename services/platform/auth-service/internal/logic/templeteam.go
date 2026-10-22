@@ -13,12 +13,13 @@ import (
 )
 
 type TempleTeamMember struct {
-	ID       int64  `db:"id" json:"id"`
-	Account  string `db:"account" json:"account"`
-	Name     string `db:"name" json:"name"`
-	Role     string `db:"role" json:"role"`
-	Status   string `db:"status" json:"status"`
-	Revision int64  `db:"revision" json:"revision"`
+	ID               int64  `db:"id" json:"id"`
+	Account          string `db:"account" json:"account"`
+	Name             string `db:"name" json:"name"`
+	Role             string `db:"role" json:"role"`
+	Status           string `db:"status" json:"status"`
+	PlatformDisabled bool   `db:"platform_disabled" json:"platformDisabled"`
+	Revision         int64  `db:"revision" json:"revision"`
 }
 type TempleTeamInput struct {
 	ID       int64  `json:"id"`
@@ -49,7 +50,7 @@ func TempleTeamList(ctx context.Context, s *svc.ServiceContext, c *common.Custom
 		return nil, common.ErrForbidden
 	}
 	rows := []TempleTeamMember{}
-	err := s.DB.QueryRowsCtx(ctx, &rows, `SELECT a.id,a.account,a.name,r.code AS role,a.status,a.authz_version AS revision FROM admin_account a JOIN role r ON r.id=a.role_id WHERE a.temple_id=? AND r.code IN ('temple_reception','temple_operations','temple_finance') ORDER BY a.id DESC LIMIT 500`, c.TempleCode)
+	err := s.DB.QueryRowsCtx(ctx, &rows, `SELECT a.id,a.account,a.name,r.code AS role,a.status,a.platform_disabled,a.authz_version AS revision FROM admin_account a JOIN role r ON r.id=a.role_id WHERE a.temple_id=? AND r.code IN ('temple_reception','temple_operations','temple_finance') ORDER BY a.id DESC LIMIT 500`, c.TempleCode)
 	return rows, err
 }
 func SaveTempleTeam(ctx context.Context, s *svc.ServiceContext, c *common.CustomClaims, v TempleTeamInput) (int64, error) {
@@ -106,11 +107,12 @@ func SaveTempleTeam(ctx context.Context, s *svc.ServiceContext, c *common.Custom
 			return e
 		}
 		var old struct {
-			Role     string `db:"role"`
-			Temple   string `db:"temple"`
-			Revision int64  `db:"revision"`
+			Role             string `db:"role"`
+			Temple           string `db:"temple"`
+			Revision         int64  `db:"revision"`
+			PlatformDisabled bool   `db:"platform_disabled"`
 		}
-		if e := tx.QueryRowCtx(ctx, &old, `SELECT r.code AS role,a.temple_id AS temple,a.authz_version AS revision FROM admin_account a JOIN role r ON r.id=a.role_id WHERE a.id=? FOR UPDATE`, id); e != nil {
+		if e := tx.QueryRowCtx(ctx, &old, `SELECT r.code AS role,a.temple_id AS temple,a.platform_disabled,a.authz_version AS revision FROM admin_account a JOIN role r ON r.id=a.role_id WHERE a.id=? FOR UPDATE`, id); e != nil {
 			if e == sqlx.ErrNotFound {
 				return common.ErrForbidden
 			}
@@ -121,6 +123,9 @@ func SaveTempleTeam(ctx context.Context, s *svc.ServiceContext, c *common.Custom
 		}
 		if old.Revision != v.Revision {
 			return &common.BizError{Code: 40920, Msg: "账号已被修改，请刷新后重试"}
+		}
+		if old.PlatformDisabled && v.Status == "enabled" {
+			return common.NewBizError(40305, "账号已由平台停用，请联系平台管理员恢复")
 		}
 		query := `UPDATE admin_account SET name=?,role_id=?,status=?,authz_version=authz_version+1`
 		args := []any{strings.TrimSpace(v.Name), roleID, v.Status}

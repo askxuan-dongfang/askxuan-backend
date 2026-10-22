@@ -25,16 +25,20 @@ func TestCashWalletMySQL(t *testing.T) {
 	ctx := context.Background()
 	db := sqlx.NewMysql(dsn)
 	ddl := []string{
-		`CREATE DATABASE askxuan_order`, `CREATE DATABASE askxuan_diy`, `CREATE DATABASE askxuan_booking`, `CREATE DATABASE askxuan_ai`,
+		`CREATE DATABASE askxuan_order`, `CREATE DATABASE askxuan_diy`, `CREATE DATABASE askxuan_booking`, `CREATE DATABASE askxuan_ai`, `CREATE DATABASE askxuan_temple`, `CREATE DATABASE askxuan_master`,
+		`CREATE TABLE askxuan_temple.temple(code VARCHAR(32) PRIMARY KEY,auth_status VARCHAR(24),platform_status VARCHAR(16),shelf_status VARCHAR(16))`,
+		`CREATE TABLE askxuan_master.master(code VARCHAR(32) PRIMARY KEY,temple_code VARCHAR(32),auth_status VARCHAR(24),platform_status VARCHAR(16),shelf_status VARCHAR(16))`,
+		`INSERT INTO askxuan_temple.temple VALUES ('fixture','certified','normal','on_shelf')`,
+		`INSERT INTO askxuan_master.master VALUES ('master','fixture','已认证','normal','on_shelf'),('other-master','','已认证','normal','on_shelf')`,
 		`CREATE TABLE payment(id BIGINT PRIMARY KEY AUTO_INCREMENT,payment_no VARCHAR(64) UNIQUE,idempotency_key VARCHAR(128) UNIQUE,user_id VARCHAR(64),order_type VARCHAR(32),order_no VARCHAR(32) NOT NULL,amount DECIMAL(12,2),channel VARCHAR(16),status VARCHAR(24),trade_no VARCHAR(96),create_time DATETIME,update_time DATETIME DEFAULT CURRENT_TIMESTAMP)`,
 		`CREATE TABLE refund(id BIGINT PRIMARY KEY AUTO_INCREMENT,refund_no VARCHAR(64) UNIQUE,payment_id BIGINT,amount DECIMAL(12,2),reason VARCHAR(255),status VARCHAR(24),create_time DATETIME)`,
 		`CREATE TABLE points_payment_award(payment_id BIGINT PRIMARY KEY,user_id VARCHAR(64),awarded BIGINT,reversed BIGINT DEFAULT 0)`,
 		`CREATE TABLE event_outbox(id BIGINT AUTO_INCREMENT PRIMARY KEY,event_key VARCHAR(128) UNIQUE,aggregate_type VARCHAR(32),aggregate_id VARCHAR(64),event_type VARCHAR(64),exchange_name VARCHAR(64),routing_key VARCHAR(64),payload JSON,status VARCHAR(24),retry_count INT,next_retry_at DATETIME,created_at DATETIME,updated_at DATETIME)`,
 		`CREATE TABLE askxuan_order.shop_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),pay_amount DECIMAL(12,2),status VARCHAR(24))`,
-		`CREATE TABLE askxuan_diy.diy_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),total_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24))`,
-		`CREATE TABLE askxuan_booking.booking(booking_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),total_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24),payment_expire_time DATETIME,slot_reserved INT,slot_code VARCHAR(32),master_code VARCHAR(32),payment_no VARCHAR(64),payment_channel VARCHAR(16))`,
+		`CREATE TABLE askxuan_diy.diy_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),total_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24),bless_fee DECIMAL(12,2) NOT NULL DEFAULT 0,pricing_snapshot TEXT)`,
+		`CREATE TABLE askxuan_booking.booking(booking_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),total_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24),payment_expire_time DATETIME,slot_reserved INT,slot_code VARCHAR(32),master_code VARCHAR(32),temple_code VARCHAR(32) NOT NULL DEFAULT 'fixture',payment_no VARCHAR(64),payment_channel VARCHAR(16))`,
 		`CREATE TABLE askxuan_booking.booking_status_log(id BIGINT AUTO_INCREMENT PRIMARY KEY,booking_id VARCHAR(64),from_status VARCHAR(24),to_status VARCHAR(24),operator_id VARCHAR(64),operator_type VARCHAR(32),remark VARCHAR(255),create_time DATETIME)`,
-		`CREATE TABLE askxuan_booking.consultation_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),master_code VARCHAR(32),consult_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24),payment_no VARCHAR(64),payment_channel VARCHAR(16),valid_from DATETIME,expires_at DATETIME,valid_hours INT)`,
+		`CREATE TABLE askxuan_booking.consultation_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),master_code VARCHAR(32),consult_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24),payment_no VARCHAR(64),payment_channel VARCHAR(16),valid_from DATETIME,expires_at DATETIME,valid_hours INT,temple_code VARCHAR(32) NOT NULL DEFAULT '')`,
 		`CREATE TABLE askxuan_ai.ai_report(report_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),price_cents BIGINT,points_paid INT,status VARCHAR(24))`,
 	}
 	for _, q := range ddl {
@@ -201,15 +205,15 @@ func TestCashWalletMySQL(t *testing.T) {
 	if a.Available != 0 || a.Held != 0 {
 		t.Fatal("held amount not settled once", a)
 	}
-	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_diy.diy_order VALUES('D1','20',9.9,'pending_review','pending')`)
+	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_diy.diy_order(order_no,user_id,total_fee,status,payment_status) VALUES('D1','20',9.9,'pending_review','pending')`)
 	if e != nil {
 		t.Fatal(e)
 	}
-	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_booking.booking VALUES('B1','20',9.9,'pending_payment','pending',DATE_ADD(NOW(),INTERVAL 15 MINUTE),1,'slot','master','',''),('B2','20',9.9,'pending_payment','pending',DATE_ADD(NOW(),INTERVAL 15 MINUTE),0,'','master','','')`)
+	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_booking.booking(booking_no,user_id,total_fee,status,payment_status,payment_expire_time,slot_reserved,slot_code,master_code,payment_no,payment_channel) VALUES('B1','20',9.9,'pending_payment','pending',DATE_ADD(NOW(),INTERVAL 15 MINUTE),1,'slot','master','',''),('B2','20',9.9,'pending_payment','pending',DATE_ADD(NOW(),INTERVAL 15 MINUTE),0,'','master','','')`)
 	if e != nil {
 		t.Fatal(e)
 	}
-	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_booking.consultation_order VALUES('C1','20','other-master',9.9,'pending_payment','pending','','',NULL,NULL,24)`)
+	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_booking.consultation_order(order_no,user_id,master_code,consult_fee,status,payment_status,payment_no,payment_channel,valid_from,expires_at,valid_hours) VALUES('C1','20','other-master',9.9,'pending_payment','pending','','',NULL,NULL,24)`)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -232,7 +236,7 @@ func TestCashWalletMySQL(t *testing.T) {
 	if e != nil || beforeBooking.Available != 10000 {
 		t.Fatalf("rejected booking changed balance: %+v %v", beforeBooking, e)
 	}
-	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_booking.consultation_order VALUES('C-valid','20','master',9.9,'active','success','fixture','balance',DATE_SUB(NOW(),INTERVAL 1 MINUTE),DATE_ADD(NOW(),INTERVAL 24 HOUR),24)`)
+	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_booking.consultation_order(order_no,user_id,master_code,consult_fee,status,payment_status,payment_no,payment_channel,valid_from,expires_at,valid_hours) VALUES('C-valid','20','master',9.9,'active','success','fixture','balance',DATE_SUB(NOW(),INTERVAL 1 MINUTE),DATE_ADD(NOW(),INTERVAL 24 HOUR),24)`)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -260,6 +264,7 @@ func TestCashWalletMySQL(t *testing.T) {
 	if _, e = s.Pay(ctx, "20", OrderRequest{OrderType: "ai_report", OrderNo: "A2", ExpectedCents: 990, Channel: "balance"}); e == nil {
 		t.Fatal("points-unlocked report charged again")
 	}
+	t.Run("provider eligibility before pending charge", func(t *testing.T) { checkProviderPendingPayment(t, db) })
 	var sum int64
 	db.QueryRowCtx(ctx, &sum, `SELECT SUM(available_delta) FROM wallet_ledger WHERE user_id='10'`)
 	if sum != a.Available {
