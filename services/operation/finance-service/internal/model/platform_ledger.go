@@ -32,17 +32,17 @@ type PaymentReceipt struct {
 }
 
 type BookingSettlement struct {
-	BookingID   string
-	UserID      string
-	TempleID    string
-	TempleName  string
-	MasterID    string
-	MasterName  string
-	ServiceName string
-	BookingDate string
-	ServiceFee  float64
-	MeritMoney  float64
-	TotalFee    float64
+	BookingID   string  `db:"booking_no"`
+	UserID      string  `db:"user_id"`
+	TempleID    string  `db:"temple_code"`
+	TempleName  string  `db:"temple_name"`
+	MasterID    string  `db:"master_code"`
+	MasterName  string  `db:"master_name"`
+	ServiceName string  `db:"service_name"`
+	BookingDate string  `db:"booking_date"`
+	ServiceFee  float64 `db:"service_fee"`
+	MeritMoney  float64 `db:"merit_money"`
+	TotalFee    float64 `db:"total_fee"`
 }
 
 type BookingSplit struct {
@@ -222,6 +222,17 @@ func RecordPlatformRefund(ctx context.Context, receipt PaymentReceipt) error {
 }
 
 func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (BookingSplit, error) {
+	if booking.BookingID == "" {
+		return BookingSplit{}, fmt.Errorf("预约分账字段不完整")
+	}
+	// Older queued review events omitted the immutable price/date snapshot.
+	if booking.BookingDate == "" {
+		if err := db.QueryRowCtx(ctx, &booking, `SELECT booking_no,user_id,temple_code,temple_name,master_code,master_name,service_name,
+			DATE_FORMAT(booking_date,'%Y-%m-%d') booking_date,service_fee,merit_money,total_fee FROM askxuan_booking.booking
+			WHERE booking_no=? AND status='reviewed' AND payment_status='success'`, booking.BookingID); err != nil {
+			return BookingSplit{}, fmt.Errorf("读取历史预约结案快照失败: %w", err)
+		}
+	}
 	scoped, scopeErr := paymentLedgerContext(ctx, "booking", booking.BookingID)
 	if scopeErr != nil {
 		return BookingSplit{}, scopeErr
@@ -256,7 +267,7 @@ func AccrueBookingSettlement(ctx context.Context, booking BookingSettlement) (Bo
 	err = db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
 		if isDemoLedger(ctx) {
 			var status string
-			if err := session.QueryRowCtx(ctx, &status, `SELECT status FROM askxuan_payment.payment WHERE order_type=? AND order_no=? AND channel='demo_balance' ORDER BY id DESC LIMIT 1 FOR UPDATE`, "booking", booking.BookingID); err != nil {
+			if err := session.QueryRowCtx(ctx, &status, `SELECT status FROM askxuan_payment.payment WHERE order_type=? AND order_no=? AND channel='demo_balance' ORDER BY id DESC LIMIT 1 FOR SHARE`, "booking", booking.BookingID); err != nil {
 				return err
 			}
 			if status != "success" {
@@ -365,7 +376,7 @@ func AccrueConsultationSettlement(ctx context.Context, consultation Consultation
 	err = db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
 		if isDemoLedger(ctx) {
 			var status string
-			if err := session.QueryRowCtx(ctx, &status, `SELECT status FROM askxuan_payment.payment WHERE order_type=? AND order_no=? AND channel='demo_balance' ORDER BY id DESC LIMIT 1 FOR UPDATE`, "consultation", consultation.ConsultationID); err != nil {
+			if err := session.QueryRowCtx(ctx, &status, `SELECT status FROM askxuan_payment.payment WHERE order_type=? AND order_no=? AND channel='demo_balance' ORDER BY id DESC LIMIT 1 FOR SHARE`, "consultation", consultation.ConsultationID); err != nil {
 				return err
 			}
 			if status != "success" {
