@@ -141,23 +141,22 @@ func AddExceptionNote(ctx context.Context, s *svc.ServiceContext, id, requestID,
 		if temple != code {
 			return common.ErrForbidden
 		}
+		// The unique request key serializes concurrent retries before comparing their payloads.
+		if _, e = tx.ExecCtx(ctx, `INSERT INTO temple_exception_note(temple_code,source_kind,source_id,operator_id,operator_role,request_id,action,content) VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id`, code, kind, source, c.UserId, strings.Join(c.Roles, ","), requestID, action, content); e != nil {
+			return e
+		}
 		var existing struct {
 			ID      string `db:"source_id"`
 			Kind    string `db:"source_kind"`
 			Action  string `db:"action"`
 			Content string `db:"content"`
 		}
-		e = tx.QueryRowCtx(ctx, &existing, `SELECT source_id,source_kind,action,content FROM temple_exception_note WHERE temple_code=? AND operator_id=? AND request_id=?`, code, c.UserId, requestID)
-		if e == nil {
-			if existing.ID == source && existing.Kind == kind && existing.Action == action && existing.Content == content {
-				return nil
-			}
-			return common.ErrParam
-		}
-		if e != sqlx.ErrNotFound {
+		if e = tx.QueryRowCtx(ctx, &existing, `SELECT source_id,source_kind,action,content FROM temple_exception_note WHERE temple_code=? AND operator_id=? AND request_id=? FOR UPDATE`, code, c.UserId, requestID); e != nil {
 			return e
 		}
-		_, e = tx.ExecCtx(ctx, `INSERT INTO temple_exception_note(temple_code,source_kind,source_id,operator_id,operator_role,request_id,action,content) VALUES(?,?,?,?,?,?,?,?)`, code, kind, source, c.UserId, strings.Join(c.Roles, ","), requestID, action, content)
-		return e
+		if existing.ID != source || existing.Kind != kind || existing.Action != action || existing.Content != content {
+			return common.ErrParam
+		}
+		return nil
 	})
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -54,11 +55,24 @@ func TestTempleOpsExceptionsIntegration(t *testing.T) {
 		t.Fatal("derived state", rows)
 	}
 	id := "booking:" + b.Id
-	if e := AddExceptionNote(ctx, s, id, "templeops-request-0001", "escalated", "已与信众核对，提请平台跟进退款"); e != nil {
-		t.Fatal(e)
+	var wg sync.WaitGroup
+	failures := make(chan error, 8)
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			failures <- AddExceptionNote(ctx, s, id, "templeops-request-0001", "escalated", "已与信众核对，提请平台跟进退款")
+		}()
 	}
-	if e := AddExceptionNote(ctx, s, id, "templeops-request-0001", "escalated", "已与信众核对，提请平台跟进退款"); e != nil {
-		t.Fatal("idempotent retry", e)
+	wg.Wait()
+	close(failures)
+	for err := range failures {
+		if err != nil {
+			t.Fatal("concurrent retry", err)
+		}
+	}
+	if e := AddExceptionNote(ctx, s, id, "templeops-request-0001", "following", "重复请求号不得覆盖原始跟进"); e == nil {
+		t.Fatal("idempotency key accepted a different payload")
 	}
 	notes, e := ExceptionNotes(ctx, s, id, false)
 	if e != nil || len(notes) != 1 {
