@@ -29,7 +29,7 @@ func AdminAccountDetail(ctx context.Context, s *svc.ServiceContext, id int64) (*
 	if err != nil {
 		return nil, common.ErrSystem
 	}
-	out := &types.AdminAccountDetailResp{Account: types.AdminAccount{Id: a.Id, Account: a.Account, Name: a.Name, RoleId: a.RoleId, RoleName: role.Name, RoleCode: role.Code, AuthzScope: effectiveRoleScope(role), AuthzVersion: a.AuthzVersion, TempleId: a.TempleId, MasterId: a.MasterId, ShopId: a.ShopId, Status: a.Status, LastLoginTime: a.LastLoginTime, CreateTime: a.CreateTime}, Bindings: []types.AccountBinding{}, BlockedReasons: []string{}, Identity: types.AccountIdentity{ActivationStatus: "none", CredentialState: "unavailable"}}
+	out := &types.AdminAccountDetailResp{Account: types.AdminAccount{Id: a.Id, Account: a.Account, Name: a.Name, RoleId: a.RoleId, RoleName: role.Name, RoleCode: role.Code, AuthzScope: effectiveRoleScope(role), AuthzVersion: a.AuthzVersion, TempleId: a.TempleId, MasterId: a.MasterId, ShopId: a.ShopId, Status: a.Status, PlatformDisabled: a.PlatformDisabled, LastLoginTime: a.LastLoginTime, CreateTime: a.CreateTime}, Bindings: []types.AccountBinding{}, BlockedReasons: []string{}, Identity: types.AccountIdentity{ActivationStatus: "none", CredentialState: "unavailable"}}
 	var credential struct {
 		Email      string `db:"email"`
 		VerifiedAt string `db:"verified_at"`
@@ -68,6 +68,9 @@ func AdminAccountDetail(ctx context.Context, s *svc.ServiceContext, id int64) (*
 		if invite.Status == "revoked" {
 			out.BlockedReasons = append(out.BlockedReasons, "寺院已停用此分配账号")
 		}
+	}
+	if a.PlatformDisabled {
+		out.BlockedReasons = append(out.BlockedReasons, "平台已停用账号，请联系平台处理")
 	}
 	if a.Status != model.AccountStatusEnabled {
 		out.BlockedReasons = append(out.BlockedReasons, "工作账号已停用")

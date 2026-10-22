@@ -402,6 +402,7 @@ CREATE TABLE IF NOT EXISTS `admin_account` (
   `master_id` VARCHAR(16) NOT NULL DEFAULT '' COMMENT '所属法师编码',
   `shop_id` BIGINT NOT NULL DEFAULT 0 COMMENT '所属商铺ID',
   `status` VARCHAR(32) NOT NULL DEFAULT 'enabled' COMMENT 'enabled/disabled',
+  `platform_disabled` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '平台独立停用，不被本人激活或寺院恢复覆盖',
   `last_login_time` DATETIME DEFAULT NULL COMMENT '最后登录时间',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

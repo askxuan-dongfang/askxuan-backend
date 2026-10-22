@@ -15,6 +15,12 @@ func initialTempleAuth(status string) string {
 	}
 	return "pending"
 }
+func initialTempleShelf(status string) string {
+	if status == TempleStatusNormal || status == TempleStatusRecommend {
+		return "on_shelf"
+	}
+	return "off_shelf"
+}
 func initialTemplePlatform(status string) string {
 	if status == TempleStatusBanned {
 		return "banned"

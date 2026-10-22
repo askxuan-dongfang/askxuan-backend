@@ -77,20 +77,21 @@ type AdminLoginReq struct {
 
 // AdminAccount 管理台账号
 type AdminAccount struct {
-	RoleCode      string `json:"roleCode"`
-	AuthzScope    string `json:"authzScope"`
-	AuthzVersion  int64  `json:"authzVersion"`
-	Id            int64  `json:"id"`
-	Account       string `json:"account"`
-	Name          string `json:"name"`
-	RoleId        int64  `json:"roleId"`
-	RoleName      string `json:"roleName,optional"`
-	TempleId      string `json:"templeId,optional"`
-	MasterId      string `json:"masterId,optional"`
-	ShopId        int64  `json:"shopId,optional"`
-	Status        string `json:"status"`
-	LastLoginTime string `json:"lastLoginTime,optional"`
-	CreateTime    string `json:"createTime"`
+	PlatformDisabled bool   `json:"platformDisabled"`
+	RoleCode         string `json:"roleCode"`
+	AuthzScope       string `json:"authzScope"`
+	AuthzVersion     int64  `json:"authzVersion"`
+	Id               int64  `json:"id"`
+	Account          string `json:"account"`
+	Name             string `json:"name"`
+	RoleId           int64  `json:"roleId"`
+	RoleName         string `json:"roleName,optional"`
+	TempleId         string `json:"templeId,optional"`
+	MasterId         string `json:"masterId,optional"`
+	ShopId           int64  `json:"shopId,optional"`
+	Status           string `json:"status"`
+	LastLoginTime    string `json:"lastLoginTime,optional"`
+	CreateTime       string `json:"createTime"`
 }
 
 // AdminAccountListReq 账号列表请求
@@ -147,8 +148,9 @@ type AdminAccountStatusReq struct {
 
 // AdminAccountStatusResp 启停账号响应
 type AdminAccountStatusResp struct {
-	Id     int64  `json:"id"`
-	Status string `json:"status"`
+	PlatformDisabled bool   `json:"platformDisabled"`
+	Id               int64  `json:"id"`
+	Status           string `json:"status"`
 }
 
 // ============ 角色管理 ============

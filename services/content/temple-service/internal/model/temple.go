@@ -109,7 +109,7 @@ func (m *defaultTempleModel) Insert(ctx context.Context, data *Temple) (int64, e
 	const query = `INSERT INTO ` + templeTable + ` (code, name, region, type, belief_code, sect, status, address, cover_image, rating, description,auth_status,platform_status,shelf_status,recommended) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?,?)`
 	res, err := m.conn.ExecCtx(ctx, query,
 		data.Code, data.Name, data.Region, data.Type, data.BeliefCode, data.Sect,
-		data.Status, data.Address, data.CoverImage, data.Rating, data.Description, initialTempleAuth(data.Status), initialTemplePlatform(data.Status), "on_shelf", data.Status == TempleStatusRecommend)
+		data.Status, data.Address, data.CoverImage, data.Rating, data.Description, initialTempleAuth(data.Status), initialTemplePlatform(data.Status), initialTempleShelf(data.Status), data.Status == TempleStatusRecommend)
 	if err != nil {
 		return 0, err
 	}

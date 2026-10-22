@@ -47,14 +47,14 @@ func (l *RefreshLogic) Refresh(req *types.RefreshReq) (*types.RefreshResp, error
 	}
 	// A failed revocation lookup is a temporary service error, never permission to renew.
 	if l.svcCtx.Redis == nil {
-		return nil, common.ErrSystem
+		return nil, common.ErrDependencyUnavailable
 	}
 	blocked, err := l.svcCtx.Redis.GetCtx(l.ctx, "jwt:blacklist:"+tokenStr)
 	if err != nil {
-		return nil, common.ErrSystem
+		return nil, common.ErrDependencyUnavailable
 	}
 	if blocked == "1" {
-		return nil, common.ErrTokenInvalid
+		return nil, common.ErrSessionRevoked
 	}
 
 	info, err := l.refreshIdentity(claims)
@@ -88,7 +88,7 @@ func (l *RefreshLogic) refreshIdentity(claims *common.CustomClaims) (common.Toke
 			return common.TokenInfo{}, refreshLookupError(err)
 		}
 		if u == nil || u.Id != claims.UserId {
-			return common.TokenInfo{}, common.ErrTokenInvalid
+			return common.TokenInfo{}, common.ErrSessionRevoked
 		}
 		// The durable revision changes atomically with every ban/unban. An old
 		// access or refresh token can never become usable again after restoration.
@@ -105,40 +105,40 @@ func (l *RefreshLogic) refreshIdentity(claims *common.CustomClaims) (common.Toke
 	if err != nil {
 		return common.TokenInfo{}, refreshLookupError(err)
 	}
-	if acc == nil || acc.Id != claims.UserId || acc.Status != model.AccountStatusEnabled {
-		return common.TokenInfo{}, common.ErrTokenInvalid
+	if acc == nil || acc.Id != claims.UserId || acc.PlatformDisabled || acc.Status != model.AccountStatusEnabled {
+		return common.TokenInfo{}, common.ErrSessionRevoked
 	}
 	role, err := l.svcCtx.RoleModel.FindByID(l.ctx, acc.RoleId)
 	if err != nil {
 		return common.TokenInfo{}, refreshLookupError(err)
 	}
 	if role == nil || !refreshRoleMatchesDomain(claims.UserType, role.Code) || !authorizationVersionMatches(claims, acc, role) {
-		return common.TokenInfo{}, common.ErrTokenInvalid
+		return common.TokenInfo{}, common.ErrSessionRevoked
 	}
 
 	// Refresh checks the same bound-entity eligibility as a fresh administrator login.
 	if role.Code == model.RoleCodeTempleAdmin {
 		if acc.TempleId == "" {
-			return common.TokenInfo{}, common.ErrTokenInvalid
+			return common.TokenInfo{}, common.ErrSessionRevoked
 		}
 		status, err := templeStatus(l.ctx, l.svcCtx, acc.TempleId)
 		if err != nil {
 			return common.TokenInfo{}, refreshEligibilityError(err)
 		}
 		if !canEnableTempleAccount(status) {
-			return common.TokenInfo{}, common.ErrTokenInvalid
+			return common.TokenInfo{}, common.ErrSessionRevoked
 		}
 	}
 	if role.Code == model.RoleCodeMaster {
 		if acc.MasterId == "" {
-			return common.TokenInfo{}, common.ErrTokenInvalid
+			return common.TokenInfo{}, common.ErrSessionRevoked
 		}
 		status, err := masterAccountStatusFor(l.ctx, l.svcCtx, acc.MasterId)
 		if err != nil {
 			return common.TokenInfo{}, refreshEligibilityError(err)
 		}
 		if !canEnableMasterAccount(status.authStatus, status.platformStatus, status.templeStatus) {
-			return common.TokenInfo{}, common.ErrTokenInvalid
+			return common.TokenInfo{}, common.ErrSessionRevoked
 		}
 	}
 
@@ -157,6 +157,9 @@ func (l *RefreshLogic) refreshIdentity(claims *common.CustomClaims) (common.Toke
 		}
 	}
 	snapshot, err := authorizationSnapshot(l.ctx, l.svcCtx, acc, role)
+	if errors.Is(err, common.ErrSystem) {
+		return common.TokenInfo{}, common.ErrDependencyUnavailable
+	}
 	if err != nil {
 		return common.TokenInfo{}, err
 	}
@@ -193,21 +196,21 @@ func refreshBoundID(ctx context.Context, db sqlx.SqlConn, code, query string) (i
 		}
 	}
 	if id <= 0 {
-		return 0, common.ErrTokenInvalid
+		return 0, common.ErrSessionRevoked
 	}
 	return id, nil
 }
 
 func refreshLookupError(err error) error {
 	if errors.Is(err, sqlx.ErrNotFound) {
-		return common.ErrTokenInvalid
+		return common.ErrSessionRevoked
 	}
-	return common.ErrSystem
+	return common.ErrDependencyUnavailable
 }
 
 func refreshEligibilityError(err error) error {
-	if errors.Is(err, common.ErrSystem) {
-		return common.ErrSystem
+	if errors.Is(err, common.ErrSystem) || errors.Is(err, common.ErrDependencyUnavailable) {
+		return common.ErrDependencyUnavailable
 	}
-	return common.ErrTokenInvalid
+	return common.ErrSessionRevoked
 }

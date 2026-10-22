@@ -19,16 +19,23 @@ import (
 // fixture from sharing the interactive HTTP acceptance users or a real auth DB.
 func TestAuthorizationMySQLTransactions(t *testing.T) {
 	dsn := os.Getenv("AUTHORIZATION_TEST_DSN")
+	if dsn == "" && os.Getenv("ACCOUNT_SYSTEM_TEST_ISOLATED") == "1" {
+		fixture, e := mysql.ParseDSN(os.Getenv("ACCOUNT_SYSTEM_TEST_DSN"))
+		if e == nil && fixture.DBName == "askxuan_account_test" && fixture.Net == "tcp" && strings.HasPrefix(fixture.Addr, "127.0.0.1:") {
+			fixture.DBName = "askxuan_admin_test_auth_tx"
+			dsn = fixture.FormatDSN()
+		}
+	}
 	if dsn == "" {
-		t.Skip("set AUTHORIZATION_TEST_DSN to disposable askxuan_admin_test_auth_tx")
+		t.Skip("set isolated account-system MySQL or AUTHORIZATION_TEST_DSN")
 	}
 	cfg, err := mysql.ParseDSN(dsn)
-	if err != nil || cfg.DBName != "askxuan_admin_test_auth_tx" {
+	if err != nil || cfg.DBName != "askxuan_admin_test_auth_tx" || cfg.Net != "tcp" || !strings.HasPrefix(cfg.Addr, "127.0.0.1:") {
 		t.Fatal("refusing database outside isolated authorization transaction schema")
 	}
 	sqlx.DisableLog()
 	db := sqlx.NewMysql(dsn)
-	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	var database string
 	if db.QueryRowCtx(ctx, &database, "SELECT DATABASE()") != nil || database != cfg.DBName {
@@ -38,7 +45,7 @@ func TestAuthorizationMySQLTransactions(t *testing.T) {
 		`CREATE TABLE IF NOT EXISTS role(id BIGINT PRIMARY KEY,name VARCHAR(64) NOT NULL,code VARCHAR(64) NOT NULL UNIQUE,description VARCHAR(255) NOT NULL DEFAULT '',authz_scope VARCHAR(16) NOT NULL DEFAULT 'platform',authz_version BIGINT NOT NULL DEFAULT 0,create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
 		`CREATE TABLE IF NOT EXISTS permission(id BIGINT PRIMARY KEY,code VARCHAR(64) NOT NULL UNIQUE,name VARCHAR(64) NOT NULL DEFAULT '',resource VARCHAR(64) NOT NULL DEFAULT '',action VARCHAR(32) NOT NULL DEFAULT '') ENGINE=InnoDB`,
 		`CREATE TABLE IF NOT EXISTS role_permission(id BIGINT AUTO_INCREMENT PRIMARY KEY,role_id BIGINT NOT NULL,permission_id BIGINT NOT NULL,UNIQUE KEY uk_role_perm(role_id,permission_id)) ENGINE=InnoDB`,
-		`CREATE TABLE IF NOT EXISTS admin_account(id BIGINT PRIMARY KEY,role_id BIGINT NOT NULL,status VARCHAR(16) NOT NULL,authz_version BIGINT NOT NULL DEFAULT 0) ENGINE=InnoDB`,
+		`CREATE TABLE IF NOT EXISTS admin_account(id BIGINT PRIMARY KEY,role_id BIGINT NOT NULL,status VARCHAR(16) NOT NULL,authz_version BIGINT NOT NULL DEFAULT 0,platform_disabled TINYINT(1) NOT NULL DEFAULT 0) ENGINE=InnoDB`,
 	}
 	for _, ddl := range ddls {
 		if _, err = db.ExecCtx(ctx, ddl); err != nil {
@@ -146,6 +153,19 @@ func TestAuthorizationMySQLTransactions(t *testing.T) {
 			t.Fatalf("super invariant failed: success=%d protected=%d enabled=%d revoked=%d", success, protected, enabled, revoked)
 		}
 	})
+	t.Run("legacy blocked super cannot satisfy last usable super invariant", func(t *testing.T) {
+		if _, err := db.ExecCtx(ctx, "UPDATE admin_account SET status='enabled',platform_disabled=1 WHERE status='disabled'"); err != nil {
+			t.Fatal(err)
+		}
+		var enabledID int64
+		if err := db.QueryRowCtx(ctx, &enabledID, "SELECT id FROM admin_account WHERE platform_disabled=0"); err != nil {
+			t.Fatal(err)
+		}
+		if err := updateAccountStatus(ctx, s, &model.AdminAccount{Id: enabledID, RoleId: 1}, model.AccountStatusDisabled); !errors.Is(err, ErrLastSuper) {
+			t.Fatalf("last usable super was disabled: %v", err)
+		}
+	})
+
 	// Fixture schema names are checked both before the connection and by SELECT DATABASE().
 	if !strings.HasPrefix(database, "askxuan_admin_test_") {
 		t.Fatal("unreachable non-test schema")

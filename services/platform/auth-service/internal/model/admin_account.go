@@ -18,19 +18,20 @@ const adminAccountTable = "admin_account"
 
 // AdminAccount 管理台账号实体（依据 init.sql admin_account 表）
 type AdminAccount struct {
-	AuthzVersion  int64  `db:"authz_version" json:"-"`
-	Id            int64  `db:"id" json:"id"`
-	Account       string `db:"account" json:"account"`
-	Password      string `db:"password" json:"-"`
-	Name          string `db:"name" json:"name"`
-	RoleId        int64  `db:"role_id" json:"roleId"`
-	TempleId      string `db:"temple_id" json:"templeId"`
-	MasterId      string `db:"master_id" json:"masterId"`
-	ShopId        int64  `db:"shop_id" json:"shopId"`
-	Status        string `db:"status" json:"status"`
-	LastLoginTime string `db:"last_login_time" json:"lastLoginTime"`
-	CreateTime    string `db:"create_time" json:"createTime"`
-	UpdateTime    string `db:"update_time" json:"updateTime"`
+	PlatformDisabled bool   `db:"platform_disabled" json:"platformDisabled"`
+	AuthzVersion     int64  `db:"authz_version" json:"-"`
+	Id               int64  `db:"id" json:"id"`
+	Account          string `db:"account" json:"account"`
+	Password         string `db:"password" json:"-"`
+	Name             string `db:"name" json:"name"`
+	RoleId           int64  `db:"role_id" json:"roleId"`
+	TempleId         string `db:"temple_id" json:"templeId"`
+	MasterId         string `db:"master_id" json:"masterId"`
+	ShopId           int64  `db:"shop_id" json:"shopId"`
+	Status           string `db:"status" json:"status"`
+	LastLoginTime    string `db:"last_login_time" json:"lastLoginTime"`
+	CreateTime       string `db:"create_time" json:"createTime"`
+	UpdateTime       string `db:"update_time" json:"updateTime"`
 }
 
 // AdminAccountModel 管理台账号模型接口
@@ -41,7 +42,6 @@ type AdminAccountModel interface {
 	FindFilteredList(ctx context.Context, filter AdminAccountFilter, page, size int) ([]*AdminAccount, int64, error)
 	Insert(ctx context.Context, data *AdminAccount) (int64, error)
 	Update(ctx context.Context, data *AdminAccount) error
-	UpdateStatus(ctx context.Context, id int64, status string) error
 	UpdateLastLogin(ctx context.Context, id int64) error
 }
 
@@ -55,7 +55,7 @@ func NewAdminAccountModel(conn sqlx.SqlConn) AdminAccountModel {
 }
 
 // adminAccountColumns 查询列，使用 IFNULL 处理可能为 NULL 的字段
-const adminAccountColumns = `id, account, password, name, role_id, authz_version, temple_id, master_id, shop_id, status, IFNULL(last_login_time,'') AS last_login_time, create_time, update_time`
+const adminAccountColumns = `id, account, password, name, role_id, authz_version, platform_disabled, temple_id, master_id, shop_id, status, IFNULL(last_login_time,'') AS last_login_time, create_time, update_time`
 
 // FindByAccount 按登录账号查询
 func (m *defaultAdminAccountModel) FindByAccount(ctx context.Context, account string) (*AdminAccount, error) {
@@ -153,13 +153,6 @@ func (m *defaultAdminAccountModel) Update(ctx context.Context, data *AdminAccoun
 	query := fmt.Sprintf(`UPDATE %s SET authz_version=authz_version+1, name = ?, role_id = ?, temple_id = ?, master_id = ?, shop_id = ? WHERE id = ?`, adminAccountTable)
 	_, err := m.conn.ExecCtx(ctx, query,
 		data.Name, data.RoleId, data.TempleId, data.MasterId, data.ShopId, data.Id)
-	return err
-}
-
-// UpdateStatus 更新账号状态（启用/禁用）
-func (m *defaultAdminAccountModel) UpdateStatus(ctx context.Context, id int64, status string) error {
-	query := fmt.Sprintf(`UPDATE %s SET authz_version=authz_version+1, status = ? WHERE id = ?`, adminAccountTable)
-	_, err := m.conn.ExecCtx(ctx, query, status, id)
 	return err
 }
 

@@ -68,7 +68,7 @@ func (l *AdminAccountListLogic) AdminAccountList(req *types.AdminAccountListReq)
 			return nil, common.ErrSystem
 		}
 		out = append(out, types.AdminAccount{
-			RoleCode: r.Code, AuthzScope: effectiveRoleScope(r), AuthzVersion: a.AuthzVersion,
+			RoleCode: r.Code, AuthzScope: effectiveRoleScope(r), AuthzVersion: a.AuthzVersion, PlatformDisabled: a.PlatformDisabled,
 			Id:            a.Id,
 			Account:       a.Account,
 			Name:          a.Name,
@@ -243,17 +243,18 @@ func (l *AdminAccountUpdateLogic) AdminAccountUpdate(req *types.AdminAccountUpda
 	}
 
 	return &types.AdminAccount{
-		Id:            updated.Id,
-		Account:       exist.Account,
-		Name:          updated.Name,
-		RoleId:        updated.RoleId,
-		RoleName:      roleName,
-		TempleId:      updated.TempleId,
-		MasterId:      updated.MasterId,
-		ShopId:        updated.ShopId,
-		Status:        updated.Status,
-		LastLoginTime: exist.LastLoginTime,
-		CreateTime:    exist.CreateTime,
+		PlatformDisabled: updated.PlatformDisabled,
+		Id:               updated.Id,
+		Account:          exist.Account,
+		Name:             updated.Name,
+		RoleId:           updated.RoleId,
+		RoleName:         roleName,
+		TempleId:         updated.TempleId,
+		MasterId:         updated.MasterId,
+		ShopId:           updated.ShopId,
+		Status:           updated.Status,
+		LastLoginTime:    exist.LastLoginTime,
+		CreateTime:       exist.CreateTime,
 	}, nil
 }
 
@@ -295,7 +296,7 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 		if err != nil && !errors.Is(err, sqlx.ErrNotFound) {
 			return nil, common.ErrSystem
 		}
-		if err == nil && (invitationStatus == "pending" || invitationStatus == "revoked") {
+		if err == nil && (invitationStatus == "pending" || invitationStatus == "revoked") && !account.PlatformDisabled {
 			return nil, common.NewBizError(40003, "请先完成本人激活或由所属寺院恢复账号分配")
 		}
 	}
@@ -327,10 +328,11 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 		return nil, common.ErrSystem
 	}
 
-	return &types.AdminAccountStatusResp{
-		Id:     req.Id,
-		Status: req.Status,
-	}, nil
+	fresh, err := l.svcCtx.AdminAccountModel.FindByID(l.ctx, req.Id)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	return &types.AdminAccountStatusResp{Id: req.Id, Status: fresh.Status, PlatformDisabled: fresh.PlatformDisabled}, nil
 }
 
 type adminAccountBinding struct {
@@ -525,11 +527,15 @@ func updateAdminAccountWithBinding(ctx context.Context, db sqlx.SqlConn, account
 		if err := session.QueryRowCtx(ctx, &superID, `SELECT id FROM role WHERE code='platform_super' FOR UPDATE`); err != nil {
 			return err
 		}
-		var liveStatus string
-		if err := session.QueryRowCtx(ctx, &liveStatus, `SELECT status FROM admin_account WHERE id=? FOR UPDATE`, account.Id); err != nil {
+		var live struct {
+			Status           string `db:"status"`
+			PlatformDisabled bool   `db:"platform_disabled"`
+		}
+		if err := session.QueryRowCtx(ctx, &live, `SELECT status,platform_disabled FROM admin_account WHERE id=? FOR UPDATE`, account.Id); err != nil {
 			return err
 		}
-		account.Status = liveStatus
+		account.Status = live.Status
+		account.PlatformDisabled = live.PlatformDisabled
 		if forceDisabled {
 			account.Status = model.AccountStatusDisabled
 		}

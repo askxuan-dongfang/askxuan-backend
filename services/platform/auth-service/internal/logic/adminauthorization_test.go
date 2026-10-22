@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"errors"
 	"github.com/askxuan/auth-service/internal/model"
 	"github.com/askxuan/common"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -40,7 +41,7 @@ func TestAdminAuthorizationRevisionAndRefreshRevocation(t *testing.T) {
 	if _, err := runFixtureRefresh(f, refresh); err != nil {
 		t.Fatal(err)
 	}
-	for _, change := range []string{"account", "role", "roleId", "scope", "disabled"} {
+	for _, change := range []string{"account", "role", "roleId", "scope", "disabled", "platformDisabled"} {
 		t.Run(change, func(t *testing.T) {
 			oldA, oldR := *f.admins.account, *f.roles.role
 			switch change {
@@ -52,14 +53,16 @@ func TestAdminAuthorizationRevisionAndRefreshRevocation(t *testing.T) {
 				f.admins.account.RoleId++
 			case "scope":
 				f.roles.role.AuthzScope = "temple"
+			case "platformDisabled":
+				f.admins.account.PlatformDisabled = true
 			case "disabled":
 				f.admins.account.Status = model.AccountStatusDisabled
 			}
-			if _, err := CurrentAdminAccess(context.Background(), f.sc, claims); err == nil {
-				t.Fatal("stale access accepted")
+			if _, err := CurrentAdminAccess(context.Background(), f.sc, claims); !errors.Is(err, common.ErrSessionRevoked) {
+				t.Fatal("stale access must return 40105", err)
 			}
-			if _, err := runFixtureRefresh(f, refresh); err == nil {
-				t.Fatal("stale refresh restored grants")
+			if _, err := runFixtureRefresh(f, refresh); !errors.Is(err, common.ErrSessionRevoked) {
+				t.Fatal("stale refresh must return 40105", err)
 			}
 			*f.admins.account = oldA
 			*f.roles.role = oldR

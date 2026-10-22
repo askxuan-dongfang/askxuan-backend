@@ -69,7 +69,7 @@ func TestCustomerAccessReloadsEveryTimeAndRejectsUnknownDomainOrAvailability(t *
 		t.Fatal("availability was cached")
 	}
 	f.users.err = errors.New("database unavailable")
-	if _, err := CurrentCustomerAccess(context.Background(), f.sc, &c); !errors.Is(err, common.ErrSystem) {
+	if _, err := CurrentCustomerAccess(context.Background(), f.sc, &c); !errors.Is(err, common.ErrDependencyUnavailable) {
 		t.Fatal("DB outage opened access", err)
 	}
 	f.users.err = nil
@@ -99,11 +99,11 @@ func TestMachineRoleCannotEstablishHumanSession(t *testing.T) {
 	if _, err := NewAdminLoginLogic(context.Background(), f.sc).AdminLogin(&types.AdminLoginReq{Account: "fixture-admin", Password: "fixture-password"}); !errors.Is(err, common.ErrRoleForbidden) {
 		t.Fatal("machine role obtained a human login", err)
 	}
-	if _, err := runFixtureRefresh(f, refreshFixtureToken(t, "admin")); !errors.Is(err, common.ErrTokenInvalid) {
+	if _, err := runFixtureRefresh(f, refreshFixtureToken(t, "admin")); !errors.Is(err, common.ErrSessionRevoked) {
 		t.Fatal("machine role refreshed a human session", err)
 	}
 	c := common.CustomClaims{UserId: 7, UserType: "admin", Roles: []string{"platform_service"}, ClientID: "platform-admin"}
-	if _, err := CurrentAdminAccess(context.Background(), f.sc, &c); !errors.Is(err, common.ErrTokenInvalid) {
+	if _, err := CurrentAdminAccess(context.Background(), f.sc, &c); !errors.Is(err, common.ErrSessionRevoked) {
 		t.Fatal("machine role passed human introspection", err)
 	}
 }

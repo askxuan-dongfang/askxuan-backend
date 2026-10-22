@@ -61,7 +61,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	if err != nil || acc == nil || !identity.CheckPassword(hash, req.Password) {
 		return nil, common.ErrPwdWrong
 	}
-	if acc.Status != model.AccountStatusEnabled {
+	if acc.PlatformDisabled || acc.Status != model.AccountStatusEnabled {
 		return nil, common.ErrUserDisabled
 	}
 
@@ -141,7 +141,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 	if freshErr != nil || roleErr != nil {
 		return nil, common.ErrSystem
 	}
-	if freshAcc.Status != model.AccountStatusEnabled || freshAcc.RoleId != acc.RoleId || freshAcc.AuthzVersion != snapshot.AccountVersion || freshRole.AuthzVersion != snapshot.RoleVersion {
+	if freshAcc.PlatformDisabled || freshAcc.Status != model.AccountStatusEnabled || freshAcc.RoleId != acc.RoleId || freshAcc.AuthzVersion != snapshot.AccountVersion || freshRole.AuthzVersion != snapshot.RoleVersion {
 		return nil, common.ErrTokenInvalid
 	}
 	sid := ""

@@ -73,6 +73,7 @@ type (
 type (
     // AdminAccount 管理台账号
     AdminAccount {
+        PlatformDisabled bool `json:"platformDisabled"`
         RoleCode string `json:"roleCode"`
         AuthzScope string `json:"authzScope"`
         AuthzVersion int64 `json:"authzVersion"`
@@ -169,6 +170,7 @@ type (
     }
 
     AdminAccountStatusResp {
+        PlatformDisabled bool `json:"platformDisabled"`
         Id     int64  `json:"id"`
         Status string `json:"status"`
     }
