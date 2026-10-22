@@ -148,11 +148,14 @@ type AdminAccountStatusResp struct {
 
 // Role 角色
 type Role struct {
-	Id          int64  `json:"id"`
-	Name        string `json:"name"`
-	Code        string `json:"code"`
-	Description string `json:"description"`
-	CreateTime  string `json:"createTime"`
+	AuthzScope   string `json:"authzScope"`
+	AuthzVersion int64  `json:"authzVersion"`
+	Editable     bool   `json:"editable"`
+	Id           int64  `json:"id"`
+	Name         string `json:"name"`
+	Code         string `json:"code"`
+	Description  string `json:"description"`
+	CreateTime   string `json:"createTime"`
 }
 
 // RoleListResp 角色列表响应
@@ -183,11 +186,12 @@ type RoleUpdateReq struct {
 
 // Permission 权限
 type Permission struct {
-	Id       int64  `json:"id"`
-	Code     string `json:"code"`
-	Name     string `json:"name"`
-	Resource string `json:"resource"`
-	Action   string `json:"action"`
+	Assignable bool   `json:"assignable"`
+	Id         int64  `json:"id"`
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+	Resource   string `json:"resource"`
+	Action     string `json:"action"`
 }
 
 // PermissionListResp 权限列表响应

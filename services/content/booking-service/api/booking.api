@@ -7,6 +7,71 @@ info (
     version: "v1"
 )
 
+// Platform-only read supervision. Provider/customer routes keep their scopes.
+type (
+    PlatformServiceOrderListReq {
+        Q string `form:"q,optional"`
+        Status string `form:"status,optional"`
+        PaymentStatus string `form:"paymentStatus,optional"`
+        TempleID string `form:"templeId,optional"`
+        MasterID string `form:"masterId,optional"`
+        From string `form:"from,optional"` // inclusive creation date YYYY-MM-DD
+        To string `form:"to,optional"` // inclusive creation date YYYY-MM-DD
+        Page int `form:"page,default=1"`
+        Size int `form:"size,default=20"`
+    }
+    PlatformServiceReceiptFile {
+        Id string `json:"id"`
+        ReceiptId string `json:"receiptId"`
+        Name string `json:"name"`
+        ContentType string `json:"contentType"`
+        Size int64 `json:"size"`
+        SHA256 string `json:"sha256"`
+    }
+    PlatformServiceReceipt {
+        Id string `json:"id"`
+        Summary string `json:"summary"`
+        OperatorId string `json:"operatorId"`
+        OperatorType string `json:"operatorType"`
+        Digest string `json:"digest"`
+        CreatedAt string `json:"createdAt"`
+        Files []PlatformServiceReceiptFile `json:"files"`
+    }
+    PlatformServiceProgressRecord {
+        Id string `json:"id"`
+        Kind string `json:"kind"`
+        Content string `json:"content"`
+        OperatorId string `json:"operatorId"`
+        OperatorType string `json:"operatorType"`
+        CreatedAt string `json:"createdAt"`
+        Files []PlatformServiceReceiptFile `json:"files"`
+    }
+    PlatformServiceFulfillmentResp {
+        Status string `json:"status"`
+        Logs []BookingStatusLog `json:"logs"`
+        Receipts []PlatformServiceReceipt `json:"receipts"`
+        Records []PlatformServiceProgressRecord `json:"records"`
+    }
+)
+
+@server (
+    prefix: /api/v1/admin/platform/service-orders
+    group: platformServiceOrders
+    jwt: Auth
+)
+service booking-service {
+    @handler platformBookings
+    get /bookings (PlatformServiceOrderListReq) returns (ListResp)
+    @handler platformBooking
+    get /bookings/:id (DetailReq) returns (Booking)
+    @handler platformBookingFulfillment
+    get /bookings/:id/fulfillment (DetailReq) returns (PlatformServiceFulfillmentResp)
+    @handler platformConsultations
+    get /consultations (PlatformServiceOrderListReq) returns (ConsultationListResp)
+    @handler platformConsultation
+    get /consultations/:id (ConsultationDetailReq) returns (Consultation)
+}
+
 // ============ 预约基础 ============
 type (
     Booking {

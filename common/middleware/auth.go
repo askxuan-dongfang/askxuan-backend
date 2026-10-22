@@ -13,14 +13,15 @@ type ctxKey string
 
 // 预定义 context key
 const (
-	CtxKeyUserID     ctxKey = "userId"
-	CtxKeyMobile     ctxKey = "mobile"
-	CtxKeyUserType   ctxKey = "userType"
-	CtxKeyRoles      ctxKey = "roles"
-	CtxKeyClientID   ctxKey = "clientId"
-	CtxKeyTempleID   ctxKey = "templeId"
-	CtxKeyTempleCode ctxKey = "templeCode"
-	CtxKeyMasterID   ctxKey = "masterId"
+	CtxKeyUserID      ctxKey = "userId"
+	CtxKeyMobile      ctxKey = "mobile"
+	CtxKeyUserType    ctxKey = "userType"
+	CtxKeyRoles       ctxKey = "roles"
+	CtxKeyClientID    ctxKey = "clientId"
+	CtxKeyTempleID    ctxKey = "templeId"
+	CtxKeyTempleCode  ctxKey = "templeCode"
+	CtxKeyMasterID    ctxKey = "masterId"
+	CtxKeyAdminClaims ctxKey = "verifiedAdminClaims"
 )
 
 // AuthConfig 鉴权中间件配置
@@ -86,6 +87,9 @@ func (c *AuthConfig) doAuth(_ http.ResponseWriter, r *http.Request) error {
 		// refresh token 不能用于接口鉴权
 		return common.ErrTokenInvalid
 	}
+	// Only this verified, signed value may supply delegated permissions.
+	rctx := context.WithValue(r.Context(), CtxKeyAdminClaims, claims)
+	*r = *r.WithContext(rctx)
 	// 注入用户信息到 context
 	ctx := r.Context()
 	ctx = context.WithValue(ctx, CtxKeyUserID, claims.UserId)
@@ -154,4 +158,9 @@ func MasterIDFromCtx(ctx context.Context) int64 {
 		return v
 	}
 	return 0
+}
+
+func AdminClaimsFromCtx(ctx context.Context) *common.CustomClaims {
+	v, _ := ctx.Value(CtxKeyAdminClaims).(*common.CustomClaims)
+	return v
 }

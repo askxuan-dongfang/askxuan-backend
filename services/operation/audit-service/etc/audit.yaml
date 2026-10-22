@@ -25,3 +25,7 @@ RabbitMQ:
   User: admin
   Password: admin
   VHost: "/"
+
+# Must match the existing gateway/auth JWT signing key. Render before starting.
+Auth:
+  AccessSecret: "askxuan-access-secret-change-in-prod"

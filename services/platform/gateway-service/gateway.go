@@ -83,9 +83,35 @@ func main() {
 	// 中间件链：CORS → 全局 JWT 鉴权（白名单 + 透传 X-User-Id）→ 反向代理
 	var handler http.Handler = mux
 	sessionRedis := redis.MustNewRedis(redis.RedisConf{Host: os.Getenv("AUTH_REDIS_HOST"), Pass: os.Getenv("AUTH_REDIS_PASSWORD"), Type: "node"})
-	handler = middleware.Auth(c.Auth.AccessSecret, c.NoAuthPaths, func(ctx context.Context, claims *common.CustomClaims) error {
+	authTarget, auditTarget := c.Security.AuthTarget, c.Security.AuditTarget
+	for _, u := range c.Upstreams {
+		if authTarget == "" && u.Prefix == "/api/v1/auth" {
+			authTarget = u.Target
+		}
+		if auditTarget == "" && u.Prefix == "/api/v1/admin/audit" {
+			auditTarget = u.Target
+		}
+	}
+	internalURL := func(target string) string {
+		if target == "" {
+			return ""
+		}
+		if len(target) >= 7 && (target[:7] == "http://" || len(target) >= 8 && target[:8] == "https://") {
+			return target
+		}
+		return "http://" + target
+	}
+	if authTarget == "" || auditTarget == "" {
+		panic("admin security requires direct auth and audit targets")
+	}
+	timeout := time.Duration(c.Security.TimeoutMs) * time.Millisecond
+	if timeout <= 0 {
+		timeout = 3 * time.Second
+	}
+	security := &middleware.SecurityClient{AuthURL: internalURL(authTarget), AuditURL: internalURL(auditTarget), Secret: c.Auth.AccessSecret, Client: &http.Client{Timeout: timeout}}
+	handler = middleware.AuthWithOptions(c.Auth.AccessSecret, c.NoAuthPaths, middleware.AuthOptions{ValidateAccess: security.ValidateAccess, Recorder: security, SessionChecks: []func(context.Context, *common.CustomClaims) error{func(ctx context.Context, claims *common.CustomClaims) error {
 		return identity.CheckSession(ctx, sessionRedis, claims.SessionID, identity.SessionDomain(claims.UserType, claims.Roles), claims.UserId)
-	})(handler)
+	}}})(handler)
 	handler = middleware.Cors(handler)
 
 	addr := fmt.Sprintf("%s:%d", c.Host, c.Port)

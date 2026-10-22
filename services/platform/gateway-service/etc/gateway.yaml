@@ -137,6 +137,9 @@ Upstreams:
   - Prefix: /api/v1/admin/platform/regions
     Target: localhost:8083
     ServiceName: temple.service
+  - Prefix: /api/v1/admin/platform/service-orders
+    Target: localhost:8085
+    ServiceName: booking.service
   - Prefix: /api/v1/admin/platform/beliefs
     Target: localhost:8083
     ServiceName: temple.service

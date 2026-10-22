@@ -137,6 +137,9 @@ type (
 // ============ 角色管理 ============
 type (
     Role {
+        AuthzScope string `json:"authzScope"`
+        AuthzVersion int64 `json:"authzVersion"`
+        Editable bool `json:"editable"`
         Id          int64  `json:"id"`
         Name        string `json:"name"`
         Code        string `json:"code"`
@@ -168,6 +171,7 @@ type (
 // ============ 权限管理 ============
 type (
     Permission {
+        Assignable bool `json:"assignable"`
         Id       int64  `json:"id"`
         Code     string `json:"code"`
         Name     string `json:"name"`
@@ -236,4 +240,42 @@ service auth-service {
 
     @handler adminPermissionList
     get /permissions returns (PermissionListResp)
+}
+
+// Live authorization snapshot and custom platform-role grants. Fixed roles remain immutable.
+type (
+    AdminAccessResp {
+        UserId int64 `json:"userId"`
+        Roles []string `json:"roles"`
+        ClientId string `json:"clientId"`
+        RoleId int64 `json:"roleId"`
+        AccountVersion int64 `json:"accountVersion"`
+        RoleVersion int64 `json:"roleVersion"`
+        AuthzScope string `json:"authzScope"`
+        Permissions []string `json:"permissions"`
+    }
+    RolePermissionsReq { Id int64 `path:"id"` }
+    RolePermissionsUpdateReq {
+        Id int64 `path:"id"`
+        Revision int64 `json:"revision"`
+        PermissionCodes []string `json:"permissionCodes"`
+    }
+    RolePermissionsResp {
+        RoleId int64 `json:"roleId"`
+        Revision int64 `json:"revision"`
+        PermissionCodes []string `json:"permissionCodes"`
+        Editable bool `json:"editable"`
+    }
+)
+@server (
+    group: auth.access
+    prefix: /api/v1
+)
+service auth-service {
+    @handler adminAccess
+    get /auth/access returns (AdminAccessResp)
+    @handler rolePermissionsGet
+    get /admin/auth/roles/:id/permissions (RolePermissionsReq) returns (RolePermissionsResp)
+    @handler rolePermissionsUpdate
+    put /admin/auth/roles/:id/permissions (RolePermissionsUpdateReq) returns (RolePermissionsResp)
 }

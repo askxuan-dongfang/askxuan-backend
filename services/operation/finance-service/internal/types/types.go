@@ -197,3 +197,56 @@ type TopProduct struct {
 	Sales       float64 `json:"sales"`
 	OrderCount  int     `json:"orderCount"`
 }
+
+type PayoutSandboxListReq struct {
+	Status string `form:"status,optional"`
+	Page   int    `form:"page,default=1"`
+	Size   int    `form:"size,default=20"`
+}
+type PayoutSandboxCreateReq struct {
+	RequestID   string `json:"requestId"`
+	AmountCents int64  `json:"amountCents"`
+}
+type PayoutSandboxActionReq struct {
+	RequestID string `json:"requestId"`
+	Version   int64  `json:"version"`
+	Action    string `json:"action"`
+	Outcome   string `json:"outcome,optional"`
+}
+type PayoutSandboxRecord struct {
+	ID          string `json:"id"`
+	Simulated   bool   `json:"simulated"`
+	Recipient   string `json:"recipient"`
+	AmountCents int64  `json:"amountCents"`
+	Status      string `json:"status"`
+	Version     int64  `json:"version"`
+	Attempt     int    `json:"attempt"`
+	CreatedBy   string `json:"createdBy"`
+	CreatedAt   string `json:"createdAt"`
+	UpdatedAt   string `json:"updatedAt"`
+}
+type PayoutSandboxEvent struct {
+	ID         int64  `json:"id"`
+	RequestID  string `json:"requestId"`
+	Stage      string `json:"stage"`
+	Action     string `json:"action"`
+	FromStatus string `json:"fromStatus"`
+	ToStatus   string `json:"toStatus"`
+	Outcome    string `json:"outcome"`
+	Version    int64  `json:"version"`
+	Attempt    int    `json:"attempt"`
+	ActorID    string `json:"actorId"`
+	CreatedAt  string `json:"createdAt"`
+}
+type PayoutSandboxListResp struct {
+	Simulated bool                  `json:"simulated"`
+	Total     int64                 `json:"total"`
+	Page      int                   `json:"page"`
+	Size      int                   `json:"size"`
+	List      []PayoutSandboxRecord `json:"list"`
+}
+type PayoutSandboxDetailResp struct {
+	Simulated bool                 `json:"simulated"`
+	Record    PayoutSandboxRecord  `json:"record"`
+	Events    []PayoutSandboxEvent `json:"events"`
+}

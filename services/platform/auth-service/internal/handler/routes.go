@@ -19,6 +19,7 @@ import (
 
 // RegisterHandlers 注册 auth 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
+	registerAdminAccess(server, svcCtx)
 	registerIdentityHandlers(server, svcCtx)
 	registerOnboardingHandlers(server, svcCtx)
 	// CORS 中间件

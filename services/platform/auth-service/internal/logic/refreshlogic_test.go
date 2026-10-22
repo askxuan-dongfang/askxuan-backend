@@ -157,6 +157,7 @@ func TestSignInAndRefreshKeepIdentityDomainsSeparate(t *testing.T) {
 			if err != nil || refreshClaims.UserType != domain {
 				t.Fatalf("wrong refresh domain: %+v, %v", refreshClaims, err)
 			}
+			f.admins.idReads = 0                 // Count refresh reads independently of the login revision recheck.
 			f.users.user.Mobile = "updated-user" // Refresh must use the original ID, not stale contact details.
 			resp, err := runFixtureRefresh(f, login.RefreshToken)
 			if err != nil {

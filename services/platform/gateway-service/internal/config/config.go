@@ -17,6 +17,11 @@ type Config struct {
 	Auth struct {
 		AccessSecret string
 	}
+	Security struct {
+		AuthTarget  string `json:",optional"`
+		AuditTarget string `json:",optional"`
+		TimeoutMs   int    `json:",default=3000"`
+	} `json:",optional"`
 	Etcd struct {
 		Hosts []string
 		Key   string

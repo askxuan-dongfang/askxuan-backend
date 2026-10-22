@@ -11,10 +11,12 @@ import (
 type ServiceContext struct {
 	Config     config.Config
 	MqProducer *mq.Producer
+	Operations model.OperationStore
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
-	model.Configure(sqlx.NewMysql(c.MySQL.DataSource))
+	conn := sqlx.NewMysql(c.MySQL.DataSource)
+	model.Configure(conn)
 	producer := mq.NewProducer(
 		c.RabbitMQ.Host, c.RabbitMQ.Port,
 		c.RabbitMQ.User, c.RabbitMQ.Password, c.RabbitMQ.VHost,
@@ -22,5 +24,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:     c,
 		MqProducer: producer,
+		Operations: model.NewOperationStore(conn),
 	}
 }
