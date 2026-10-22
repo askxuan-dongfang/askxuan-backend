@@ -67,7 +67,7 @@ func SimulatePayout(ctx context.Context, kind, target string, id int64) error {
 			return common.ErrStatusInvalid
 		}
 		var paymentStatus string
-		if e := tx.QueryRowCtx(ctx, &paymentStatus, `SELECT status FROM askxuan_payment.payment WHERE order_type=? AND order_no=? AND channel='demo_balance' ORDER BY id DESC LIMIT 1 FOR UPDATE`, s.Type, s.No); e != nil {
+		if e := tx.QueryRowCtx(ctx, &paymentStatus, `SELECT status FROM askxuan_payment.payment WHERE order_type=? AND order_no=? AND channel='demo_balance' ORDER BY id DESC LIMIT 1 FOR SHARE`, s.Type, s.No); e != nil {
 			return e
 		}
 		if paymentStatus != "success" {

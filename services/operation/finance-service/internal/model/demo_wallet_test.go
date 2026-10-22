@@ -53,10 +53,26 @@ func TestDemoFinanceMySQL(t *testing.T) {
 		`CREATE DATABASE IF NOT EXISTS askxuan_payment`,
 		`CREATE TABLE IF NOT EXISTS askxuan_payment.payment(id BIGINT AUTO_INCREMENT PRIMARY KEY,order_type VARCHAR(32),order_no VARCHAR(64),channel VARCHAR(16),status VARCHAR(24))`,
 		`INSERT INTO askxuan_payment.payment(order_type,order_no,channel,status) VALUES('booking','DEMO-TEMPLE','demo_balance','success'),('booking','DEMO-SPLIT','demo_balance','success'),('booking','DEMO-REFUND','demo_balance','refunded')`,
+		`CREATE DATABASE IF NOT EXISTS askxuan_booking`,
+		`CREATE TABLE IF NOT EXISTS askxuan_booking.booking(booking_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(32),temple_code VARCHAR(32),temple_name VARCHAR(64),master_code VARCHAR(32),master_name VARCHAR(64),service_name VARCHAR(64),booking_date DATE,service_fee DECIMAL(10,2),merit_money DECIMAL(10,2),total_fee DECIMAL(10,2),status VARCHAR(32),payment_status VARCHAR(32))`,
+		`INSERT INTO askxuan_booking.booking(booking_no,user_id,temple_code,temple_name,master_code,master_name,service_name,booking_date,service_fee,merit_money,total_fee,status,payment_status) VALUES('DEMO-LEGACY','1','T-DEMO','Temple','M-DEMO','Master','Service','2026-10-20',70,30,100,'reviewed','success'),('DEMO-NOT-REVIEWED','1','T-DEMO','Temple','M-DEMO','Master','Service','2026-10-20',70,30,100,'completed','success')`,
+		`INSERT INTO askxuan_payment.payment(order_type,order_no,channel,status) VALUES('booking','DEMO-LEGACY','demo_balance','success')`,
+		`INSERT INTO askxuan_payment.payment(order_type,order_no,channel,status) VALUES('consultation','DEMO-CONSULT','demo_balance','success'),('consultation','DEMO-CONSULT-REFUND','demo_balance','refunded')`,
+		`CREATE USER 'finance_demo_test'@'%' IDENTIFIED BY 'isolated-finance-test'`,
+		`GRANT ALL ON askxuan_finance.* TO 'finance_demo_test'@'%'`,
+		`GRANT SELECT ON askxuan_payment.payment TO 'finance_demo_test'@'%'`,
+		`GRANT SELECT (booking_no,user_id,temple_code,temple_name,master_code,master_name,service_name,booking_date,service_fee,merit_money,total_fee,status,payment_status) ON askxuan_booking.booking TO 'finance_demo_test'@'%'`,
 	} {
 		if _, e = db.ExecCtx(ctx, q); e != nil {
 			t.Fatal(e)
 		}
+	}
+	// Match the deployed cross-service read grants, not the fixture root account.
+	admin := db
+	cfg.User, cfg.Passwd = "finance_demo_test", "isolated-finance-test"
+	Configure(sqlx.NewMysql(cfg.FormatDSN()))
+	if _, e = db.ExecCtx(ctx, `UPDATE askxuan_payment.payment SET status=status WHERE order_no='DEMO-TEMPLE'`); e == nil {
+		t.Fatal("finance account may not modify payment rows")
 	}
 	for _, no := range []string{"DEMO-TEMPLE", "DEMO-SPLIT", "DEMO-REFUND"} {
 		if e = RecordPlatformReceipt(ctx, PaymentReceipt{PaymentNo: "P-" + no, SourceType: "booking", SourceNo: no, Amount: 100}); e != nil {
@@ -78,7 +94,7 @@ func TestDemoFinanceMySQL(t *testing.T) {
 		t.Fatal("foreign payout accepted")
 	}
 	// Inject a storage failure after withdrawal/ledger writes to verify rollback.
-	if _, e = db.ExecCtx(ctx, `CREATE TRIGGER demo_payout_failure BEFORE UPDATE ON demo_settlement FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='isolated injected failure'`); e != nil {
+	if _, e = admin.ExecCtx(ctx, `CREATE TRIGGER demo_payout_failure BEFORE UPDATE ON demo_settlement FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='isolated injected failure'`); e != nil {
 		t.Fatal(e)
 	}
 	if e = SimulatePayout(ctx, "temple", "T-DEMO", split.TempleSettlementID); e == nil {
@@ -88,7 +104,7 @@ func TestDemoFinanceMySQL(t *testing.T) {
 	if e = db.QueryRowCtx(ctx, &failedCount, `SELECT COUNT(*) FROM demo_withdrawal`); e != nil || failedCount != 0 {
 		t.Fatal("failed payout left withdrawal", failedCount, e)
 	}
-	if _, e = db.ExecCtx(ctx, `DROP TRIGGER demo_payout_failure`); e != nil {
+	if _, e = admin.ExecCtx(ctx, `DROP TRIGGER demo_payout_failure`); e != nil {
 		t.Fatal(e)
 	}
 	for i := 0; i < 2; i++ {
@@ -115,6 +131,30 @@ func TestDemoFinanceMySQL(t *testing.T) {
 	b.BookingID = "DEMO-REFUND"
 	if _, e = AccrueBookingSettlement(ctx, b); e == nil {
 		t.Fatal("refunded payment settled")
+	}
+	if e = RecordPlatformReceipt(ctx, PaymentReceipt{PaymentNo: "P-DEMO-LEGACY", SourceType: "booking", SourceNo: "DEMO-LEGACY", Amount: 100}); e != nil {
+		t.Fatal(e)
+	}
+	for i := 0; i < 2; i++ {
+		split, e = AccrueBookingSettlement(ctx, BookingSettlement{BookingID: "DEMO-LEGACY", TotalFee: 999})
+		if e != nil || !split.Simulated || split.Total != 100 || split.MasterNet != 59.5 || split.TempleNet != 25.5 || split.Created != (i == 0) {
+			t.Fatalf("legacy snapshot/retry: %+v %v", split, e)
+		}
+	}
+	if _, e = AccrueBookingSettlement(ctx, BookingSettlement{BookingID: "DEMO-NOT-REVIEWED"}); e == nil {
+		t.Fatal("unreviewed legacy event settled")
+	}
+	for _, no := range []string{"DEMO-CONSULT", "DEMO-CONSULT-REFUND"} {
+		if e = RecordPlatformReceipt(ctx, PaymentReceipt{PaymentNo: "P-" + no, SourceType: "consultation", SourceNo: no, Amount: 100}); e != nil {
+			t.Fatal(e)
+		}
+		c, err := AccrueConsultationSettlement(ctx, ConsultationSettlement{ConsultationID: no, MasterID: "M-DEMO", PaidAt: "2026-10-20", ConsultFee: 100})
+		if no == "DEMO-CONSULT" && (err != nil || !c.Simulated || c.MasterNet != 85) {
+			t.Fatalf("consultation under read grants: %+v %v", c, err)
+		}
+		if no == "DEMO-CONSULT-REFUND" && err == nil {
+			t.Fatal("refunded consultation settled")
+		}
 	}
 	for _, table := range []string{"finance_transaction", "finance_ledger_entry", "finance_log", "settlement", "withdrawal"} {
 		var n int64
