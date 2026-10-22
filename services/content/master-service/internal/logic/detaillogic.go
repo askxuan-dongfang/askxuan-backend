@@ -40,6 +40,13 @@ func (l *DetailLogic) Detail(req *types.DetailReq) (*types.Master, error) {
 	if !isPublicMaster(m) {
 		return nil, common.ErrMasterNotFound
 	}
+	parentAllowed, err := l.svcCtx.MasterModel.ParentAllowsNewBusiness(l.ctx, m.TempleCode)
+	if err != nil {
+		return nil, common.ErrDependencyUnavailable
+	}
+	if !parentAllowed {
+		return nil, common.ErrMasterNotFound
+	}
 	resp := toTypeMaster(m)
 	if tags, err := l.svcCtx.MasterModel.ListServiceTagsByMaster(l.ctx, m.Code); err == nil {
 		for _, t := range tags {

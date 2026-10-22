@@ -222,57 +222,57 @@ func TestRefreshRechecksAvailabilityAndFailsClosed(t *testing.T) {
 		change       func(*refreshFixture)
 		want         error
 	}{
-		{"user-disabled", "user", func(f *refreshFixture) { f.users.user.Status = 0 }, common.ErrTokenInvalid},
-		{"user-deleted", "user", func(f *refreshFixture) { f.users.err = sqlx.ErrNotFound }, common.ErrTokenInvalid},
-		{"user-missing", "user", func(f *refreshFixture) { f.users.user = nil }, common.ErrTokenInvalid},
-		{"user-id-mismatch", "user", func(f *refreshFixture) { f.users.user.Id = 8 }, common.ErrTokenInvalid},
-		{"user-database-error", "user", func(f *refreshFixture) { f.users.err = errors.New("db unavailable") }, common.ErrSystem},
-		{"admin-disabled", "admin", func(f *refreshFixture) { f.admins.account.Status = model.AccountStatusDisabled }, common.ErrTokenInvalid},
-		{"admin-deleted", "admin", func(f *refreshFixture) { f.admins.err = sqlx.ErrNotFound }, common.ErrTokenInvalid},
-		{"admin-missing", "admin", func(f *refreshFixture) { f.admins.account = nil }, common.ErrTokenInvalid},
-		{"admin-id-mismatch", "admin", func(f *refreshFixture) { f.admins.account.Id = 8 }, common.ErrTokenInvalid},
-		{"admin-database-error", "admin", func(f *refreshFixture) { f.admins.err = errors.New("db unavailable") }, common.ErrSystem},
-		{"role-deleted", "admin", func(f *refreshFixture) { f.roles.err = sqlx.ErrNotFound }, common.ErrTokenInvalid},
-		{"role-missing", "admin", func(f *refreshFixture) { f.roles.role = nil }, common.ErrTokenInvalid},
-		{"role-unknown", "admin", func(f *refreshFixture) { f.roles.role.Code = "admin" }, common.ErrTokenInvalid},
-		{"role-database-error", "admin", func(f *refreshFixture) { f.roles.err = errors.New("db unavailable") }, common.ErrSystem},
-		{"admin-became-master", "admin", func(f *refreshFixture) { f.roles.role.Code = "master" }, common.ErrTokenInvalid},
-		{"master-became-shop", "master", func(f *refreshFixture) { f.roles.role.Code = "shop_admin" }, common.ErrTokenInvalid},
+		{"user-disabled", "user", func(f *refreshFixture) { f.users.user.Status = 0 }, common.ErrSessionRevoked},
+		{"user-deleted", "user", func(f *refreshFixture) { f.users.err = sqlx.ErrNotFound }, common.ErrSessionRevoked},
+		{"user-missing", "user", func(f *refreshFixture) { f.users.user = nil }, common.ErrSessionRevoked},
+		{"user-id-mismatch", "user", func(f *refreshFixture) { f.users.user.Id = 8 }, common.ErrSessionRevoked},
+		{"user-database-error", "user", func(f *refreshFixture) { f.users.err = errors.New("db unavailable") }, common.ErrDependencyUnavailable},
+		{"admin-disabled", "admin", func(f *refreshFixture) { f.admins.account.Status = model.AccountStatusDisabled }, common.ErrSessionRevoked},
+		{"admin-deleted", "admin", func(f *refreshFixture) { f.admins.err = sqlx.ErrNotFound }, common.ErrSessionRevoked},
+		{"admin-missing", "admin", func(f *refreshFixture) { f.admins.account = nil }, common.ErrSessionRevoked},
+		{"admin-id-mismatch", "admin", func(f *refreshFixture) { f.admins.account.Id = 8 }, common.ErrSessionRevoked},
+		{"admin-database-error", "admin", func(f *refreshFixture) { f.admins.err = errors.New("db unavailable") }, common.ErrDependencyUnavailable},
+		{"role-deleted", "admin", func(f *refreshFixture) { f.roles.err = sqlx.ErrNotFound }, common.ErrSessionRevoked},
+		{"role-missing", "admin", func(f *refreshFixture) { f.roles.role = nil }, common.ErrSessionRevoked},
+		{"role-unknown", "admin", func(f *refreshFixture) { f.roles.role.Code = "admin" }, common.ErrSessionRevoked},
+		{"role-database-error", "admin", func(f *refreshFixture) { f.roles.err = errors.New("db unavailable") }, common.ErrDependencyUnavailable},
+		{"admin-became-master", "admin", func(f *refreshFixture) { f.roles.role.Code = "master" }, common.ErrSessionRevoked},
+		{"master-became-shop", "master", func(f *refreshFixture) { f.roles.role.Code = "shop_admin" }, common.ErrSessionRevoked},
 		{"temple-disabled", "admin", func(f *refreshFixture) {
 			f.roles.role.Code = "temple_admin"
 			f.admins.account.TempleId = "T-fixture"
 			f.db.templeStatus = "封禁"
-		}, common.ErrTokenInvalid},
+		}, common.ErrSessionRevoked},
 		{"temple-deleted", "admin", func(f *refreshFixture) {
 			f.roles.role.Code = "temple_admin"
 			f.admins.account.TempleId = "T-fixture"
 			f.db.err = sqlx.ErrNotFound
-		}, common.ErrTokenInvalid},
-		{"temple-unbound", "admin", func(f *refreshFixture) { f.roles.role.Code = "temple_admin" }, common.ErrTokenInvalid},
+		}, common.ErrSessionRevoked},
+		{"temple-unbound", "admin", func(f *refreshFixture) { f.roles.role.Code = "temple_admin" }, common.ErrSessionRevoked},
 		{"master-disabled", "master", func(f *refreshFixture) {
 			f.roles.role.Code = "master"
 			f.admins.account.MasterId = "M-fixture"
 			f.db.masterPlatform = "banned"
-		}, common.ErrTokenInvalid},
+		}, common.ErrSessionRevoked},
 		{"master-unverified", "master", func(f *refreshFixture) {
 			f.roles.role.Code = "master"
 			f.admins.account.MasterId = "M-fixture"
 			f.db.masterAuth = "待审核"
-		}, common.ErrTokenInvalid},
+		}, common.ErrSessionRevoked},
 		{"master-temple-disabled", "master", func(f *refreshFixture) {
 			f.roles.role.Code = "master"
 			f.admins.account.MasterId = "M-fixture"
 			f.db.masterTemple = "封禁"
-		}, common.ErrTokenInvalid},
+		}, common.ErrSessionRevoked},
 		{"master-deleted", "master", func(f *refreshFixture) {
 			f.roles.role.Code = "master"
 			f.admins.account.MasterId = "M-fixture"
 			f.db.err = sqlx.ErrNotFound
-		}, common.ErrTokenInvalid},
-		{"master-unbound", "master", func(f *refreshFixture) { f.roles.role.Code = "master" }, common.ErrTokenInvalid},
-		{"blacklisted", "admin", func(f *refreshFixture) { f.blacklist.value = "1" }, common.ErrTokenInvalid},
-		{"blacklist-unavailable", "admin", func(f *refreshFixture) { f.blacklist.err = errors.New("redis unavailable") }, common.ErrSystem},
-		{"blacklist-unconfigured", "admin", func(f *refreshFixture) { f.sc.Redis = nil }, common.ErrSystem},
+		}, common.ErrSessionRevoked},
+		{"master-unbound", "master", func(f *refreshFixture) { f.roles.role.Code = "master" }, common.ErrSessionRevoked},
+		{"blacklisted", "admin", func(f *refreshFixture) { f.blacklist.value = "1" }, common.ErrSessionRevoked},
+		{"blacklist-unavailable", "admin", func(f *refreshFixture) { f.blacklist.err = errors.New("redis unavailable") }, common.ErrDependencyUnavailable},
+		{"blacklist-unconfigured", "admin", func(f *refreshFixture) { f.sc.Redis = nil }, common.ErrDependencyUnavailable},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

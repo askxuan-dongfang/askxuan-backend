@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/user-service/internal/model"
@@ -61,6 +62,13 @@ func (l *AdminUserListLogic) AdminUserList(req *types.AdminUserListReq) (*types.
 		size = 20
 	}
 
+	if size > 100 {
+		size = 100
+	}
+	if req.Status != "" && req.Status != "normal" && req.Status != "banned" {
+		return nil, common.ErrParam
+	}
+
 	// 构造过滤条件
 	status := -1 // -1=全部
 	if req.Status == "normal" {
@@ -77,16 +85,30 @@ func (l *AdminUserListLogic) AdminUserList(req *types.AdminUserListReq) (*types.
 		return nil, common.ErrSystem
 	}
 
+	ids := make([]int64, 0, len(list))
+	for _, u := range list {
+		ids = append(ids, u.Id)
+	}
+	stats, err := model.ReadUserConsumption(l.ctx, l.svcCtx.DB, ids)
+	if err != nil {
+		l.Errorf("读取用户消费统计失败: %v", err)
+		return nil, common.NewBizError(50003, "消费统计暂不可用，请稍后重试")
+	}
+	updatedAt := time.Now().UTC().Format(time.RFC3339)
 	items := make([]types.AdminUserItem, 0, len(list))
 	for _, u := range list {
 		items = append(items, types.AdminUserItem{
-			UserId:     u.Id,
-			Nickname:   u.Nickname,
-			Mobile:     maskMobile(u.Mobile),
-			Avatar:     u.Avatar,
-			Region:     u.Region,
-			Status:     statusToString(u.Status),
-			CreateTime: u.CreateTime,
+			UserId:         u.Id,
+			Nickname:       u.Nickname,
+			Mobile:         maskMobile(u.Mobile),
+			Avatar:         u.Avatar,
+			Region:         u.Region,
+			Status:         statusToString(u.Status),
+			CreateTime:     u.CreateTime,
+			TotalOrders:    stats[u.Id].TotalOrders,
+			TotalSpent:     float64(stats[u.Id].SpentCents) / 100,
+			StatsScope:     model.UserConsumptionScope,
+			StatsUpdatedAt: updatedAt,
 		})
 	}
 	return &types.AdminUserListResp{
@@ -118,18 +140,29 @@ func (l *AdminUserDetailLogic) AdminUserDetail(req *types.AdminUserDetailReq) (*
 	}
 
 	// 查询用户画像（可选，不存在则返回默认值）
-	var tags []string
-	var totalOrders int
-	var totalSpent float64
+	tags := []string{}
 	var lastActive string
 	profile, err := l.svcCtx.ProfileModel.FindByID(l.ctx, req.Id)
 	if err == nil && profile != nil {
 		tags = model.SplitTags(profile.PreferenceTags)
-		totalOrders = profile.TotalOrders
-		totalSpent = profile.TotalSpent
 		lastActive = profile.LastActiveTime
 	}
 
+	if err != nil && !errors.Is(err, sqlx.ErrNotFound) {
+		return nil, common.ErrSystem
+	}
+	stats, err := model.ReadUserConsumption(l.ctx, l.svcCtx.DB, []int64{req.Id})
+	if err != nil {
+		l.Errorf("读取用户消费统计失败: %v", err)
+		return nil, common.NewBizError(50003, "消费统计暂不可用，请稍后重试")
+	}
+	credential, err := model.ReadUserCredential(l.ctx, l.svcCtx.DB, req.Id)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	if credential.CredentialState == "legacy_password" && u.Password == "" {
+		credential.CredentialState = "unavailable"
+	}
 	return &types.AdminUserDetailResp{
 		User: types.UserProfile{
 			UserId:   u.Id,
@@ -142,8 +175,11 @@ func (l *AdminUserDetailLogic) AdminUserDetail(req *types.AdminUserDetailReq) (*
 			Bio:      u.Bio,
 		},
 		PreferenceTags: tags,
-		TotalOrders:    totalOrders,
-		TotalSpent:     totalSpent,
+		TotalOrders:    stats[req.Id].TotalOrders,
+		TotalSpent:     float64(stats[req.Id].SpentCents) / 100,
+		StatsScope:     model.UserConsumptionScope,
+		StatsUpdatedAt: time.Now().UTC().Format(time.RFC3339),
+		Identity:       types.UserCredential{Email: credential.Email, EmailVerified: credential.EmailVerified, VerifiedAt: credential.VerifiedAt, CredentialState: credential.CredentialState, CanResetPassword: credential.CanResetPassword},
 		LastActiveTime: lastActive,
 		Status:         statusToString(u.Status),
 	}, nil
@@ -161,6 +197,9 @@ func NewAdminUserStatusLogic(ctx context.Context, svcCtx *svc.ServiceContext) *A
 }
 
 func (l *AdminUserStatusLogic) AdminUserStatus(req *types.AdminUserStatusReq) (*types.AdminUserStatusResp, error) {
+	if req.Id <= 0 || (req.Status != "normal" && req.Status != "banned") {
+		return nil, common.ErrParam
+	}
 	// 校验用户存在
 	exist, err := l.svcCtx.UserModel.FindByID(l.ctx, req.Id)
 	if err != nil {

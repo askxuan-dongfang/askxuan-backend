@@ -19,9 +19,24 @@ type MasterInvitation struct {
 
 const invitationColumns = "id,account_id,temple_code,master_code,email,username,status"
 
-func (s *Accounts) ManagedInvitations(ctx context.Context, temple string) ([]MasterInvitation, error) {
-	rows := []MasterInvitation{}
-	e := s.DB.QueryRowsCtx(ctx, &rows, "SELECT "+invitationColumns+" FROM master_invitation WHERE temple_code=? ORDER BY id DESC LIMIT 200", temple)
+// ManagedMasterInvitation separates activation from the current login switch.
+// An activated invitation never implies that a platform-disabled account works.
+type ManagedMasterInvitation struct {
+	ID               int64  `db:"id" json:"id"`
+	AccountID        int64  `db:"account_id" json:"accountId"`
+	TempleCode       string `db:"temple_code" json:"templeCode"`
+	MasterCode       string `db:"master_code" json:"masterCode"`
+	Email            string `db:"email" json:"email"`
+	Username         string `db:"username" json:"username"`
+	Status           string `db:"status" json:"status"`
+	ActivationStatus string `db:"activation_status" json:"activationStatus"`
+	AccountStatus    string `db:"account_status" json:"accountStatus"`
+	PlatformDisabled bool   `db:"platform_disabled" json:"platformDisabled"`
+}
+
+func (s *Accounts) ManagedInvitations(ctx context.Context, temple string) ([]ManagedMasterInvitation, error) {
+	rows := []ManagedMasterInvitation{}
+	e := s.DB.QueryRowsCtx(ctx, &rows, `SELECT i.id,i.account_id,i.temple_code,i.master_code,i.email,i.username,i.status,i.status activation_status,a.status account_status,a.platform_disabled FROM master_invitation i JOIN admin_account a ON a.id=i.account_id WHERE i.temple_code=? AND a.temple_id=? ORDER BY i.id DESC LIMIT 200`, temple, temple)
 	return rows, e
 }
 func (s *Accounts) InviteManagedMaster(ctx context.Context, actor int64, temple, master, email, username string) error {
@@ -90,6 +105,9 @@ func (s *Accounts) ActivateManagedMaster(ctx context.Context, email, password, c
 		if e := tx.QueryRowCtx(ctx, &inv, "SELECT "+invitationColumns+" FROM master_invitation WHERE email=? AND status='pending' FOR UPDATE", email); e != nil {
 			return fmt.Errorf("分配记录无效，请联系寺院管理员")
 		}
+		if e := managedAccountPlatformGate(ctx, tx, inv.AccountID); e != nil {
+			return e
+		}
 		var n int64
 		if e := tx.QueryRowCtx(ctx, &n, `SELECT COUNT(*) FROM askxuan_master.master m JOIN askxuan_temple.temple t ON t.code=m.temple_code WHERE m.code=? AND m.temple_code=? AND m.manage_by='temple' AND m.auth_status='已认证' AND m.platform_status='normal' AND t.status IN ('正常','推荐')`, inv.MasterCode, inv.TempleCode); e != nil {
 			return e
@@ -139,6 +157,9 @@ func (s *Accounts) RestoreManagedMaster(ctx context.Context, temple string, id i
 		if e := tx.QueryRowCtx(ctx, &inv, "SELECT "+invitationColumns+" FROM master_invitation WHERE id=? AND temple_code=? AND status='revoked' FOR UPDATE", id, temple); e != nil {
 			return ErrOnboardingDenied
 		}
+		if e := managedAccountPlatformGate(ctx, tx, inv.AccountID); e != nil {
+			return e
+		}
 		var n int64
 		if e := tx.QueryRowCtx(ctx, &n, `SELECT COUNT(*) FROM admin_account a JOIN askxuan_master.master m ON m.code=a.master_id JOIN askxuan_temple.temple t ON t.code=m.temple_code WHERE a.id=? AND a.temple_id=? AND m.temple_code=? AND m.manage_by='temple' AND m.auth_status='已认证' AND m.platform_status='normal' AND t.status IN ('正常','推荐')`, inv.AccountID, temple, temple); e != nil {
 			return e
@@ -162,4 +183,17 @@ func (s *Accounts) RestoreManagedMaster(ctx context.Context, temple string, id i
 		_, e := tx.ExecCtx(ctx, "UPDATE master_invitation SET status=? WHERE id=?", status, id)
 		return e
 	})
+}
+
+// The caller already holds the invitation lock. Platform state and activation /
+// organisation restore serialize on the same account row and never clear this flag.
+func managedAccountPlatformGate(ctx context.Context, tx sqlx.Session, id int64) error {
+	var blocked bool
+	if err := tx.QueryRowCtx(ctx, &blocked, "SELECT platform_disabled FROM admin_account WHERE id=? FOR UPDATE", id); err != nil {
+		return err
+	}
+	if blocked {
+		return fmt.Errorf("平台已停用账号，请联系平台处理")
+	}
+	return nil
 }

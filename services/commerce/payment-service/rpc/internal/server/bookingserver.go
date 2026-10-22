@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/askxuan/payment-service/internal/cashier"
 	"github.com/askxuan/payment-service/internal/model"
 	"github.com/askxuan/payment-service/internal/mq"
 	"github.com/askxuan/payment-service/internal/points"
@@ -64,6 +65,13 @@ func (s *PaymentBookingServer) autoPayOrder(ctx context.Context, orderType, orde
 	tradeNo := "MOCK" + time.Now().Format("20060102150405") + fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
 	var paymentID int64
 	err := s.svcCtx.DB.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		allowed, err := cashier.ProviderAllowsExistingPayment(ctx, session, cashier.OrderRequest{OrderType: orderType, OrderNo: orderNo}, true)
+		if err != nil {
+			return err
+		}
+		if !allowed {
+			return status.Error(codes.FailedPrecondition, "provider is unavailable")
+		}
 		result, err := session.ExecCtx(ctx, `INSERT INTO payment(payment_no,idempotency_key,user_id,order_type,order_no,amount,channel,status,trade_no,create_time) VALUES(?,?,?,?,?,?,?,'pending','',NOW())`, paymentNo, idempotencyKey, userID, orderType, orderNo, amount, "mock")
 		if err != nil {
 			return err
@@ -87,6 +95,9 @@ func (s *PaymentBookingServer) autoPayOrder(ctx context.Context, orderType, orde
 	if err != nil {
 		if existing, findErr := s.svcCtx.PaymentModel.FindByIdempotencyKey(ctx, idempotencyKey); findErr == nil {
 			return toRpc(existing), nil
+		}
+		if status.Code(err) == codes.FailedPrecondition {
+			return nil, err
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}

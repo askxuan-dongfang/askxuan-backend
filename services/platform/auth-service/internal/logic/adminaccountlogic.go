@@ -39,30 +39,41 @@ func (l *AdminAccountListLogic) AdminAccountList(req *types.AdminAccountListReq)
 		size = 20
 	}
 
-	list, total, err := l.svcCtx.AdminAccountModel.FindList(l.ctx, req.Keyword, req.Status, page, size)
+	if size > 100 {
+		size = 100
+	}
+	if req.RoleId < 0 || req.ShopId < 0 || (req.Status != "" && req.Status != "enabled" && req.Status != "disabled") {
+		return nil, common.ErrParam
+	}
+	list, total, err := l.svcCtx.AdminAccountModel.FindFilteredList(l.ctx, model.AdminAccountFilter{Keyword: req.Keyword, Status: req.Status, RoleID: req.RoleId, TempleID: req.TempleId, MasterID: req.MasterId, ShopID: req.ShopId}, page, size)
 	if err != nil {
 		l.Errorf("查询账号列表失败: %v", err)
 		return nil, common.ErrSystem
 	}
 
 	// 批量查询角色名称
-	roleMap := make(map[int64]string)
+	roleMap := make(map[int64]*model.Role)
 	for _, a := range list {
 		if _, ok := roleMap[a.RoleId]; !ok {
 			if r, err := l.svcCtx.RoleModel.FindByID(l.ctx, a.RoleId); err == nil {
-				roleMap[a.RoleId] = r.Name
+				roleMap[a.RoleId] = r
 			}
 		}
 	}
 
 	out := make([]types.AdminAccount, 0, len(list))
 	for _, a := range list {
+		r := roleMap[a.RoleId]
+		if r == nil {
+			return nil, common.ErrSystem
+		}
 		out = append(out, types.AdminAccount{
+			RoleCode: r.Code, AuthzScope: effectiveRoleScope(r), AuthzVersion: a.AuthzVersion, PlatformDisabled: a.PlatformDisabled,
 			Id:            a.Id,
 			Account:       a.Account,
 			Name:          a.Name,
 			RoleId:        a.RoleId,
-			RoleName:      roleMap[a.RoleId],
+			RoleName:      r.Name,
 			TempleId:      a.TempleId,
 			MasterId:      a.MasterId,
 			ShopId:        a.ShopId,
@@ -200,6 +211,7 @@ func (l *AdminAccountUpdateLogic) AdminAccountUpdate(req *types.AdminAccountUpda
 	updated.MasterId = binding.masterId
 	updated.ShopId = binding.shopId
 	updated.Status = exist.Status
+	forceDisabled := false
 	if binding.masterAccount {
 		if err := ensureMasterAccountAvailable(l.ctx, l.svcCtx, binding.masterId, updated.Id); err != nil {
 			return nil, err
@@ -212,10 +224,11 @@ func (l *AdminAccountUpdateLogic) AdminAccountUpdate(req *types.AdminAccountUpda
 		}
 		if allowedStatus == model.AccountStatusDisabled {
 			updated.Status = model.AccountStatusDisabled
+			forceDisabled = true
 		}
 	}
 
-	if err := updateAdminAccountWithBinding(l.ctx, l.svcCtx.DB, updated, binding.templeAdmin); err != nil {
+	if err := updateAdminAccountWithBinding(l.ctx, l.svcCtx.DB, updated, binding.templeAdmin, forceDisabled); err != nil {
 		l.Errorf("更新账号失败 id=%d: %v", req.Id, err)
 		if errors.Is(err, ErrLastSuper) {
 			return nil, err
@@ -230,17 +243,18 @@ func (l *AdminAccountUpdateLogic) AdminAccountUpdate(req *types.AdminAccountUpda
 	}
 
 	return &types.AdminAccount{
-		Id:            updated.Id,
-		Account:       exist.Account,
-		Name:          updated.Name,
-		RoleId:        updated.RoleId,
-		RoleName:      roleName,
-		TempleId:      updated.TempleId,
-		MasterId:      updated.MasterId,
-		ShopId:        updated.ShopId,
-		Status:        updated.Status,
-		LastLoginTime: exist.LastLoginTime,
-		CreateTime:    exist.CreateTime,
+		PlatformDisabled: updated.PlatformDisabled,
+		Id:               updated.Id,
+		Account:          exist.Account,
+		Name:             updated.Name,
+		RoleId:           updated.RoleId,
+		RoleName:         roleName,
+		TempleId:         updated.TempleId,
+		MasterId:         updated.MasterId,
+		ShopId:           updated.ShopId,
+		Status:           updated.Status,
+		LastLoginTime:    exist.LastLoginTime,
+		CreateTime:       exist.CreateTime,
 	}, nil
 }
 
@@ -274,6 +288,18 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 	if roleErr != nil {
 		return nil, common.ErrSystem
 	}
+	// Pending and revoked managed assignments must use their own activation or
+	// restore flow. A platform status toggle cannot bypass the owner's proof.
+	if req.Status == model.AccountStatusEnabled {
+		var invitationStatus string
+		err := l.svcCtx.DB.QueryRowCtx(l.ctx, &invitationStatus, `SELECT status FROM master_invitation WHERE account_id=?`, req.Id)
+		if err != nil && !errors.Is(err, sqlx.ErrNotFound) {
+			return nil, common.ErrSystem
+		}
+		if err == nil && (invitationStatus == "pending" || invitationStatus == "revoked") && !account.PlatformDisabled {
+			return nil, common.NewBizError(40003, "请先完成本人激活或由所属寺院恢复账号分配")
+		}
+	}
 	if req.Status == model.AccountStatusEnabled && role.Code == model.RoleCodeTempleAdmin {
 		status, err := templeStatus(l.ctx, l.svcCtx, account.TempleId)
 		if err != nil {
@@ -295,16 +321,18 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 
 	if err := updateAccountStatus(l.ctx, l.svcCtx, account, req.Status); err != nil {
 		l.Errorf("更新账号状态失败 id=%d: %v", req.Id, err)
-		if errors.Is(err, ErrLastSuper) {
-			return nil, err
+		var biz *common.BizError
+		if errors.As(err, &biz) {
+			return nil, biz
 		}
 		return nil, common.ErrSystem
 	}
 
-	return &types.AdminAccountStatusResp{
-		Id:     req.Id,
-		Status: req.Status,
-	}, nil
+	fresh, err := l.svcCtx.AdminAccountModel.FindByID(l.ctx, req.Id)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	return &types.AdminAccountStatusResp{Id: req.Id, Status: fresh.Status, PlatformDisabled: fresh.PlatformDisabled}, nil
 }
 
 type adminAccountBinding struct {
@@ -491,8 +519,26 @@ func insertAdminAccountWithBinding(ctx context.Context, db sqlx.SqlConn, account
 	return id, err
 }
 
-func updateAdminAccountWithBinding(ctx context.Context, db sqlx.SqlConn, account *model.AdminAccount, templeAdmin bool) error {
+func updateAdminAccountWithBinding(ctx context.Context, db sqlx.SqlConn, account *model.AdminAccount, templeAdmin, forceDisabled bool) error {
 	return db.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		// Ordinary profile/binding edits never replay a stale login switch.
+		// Keep the stable role -> account lock order used by last-super guards.
+		var superID int64
+		if err := session.QueryRowCtx(ctx, &superID, `SELECT id FROM role WHERE code='platform_super' FOR UPDATE`); err != nil {
+			return err
+		}
+		var live struct {
+			Status           string `db:"status"`
+			PlatformDisabled bool   `db:"platform_disabled"`
+		}
+		if err := session.QueryRowCtx(ctx, &live, `SELECT status,platform_disabled FROM admin_account WHERE id=? FOR UPDATE`, account.Id); err != nil {
+			return err
+		}
+		account.Status = live.Status
+		account.PlatformDisabled = live.PlatformDisabled
+		if forceDisabled {
+			account.Status = model.AccountStatusDisabled
+		}
 		if err := guardLastSuper(ctx, session, account.Id, account.RoleId, account.Status); err != nil {
 			return err
 		}

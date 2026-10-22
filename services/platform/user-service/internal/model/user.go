@@ -115,8 +115,11 @@ func (m *defaultUserModel) Update(ctx context.Context, data *User) error {
 
 // UpdateStatus 更新用户状态（封禁/解封）
 func (m *defaultUserModel) UpdateStatus(ctx context.Context, id int64, status int) error {
-	const query = `UPDATE ` + userTable + ` SET status = ? WHERE id = ?`
-	_, err := m.conn.ExecCtx(ctx, query, status, id)
+	if id <= 0 || (status != UserStatusNormal && status != UserStatusBanned) {
+		return fmt.Errorf("invalid user status")
+	}
+	const query = `UPDATE ` + userTable + ` SET status = ?, authz_version=authz_version+1 WHERE id = ? AND status <> ?`
+	_, err := m.conn.ExecCtx(ctx, query, status, id, status)
 	return err
 }
 

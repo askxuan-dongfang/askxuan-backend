@@ -58,16 +58,42 @@ func (s *SecurityClient) call(ctx context.Context, method, url, bearer string, p
 	return nil
 }
 func (s *SecurityClient) ValidateAccess(ctx context.Context, bearer string, c *common.CustomClaims) error {
-	if c.UserType != "admin" {
+	if c == nil || (c.UserType != "admin" && c.UserType != "user") {
 		return nil
 	}
 	if s.AuthURL == "" {
-		return common.ErrTokenInvalid
+		return common.ErrDependencyUnavailable
 	}
-	if err := s.call(ctx, http.MethodGet, strings.TrimRight(s.AuthURL, "/")+"/api/v1/auth/access", bearer, nil); err != nil {
-		return common.ErrTokenInvalid
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(s.AuthURL, "/")+"/api/v1/auth/access", nil)
+	if err != nil {
+		return common.ErrDependencyUnavailable
 	}
-	return nil
+	req.Header.Set("Authorization", "Bearer "+bearer)
+	client := s.Client
+	if client == nil {
+		client = &http.Client{Timeout: 3 * time.Second}
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return common.ErrDependencyUnavailable
+	}
+	defer res.Body.Close()
+	var out struct {
+		Code *int `json:"code"`
+	}
+	if res.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&out) != nil || out.Code == nil {
+		return common.ErrDependencyUnavailable
+	}
+	switch *out.Code {
+	case 0:
+		return nil
+	case common.ErrSessionRevoked.Code:
+		return common.ErrSessionRevoked
+	case common.ErrTokenInvalid.Code, common.ErrUnauthorized.Code, common.ErrTokenExpired.Code, common.ErrUserDisabled.Code, common.ErrRoleForbidden.Code:
+		return common.ErrTokenInvalid
+	default:
+		return common.ErrDependencyUnavailable
+	}
 }
 
 type OperationStart struct {

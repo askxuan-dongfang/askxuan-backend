@@ -108,6 +108,7 @@ type MasterModel interface {
 	FindPlatformList(ctx context.Context, beliefCode, sect, mtype, templeCode, authStatus, shelfStatus, platformStatus, regionCode, traditionCode string, page, size int) ([]*Master, int64, error)
 	// FindCList C端公开列表（仅 on_shelf + normal），按 sect/type/templeCode/manageBy/serviceCode 筛选
 	FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy, serviceCode, regionCode string, page, size int) ([]*Master, int64, error)
+	ParentAllowsNewBusiness(ctx context.Context, templeCode string) (bool, error)
 	FindTempleNameByCode(ctx context.Context, templeCode string) (string, error)
 	Insert(ctx context.Context, data *Master) (int64, error)
 	InsertWithAffiliation(ctx context.Context, data *Master, codes []string) (int64, error)
@@ -224,7 +225,7 @@ func buildPlatformMasterWhere(beliefCode, sect, mtype, templeCode, authStatus, s
 }
 
 func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, templeCode, manageBy, serviceCode, regionCode string, page, size int) ([]*Master, int64, error) {
-	where := "WHERE shelf_status = ? AND platform_status = ?"
+	where := "WHERE shelf_status = ? AND platform_status = ? AND auth_status='已认证' AND " + masterParentNewBusinessSQL
 	args := []interface{}{MasterShelfStatusOnShelf, MasterPlatformStatusNormal}
 	if beliefCode != "" {
 		if beliefCode == "daoism" || beliefCode == "taoism" {
@@ -261,6 +262,19 @@ func (m *masterModel) FindCList(ctx context.Context, beliefCode, sect, mtype, te
 		args = append(args, regionCode)
 	}
 	return m.queryPage(ctx, where, args, "ORDER BY rating DESC, id DESC", page, size)
+}
+
+// A temple's display shelf affects its own directory/services. Certification or
+// a platform ban also stops affiliated masters from accepting new business.
+const masterParentNewBusinessSQL = `(master.temple_code='' OR EXISTS(SELECT 1 FROM askxuan_temple.temple parent_temple WHERE parent_temple.code=master.temple_code AND parent_temple.auth_status='certified' AND parent_temple.platform_status='normal'))`
+
+func (m *masterModel) ParentAllowsNewBusiness(ctx context.Context, templeCode string) (bool, error) {
+	if templeCode == "" {
+		return true, nil
+	}
+	var n int64
+	err := m.conn.QueryRowCtx(ctx, &n, `SELECT COUNT(*) FROM askxuan_temple.temple WHERE code=? AND auth_status='certified' AND platform_status='normal'`, templeCode)
+	return n == 1, err
 }
 
 func (m *masterModel) FindTempleNameByCode(ctx context.Context, templeCode string) (string, error) {
@@ -345,9 +359,26 @@ func (m *masterModel) UpdateShelfStatus(ctx context.Context, id int64, status st
 }
 
 func (m *masterModel) UpdatePlatformStatus(ctx context.Context, id int64, status string) error {
-	query := fmt.Sprintf("UPDATE %s SET platform_status = ? WHERE id = ?", m.table)
-	_, err := m.conn.ExecCtx(ctx, query, status, id)
-	return err
+	if status != "normal" && status != "banned" {
+		return common.ErrParamInvalid
+	}
+	return m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		var previous struct {
+			Code   string `db:"code"`
+			Status string `db:"platform_status"`
+		}
+		if err := tx.QueryRowCtx(ctx, &previous, "SELECT code,platform_status FROM master WHERE id=? FOR UPDATE", id); err != nil {
+			return err
+		}
+		if previous.Status == status {
+			return nil
+		}
+		if _, err := tx.ExecCtx(ctx, "UPDATE master SET platform_status=?,shelf_status=IF(?='banned','off_shelf',shelf_status) WHERE id=?", status, status, id); err != nil {
+			return err
+		}
+		_, err := tx.ExecCtx(ctx, "UPDATE askxuan_auth.admin_account SET authz_version=authz_version+1 WHERE master_id=?", previous.Code)
+		return err
+	})
 }
 
 func (m *masterModel) UpdateAuthStatus(ctx context.Context, code, status string) error {

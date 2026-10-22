@@ -23,9 +23,11 @@ type MySQLConf struct {
 // Config temple 服务配置
 type Config struct {
 	rest.RestConf
-	RabbitMQ  RabbitMQConf
-	MySQL     MySQLConf
-	Redis     redis.RedisConf
-	DiyRpc    zrpc.RpcClientConf // diy-service zrpc 客户端配置（查询 blessing_task）
-	TempleRpc zrpc.RpcServerConf
+	// Fixed internal auth URL; absent configuration disables subject-state writes.
+	AuthServiceURL string `json:",optional"`
+	RabbitMQ       RabbitMQConf
+	MySQL          MySQLConf
+	Redis          redis.RedisConf
+	DiyRpc         zrpc.RpcClientConf // diy-service zrpc 客户端配置（查询 blessing_task）
+	TempleRpc      zrpc.RpcServerConf
 }

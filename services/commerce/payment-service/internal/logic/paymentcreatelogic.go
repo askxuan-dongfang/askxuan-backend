@@ -8,6 +8,7 @@ import (
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/common/middleware"
+	"github.com/askxuan/payment-service/internal/cashier"
 	"github.com/askxuan/payment-service/internal/model"
 	"github.com/askxuan/payment-service/internal/svc"
 	"github.com/askxuan/payment-service/internal/types"
@@ -74,6 +75,14 @@ func (l *PaymentCreateLogic) Create(req *types.PaymentCreateReq) (*types.Payment
 			PayUrl: fmt.Sprintf("https://mock-pay.example.com/pay/%s?channel=%s", existing.PaymentNo, existing.Channel)}, nil
 	} else if !errors.Is(err, sqlx.ErrNotFound) {
 		return nil, common.ErrSystem
+	}
+
+	allowed, err := cashier.ProviderAllowsExistingPayment(l.ctx, l.svcCtx.DB, cashier.OrderRequest{OrderType: req.OrderType, OrderNo: req.OrderNo}, false)
+	if err != nil {
+		return nil, common.ErrDependencyUnavailable
+	}
+	if !allowed {
+		return nil, common.ErrStatusInvalid
 	}
 
 	created, err := l.svcCtx.PaymentModel.Insert(l.ctx, &model.Payment{

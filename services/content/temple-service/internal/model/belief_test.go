@@ -37,3 +37,22 @@ func TestBuildTempleWherePublicStatuses(t *testing.T) {
 		t.Fatal("unexpected public status classification")
 	}
 }
+
+func TestTempleCertificationDoesNotImplyDisplay(t *testing.T) {
+	for _, status := range []string{TempleStatusPending, TempleStatusBanned, "unknown"} {
+		if initialTempleShelf(status) != "off_shelf" {
+			t.Fatalf("uncertified initial subject displayed: %s", status)
+		}
+	}
+	for _, auth := range []string{"pending", "legacy_unknown", "certified"} {
+		for _, platform := range []string{"normal", "banned"} {
+			for _, shelf := range []string{"on_shelf", "off_shelf"} {
+				got := IsTemplePublic(&Temple{AuthStatus: auth, PlatformStatus: platform, ShelfStatus: shelf})
+				want := auth == "certified" && platform == "normal" && shelf == "on_shelf"
+				if got != want {
+					t.Fatalf("public classification %s/%s/%s=%v", auth, platform, shelf, got)
+				}
+			}
+		}
+	}
+}
