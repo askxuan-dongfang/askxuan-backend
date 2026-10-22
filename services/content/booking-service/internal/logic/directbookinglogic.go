@@ -121,6 +121,9 @@ func (l *DirectBookingLogic) Create(masterCode string, req *types.DirectBookingR
 			return responseFromBooking(existing), nil
 		}
 		l.Errorf("创建大师直约单失败: %v", err)
+		if business, ok := err.(*common.BizError); ok {
+			return nil, business
+		}
 		return nil, common.ErrSystem
 	}
 	if req.ManualPayment {

@@ -162,7 +162,9 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: adminTempleReportsHandler(svcCtx),
 		},
 	}
-	server.AddRoutes(rest.WithMiddleware(adminContextMiddleware, adminRoutes...))
+	auth := &middleware.AuthConfig{Secret: svcCtx.Config.AuthSecret}
+	templeRoles := &middleware.AdminAuthConfig{AllowedRoles: []string{"temple_admin", "platform_super"}}
+	server.AddRoutes(rest.WithMiddlewares([]rest.Middleware{auth.AuthFunc, templeRoles.AdminAuthFunc, adminContextMiddleware}, adminRoutes...))
 
 	// ============ 平台管理台分组（需JWT + 平台超管） ============
 	platformRoutes := []rest.Route{
@@ -206,7 +208,8 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 			Handler: platformTempleStatusHandler(svcCtx),
 		},
 	}
-	server.AddRoutes(rest.WithMiddleware(adminContextMiddleware, platformRoutes...))
+	platformRoles := &middleware.AdminAuthConfig{AllowedRoles: []string{"platform_super"}}
+	server.AddRoutes(rest.WithMiddlewares([]rest.Middleware{auth.AuthFunc, platformRoles.AdminAuthFunc, adminContextMiddleware}, platformRoutes...))
 }
 
 func serviceTypeListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
@@ -310,8 +313,8 @@ func platformBeliefUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 func adminContextMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		templeId := svc.ParseHeaderToInt64(r.Header.Get(svc.HeaderTempleID))
-		userId := svc.ParseHeaderToInt64(r.Header.Get(svc.HeaderUserID))
+		templeId := middleware.TempleIDFromCtx(ctx)
+		userId := middleware.UserIDFromCtx(ctx)
 		if templeId > 0 {
 			ctx = svc.WithTempleID(ctx, templeId)
 		}

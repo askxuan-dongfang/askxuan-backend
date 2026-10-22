@@ -32,6 +32,7 @@ func currentAdminClaims(s *svc.ServiceContext, r *http.Request) (*common.CustomC
 	return claims, info, err
 }
 func registerAdminAccess(server *rest.Server, s *svc.ServiceContext) {
+	registerTempleTeam(server, s)
 	// Keep privileged account/role endpoints safe even on a direct service connection.
 	server.Use(func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +56,14 @@ func registerAdminAccess(server *rest.Server, s *svc.ServiceContext) {
 			common.JsonError(w, err)
 			return
 		}
-		common.Ok(w, map[string]any{"userId": info.UserId, "roles": info.Roles, "clientId": info.ClientID, "roleId": info.RoleID, "accountVersion": info.AccountVersion, "roleVersion": info.RoleVersion, "authzScope": info.AuthzScope, "permissions": info.Permissions})
+		templeName := ""
+		if info.TempleCode != "" {
+			if err := s.DB.QueryRowCtx(r.Context(), &templeName, "SELECT name FROM askxuan_temple.temple WHERE code=?", info.TempleCode); err != nil {
+				common.JsonError(w, common.ErrSystem)
+				return
+			}
+		}
+		common.Ok(w, map[string]any{"userId": info.UserId, "roles": info.Roles, "clientId": info.ClientID, "roleId": info.RoleID, "accountVersion": info.AccountVersion, "roleVersion": info.RoleVersion, "authzScope": info.AuthzScope, "permissions": info.Permissions, "templeCode": info.TempleCode, "templeName": templeName})
 	}})
 	server.AddRoute(rest.Route{Method: http.MethodGet, Path: "/api/v1/admin/auth/roles/:id/permissions", Handler: func(w http.ResponseWriter, r *http.Request) {
 		var req struct {

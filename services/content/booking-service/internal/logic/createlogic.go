@@ -107,6 +107,10 @@ func (l *CreateLogic) Create(req *types.CreateReq) (*types.CreateResp, error) {
 	snapshot, _ := json.Marshal(map[string]interface{}{"serviceCode": service.ServiceCode, "serviceName": service.ServiceName, "templeFee": templeFee, "masterFee": masterFee, "meritMoney": req.MeritMoney, "totalFee": total, "slotCode": slot.Code, "timeSlot": timeRange})
 	created, err := l.svcCtx.BookingModel.InsertWithReservation(l.ctx, &model.Booking{RequestId: req.RequestId, UserId: req.UserId, TempleId: service.TempleCode, TempleName: service.TempleName, MasterId: masterCode, MasterName: masterName, ServiceId: service.ServiceCode, ServiceName: service.ServiceName, BookingDate: req.BookingDate, SlotCode: slot.Code, TimeSlot: timeRange, ServiceFee: masterFee, MeritMoney: meritToTemple, MeritMoneyTier: req.MeritMoneyTier, TotalFee: total, PriceSnapshot: string(snapshot), Note: req.Note}, int(slot.Capacity))
 	if err != nil {
+		var business *common.BizError
+		if errors.As(err, &business) {
+			return nil, business
+		}
 		if errors.Is(err, model.ErrSlotFull) {
 			return nil, common.ErrBookingSlotFull
 		}

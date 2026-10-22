@@ -15,6 +15,7 @@ import (
 
 // RegisterHandlers 注册 master 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
+	registerTempleSchedules(server, svcCtx)
 	server.Use(middleware.CorsFunc)
 
 	// JWT 鉴权配置（管理台/工作台接口需要登录）

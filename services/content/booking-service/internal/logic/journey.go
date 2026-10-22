@@ -160,7 +160,7 @@ func JourneyList(ctx context.Context, s *svc.ServiceContext, page int, filter, s
 		case "customer":
 			scope = "b.user_id=?"
 			args = []any{strconv.FormatInt(uid, 10)}
-		case "temple_admin":
+		case "temple_reception", "temple_operations", "temple_finance", "temple_admin":
 			if code := middleware.TempleCodeFromCtx(ctx); code != "" {
 				scope = "b.temple_code=?"
 				args = []any{code}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/askxuan/booking-service/internal/model"
 	"github.com/askxuan/booking-service/internal/svc"
 	"github.com/askxuan/booking-service/internal/types"
 	"github.com/askxuan/common"
@@ -30,6 +31,15 @@ func (l *AvailabilityLogic) Availability(req *types.AvailabilityReq) (*types.Ava
 	if err != nil {
 		return nil, mapTempleRpcError(err)
 	}
+	if req.MasterId != "" {
+		master, e := l.svcCtx.MasterClient.GetByCode(l.ctx, req.MasterId)
+		if e != nil {
+			return nil, common.ErrDependencyUnavailable
+		}
+		if master.TempleCode != req.TempleId {
+			return nil, common.ErrForbidden
+		}
+	}
 	usage, err := l.svcCtx.BookingModel.FindSlotUsage(l.ctx, req.TempleId, req.ServiceId, req.BookingDate)
 	if err != nil {
 		return nil, common.ErrSystem
@@ -41,6 +51,16 @@ func (l *AvailabilityLogic) Availability(req *types.AvailabilityReq) (*types.Ava
 			remaining = 0
 		}
 		enabled := slot.Status == "enabled" && remaining > 0
+		if req.MasterId != "" {
+			ok, e := model.MasterSlotAvailable(l.ctx, l.svcCtx.DB, req.MasterId, req.BookingDate, slot.StartTime+"-"+slot.EndTime)
+			if e != nil {
+				return nil, common.ErrSystem
+			}
+			enabled = enabled && ok
+			if !ok {
+				remaining = 0
+			}
+		}
 		slots = append(slots, types.AvailableSlot{SlotCode: slot.Code, Label: slot.Label, TimeRange: slot.StartTime + "-" + slot.EndTime, Capacity: int(slot.Capacity), Remaining: remaining, Available: enabled})
 	}
 	return &types.AvailabilityResp{TempleId: service.TempleCode, ServiceId: service.ServiceCode, ServiceName: service.ServiceName, BookingDate: req.BookingDate, ServiceFee: service.Price, Slots: slots}, nil

@@ -137,6 +137,9 @@ Upstreams:
   - Prefix: /api/v1/admin/platform/regions
     Target: localhost:8083
     ServiceName: temple.service
+  - Prefix: /api/v1/admin/platform/temple-exceptions
+    Target: localhost:8085
+
   - Prefix: /api/v1/admin/platform/service-orders
     Target: localhost:8085
     ServiceName: booking.service
@@ -155,6 +158,12 @@ Upstreams:
     Target: localhost:8082
     ServiceName: user.service
   # temple 寺院管理台 + 平台审核（需在 /admin/temples 之前匹配 /admin/temples/masters）
+  - Prefix: /api/v1/admin/temples/schedules
+    Target: localhost:8084
+
+  - Prefix: /api/v1/admin/temples/exceptions
+    Target: localhost:8085
+
   - Prefix: /api/v1/admin/temples/masters
     Target: localhost:8084
     ServiceName: master.service

@@ -189,6 +189,7 @@ type (
 // ============ 法师工作台 - 日程管理 ============
 type (
     MasterSchedule {
+        Revision int64 `json:"revision"`
         Id        int64    `json:"id"`
         MasterCode string   `json:"masterCode"`
         Date      string   `json:"date"`
@@ -211,6 +212,7 @@ type (
     }
 
     ScheduleUpdateReq {
+        Revision *int64 `json:"revision,optional"`
         Date      string   `json:"date"`
         TimeSlots []string `json:"timeSlots"`
         Status    string   `json:"status"`
@@ -331,7 +333,7 @@ type (
     group: master
     prefix: /api/v1/masters
 )
-service master-service {
+service master-api {
     @handler list
     get / (ListReq) returns (ListResp)
 
@@ -341,11 +343,11 @@ service master-service {
 
 // ============ 寺院管理台分组 ============
 @server (
-    group: master.admin
+    group: "master.admin"
     prefix: /api/v1/admin/temples/masters
     jwt: Auth
 )
-service master-service {
+service master-api {
     @handler adminMasterList
     get / (AdminMasterListReq) returns (AdminMasterListResp)
 
@@ -361,11 +363,11 @@ service master-service {
 
 // ============ 法师工作台分组（修复 Gap-15） ============
 @server (
-    group: master.workspace
+    group: "master.workspace"
     prefix: /api/v1/admin/masters
     jwt: Auth
 )
-service master-service {
+service master-api {
     @handler workspaceBlessingTaskList
     get /blessing-tasks (BlessingTaskListReq) returns (BlessingTaskListResp)
 
@@ -393,11 +395,11 @@ service master-service {
 
 // ============ 法师工作台 - 收益分组 ============
 @server (
-    group: master.workspace.earnings
+    group: "master.workspace.earnings"
     prefix: /api/v1/admin/masters/earnings
     jwt: Auth
 )
-service master-service {
+service master-api {
     @handler workspaceEarningsSummary
     get /summary (EarningsSummaryReq) returns (EarningsSummaryResp)
 
@@ -407,11 +409,11 @@ service master-service {
 
 // ============ 法师工作台 - 个人资料分组 ============
 @server (
-    group: master.workspace.profile
+    group: "master.workspace.profile"
     prefix: /api/v1/admin/masters/profile
     jwt: Auth
 )
-service master-service {
+service master-api {
     @handler workspaceProfileGet
     get / (MasterProfileReq) returns (MasterProfileResp)
 
@@ -421,11 +423,11 @@ service master-service {
 
 // ============ 平台管理台分组 ============
 @server (
-    group: master.platform
+    group: "master.platform"
     prefix: /api/v1/admin/platform/masters
     jwt: Auth
 )
-service master-service {
+service master-api {
     @handler platformMasterList
     get / (PlatformMasterListReq) returns (ListResp)
 
@@ -443,4 +445,26 @@ service master-service {
 
     @handler platformMasterConsultConfig
     put /:id/consultation (MasterConsultConfigReq) returns (Master)
+}
+
+// Shared temple/master calendar. Only the signed institution's own masters are accessible.
+type (
+ TempleScheduleReq { MasterCode string `form:"masterCode"`
+        Date string `form:"date"` }
+ TempleScheduleUpdateReq { MasterCode string `json:"masterCode"`
+        Date string `json:"date"`
+        TimeSlots []string `json:"timeSlots"`
+        Status string `json:"status"`
+        Revision int64 `json:"revision"` }
+ TempleScheduleResp { List []MasterSchedule `json:"list"` }
+)
+@server (
+    prefix: /api/v1/admin/temples
+    group: templeSchedule
+)
+service master-api {
+ @handler templeScheduleList
+ get /schedules (TempleScheduleReq) returns (TempleScheduleResp)
+ @handler templeScheduleUpdate
+ put /schedules (TempleScheduleUpdateReq) returns (ScheduleUpdateResp)
 }

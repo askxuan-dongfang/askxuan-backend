@@ -45,3 +45,5 @@ TempleRpc:
     Hosts:
       - localhost:2379
     Key: temple.rpc
+
+AuthSecret: "askxuan-access-secret-change-in-prod"

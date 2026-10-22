@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"errors"
+	"github.com/askxuan/common/adminpolicy"
 	"strconv"
 	"strings"
 	"time"
@@ -75,7 +76,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		l.Errorf("查询角色失败 roleId=%d: %v", acc.RoleId, err)
 		return nil, common.ErrSystem
 	}
-	if role.Code == model.RoleCodeTempleAdmin {
+	if adminpolicy.IsTempleRole(role.Code) {
 		status, statusErr := templeStatus(l.ctx, l.svcCtx, acc.TempleId)
 		if statusErr != nil {
 			return nil, statusErr
@@ -235,7 +236,7 @@ func roleCodeToClientID(roleCode string) string {
 	switch roleCode {
 	case model.RoleCodePlatformSuper, model.RoleCodePlatformService:
 		return "platform-admin"
-	case model.RoleCodeTempleAdmin, "temple_applicant":
+	case "temple_reception", "temple_operations", "temple_finance", model.RoleCodeTempleAdmin, "temple_applicant":
 		return "temple-admin"
 	case model.RoleCodeMaster, "master_applicant":
 		return "master"

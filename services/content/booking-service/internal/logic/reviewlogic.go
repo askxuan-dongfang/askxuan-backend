@@ -98,6 +98,7 @@ func (l *CreateReviewLogic) CreateReview(req *types.ReviewCreateReq) (*types.Rev
 		body, err := json.Marshal(mq.BookingNotify{
 			BookingId: b.Id, UserId: b.UserId, TempleId: b.TempleId, TempleName: b.TempleName,
 			MasterId: b.MasterId, MasterName: b.MasterName, ServiceName: b.ServiceName,
+			BookingDate: b.BookingDate, ServiceFee: b.ServiceFee, MeritMoney: b.MeritMoney, TotalFee: b.TotalFee,
 			Rating: req.Rating, ReviewContent: req.Content, ReviewImages: string(images), Action: "reviewed", Time: time.Now().Format("2006-01-02 15:04:05"),
 		})
 		if err != nil {

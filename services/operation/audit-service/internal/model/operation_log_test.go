@@ -78,6 +78,26 @@ func TestOperationFinishRejectsUnsafeStateBeforeStorage(t *testing.T) {
 	}
 }
 
+func TestTempleTeamOperationUsesFiniteAuditContract(t *testing.T) {
+	r := testOperationStart()
+	r.ActorRoles = []string{"temple_admin"}
+	r.Action, r.RouteTemplate, r.TargetType = "temple.team.manage", "/api/v1/auth/temple/team", "admin_account"
+	for _, method := range []string{"POST", "PUT"} {
+		r.Method = method
+		if err := r.Validate(); err != nil {
+			t.Fatal(method, err)
+		}
+	}
+	r.Method = "DELETE"
+	if r.Validate() == nil {
+		t.Fatal("unimplemented team deletion accepted")
+	}
+	r.Method, r.RouteTemplate = "POST", "/api/v1/auth/temple/team?password=secret"
+	if r.Validate() == nil {
+		t.Fatal("raw team query accepted into audit")
+	}
+}
+
 func TestOperationFilterValidationAndBoundParameters(t *testing.T) {
 	filter := OperationFilter{ActorID: 7, Action: "platform.products.write", Method: "PUT", TargetType: "products", Result: "pending", Page: 2, Size: 20, StartTime: time.Date(2026, 10, 22, 8, 0, 0, 0, time.FixedZone("test", 8*3600))}
 	if err := filter.Validate(); err != nil {

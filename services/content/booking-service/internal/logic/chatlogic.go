@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/askxuan/common/adminpolicy"
 	"strconv"
 	"strings"
 	"time"
@@ -623,7 +624,7 @@ func chatTempleCode(ctx context.Context) string {
 		return ""
 	}
 	for _, role := range middleware.RolesFromCtx(ctx) {
-		if role == "temple_admin" {
+		if adminpolicy.IsTempleRole(role) {
 			return middleware.TempleCodeFromCtx(ctx)
 		}
 	}

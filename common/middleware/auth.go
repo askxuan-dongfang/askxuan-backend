@@ -87,6 +87,9 @@ func (c *AuthConfig) doAuth(_ http.ResponseWriter, r *http.Request) error {
 		// refresh token 不能用于接口鉴权
 		return common.ErrTokenInvalid
 	}
+	if claims.IsTempleStaff() && !claims.TempleStaffAllowed(r.Method, r.URL.Path) {
+		return common.ErrRoleForbidden
+	}
 	// Only this verified, signed value may supply delegated permissions.
 	rctx := context.WithValue(r.Context(), CtxKeyAdminClaims, claims)
 	*r = *r.WithContext(rctx)

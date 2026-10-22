@@ -59,7 +59,7 @@ type (
     group: platformServiceOrders
     jwt: Auth
 )
-service booking-service {
+service booking-api {
     @handler platformBookings
     get /bookings (PlatformServiceOrderListReq) returns (ListResp)
     @handler platformBooking
@@ -135,6 +135,7 @@ type (
     }
 
     AvailabilityReq {
+        MasterId string `form:"masterId,optional"`
         TempleId   string `form:"templeId"`
         ServiceId  string `form:"serviceId"`
         BookingDate string `form:"date"`
@@ -360,11 +361,17 @@ type (
         EndTime string `form:"endTime,optional"`
     }
     BookingTrendPoint {
+        ContractCents int64 `json:"contractCents"`
+        TempleCents int64 `json:"templeCents"`
+        MasterCents int64 `json:"masterCents"`
         Date string `json:"date"`
         Bookings int `json:"bookings"`
         Revenue float64 `json:"revenue"`
     }
     BookingRevenueStats {
+        ContractCents int64 `json:"contractCents"`
+        TempleCents int64 `json:"templeCents"`
+        MasterCents int64 `json:"masterCents"`
         TotalRevenue float64 `json:"totalRevenue"`
         BookingCount int `json:"bookingCount"`
         AvgBookingValue float64 `json:"avgBookingValue"`
@@ -376,6 +383,9 @@ type (
         Percentage float64 `json:"percentage"`
     }
     BookingMasterRank {
+        ContractCents int64 `json:"contractCents"`
+        TempleCents int64 `json:"templeCents"`
+        MasterCents int64 `json:"masterCents"`
         MasterCode string `json:"masterCode"`
         MasterName string `json:"masterName"`
         BookingCount int `json:"bookingCount"`
@@ -418,7 +428,7 @@ type (
     group: booking
     prefix: /api/v1/bookings
 )
-service booking-service {
+service booking-api {
     @handler bookingEligibility
     get /eligibility (BookingEligibilityReq) returns (BookingEligibilityResp)
 
@@ -460,7 +470,7 @@ service booking-service {
     group: consultation
     prefix: /api/v1/consultations
 )
-service booking-service {
+service booking-api {
     @handler consultationQuote
     get /quote (ConsultationQuoteReq) returns (ConsultationQuoteResp)
     @handler consultationCreate
@@ -477,7 +487,7 @@ service booking-service {
     group: chat
     prefix: /api/v1/chats
 )
-service booking-service {
+service booking-api {
     @handler chatList
     get / (ChatListReq) returns (ChatListResp)
     @handler chatMessageList
@@ -488,11 +498,11 @@ service booking-service {
 
 // ============ 寺院管理台分组 ============
 @server (
-    group: booking.admin
+    group: "booking.admin"
     prefix: /api/v1/admin/bookings
     jwt: Auth
 )
-service booking-service {
+service booking-api {
     @handler adminBookingReport
     get /report (AdminBookingReportReq) returns (AdminBookingReportResp)
 
@@ -542,11 +552,11 @@ type (
 )
 
 @server (
-    group: booking.master
+    group: "booking.master"
     prefix: /api/v1/admin/masters/bookings
     jwt: Auth
 )
-service booking-service {
+service booking-api {
     @handler masterBookingList
     get / (MasterBookingListReq) returns (MasterBookingListResp)
 
@@ -561,4 +571,58 @@ service booking-service {
 
     @handler masterBookingComplete
     put /:id/complete (AdminBookingActionReq) returns (StatusResp)
+}
+
+// Internal follow-up annotations do not change booking, refund, or blessing task state.
+type (
+ TempleException { ID string `json:"id"`
+        TempleCode string `json:"templeCode"`
+        SourceKind string `json:"sourceKind"`
+        SourceID string `json:"sourceId"`
+        Title string `json:"title"`
+        Reason string `json:"reason"`
+        Status string `json:"status"`
+        Followup string `json:"followup"`
+        UpdatedAt string `json:"updatedAt"` }
+ TempleExceptionListReq { TempleCode string `form:"templeCode,optional"`
+        Page int `form:"page,default=1"` }
+ TempleExceptionIDReq { ID string `path:"id"` }
+ TempleExceptionListResp { List []TempleException `json:"list"`
+        Total int64 `json:"total"`
+        Page int `json:"page"`
+        Size int `json:"size"` }
+ TempleExceptionNote { ID int64 `json:"id"`
+        OperatorID int64 `json:"operatorId"`
+        OperatorRole string `json:"operatorRole"`
+        Action string `json:"action"`
+        Content string `json:"content"`
+        CreatedAt string `json:"createdAt"` }
+ TempleExceptionNotesResp { List []TempleExceptionNote `json:"list"` }
+ TempleExceptionNoteReq { ID string `path:"id"`
+        RequestID string `json:"requestId"`
+        Action string `json:"action"`
+        Content string `json:"content"` }
+ TempleExceptionNoteResp { Saved bool `json:"saved"` }
+)
+@server (
+    prefix: /api/v1/admin/temples
+    group: templeExceptions
+)
+service booking-api {
+ @handler templeExceptionList
+ get /exceptions (TempleExceptionListReq) returns (TempleExceptionListResp)
+ @handler templeExceptionNotes
+ get /exceptions/:id (TempleExceptionIDReq) returns (TempleExceptionNotesResp)
+ @handler templeExceptionNoteCreate
+ post /exceptions/:id/notes (TempleExceptionNoteReq) returns (TempleExceptionNoteResp)
+}
+@server (
+    prefix: /api/v1/admin/platform
+    group: platformTempleExceptions
+)
+service booking-api {
+ @handler platformTempleExceptionList
+ get /temple-exceptions (TempleExceptionListReq) returns (TempleExceptionListResp)
+ @handler platformTempleExceptionNotes
+ get /temple-exceptions/:id (TempleExceptionIDReq) returns (TempleExceptionNotesResp)
 }

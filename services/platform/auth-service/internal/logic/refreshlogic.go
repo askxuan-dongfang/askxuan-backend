@@ -109,7 +109,7 @@ func (l *RefreshLogic) refreshIdentity(claims *common.CustomClaims) (common.Toke
 	}
 
 	// Refresh checks the same bound-entity eligibility as a fresh administrator login.
-	if role.Code == model.RoleCodeTempleAdmin {
+	if adminpolicy.IsTempleRole(role.Code) {
 		if acc.TempleId == "" {
 			return common.TokenInfo{}, common.ErrTokenInvalid
 		}
@@ -168,7 +168,7 @@ func refreshRoleMatchesDomain(domain, role string) bool {
 		return false
 	}
 	switch role {
-	case model.RoleCodePlatformSuper, model.RoleCodePlatformService, model.RoleCodeTempleAdmin, model.RoleCodeShopAdmin, "master_applicant", "temple_applicant":
+	case "temple_reception", "temple_operations", "temple_finance", model.RoleCodePlatformSuper, model.RoleCodePlatformService, model.RoleCodeTempleAdmin, model.RoleCodeShopAdmin, "master_applicant", "temple_applicant":
 		return true
 	default:
 		return !adminpolicy.Builtin(role) // Custom roles still require signed scope + role ID + live versions.
