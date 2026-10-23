@@ -145,7 +145,7 @@ func adminWrite(r *http.Request, c *common.CustomClaims) bool {
 		return false
 	}
 	p := r.URL.Path
-	return p == "/api/v1/auth/temple/team" || strings.HasPrefix(p, "/api/v1/admin/") || p == "/api/v1/ai/admin" || strings.HasPrefix(p, "/api/v1/ai/admin/") || strings.HasPrefix(p, "/api/v1/payments/growth/admin/") || strings.HasPrefix(p, "/api/v1/auth/onboarding/admin/")
+	return strings.HasPrefix(p, "/api/v1/admin/") || p == "/api/v1/ai/admin" || strings.HasPrefix(p, "/api/v1/ai/admin/") || strings.HasPrefix(p, "/api/v1/payments/growth/admin/") || strings.HasPrefix(p, "/api/v1/auth/onboarding/admin/")
 }
 
 var safeBusinessID = regexp.MustCompile(`^(?:[1-9][0-9]{0,18}|[A-Z][A-Z0-9_-]{0,63}|sandbox_[a-f0-9-]{36}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$`)
@@ -161,11 +161,6 @@ func operationFor(r *http.Request, c *common.CustomClaims) (OperationStart, erro
 		if safeRoleCode.MatchString(role) {
 			e.ActorRoles = append(e.ActorRoles, role)
 		}
-	}
-	if r.URL.Path == "/api/v1/auth/temple/team" {
-		e.Action = "temple.team.manage"
-		e.RouteTemplate = "/api/v1/auth/temple/team"
-		e.TargetType = "admin_account"
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/v1/ai/admin") {
 		e.Action = "ai.admin.write"

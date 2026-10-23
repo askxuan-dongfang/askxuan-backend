@@ -295,7 +295,7 @@ func Scope(role string) string {
 	switch role {
 	case "platform_super", "platform_service":
 		return "platform"
-	case "temple_reception", "temple_operations", "temple_finance", "temple_admin", "temple_applicant":
+	case "temple_admin", "temple_applicant":
 		return "temple"
 	case "master", "master_applicant":
 		return "master"

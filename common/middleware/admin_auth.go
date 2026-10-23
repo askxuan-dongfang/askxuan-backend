@@ -62,7 +62,7 @@ func (c *AdminAuthConfig) hasAllowedRole(roles []string) bool {
 	// 配置了 AllowedRoles 时，精确匹配
 	for _, allowed := range c.AllowedRoles {
 		for _, role := range roles {
-			if role == allowed || (allowed == "temple_admin" && adminpolicy.IsTempleStaff(role)) {
+			if role == allowed {
 				return true
 			}
 		}

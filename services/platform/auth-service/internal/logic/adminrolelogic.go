@@ -38,6 +38,9 @@ func (l *AdminRoleListLogic) AdminRoleList() (*types.RoleListResp, error) {
 
 	out := make([]types.Role, 0, len(list))
 	for _, r := range list {
+		if adminpolicy.IsRetiredTempleRole(r.Code) {
+			continue
+		}
 		out = append(out, types.Role{
 			Id: r.Id, AuthzScope: effectiveRoleScope(r), AuthzVersion: r.AuthzVersion, Editable: !adminpolicy.Builtin(r.Code) && effectiveRoleScope(r) == "platform",
 			Name:        r.Name,

@@ -176,14 +176,11 @@ func (c *CustomClaims) HasTempleRole() bool {
 	}
 	return false
 }
-func (c *CustomClaims) IsTempleStaff() bool {
+func (c *CustomClaims) HasRetiredTempleRole() bool {
 	for _, role := range c.Roles {
-		if adminpolicy.IsTempleStaff(role) {
+		if adminpolicy.IsRetiredTempleRole(role) {
 			return true
 		}
 	}
 	return false
-}
-func (c *CustomClaims) TempleStaffAllowed(method, path string) bool {
-	return c.UserType == "admin" && c.ClientID == "temple-admin" && c.AuthzScope == "temple" && c.TempleID > 0 && c.TempleCode != "" && len(c.Roles) == 1 && adminpolicy.TempleAllowed(method, path, c.Roles[0], c.Permissions)
 }

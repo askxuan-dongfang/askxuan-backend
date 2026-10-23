@@ -153,8 +153,8 @@ func AuthWithOptions(secret string, noAuthPaths []string, options AuthOptions) f
 				return
 			}
 
-			if claims.IsTempleStaff() && !claims.TempleStaffAllowed(r.Method, r.URL.Path) {
-				common.JsonError(w, common.ErrRoleForbidden)
+			if claims.HasRetiredTempleRole() {
+				common.JsonError(w, common.ErrSessionRevoked)
 				return
 			}
 
@@ -191,9 +191,6 @@ func AuthWithOptions(secret string, noAuthPaths []string, options AuthOptions) f
 			// 管理台/工作台路径角色校验：/api/v1/admin/* 需要管理台角色，法师工作台也使用该前缀
 			if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") || r.URL.Path == "/api/v1/ai/admin" || strings.HasPrefix(r.URL.Path, "/api/v1/ai/admin/") {
 				allowed := roleAllowedForAdminPath(r.URL.Path, claims)
-				if claims.IsTempleStaff() {
-					allowed = claims.TempleStaffAllowed(r.Method, r.URL.Path)
-				}
 				if claims.UserType == "admin" && claims.ClientID == "platform-admin" && claims.AuthzScope == "platform" && len(claims.Roles) == 1 && !adminpolicy.Builtin(claims.Roles[0]) {
 					allowed = adminpolicy.Allowed(r.Method, r.URL.Path, claims.Permissions)
 				}

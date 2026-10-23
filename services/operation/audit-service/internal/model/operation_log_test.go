@@ -78,7 +78,7 @@ func TestOperationFinishRejectsUnsafeStateBeforeStorage(t *testing.T) {
 	}
 }
 
-func TestTempleTeamOperationUsesFiniteAuditContract(t *testing.T) {
+func TestHistoricalTempleTeamAuditRecordRemainsReadable(t *testing.T) {
 	r := testOperationStart()
 	r.ActorRoles = []string{"temple_admin"}
 	r.Action, r.RouteTemplate, r.TargetType = "temple.team.manage", "/api/v1/auth/temple/team", "admin_account"

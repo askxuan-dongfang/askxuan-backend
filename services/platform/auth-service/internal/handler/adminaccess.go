@@ -24,6 +24,9 @@ func currentHumanClaims(s *svc.ServiceContext, r *http.Request) (*common.CustomC
 	if err != nil || claims.IsRefreshToken() || (claims.UserType != "admin" && claims.UserType != "user") {
 		return nil, common.TokenInfo{}, common.ErrTokenInvalid
 	}
+	if claims.HasRetiredTempleRole() {
+		return nil, common.TokenInfo{}, common.ErrSessionRevoked
+	}
 	if s.SessionRedis == nil {
 		return nil, common.TokenInfo{}, common.ErrDependencyUnavailable
 	}
@@ -53,7 +56,6 @@ func currentAdminClaims(s *svc.ServiceContext, r *http.Request) (*common.CustomC
 	return claims, info, nil
 }
 func registerAdminAccess(server *rest.Server, s *svc.ServiceContext) {
-	registerTempleTeam(server, s)
 	// Keep privileged account/role endpoints safe even on a direct service connection.
 	server.Use(func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {

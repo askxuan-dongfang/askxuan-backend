@@ -22,3 +22,18 @@ func TestGrowthServiceIdentityIsolation(t *testing.T) {
 		}
 	}
 }
+
+func TestGrowthProviderKeepsAdministratorAndMasterButRejectsRetiredJobs(t *testing.T) {
+	for _, role := range []string{"temple_admin", "master", "temple_reception", "temple_operations", "temple_finance"} {
+		ctx := context.WithValue(context.Background(), m.CtxKeyUserID, int64(7))
+		ctx = context.WithValue(ctx, m.CtxKeyUserType, "admin")
+		ctx = context.WithValue(ctx, m.CtxKeyRoles, []string{role})
+		ctx = context.WithValue(ctx, m.CtxKeyTempleID, int64(1))
+		ctx = context.WithValue(ctx, m.CtxKeyTempleCode, "T1")
+		ctx = context.WithValue(ctx, m.CtxKeyMasterID, int64(3))
+		allowed := growthIdentity(httptest.NewRequest("GET", "/", nil).WithContext(ctx), "provider")
+		if allowed != (role == "temple_admin" || role == "master") {
+			t.Fatal("provider role isolation changed", role, allowed)
+		}
+	}
+}

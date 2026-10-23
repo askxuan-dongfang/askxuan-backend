@@ -111,6 +111,7 @@ func validOperationRoute(method, route string) bool {
 	if !validOperationMethod(method) {
 		return false
 	}
+	// Retain validation for historical operation records, not a live business route.
 	if route == "/api/v1/auth/temple/team" {
 		return method == "POST" || method == "PUT"
 	}

@@ -77,7 +77,7 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 		return nil, common.ErrSystem
 	}
 	// Machine integration credentials never establish a human login session.
-	if role.Code == model.RoleCodePlatformService {
+	if role.Code == model.RoleCodePlatformService || adminpolicy.IsRetiredTempleRole(role.Code) {
 		return nil, common.ErrRoleForbidden
 	}
 	if adminpolicy.IsTempleRole(role.Code) {
@@ -237,10 +237,13 @@ func (l *AdminLoginLogic) AdminLogin(req *types.AdminLoginReq) (*types.LoginResp
 
 // roleCodeToClientID 根据角色编码映射端标识
 func roleCodeToClientID(roleCode string) string {
+	if adminpolicy.IsRetiredTempleRole(roleCode) {
+		return ""
+	}
 	switch roleCode {
 	case model.RoleCodePlatformSuper, model.RoleCodePlatformService:
 		return "platform-admin"
-	case "temple_reception", "temple_operations", "temple_finance", model.RoleCodeTempleAdmin, "temple_applicant":
+	case model.RoleCodeTempleAdmin, "temple_applicant":
 		return "temple-admin"
 	case model.RoleCodeMaster, "master_applicant":
 		return "master"

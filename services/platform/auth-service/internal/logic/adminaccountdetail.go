@@ -79,6 +79,9 @@ func AdminAccountDetail(ctx context.Context, s *svc.ServiceContext, id int64) (*
 	if out.Identity.CredentialState == "unavailable" {
 		out.BlockedReasons = append(out.BlockedReasons, "账号尚未配置可用登录凭据")
 	}
+	if adminpolicy.IsRetiredTempleRole(role.Code) {
+		out.BlockedReasons = append(out.BlockedReasons, "当前账号无寺院管理台权限，请使用寺院管理员账号登录")
+	}
 	if role.Code == model.RoleCodePlatformService {
 		out.BlockedReasons = append(out.BlockedReasons, "内部服务身份不提供人工登录")
 	}
