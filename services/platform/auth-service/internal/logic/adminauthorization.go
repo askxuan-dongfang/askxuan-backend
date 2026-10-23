@@ -19,8 +19,10 @@ func effectiveRoleScope(r *model.Role) string {
 }
 func authorizationSnapshot(ctx context.Context, s *svc.ServiceContext, a *model.AdminAccount, r *model.Role) (common.TokenInfo, error) {
 	info := common.TokenInfo{RoleID: r.Id, AccountVersion: a.AuthzVersion, RoleVersion: r.AuthzVersion, AuthzScope: effectiveRoleScope(r), Permissions: []string{}}
+	if adminpolicy.IsRetiredTempleRole(r.Code) {
+		return common.TokenInfo{}, common.ErrRoleForbidden
+	}
 	if adminpolicy.Builtin(r.Code) {
-		info.Permissions = adminpolicy.TemplePermissions(r.Code)
 		return info, nil
 	}
 	if info.AuthzScope != "platform" || s.DB == nil {
@@ -41,7 +43,7 @@ func authorizationSnapshot(ctx context.Context, s *svc.ServiceContext, a *model.
 	return info, nil
 }
 func authorizationVersionMatches(c *common.CustomClaims, a *model.AdminAccount, r *model.Role) bool {
-	if r.Id != a.RoleId {
+	if adminpolicy.IsRetiredTempleRole(r.Code) || r.Id != a.RoleId {
 		return false
 	}
 	if c.AccountVersion != a.AuthzVersion || c.RoleVersion != r.AuthzVersion {
@@ -69,6 +71,9 @@ func authorizationVersionMatches(c *common.CustomClaims, a *model.AdminAccount, 
 func CurrentAdminAccess(ctx context.Context, s *svc.ServiceContext, c *common.CustomClaims) (common.TokenInfo, error) {
 	if c == nil || c.UserType != "admin" || c.IsRefreshToken() || c.UserId <= 0 {
 		return common.TokenInfo{}, common.ErrTokenInvalid
+	}
+	if c.HasRetiredTempleRole() {
+		return common.TokenInfo{}, common.ErrSessionRevoked
 	}
 	copyClaims := *c
 	if c.HasRole(model.RoleCodeMaster) {

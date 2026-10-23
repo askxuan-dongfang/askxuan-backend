@@ -82,6 +82,9 @@ func validRefreshIdentity(claims *common.CustomClaims) bool {
 }
 
 func (l *RefreshLogic) refreshIdentity(claims *common.CustomClaims) (common.TokenInfo, error) {
+	if claims.HasRetiredTempleRole() {
+		return common.TokenInfo{}, common.ErrSessionRevoked
+	}
 	if claims.UserType == "user" {
 		u, err := l.svcCtx.UserReadonlyModel.FindByID(l.ctx, claims.UserId)
 		if err != nil {
@@ -181,7 +184,7 @@ func refreshRoleMatchesDomain(domain, role string) bool {
 	switch role {
 	case model.RoleCodePlatformService:
 		return false
-	case "temple_reception", "temple_operations", "temple_finance", model.RoleCodePlatformSuper, model.RoleCodeTempleAdmin, model.RoleCodeShopAdmin, "master_applicant", "temple_applicant":
+	case model.RoleCodePlatformSuper, model.RoleCodeTempleAdmin, model.RoleCodeShopAdmin, "master_applicant", "temple_applicant":
 		return true
 	default:
 		return !adminpolicy.Builtin(role) // Custom roles still require signed scope + role ID + live versions.

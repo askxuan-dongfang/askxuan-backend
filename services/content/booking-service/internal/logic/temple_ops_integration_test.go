@@ -44,7 +44,7 @@ func TestTempleOpsExceptionsIntegration(t *testing.T) {
 		t.Fatal(e)
 	}
 	exec(`UPDATE booking SET status='cancelled',payment_status='refunding' WHERE booking_no=?`, b.Id)
-	c := &common.CustomClaims{UserId: 991001, UserType: "admin", Roles: []string{"temple_reception"}, TempleCode: "T_OPS_EX"}
+	c := &common.CustomClaims{UserId: 991001, UserType: "admin", Roles: []string{"temple_admin"}, TempleCode: "T_OPS_EX"}
 	ctx := context.WithValue(base, middleware.CtxKeyAdminClaims, c)
 	out, e := TempleExceptions(ctx, s, "", false, 1)
 	if e != nil {

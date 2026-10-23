@@ -203,3 +203,30 @@ func TestAdminRolesCannotSubstituteIdentityDomain(t *testing.T) {
 		}
 	}
 }
+
+func TestRetiredTempleTokensAreRevokedBeforeGatewayForwarding(t *testing.T) {
+	for _, role := range []string{"temple_reception", "temple_operations", "temple_finance"} {
+		for _, roles := range [][]string{{role}, {role, "platform_super"}} {
+			token, err := common.GenAccessToken("retired-gateway", common.TokenInfo{UserId: 7, UserType: "admin", ClientID: "temple-admin", TempleCode: "T1", TempleID: 1, Roles: roles, AuthzScope: "platform", Permissions: []string{"platform.products.read"}}, 60)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, path := range []string{"/api/v1/admin/bookings/report", "/api/v1/auth/access", "/api/v1/bookings/journeys", "/api/v1/payments/growth/provider/rules"} {
+				called := false
+				r := httptest.NewRequest("GET", path, nil)
+				r.Header.Set("Authorization", "Bearer "+token)
+				w := httptest.NewRecorder()
+				Auth("retired-gateway", nil)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true })).ServeHTTP(w, r)
+				var out struct {
+					Code int `json:"code"`
+				}
+				if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+					t.Fatal(err)
+				}
+				if called || out.Code != 40105 {
+					t.Fatalf("retired token forwarded: %v %s %d", roles, path, out.Code)
+				}
+			}
+		}
+	}
+}

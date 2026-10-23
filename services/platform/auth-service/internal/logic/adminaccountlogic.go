@@ -289,6 +289,9 @@ func (l *AdminAccountStatusLogic) AdminAccountStatus(req *types.AdminAccountStat
 	if roleErr != nil {
 		return nil, common.ErrSystem
 	}
+	if req.Status == model.AccountStatusEnabled && adminpolicy.IsRetiredTempleRole(role.Code) {
+		return nil, common.ErrRoleForbidden
+	}
 	// Pending and revoked managed assignments must use their own activation or
 	// restore flow. A platform status toggle cannot bypass the owner's proof.
 	if req.Status == model.AccountStatusEnabled {
@@ -353,8 +356,11 @@ func validateAdminAccountBinding(ctx context.Context, svcCtx *svc.ServiceContext
 		return nil, common.ErrSystem
 	}
 
+	if adminpolicy.IsRetiredTempleRole(role.Code) {
+		return nil, common.ErrRoleForbidden
+	}
 	switch role.Code {
-	case "temple_reception", "temple_operations", "temple_finance", model.RoleCodeTempleAdmin:
+	case model.RoleCodeTempleAdmin:
 		if templeId == "" {
 			return nil, common.ErrParamMissing
 		}

@@ -54,7 +54,7 @@ func exceptionScope(ctx context.Context, requested string, platform bool) (strin
 		}
 		return requested, nil
 	}
-	if !(c.HasRole("temple_admin") || c.HasRole("temple_reception") || c.HasRole("temple_operations")) || c.TempleCode == "" || (requested != "" && requested != c.TempleCode) {
+	if !c.HasRole("temple_admin") || c.TempleCode == "" || (requested != "" && requested != c.TempleCode) {
 		return "", common.ErrForbidden
 	}
 	return c.TempleCode, nil

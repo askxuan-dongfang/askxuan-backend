@@ -2,28 +2,18 @@ package adminpolicy
 
 import "testing"
 
-func TestTempleJobsDenyUnknownAndPrivilegedRoutes(t *testing.T) {
+func TestTempleAdministratorReplacesRetiredJobs(t *testing.T) {
 	for _, role := range []string{"temple_reception", "temple_operations", "temple_finance"} {
-		perms := append(TemplePermissions(role), "super.security", "temple.team.manage", "temple.finance.read")
-		for _, r := range []Route{{"POST", "/api/v1/auth/temple/team", ""}, {"POST", "/api/v1/admin/auth/accounts", ""}, {"GET", "/api/v1/admin/masters/profile", ""}, {"POST", "/api/v1/finance/wallet/temple/withdraw", ""}, {"PUT", "/api/v1/admin/temples/new-api", ""}} {
-			if TempleAllowed(r.Method, r.Template, role, perms) {
-				t.Errorf("%s escaped on %s", role, r.Template)
-			}
+		if !IsRetiredTempleRole(role) || !Builtin(role) || IsTempleRole(role) || Scope(role) != "" {
+			t.Fatalf("retired job must be reserved without a live institution scope: %s", role)
 		}
 	}
-	if TempleAllowed("GET", "/api/v1/admin/bookings/report", "temple_reception", TemplePermissions("temple_reception")) {
-		t.Fatal("report mistaken for booking detail")
+	if !IsTempleRole("temple_admin") || IsRetiredTempleRole("temple_admin") || Scope("temple_admin") != "temple" {
+		t.Fatal("existing temple administrator lost its scope")
 	}
-	if !TempleAllowed("PUT", "/api/v1/admin/bookings/B1/confirm", "temple_reception", TemplePermissions("temple_reception")) {
-		t.Fatal("reception cannot confirm")
-	}
-	if TempleAllowed("PUT", "/api/v1/admin/bookings/B1/confirm", "temple_finance", TemplePermissions("temple_finance")) {
-		t.Fatal("finance can write")
-	}
-	if !TempleAllowed("GET", "/api/v1/admin/bookings/report", "temple_finance", TemplePermissions("temple_finance")) {
-		t.Fatal("finance cannot read report")
-	}
-	if TempleAllowed("PUT", "/api/v1/admin/temples/schedules", "temple_operations", nil) {
-		t.Fatal("unsigned permission")
+	for _, role := range []string{"master", "platform_super", "custom_editor"} {
+		if IsTempleRole(role) || IsRetiredTempleRole(role) {
+			t.Fatal("unrelated role changed", role)
+		}
 	}
 }
