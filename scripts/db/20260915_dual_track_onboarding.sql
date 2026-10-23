@@ -1,8 +1,9 @@
 -- Additive migration: keep all existing accounts and business identifiers.
+SET NAMES utf8mb4;
 INSERT INTO askxuan_auth.role(name,code,description) VALUES
 ('大师认证申请人','master_applicant','仅可管理本人独立大师认证申请'),
 ('寺院入驻申请人','temple_applicant','仅可管理本人寺院入驻申请')
-ON DUPLICATE KEY UPDATE description=VALUES(description);
+ON DUPLICATE KEY UPDATE code=VALUES(code);
 CREATE TABLE IF NOT EXISTS askxuan_auth.onboarding_application (
  id BIGINT PRIMARY KEY AUTO_INCREMENT,
  account_id BIGINT NOT NULL UNIQUE,

@@ -23,7 +23,7 @@ echo "==> Checking database schema..."
 table_count="$(docker exec askxuan-mysql mysql -N -uroot -proot123 -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='askxuan_temple' AND table_name='temple';" 2>/dev/null || echo 0)"
 if [ "${table_count}" = "0" ]; then
   echo "==> First startup detected, initializing database..."
-  docker exec -i askxuan-mysql mysql -uroot -proot123 askxuan < db/init.sql
+  docker exec -i askxuan-mysql mysql --default-character-set=utf8mb4 -uroot -proot123 askxuan < db/init.sql
 else
   echo "==> Existing database detected, preserving business data."
 fi
@@ -31,7 +31,7 @@ fi
 echo "==> Applying idempotent forward migrations..."
 for migration in scripts/db/20*.sql; do
   echo "    $(basename "${migration}")"
-  docker exec -i askxuan-mysql mysql -uroot -proot123 < "${migration}"
+  docker exec -i askxuan-mysql mysql --default-character-set=utf8mb4 -uroot -proot123 < "${migration}"
 done
 
 echo "==> Starting all backend services..."
