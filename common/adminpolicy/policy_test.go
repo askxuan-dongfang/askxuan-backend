@@ -37,3 +37,24 @@ func TestStaticPathWinsOverParameter(t *testing.T) {
 		t.Fatalf("wrong template %+v", r)
 	}
 }
+
+func TestModelingCredentialsCannotBeDelegated(t *testing.T) {
+	all := []string{}
+	for _, c := range Catalog {
+		if c.Assignable {
+			all = append(all, c.Code)
+		}
+	}
+	if Allowed("PUT", "/api/v1/admin/diy/modeling/config", all) {
+		t.Fatal("provider credentials delegated")
+	}
+	for _, route := range []struct{ method, path, cap string }{
+		{"GET", "/api/v1/admin/diy/modeling/config", "platform.diy.read"},
+		{"GET", "/api/v1/admin/diy/modeling/tasks/abc", "platform.diy.read"},
+		{"POST", "/api/v1/admin/diy/modeling/tasks", "platform.diy.write"},
+	} {
+		if !Allowed(route.method, route.path, []string{route.cap}) {
+			t.Fatal("missing modeling permission", route)
+		}
+	}
+}

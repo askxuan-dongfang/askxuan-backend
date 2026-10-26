@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -171,6 +172,9 @@ func (m *defaultMaterialModel) Insert(ctx context.Context, data *Material) (*Mat
 	normalizeMaterialPresentation(data)
 	if data.Status == "" {
 		data.Status = MaterialStatusOnShelf
+		if StudioAssets(data.RenderAssets) != nil {
+			data.Status = MaterialStatusOffShelf
+		}
 	}
 	err := m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
 		query := fmt.Sprintf(`INSERT INTO %s (name,spec,unit_price,unit,category,five_elements,material_type,shape,diameter_mm,color_hex,texture_key,finish,translucency,image,render_assets,stock,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, materialTable)
@@ -246,8 +250,13 @@ func (m *defaultMaterialModel) FindListByStatus(ctx context.Context, category, k
 func (m *defaultMaterialModel) Update(ctx context.Context, data *Material) error {
 	normalizeMaterialPresentation(data)
 	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
-		query := fmt.Sprintf(`UPDATE %s SET name=?,spec=?,unit_price=?,unit=?,category=?,five_elements=?,material_type=?,shape=?,diameter_mm=?,color_hex=?,texture_key=?,finish=?,translucency=?,image=?,render_assets=?,stock=? WHERE id=?`, materialTable)
-		if _, err := session.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.MaterialType, data.Shape, data.DiameterMm, data.ColorHex, data.TextureKey, data.Finish, data.Translucency, data.Image, data.RenderAssets, data.Stock, data.Id); err != nil {
+		var old string
+		if err := session.QueryRowCtx(ctx, &old, "SELECT COALESCE(render_assets,'') FROM material WHERE id=? FOR UPDATE", data.Id); err != nil {
+			return err
+		}
+		changed := StudioAssets(data.RenderAssets) != nil && !reflect.DeepEqual(StudioAssets(old), StudioAssets(data.RenderAssets))
+		query := fmt.Sprintf(`UPDATE %s SET name=?,spec=?,unit_price=?,unit=?,category=?,five_elements=?,material_type=?,shape=?,diameter_mm=?,color_hex=?,texture_key=?,finish=?,translucency=?,image=?,render_assets=?,stock=?,status=IF(?,'off_shelf',status) WHERE id=?`, materialTable)
+		if _, err := session.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.MaterialType, data.Shape, data.DiameterMm, data.ColorHex, data.TextureKey, data.Finish, data.Translucency, data.Image, data.RenderAssets, data.Stock, changed, data.Id); err != nil {
 			return err
 		}
 		_, err := session.ExecCtx(ctx, fmt.Sprintf(`UPDATE %s SET spec=?,price=?,stock=? WHERE material_id=?`, materialSkuTable), data.Spec, data.UnitPrice, data.Stock, data.Id)
@@ -267,9 +276,20 @@ func (m *defaultMaterialModel) Update(ctx context.Context, data *Material) error
 }
 
 func (m *defaultMaterialModel) UpdateStatus(ctx context.Context, id int64, status string) error {
-	query := fmt.Sprintf(`UPDATE %s SET status=? WHERE id=?`, materialTable)
-	_, err := m.conn.ExecCtx(ctx, query, status, id)
-	return err
+	return m.conn.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+		var raw string
+		if err := tx.QueryRowCtx(ctx, &raw, "SELECT COALESCE(render_assets,'') FROM material WHERE id=? FOR UPDATE", id); err != nil {
+			return err
+		}
+		if status == MaterialStatusOnShelf {
+			s := StudioAssets(raw)
+			if !ValidRenderAssets(raw) || (s != nil && (!s.PreviewConfirmed || (s.Source == "generated" && s.Model == nil))) {
+				return fmt.Errorf("material preview is not confirmed")
+			}
+		}
+		_, err := tx.ExecCtx(ctx, "UPDATE material SET status=? WHERE id=?", status, id)
+		return err
+	})
 }
 
 // ===== MaterialSkuModel 实现 =====

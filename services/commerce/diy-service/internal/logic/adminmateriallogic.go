@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/middleware"
 	"github.com/askxuan/diy-service/internal/model"
 	"github.com/askxuan/diy-service/internal/svc"
 	"github.com/askxuan/diy-service/internal/types"
@@ -57,6 +58,9 @@ func (l *AdminMaterialCreateLogic) Create(req *types.AdminMaterialCreateReq) (*t
 	if !model.ValidRenderAssets(req.RenderAssets) {
 		return nil, common.ErrParam
 	}
+	if err := validateStudioModel(l.ctx, l.svcCtx, model.StudioAssets(req.RenderAssets), false); err != nil {
+		return nil, err
+	}
 	m, err := l.svcCtx.MaterialModel.Insert(l.ctx, &model.Material{
 		Name:         req.Name,
 		Spec:         req.Spec,
@@ -96,7 +100,17 @@ func (l *AdminMaterialUpdateLogic) Update(req *types.AdminMaterialUpdateReq) (*t
 	if !model.ValidRenderAssets(req.RenderAssets) {
 		return nil, common.ErrParam
 	}
-	err := l.svcCtx.MaterialModel.Update(l.ctx, &model.Material{
+	old, err := l.svcCtx.MaterialModel.FindOne(l.ctx, req.Id)
+	if err != nil {
+		return nil, common.ErrParam
+	}
+	if model.StudioAssets(old.RenderAssets) != nil && model.StudioAssets(req.RenderAssets) == nil {
+		return nil, common.NewBizError(40021, "请保留材料建模配置")
+	}
+	if err := validateStudioModel(l.ctx, l.svcCtx, model.StudioAssets(req.RenderAssets), false); err != nil {
+		return nil, err
+	}
+	err = l.svcCtx.MaterialModel.Update(l.ctx, &model.Material{
 		Id:           req.Id,
 		Name:         req.Name,
 		Spec:         req.Spec,
@@ -141,6 +155,18 @@ func (l *AdminMaterialStatusLogic) Status(req *types.AdminMaterialStatusReq) (*t
 	if req.Status != model.MaterialStatusOnShelf && req.Status != model.MaterialStatusOffShelf {
 		return nil, common.ErrParam
 	}
+	if req.Status == model.MaterialStatusOnShelf {
+		current, err := l.svcCtx.MaterialModel.FindOne(l.ctx, req.Id)
+		if err != nil {
+			return nil, common.ErrParam
+		}
+		if !model.ValidRenderAssets(current.RenderAssets) {
+			return nil, common.ErrParam
+		}
+		if err = validateStudioModel(l.ctx, l.svcCtx, model.StudioAssets(current.RenderAssets), true); err != nil {
+			return nil, err
+		}
+	}
 	err := l.svcCtx.MaterialModel.UpdateStatus(l.ctx, req.Id, req.Status)
 	if err != nil {
 		l.Errorf("更新材料状态失败: %v", err)
@@ -155,6 +181,31 @@ func (l *AdminMaterialStatusLogic) Status(req *types.AdminMaterialStatusReq) (*t
 	}
 	t := toTypesMaterial(m)
 	return &t, nil
+}
+
+func validateStudioModel(ctx context.Context, s *svc.ServiceContext, studio *model.MaterialStudio, publishing bool) error {
+	if studio == nil {
+		return nil
+	}
+	if publishing && !studio.PreviewConfirmed {
+		return common.NewBizError(40021, "请先完成 3D 预览并确认挂点")
+	}
+	if studio.Source != "generated" {
+		return nil
+	}
+	if studio.Model == nil && !publishing {
+		return nil
+	}
+	if s.Modeling == nil {
+		return common.ErrDependencyUnavailable
+	}
+	super := false
+	for _, role := range middleware.RolesFromCtx(ctx) {
+		if role == "platform_super" {
+			super = true
+		}
+	}
+	return s.Modeling.ValidateModel(ctx, studio, middleware.UserIDFromCtx(ctx), super)
 }
 
 // AdminBlessingServiceListLogic 商城台加持服务列表

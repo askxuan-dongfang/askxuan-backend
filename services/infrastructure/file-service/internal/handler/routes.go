@@ -18,6 +18,7 @@ import (
 // RegisterHandlers 注册 file 服务路由
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
+	registerModelAssets(server, svcCtx)
 
 	server.AddRoutes([]rest.Route{
 		{

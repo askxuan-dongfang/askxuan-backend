@@ -18,9 +18,10 @@ type RabbitMQConf struct {
 // Config diy 服务配置
 type Config struct {
 	rest.RestConf
-	AuthSecret string
-	DataSource string // MySQL 数据源
-	Redis      redis.RedisConf
-	RabbitMQ   RabbitMQConf
-	DiyRpc     zrpc.RpcServerConf // gRPC server（供 master/temple 服务通过 zrpc 调用查询 blessing_task）
+	ModelingFileURL string `json:",optional"`
+	AuthSecret      string
+	DataSource      string // MySQL 数据源
+	Redis           redis.RedisConf
+	RabbitMQ        RabbitMQConf
+	DiyRpc          zrpc.RpcServerConf // gRPC server（供 master/temple 服务通过 zrpc 调用查询 blessing_task）
 }

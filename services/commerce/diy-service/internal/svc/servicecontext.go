@@ -3,6 +3,7 @@ package svc
 import (
 	"github.com/askxuan/diy-service/internal/config"
 	"github.com/askxuan/diy-service/internal/model"
+	"github.com/askxuan/diy-service/internal/modeling"
 	"github.com/askxuan/diy-service/internal/mq"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -11,6 +12,7 @@ import (
 
 // ServiceContext diy 服务依赖容器
 type ServiceContext struct {
+	Modeling            *modeling.Manager
 	Config              config.Config
 	DB                  sqlx.SqlConn
 	Redis               *redis.Redis
@@ -39,6 +41,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		rds,
 	)
 	return &ServiceContext{
+		Modeling:            modeling.New(db, c.AuthSecret, c.ModelingFileURL),
 		Config:              c,
 		DB:                  db,
 		Redis:               rds,

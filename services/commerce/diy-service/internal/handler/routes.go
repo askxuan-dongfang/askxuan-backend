@@ -19,6 +19,7 @@ import (
 func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	server.Use(middleware.CorsFunc)
 	registerCreatorRewards(server, svcCtx)
+	registerModeling(server, svcCtx)
 
 	auth := &middleware.AuthConfig{Secret: svcCtx.Config.AuthSecret}
 	customer := &middleware.AdminAuthConfig{AllowedRoles: []string{"customer"}}
@@ -54,11 +55,11 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPut, Path: "/api/v1/admin/diy/orders/:id/review", Handler: adminDiyOrderReviewHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/diy/orders/:id/make-complete", Handler: adminDiyOrderMakeCompleteHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/admin/diy/orders/:id/ship", Handler: adminDiyOrderShipHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/api/v1/admin/diy/materials", Handler: adminMaterialListHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/api/v1/admin/diy/materials/:id", Handler: adminMaterialDetailHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/api/v1/admin/diy/materials", Handler: adminMaterialCreateHandler(svcCtx)},
-		{Method: http.MethodPut, Path: "/api/v1/admin/diy/materials/:id", Handler: adminMaterialUpdateHandler(svcCtx)},
-		{Method: http.MethodPut, Path: "/api/v1/admin/diy/materials/:id/status", Handler: adminMaterialStatusHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/api/v1/admin/diy/materials", Handler: auth.AuthFunc(adminDesign.AdminAuthFunc(adminMaterialListHandler(svcCtx)))},
+		{Method: http.MethodGet, Path: "/api/v1/admin/diy/materials/:id", Handler: auth.AuthFunc(adminDesign.AdminAuthFunc(adminMaterialDetailHandler(svcCtx)))},
+		{Method: http.MethodPost, Path: "/api/v1/admin/diy/materials", Handler: auth.AuthFunc(adminDesign.AdminAuthFunc(adminMaterialCreateHandler(svcCtx)))},
+		{Method: http.MethodPut, Path: "/api/v1/admin/diy/materials/:id", Handler: auth.AuthFunc(adminDesign.AdminAuthFunc(adminMaterialUpdateHandler(svcCtx)))},
+		{Method: http.MethodPut, Path: "/api/v1/admin/diy/materials/:id/status", Handler: auth.AuthFunc(adminDesign.AdminAuthFunc(adminMaterialStatusHandler(svcCtx)))},
 		{Method: http.MethodGet, Path: "/api/v1/admin/diy/blessing-services", Handler: adminBlessingServiceListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/admin/diy/blessing-services/:id", Handler: adminBlessingServiceDetailHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/admin/diy/blessing-services", Handler: adminBlessingServiceCreateHandler(svcCtx)},

@@ -34,7 +34,12 @@ func main() {
 		panic(err)
 	}
 
+	logEnabled := c.Middlewares.Log
+	c.Middlewares.Log = false
 	server := rest.MustNewServer(c.RestConf)
+	if logEnabled {
+		server.Use(handler.SafeModelingLog(c.Verbose))
+	}
 	defer server.Stop()
 
 	svcCtx := svc.NewServiceContext(c)
@@ -49,6 +54,7 @@ func main() {
 	defer cancel()
 	startConsumer(ctx, svcCtx)
 	model.StartCreatorRewards(ctx, svcCtx.DB)
+	svcCtx.Modeling.Start(ctx)
 	mq.StartOutbox(ctx, svcCtx.DB, svcCtx.MqProducer)
 
 	// 优雅退出

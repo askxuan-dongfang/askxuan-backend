@@ -79,7 +79,7 @@ type (
     }
 
     Material {
-        RenderAssets string `json:"renderAssets,optional"` // JSON: beadImageUrl/imageCrop/albedoMapUrl/normalMapUrl/roughnessMapUrl/source/attribution
+        RenderAssets string `json:"renderAssets,optional"` // JSON: beadImageUrl/imageCrop/albedoMapUrl/normalMapUrl/roughnessMapUrl/source/attribution/studio v1
         Id           int64   `json:"id"`
         Name         string  `json:"name"`
         Spec         string  `json:"spec"`
@@ -340,7 +340,7 @@ type (
     }
 
     AdminMaterialCreateReq {
-        RenderAssets string `json:"renderAssets,optional"` // JSON: beadImageUrl/imageCrop/albedoMapUrl/normalMapUrl/roughnessMapUrl/source/attribution
+        RenderAssets string `json:"renderAssets,optional"` // JSON: beadImageUrl/imageCrop/albedoMapUrl/normalMapUrl/roughnessMapUrl/source/attribution/studio v1
         Name         string  `json:"name"`
         Spec         string  `json:"spec"`
         UnitPrice    float64 `json:"unitPrice"`
@@ -363,7 +363,7 @@ type (
     }
 
     AdminMaterialUpdateReq {
-        RenderAssets string `json:"renderAssets,optional"` // JSON: beadImageUrl/imageCrop/albedoMapUrl/normalMapUrl/roughnessMapUrl/source/attribution
+        RenderAssets string `json:"renderAssets,optional"` // JSON: beadImageUrl/imageCrop/albedoMapUrl/normalMapUrl/roughnessMapUrl/source/attribution/studio v1
         Id           int64   `path:"id"`
         Name         string  `json:"name"`
         Spec         string  `json:"spec"`
