@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/askxuan/ai-service/internal/agent"
@@ -14,6 +15,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -25,10 +27,17 @@ func reportTestContext(t *testing.T) *svc.ServiceContext {
 		t.Skip("isolated AI_REPORT_TEST_DSN not set")
 	}
 	db := sqlx.NewMysql(dsn)
+	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		content := "## 梦境线索\n" + strings.Repeat("这是隔离数据库验收内容，不代表真实模型质量。", 20) + "\n## 意象整理\n| 意象 | 解释 |\n| --- | --- |\n| 道路 | 个人联想 |\n## 行动建议\n记录与复盘。"
 		raw, _ := json.Marshal(reportBody{Summary: strings.Repeat("依据梦境描述整理线索。", 6), Content: content})
-		event, _ := json.Marshal(map[string]any{"id": "fixture", "object": "chat.completion.chunk", "choices": []any{map[string]any{"index": 0, "delta": map[string]any{"role": "assistant", "content": string(raw)}, "finish_reason": "stop"}}})
+		delta := map[string]any{"role": "assistant", "content": string(raw)}
+		reason := "stop"
+		if calls.Add(1) == 1 {
+			reason = "tool_calls"
+			delta = map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "read_1", "type": "function", "function": map[string]any{"name": "read_report", "arguments": "{}"}}}}
+		}
+		event, _ := json.Marshal(map[string]any{"id": "fixture", "object": "chat.completion.chunk", "model": "fixture", "choices": []any{map[string]any{"index": 0, "delta": delta, "finish_reason": reason}}})
 		w.Header().Set("Content-Type", "text/event-stream")
 		fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", event)
 	}))
@@ -71,6 +80,9 @@ func TestMySQLReportGenerate(t *testing.T) {
 	if _, e = ReportConversation(ctx, s, "9501", r.ID); e == nil {
 		t.Fatal("unpaid followup leaked report")
 	}
+	if _, e = s.DB.ExecCtx(ctx, `INSERT INTO ai_report(report_no,user_id,request_key,skill_code,title,version,question,inputs_json,chapters_json,price_cents,points_price,status,summary,content) VALUES('ARfixture-demo','9503','mysql-report-demo-case','dream','demo wallet fixture','1','fixture','{}','[]',990,0,'ready','fixture summary','fixture content')`); e != nil {
+		t.Fatal(e)
+	}
 	rows, e := ReportList(ctx, s, "9501", 1)
 	if e != nil || len(rows) != 1 || rows[0].Content != "" {
 		t.Fatalf("list %v %v", rows, e)
@@ -79,11 +91,17 @@ func TestMySQLReportGenerate(t *testing.T) {
 func TestMySQLReportReadPaid(t *testing.T) {
 	s := reportTestContext(t)
 	ctx := context.Background()
-	var id int64
-	if e := s.DB.QueryRowCtx(ctx, &id, `SELECT id FROM ai_report WHERE user_id='9501' AND request_key='mysql-report-case'`); e != nil {
+	var demoID int64
+	if e := s.DB.QueryRowCtx(ctx, &demoID, `SELECT id FROM ai_report WHERE report_no='ARfixture-demo'`); e != nil {
 		t.Fatal(e)
 	}
-	if _, e := s.DB.ExecCtx(ctx, `UPDATE ai_report SET points_paid=1 WHERE id=? AND user_id='9501'`, id); e != nil {
+	demo, e := ReportGet(ctx, s, "9503", demoID)
+	if e != nil || !demo.Unlocked || demo.Content == "" {
+		t.Fatal("funded demo denied", e)
+	}
+
+	var id int64
+	if e := s.DB.QueryRowCtx(ctx, &id, `SELECT id FROM ai_report WHERE user_id='9501' AND request_key='mysql-report-case'`); e != nil {
 		t.Fatal(e)
 	}
 	r, e := ReportGet(ctx, s, "9501", id)
@@ -153,4 +171,99 @@ func TestMySQLReportReadPaid(t *testing.T) {
 	if e != nil || !r.Unlocked || r.Content == "" {
 		t.Fatal("purchased report lost")
 	}
+}
+
+func TestMySQLReportReadRefunded(t *testing.T) {
+	s := reportTestContext(t)
+	ctx := context.Background()
+	var id int64
+	if e := s.DB.QueryRowCtx(ctx, &id, `SELECT id FROM ai_report WHERE user_id='9501' AND request_key='mysql-report-case'`); e != nil {
+		t.Fatal(e)
+	}
+	r, e := ReportGet(ctx, s, "9501", id)
+	if e != nil || r.Unlocked || r.Content != "" || r.Document != nil {
+		t.Fatal("refund retained content", e)
+	}
+	if _, e = ReportConversation(ctx, s, "9501", id); e == nil {
+		t.Fatal("refund retained followup access")
+	}
+	if e = s.DB.QueryRowCtx(ctx, &id, `SELECT id FROM ai_report WHERE report_no='ARfixture-demo'`); e != nil {
+		t.Fatal(e)
+	}
+	r, e = ReportGet(ctx, s, "9503", id)
+	if e != nil || r.Unlocked || r.Content != "" || r.Document != nil {
+		t.Fatal("demo refund retained access", e)
+	}
+}
+
+func TestMySQLReportEntitlementMatrix(t *testing.T) {
+	s := reportTestContext(t)
+	ctx := context.Background()
+	dsn := os.Getenv("ROOT_TEST_DSN")
+	if dsn == "" {
+		t.Skip("isolated root fixture DSN missing")
+	}
+	db, e := sql.Open("mysql", dsn)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.Close()
+	exec := func(q string, args ...any) sql.Result {
+		t.Helper()
+		r, e := db.ExecContext(ctx, q, args...)
+		if e != nil {
+			t.Fatal(e)
+		}
+		return r
+	}
+	cases := []struct {
+		name, channel, refund    string
+		price, paid              int64
+		growth, ledger, unlocked bool
+	}{
+		{"discount", "balance", "", 990, 800, true, false, true},
+		{"unproven-discount", "balance", "", 990, 800, false, false, false},
+		{"pending", "balance", "pending", 990, 990, false, false, false},
+		{"processing", "balance", "processing", 990, 990, false, false, false},
+		{"success", "balance", "success", 990, 990, false, false, false},
+		{"failed-refund", "balance", "failed", 990, 990, false, false, true},
+		{"free-mock", "mock", "", 990, 990, false, false, false},
+		{"unfunded-demo", "demo_balance", "", 990, 990, false, false, false},
+		{"funded-demo", "demo_balance", "", 990, 990, false, true, true},
+		{"historical-wechat", "wechat", "", 990, 990, false, false, true},
+	}
+	for i, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			no := fmt.Sprintf("ARmatrix-%d", i)
+			payno := fmt.Sprintf("Pmatrix-%d", i)
+			id, _ := exec(`INSERT INTO askxuan_ai.ai_report(report_no,user_id,request_key,skill_code,title,version,question,inputs_json,chapters_json,price_cents,points_price,status,summary,content) VALUES(?,'matrix-owner',?,'dream','matrix','1','fixture','{}','[]',?,0,'ready','summary','private fixture')`, no, no, c.price).LastInsertId()
+			pid, _ := exec(`INSERT INTO askxuan_payment.payment(payment_no,idempotency_key,user_id,order_type,order_no,amount,channel,status,trade_no) VALUES(?,?,'matrix-owner','ai_report',?,?/100,?,'success','fixture')`, payno, "ai_report:"+no, no, c.paid, c.channel).LastInsertId()
+			if c.growth {
+				exec(`INSERT INTO askxuan_payment.growth_transaction(payment_id,user_id,order_type,order_no,gross_cents,paid_cents,growth_base_cents,next_check_at,created_at) VALUES(?,'matrix-owner','ai_report',?,?,?,0,0,0)`, pid, no, c.price, c.paid)
+			}
+			if c.ledger {
+				exec(`INSERT INTO askxuan_payment.demo_wallet_ledger(user_id,event_key,kind,reference_no,available_delta,held_delta,available_after,held_after) VALUES('matrix-owner',?,'payment',?, ?,0,0,0)`, "pay:"+payno, payno, -c.paid)
+			}
+			if c.refund != "" {
+				exec(`INSERT INTO askxuan_payment.refund(refund_no,payment_id,amount,reason,status) VALUES(?,?,?/100,'fixture',?)`, "R"+payno, pid, c.paid, c.refund)
+			}
+			got, e := ReportGet(ctx, s, "matrix-owner", id)
+			if e != nil || got.Unlocked != c.unlocked || ((got.Content != "") != c.unlocked) {
+				t.Fatalf("unlocked=%v want=%v err=%v", got, c.unlocked, e)
+			}
+			if !c.unlocked {
+				if _, e = ReportConversation(ctx, s, "matrix-owner", id); e == nil {
+					t.Fatal("locked followup allowed")
+				}
+			}
+		})
+	}
+	// A legacy points marker alone no longer grants access.
+	id, _ := exec(`INSERT INTO askxuan_ai.ai_report(report_no,user_id,request_key,skill_code,title,version,question,inputs_json,chapters_json,price_cents,points_price,status,summary,content,points_paid) VALUES('ARmatrix-points','matrix-owner','matrix-points','dream','matrix','1','fixture','{}','[]',990,10,'ready','summary','private',1)`).LastInsertId()
+	got, e := ReportGet(ctx, s, "matrix-owner", id)
+	if e != nil || got.Unlocked || got.Content != "" || got.PointsPrice != 0 {
+		t.Fatal("points entitlement retained", e)
+	}
+	// Remove this non-retirement fixture before the approved cleanup count test.
+	exec(`DELETE FROM askxuan_ai.ai_report WHERE id=?`, id)
 }

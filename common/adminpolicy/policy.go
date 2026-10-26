@@ -53,6 +53,8 @@ type Route struct{ Method, Template, Permission string }
 
 // This static allowlist is intentionally reviewed with API additions; a prefix alone never grants new APIs.
 var Routes = []Route{
+	{"GET", "/api/v1/ai/admin/products", "super.ai"},
+	{"PUT", "/api/v1/ai/admin/products/:code", "super.ai"},
 	{"GET", "/api/v1/admin/auth/roles/:id/permissions", "super.security"},
 	{"PUT", "/api/v1/admin/auth/roles/:id/permissions", "super.security"},
 	{"PUT", "/api/v1/admin/orders/returns/:id/receive", "platform.orders.write"},

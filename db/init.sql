@@ -2441,7 +2441,7 @@ SET NAMES utf8mb4;
 -- Report prices are initial configurable test prices; publish after operations review.
 CREATE TABLE IF NOT EXISTS askxuan_ai.ai_report_product (
  code VARCHAR(32) PRIMARY KEY, title VARCHAR(80) NOT NULL, subtitle VARCHAR(240) NOT NULL,
- price_cents BIGINT NOT NULL DEFAULT 990, points_price BIGINT NOT NULL DEFAULT 10,
+ price_cents BIGINT NOT NULL DEFAULT 990, points_price BIGINT NOT NULL DEFAULT 0, price_revision BIGINT NOT NULL DEFAULT 1,
  chapters_json JSON NOT NULL, version VARCHAR(20) NOT NULL DEFAULT '1.0', enabled TINYINT NOT NULL DEFAULT 1
 );
 CREATE TABLE IF NOT EXISTS askxuan_ai.ai_report (

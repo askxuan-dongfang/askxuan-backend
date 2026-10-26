@@ -58,6 +58,21 @@ type Report struct {
 
 const reportCols = `document_json,generation_stage,id,report_no,user_id,skill_code,title,version,question,inputs_json,chapters_json,price_cents,points_price,status,summary,content,error_message,points_paid,created_at`
 
+// Only settled cash or a funded isolated demo-wallet payment unlocks content.
+// A refund in progress or completed
+// revokes access; failed refunds do not. Growth discounts use their frozen gross
+// and paid snapshot rather than comparing discounted cash with the list price.
+const reportCashEntitlementSQL = `SELECT COUNT(*) FROM askxuan_payment.payment p
+ WHERE p.order_type='ai_report' AND p.order_no=? AND p.user_id=? AND p.status='success'
+ AND (p.channel IN ('balance','wechat','alipay') OR (p.channel='demo_balance' AND EXISTS (
+ SELECT 1 FROM askxuan_payment.demo_wallet_ledger d WHERE d.user_id=p.user_id AND d.event_key=CONCAT('pay:',p.payment_no)
+ AND d.reference_no=p.payment_no AND d.kind='payment' AND d.available_delta=-CAST(ROUND(p.amount*100) AS SIGNED)))) AND p.amount>0
+ AND NOT EXISTS (SELECT 1 FROM askxuan_payment.refund r WHERE r.payment_id=p.id AND r.status IN ('pending','processing','success'))
+ AND (CAST(ROUND(p.amount*100) AS SIGNED)=? OR EXISTS (
+ SELECT 1 FROM askxuan_payment.growth_transaction g WHERE g.payment_id=p.id AND g.user_id=p.user_id
+ AND g.order_type=p.order_type AND g.order_no=p.order_no AND g.gross_cents=?
+ AND g.paid_cents=CAST(ROUND(p.amount*100) AS SIGNED) AND g.refund_cents=0))`
+
 var reportSelectCols = strings.Replace(reportCols, "document_json", "COALESCE(document_json,'') document_json", 1)
 
 type ReportRequest struct {
@@ -88,6 +103,7 @@ func ReportProducts(ctx context.Context, s *svc.ServiceContext) ([]ReportProduct
 		list = filtered
 	}
 	for i := range list {
+		list[i].PointsPrice = 0 // Legacy response key only; AI has no points price.
 		_ = json.Unmarshal([]byte(list[i].ChaptersJSON), &list[i].Chapters)
 		cfg, e := agent.ParseToolConfig(list[i].ToolConfig)
 		list[i].Ready = e == nil
@@ -146,11 +162,13 @@ func ReportGet(ctx context.Context, s *svc.ServiceContext, user string, id int64
 	}
 	// A refund revokes cash access immediately. Client claims never grant access.
 	var paid int64
-	if err := s.DB.QueryRowCtx(ctx, &paid, `SELECT COUNT(*) FROM askxuan_payment.payment WHERE order_type='ai_report' AND order_no=? AND user_id=? AND status='success' AND CAST(ROUND(amount*100) AS SIGNED)=?`, r.ReportNo, user, r.PriceCents); err != nil {
+	if err := s.DB.QueryRowCtx(ctx, &paid, reportCashEntitlementSQL, r.ReportNo, user, r.PriceCents, r.PriceCents); err != nil {
 		return nil, err
 	}
-	r.Unlocked = r.PointsPaid == 1 || paid > 0
+	r.Unlocked = r.Status == "ready" && paid > 0
+	r.PointsPrice = 0
 	_ = json.Unmarshal([]byte(r.ChaptersJSON), &r.Chapters)
+	r.Document = nil // SQL reflection can allocate nested pointers even for db:"-" fields.
 	if !r.Unlocked {
 		r.Content = ""
 	} else if r.DocumentJSON != "" {
@@ -174,6 +192,12 @@ func ReportList(ctx context.Context, s *svc.ServiceContext, user string, page in
 	// List never contains paid content or personal structured inputs.
 	err := s.DB.QueryRowsPartialCtx(ctx, &rows, `SELECT id,report_no,user_id,skill_code,title,version,question,'{}' inputs_json,chapters_json,price_cents,points_price,status,summary,'' content,error_message,points_paid,created_at FROM ai_report WHERE user_id=? ORDER BY id DESC LIMIT 20 OFFSET ?`, user, (page-1)*20)
 	for i := range rows {
+		rows[i].PointsPrice = 0
+		var paid int64
+		if err == nil {
+			err = s.DB.QueryRowCtx(ctx, &paid, reportCashEntitlementSQL, rows[i].ReportNo, user, rows[i].PriceCents, rows[i].PriceCents)
+		}
+		rows[i].Unlocked = rows[i].Status == "ready" && paid > 0
 		_ = json.Unmarshal([]byte(rows[i].ChaptersJSON), &rows[i].Chapters)
 	}
 	return rows, err

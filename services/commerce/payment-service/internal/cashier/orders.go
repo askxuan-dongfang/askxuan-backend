@@ -92,10 +92,41 @@ func readOrder(ctx context.Context, q querySession, user string, r OrderRequest,
 	}
 	return o, nil
 }
+
+// aiReportPaid validates the frozen purchase instead of requoting a paid report.
+// Demo-wallet history is valid only when its debit ledger proves funds moved.
+func aiReportPaid(ctx context.Context, q querySession, p *model.Payment, gross int64) (bool, error) {
+	var n int64
+	err := q.QueryRowCtx(ctx, &n, `SELECT COUNT(*) FROM payment p WHERE p.id=? AND p.status='success' AND p.amount>0
+ AND (p.channel IN ('balance','wechat','alipay') OR (p.channel='demo_balance' AND EXISTS (
+ SELECT 1 FROM demo_wallet_ledger d WHERE d.user_id=p.user_id AND d.event_key=CONCAT('pay:',p.payment_no)
+ AND d.reference_no=p.payment_no AND d.kind='payment' AND d.available_delta=-CAST(ROUND(p.amount*100) AS SIGNED))))
+ AND NOT EXISTS (SELECT 1 FROM refund r WHERE r.payment_id=p.id AND r.status IN ('pending','processing','success'))
+ AND (CAST(ROUND(p.amount*100) AS SIGNED)=? OR EXISTS (SELECT 1 FROM growth_transaction g
+ WHERE g.payment_id=p.id AND g.user_id=p.user_id AND g.order_type=p.order_type AND g.order_no=p.order_no
+ AND g.gross_cents=? AND g.paid_cents=CAST(ROUND(p.amount*100) AS SIGNED) AND g.refund_cents=0))`, p.Id, gross, gross)
+	return n == 1, err
+}
 func (s *Store) Quote(ctx context.Context, user string, r OrderRequest) (Quote, error) {
 	o, e := readOrder(ctx, s.DB, user, r, false)
 	if e != nil {
 		return Quote{}, e
+	}
+	if r.OrderType == "ai_report" {
+		p, err := model.NewPaymentModel(s.DB).FindByIdempotencyKey(ctx, r.OrderType+":"+r.OrderNo)
+		if err == nil {
+			valid, err := aiReportPaid(ctx, s.DB, p, o.Cents)
+			if err != nil {
+				return Quote{}, err
+			}
+			if p.UserId != user || !valid {
+				return Quote{}, balance.ErrConflict
+			}
+			return Quote{Cents: int64(p.Amount*100 + 0.5), Payment: p, BalanceChannel: p.Channel}, nil
+		}
+		if !errors.Is(err, sqlx.ErrNotFound) {
+			return Quote{}, err
+		}
 	}
 	if o.Payable != 1 {
 		p, e := model.NewPaymentModel(s.DB).FindByIdempotencyKey(ctx, r.OrderType+":"+r.OrderNo)
@@ -110,10 +141,13 @@ func (s *Store) Quote(ctx context.Context, user string, r OrderRequest) (Quote, 
 		return Quote{Mode: "demo", BalanceChannel: "demo_balance", Cents: o.Cents, Available: a.Available, BalanceEnabled: s.Mock, Experience: common.IsExperienceOrder(r.OrderNo)}, e
 	}
 	experience := common.IsExperienceOrder(r.OrderNo)
-	return Quote{Mode: "cash", BalanceChannel: "balance", Cents: o.Cents, Available: a.Available, BalanceEnabled: s.Enabled && !experience, MockEnabled: s.Mock, Experience: experience}, e
+	return Quote{Mode: "cash", BalanceChannel: "balance", Cents: o.Cents, Available: a.Available, BalanceEnabled: s.Enabled && !experience, MockEnabled: s.Mock && r.OrderType != "ai_report", Experience: experience}, e
 }
 func (s *Store) Pay(ctx context.Context, user string, r OrderRequest) (*model.Payment, error) {
-	if (r.Channel != "balance" || !s.Enabled || s.DemoEnabled) && (r.Channel != "mock" || !s.Mock || s.DemoEnabled) && (r.Channel != "demo_balance" || !s.DemoEnabled || !s.Mock) {
+	if r.OrderType == "ai_report" && r.Channel != "balance" && r.Channel != "demo_balance" {
+		return nil, balance.ErrUnavailable
+	}
+	if r.OrderType != "ai_report" && (r.Channel != "balance" || !s.Enabled || s.DemoEnabled) && (r.Channel != "mock" || !s.Mock || s.DemoEnabled) && (r.Channel != "demo_balance" || !s.DemoEnabled || !s.Mock) {
 		return nil, balance.ErrUnavailable
 	}
 	if common.IsExperienceOrder(r.OrderNo) && r.Channel == "balance" {
@@ -121,7 +155,7 @@ func (s *Store) Pay(ctx context.Context, user string, r OrderRequest) (*model.Pa
 	}
 	var p model.Payment
 	e := s.DB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
-		// Lock order first, matching AI points and business cancellation lock order.
+		// Lock the business order before payment and wallet rows.
 		o, e := readOrder(ctx, tx, user, r, true)
 		if e != nil {
 			return e
@@ -131,10 +165,22 @@ func (s *Store) Pay(ctx context.Context, user string, r OrderRequest) (*model.Pa
 			if p.UserId != user || int64(p.Amount*100+0.5) != r.ExpectedCents || p.Channel != r.Channel || p.Status != "success" {
 				return balance.ErrConflict
 			}
+			if r.OrderType == "ai_report" {
+				valid, err := aiReportPaid(ctx, tx, &p, o.Cents)
+				if err != nil {
+					return err
+				}
+				if !valid {
+					return balance.ErrConflict
+				}
+			}
 			return nil
 		}
 		if !errors.Is(e, sqlx.ErrNotFound) {
 			return e
+		}
+		if r.OrderType == "ai_report" && ((!s.DemoEnabled && (r.Channel != "balance" || !s.Enabled)) || (s.DemoEnabled && (r.Channel != "demo_balance" || !s.Mock))) {
+			return balance.ErrUnavailable
 		}
 		if o.Payable != 1 {
 			return balance.ErrConflict

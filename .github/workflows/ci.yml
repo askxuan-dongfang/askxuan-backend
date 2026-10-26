@@ -198,6 +198,17 @@ jobs:
           cache-dependency-path: '**/go.sum'
       - name: Verify material modeling recovery, isolation and publication gates
         run: bash scripts/test-diy-modeling.sh
+  ai-report-wallet-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.work
+          cache-dependency-path: '**/go.sum'
+      - name: Verify report wallet, pricing, refunds and guarded cleanup rollback
+        run: bash scripts/test-ai-topic-reports.sh
   account-system-mysql:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -234,7 +245,7 @@ jobs:
       - run: go test ./internal/model -run 'TestParentTempleNewBusinessGateMySQL' -count=1 -v
         working-directory: services/content/master-service
   deploy:
-    needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql, diy-publication-mysql, diy-modeling-mysql, account-system-mysql]
+    needs: [build, test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql, diy-publication-mysql, diy-modeling-mysql, ai-report-wallet-mysql, account-system-mysql]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ECS_DEPLOY_ENABLED == 'true'
     environment: production
     runs-on: ubuntu-latest
@@ -252,7 +263,7 @@ jobs:
         run: bash scripts/ci/publish.sh release.tgz
   recover-package:
     if: github.event_name == 'workflow_dispatch' && inputs.recovery == true && github.ref == 'refs/heads/main' && vars.ECS_DEPLOY_ENABLED == 'true'
-    needs: [test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql, diy-publication-mysql, diy-modeling-mysql, account-system-mysql]
+    needs: [test, vet, wallet-mysql, review-mysql, cash-wallet-mysql, growth-mysql, directory-mysql, diy-publication-mysql, diy-modeling-mysql, ai-report-wallet-mysql, account-system-mysql]
     environment: production
     permissions:
       contents: write
@@ -267,6 +278,11 @@ jobs:
           go-version-file: go.work
           cache-dependency-path: '**/go.sum'
       - run: python3 scripts/ci/release.py backend
+      - name: Build reviewed AI points retirement operator tool
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags="-s -w -X main.sourceRevision=$GITHUB_SHA" -o retire-ai-report-points-linux-amd64 ./services/commerce/payment-service/cmd/retire-ai-report-points
+          sha256sum retire-ai-report-points-linux-amd64 > retire-ai-report-points-linux-amd64.sha256
+          cat retire-ai-report-points-linux-amd64.sha256
       - name: Retain verified package for operator relay
         env:
           GH_TOKEN: ${{ github.token }}
@@ -276,6 +292,6 @@ jobs:
           test "$PRIVATE_REPOSITORY" = true
           tag="ci-backend-relay-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           sha256sum release.tgz > release.sha256
-          gh release create "$tag" release.tgz release.sha256 --draft --target "$GITHUB_SHA" \
+          gh release create "$tag" release.tgz release.sha256 retire-ai-report-points-linux-amd64 retire-ai-report-points-linux-amd64.sha256 --draft --target "$GITHUB_SHA" \
             --title "Verified backend package $GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT" \
             --notes "Private operator relay after all backend test jobs. Apply the reviewed additive schema migration and receiver contract baseline first, then verify source and manifest hashes and publish through the existing ECS receiver."
