@@ -51,7 +51,7 @@ func TestSolarInputValidationAndClockCompatibility(t *testing.T) {
 		for _, f := range schema.Fields {
 			found[f.Key] = f
 		}
-		if found["timeBasis"].DefaultValue != "true_solar" || found["longitude"].Min == nil {
+		if found["timeBasis"].DefaultValue != "true_solar" || found["longitude"].Key != "" || found["partnerLongitude"].Key != "" {
 			t.Fatalf("%s missing time guidance", code)
 		}
 		if code == "marriage" && found["partnerBirthplace"].Key == "" {

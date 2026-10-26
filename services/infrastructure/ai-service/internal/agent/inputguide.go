@@ -13,6 +13,18 @@ func GuidedInputSchema(code, raw string) string {
 		return raw
 	}
 	fields, _ := schema["fields"].([]interface{})
+	// Location is the user input. Coordinates are resolved by the server; older
+	// clients may still send them through the guarded compatibility path.
+	if len(solarInputFields(code)) > 0 {
+		visible := make([]interface{}, 0, len(fields))
+		for _, value := range fields {
+			if f, ok := value.(map[string]interface{}); ok && (f["key"] == "longitude" || f["key"] == "partnerLongitude") {
+				continue
+			}
+			visible = append(visible, value)
+		}
+		fields = visible
+	}
 	for _, field := range solarInputFields(code) {
 		encoded, _ := json.Marshal(field)
 		var value map[string]interface{}
@@ -142,15 +154,13 @@ func solarInputFields(code string) []Field {
 	if !birth && !oneOf(code, "qimen", "liuyao", "meihua", "daliuren", "taiyi") {
 		return nil
 	}
-	lo, hi := -180.0, 180.0
 	place, label := "location", "起局地点"
 	if birth {
 		place, label = "birthplace", "出生地"
 	}
 	fields := []Field{
 		{Key: "timeBasis", Label: "排盘时间口径", Type: "select", DefaultValue: "true_solar", Options: []Option{{Value: "true_solar", Label: "真太阳时（按地点校正）"}, {Value: "beijing", Label: "北京时间（不校正）"}}, HelpText: "时间仍填写北京时间。真太阳时由地点经度和当日均时差计算，跨时辰或跨日会同步更新排盘。"},
-		{Key: place, Label: label, Type: "text", HelpText: "填写城市及区县；用于解析经度。地点不明确时请核对，不能猜测。"},
-		{Key: "longitude", Label: "经度（选填）", Type: "number", Min: &lo, Max: &hi, HelpText: "已确认经度可直接填写；东经为正、西经为负。优先使用此值，勿填写纬度。"},
+		{Key: place, Label: label, Type: "text", HelpText: "填写国家、省市及区县，例如：中国浙江省杭州市西湖区。系统采用该地区代表坐标自动换算，无需填写经纬度或详细地址；至少明确到城市。"},
 	}
 	if code == "fortune" {
 		for i := range fields {

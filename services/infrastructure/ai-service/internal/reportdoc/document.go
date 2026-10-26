@@ -99,6 +99,16 @@ func (d *Document) Add(tool, raw string) {
 		}
 		d.Blocks = append(d.Blocks, block)
 	}
+	if place := obj(m["placeResolutionInfo"]); place["resolved"] == true && place["representative"] == true {
+		block := Block{Kind: "pairs", Title: "采用的地区坐标", Source: tool,
+			Note: "采用所填行政区或城市的代表坐标，非具体出生地址；时间仍按原始北京时间输入。"}
+		for _, field := range [][2]string{{"formattedAddress", "地区"}, {"level", "地区级别"}, {"usedLongitude", "经度"}, {"usedLatitude", "纬度"}, {"coordinateReference", "坐标系"}, {"attribution", "坐标来源"}, {"dataVersion", "数据版本"}} {
+			if value, ok := place[field[0]]; ok {
+				block.Items = append(block.Items, Item{Label: field[1], Value: scalar(value)})
+			}
+		}
+		d.Blocks = append(d.Blocks, block)
+	}
 	table := func(title string, fields []string, rows []any) {
 		if len(rows) == 0 {
 			return

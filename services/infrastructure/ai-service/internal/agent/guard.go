@@ -79,6 +79,24 @@ func (g *Guard) Validate(schemaJSON, content string, inputs map[string]interface
 			return "", fmt.Errorf("%w: schema", ErrInvalidInputs)
 		}
 	}
+	// Preserve already-open clients and stored drafts without showing coordinate
+	// fields in new forms. Apply the same numeric bounds and visibility rules.
+	declared := make(map[string]bool, len(schema.Fields))
+	for _, field := range schema.Fields {
+		declared[field.Key] = true
+	}
+	for _, field := range append([]Field(nil), schema.Fields...) {
+		key := ""
+		if field.Key == "timeBasis" {
+			key = "longitude"
+		} else if field.Key == "partnerTimeBasis" {
+			key = "partnerLongitude"
+		}
+		if key != "" && !declared[key] {
+			lo, hi := -180.0, 180.0
+			schema.Fields = append(schema.Fields, Field{Key: key, Type: "number", Min: &lo, Max: &hi, VisibleWhen: field.VisibleWhen})
+		}
+	}
 	known := make(map[string]Field, len(schema.Fields))
 	for _, field := range schema.Fields {
 		known[field.Key] = field
