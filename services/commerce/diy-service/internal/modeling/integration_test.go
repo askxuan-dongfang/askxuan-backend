@@ -167,6 +167,47 @@ func TestModelingMySQL(t *testing.T) {
 	if e != nil || material.Status != "off_shelf" {
 		t.Fatal("shape edit remained published", e)
 	}
+	// A client retaining previewConfirmed cannot change a published appearance
+	// without returning to draft. Pricing/stock-only operations stay published.
+	for _, change := range []struct {
+		name  string
+		apply func(*model.Material)
+	}{
+		{"color", func(v *model.Material) { v.ColorHex = "#102030" }},
+		{"texture", func(v *model.Material) { v.TextureKey = "fleck" }},
+		{"albedo", func(v *model.Material) {
+			asset, _ := json.Marshal(model.RenderAssets{Studio: &s, AlbedoMapURL: "https://files.example/albedo.png"})
+			v.RenderAssets = string(asset)
+		}},
+	} {
+		t.Run("appearance_"+change.name, func(t *testing.T) {
+			if err := mats.UpdateStatus(ctx, material.Id, "on_shelf"); err != nil {
+				t.Fatal(err)
+			}
+			change.apply(material)
+			if !model.StudioAssets(material.RenderAssets).PreviewConfirmed {
+				t.Fatal("fixture lost confirmation")
+			}
+			if err := mats.Update(ctx, material); err != nil {
+				t.Fatal(err)
+			}
+			current, err := mats.FindOne(ctx, material.Id)
+			if err != nil || current.Status != "off_shelf" {
+				t.Fatal("appearance edit remained published", err)
+			}
+		})
+	}
+	if e = mats.UpdateStatus(ctx, material.Id, "on_shelf"); e != nil {
+		t.Fatal(e)
+	}
+	material.UnitPrice, material.Stock = 2, 3
+	if e = mats.Update(ctx, material); e != nil {
+		t.Fatal(e)
+	}
+	current, e := mats.FindOne(ctx, material.Id)
+	if e != nil || current.Status != "on_shelf" || current.UnitPrice != 2 || current.Stock != 3 {
+		t.Fatal("price/stock update changed publication", e)
+	}
 	cfgJSON, _ := json.Marshal(cfg)
 	if bytes.Contains(cfgJSON, []byte("fixture-private-key")) {
 		t.Fatal("API returned key")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -250,11 +251,19 @@ func (m *defaultMaterialModel) FindListByStatus(ctx context.Context, category, k
 func (m *defaultMaterialModel) Update(ctx context.Context, data *Material) error {
 	normalizeMaterialPresentation(data)
 	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
-		var old string
-		if err := session.QueryRowCtx(ctx, &old, "SELECT COALESCE(render_assets,'') FROM material WHERE id=? FOR UPDATE", data.Id); err != nil {
+		var old Material
+		if err := session.QueryRowPartialCtx(ctx, &old, "SELECT category,five_elements,material_type,shape,diameter_mm,color_hex,texture_key,finish,translucency,image,COALESCE(render_assets,'') render_assets FROM material WHERE id=? FOR UPDATE", data.Id); err != nil {
 			return err
 		}
-		changed := StudioAssets(data.RenderAssets) != nil && !reflect.DeepEqual(StudioAssets(old), StudioAssets(data.RenderAssets))
+		var oldAssets, newAssets RenderAssets
+		_ = json.Unmarshal([]byte(old.RenderAssets), &oldAssets)
+		_ = json.Unmarshal([]byte(data.RenderAssets), &newAssets)
+		changed := newAssets.Studio != nil && (!reflect.DeepEqual(oldAssets, newAssets) ||
+			old.Category != data.Category || old.FiveElements != data.FiveElements ||
+			old.MaterialType != data.MaterialType || old.Shape != data.Shape ||
+			old.DiameterMm != data.DiameterMm || old.ColorHex != data.ColorHex ||
+			old.TextureKey != data.TextureKey || old.Finish != data.Finish ||
+			old.Translucency != data.Translucency || old.Image != data.Image)
 		query := fmt.Sprintf(`UPDATE %s SET name=?,spec=?,unit_price=?,unit=?,category=?,five_elements=?,material_type=?,shape=?,diameter_mm=?,color_hex=?,texture_key=?,finish=?,translucency=?,image=?,render_assets=?,stock=?,status=IF(?,'off_shelf',status) WHERE id=?`, materialTable)
 		if _, err := session.ExecCtx(ctx, query, data.Name, data.Spec, data.UnitPrice, data.Unit, data.Category, data.FiveElements, data.MaterialType, data.Shape, data.DiameterMm, data.ColorHex, data.TextureKey, data.Finish, data.Translucency, data.Image, data.RenderAssets, data.Stock, changed, data.Id); err != nil {
 			return err
