@@ -394,6 +394,7 @@ services:
       MCP_RATE_LIMIT_PER_MINUTE: "120"
       MCP_TRUST_PROXY: "false"
       MCP_REQUEST_LOG: "false"
+      AMAP_WEB_SERVICE_KEY: ${AMAP_WEB_SERVICE_KEY:-}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
       interval: 10s

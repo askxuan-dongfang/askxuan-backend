@@ -1,6 +1,9 @@
 package agent
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // GuidedInputSchema decorates the configured catalog, keeping its fields and
 // option values authoritative. Both clients consume this presentation metadata.
@@ -10,6 +13,22 @@ func GuidedInputSchema(code, raw string) string {
 		return raw
 	}
 	fields, _ := schema["fields"].([]interface{})
+	for _, field := range solarInputFields(code) {
+		encoded, _ := json.Marshal(field)
+		var value map[string]interface{}
+		_ = json.Unmarshal(encoded, &value)
+		replaced := false
+		for i, existing := range fields {
+			if f, ok := existing.(map[string]interface{}); ok && f["key"] == field.Key {
+				fields[i], replaced = value, true
+				break
+			}
+		}
+		if !replaced {
+			fields = append(fields, value)
+		}
+	}
+	schema["fields"] = fields
 	for _, value := range fields {
 		f, ok := value.(map[string]interface{})
 		if !ok {
@@ -30,7 +49,7 @@ func GuidedInputSchema(code, raw string) string {
 				f["visibleWhen"] = map[string]string{"key": "mode", "value": "matching"}
 			}
 		case "birthTime":
-			help = "填写出生记录中的时、分；不确定时不要随意猜测，可返回直接问事。"
+			help = "按北京时间（UTC+8）填写原始时、分，不要自行减经度时差；已知历史夏令钟表记录应先确认是否还原为标准时间。"
 		case "calendarType":
 			initial = "solar"
 			help = "先确认公历或农历。农历闰月暂请换算为公历后填写。"
@@ -115,4 +134,38 @@ func GuidedInputSchema(code, raw string) string {
 		return raw
 	}
 	return string(encoded)
+}
+
+// Both H5/native forms and the tool guard consume the same time/location fields.
+func solarInputFields(code string) []Field {
+	birth := oneOf(code, "bazi", "bazi_dayun", "ziwei", "ziwei_horoscope", "ziwei_flying_star", "marriage", "fortune")
+	if !birth && !oneOf(code, "qimen", "liuyao", "meihua", "daliuren", "taiyi") {
+		return nil
+	}
+	lo, hi := -180.0, 180.0
+	place, label := "location", "起局地点"
+	if birth {
+		place, label = "birthplace", "出生地"
+	}
+	fields := []Field{
+		{Key: "timeBasis", Label: "排盘时间口径", Type: "select", DefaultValue: "true_solar", Options: []Option{{Value: "true_solar", Label: "真太阳时（按地点校正）"}, {Value: "beijing", Label: "北京时间（不校正）"}}, HelpText: "时间仍填写北京时间。真太阳时由地点经度和当日均时差计算，跨时辰或跨日会同步更新排盘。"},
+		{Key: place, Label: label, Type: "text", HelpText: "填写城市及区县；用于解析经度。地点不明确时请核对，不能猜测。"},
+		{Key: "longitude", Label: "经度（选填）", Type: "number", Min: &lo, Max: &hi, HelpText: "已确认经度可直接填写；东经为正、西经为负。优先使用此值，勿填写纬度。"},
+	}
+	if code == "fortune" {
+		for i := range fields {
+			fields[i].VisibleWhen = &FieldCondition{Key: "fortuneMode", Value: "personal"}
+		}
+	}
+	if code == "marriage" {
+		for _, field := range append([]Field(nil), fields...) {
+			field.Key = "partner" + strings.ToUpper(field.Key[:1]) + field.Key[1:]
+			field.Label = "对方的" + field.Label
+			fields = append(fields, field)
+		}
+	}
+	if code == "ziwei" {
+		fields = append(fields, Field{Key: "targetDate", Label: "运限参考日期（选填）", Type: "date", HelpText: "留空以生成当天为起点，同时核对一年后的运限。"})
+	}
+	return fields
 }

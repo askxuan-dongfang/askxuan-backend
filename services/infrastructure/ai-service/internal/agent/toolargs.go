@@ -41,7 +41,7 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 			"gender": stringValue(inputs["gender"]), "birthYear": year, "birthMonth": month, "birthDay": day,
 			"birthHour": hour, "birthMinute": minute, "calendarType": defaultString(stringValue(inputs["calendarType"]), "solar"), "detailLevel": "full",
 		}
-		if skillCode != "bazi_dayun" && stringValue(inputs["birthplace"]) != "" {
+		if stringValue(inputs["birthplace"]) != "" {
 			args["birthPlace"] = stringValue(inputs["birthplace"])
 		}
 		if skillCode == "ziwei_horoscope" {
@@ -83,7 +83,7 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 		}
 		args = map[string]interface{}{
 			"year": eventTime.Year(), "month": int(eventTime.Month()), "day": eventTime.Day(), "hour": eventTime.Hour(), "minute": eventTime.Minute(),
-			"timezone": "Asia/Shanghai", "question": question, "panType": "zhuan", "juMethod": "chaibu", "zhiFuJiGong": "ji_liuyi", "detailLevel": "full",
+			"timezone": "Etc/GMT-8", "question": question, "panType": "zhuan", "juMethod": "chaibu", "zhiFuJiGong": "ji_liuyi", "detailLevel": "full",
 		}
 	case "tarot":
 		spread := map[string]string{"single": "single", "three": "three-card", "love": "love", "decision": "decision", "celtic-cross": "celtic-cross", "horseshoe": "horseshoe", "mind-body-spirit": "mind-body-spirit", "situation": "situation", "yes-no": "yes-no"}[stringValue(inputs["spread"])]
@@ -132,8 +132,48 @@ func BuildToolArguments(skillCode, question, inputJSON string, now time.Time) (s
 			return "", nil
 		}
 	}
+	if err := addSolarArguments(skillCode, inputs, args); err != nil {
+		return "", err
+	}
 	encoded, err := json.Marshal(args)
 	return string(encoded), err
+}
+
+func addSolarArguments(code string, inputs, args map[string]interface{}) error {
+	if !oneOf(code, "bazi", "bazi_dayun", "ziwei", "ziwei_horoscope", "ziwei_flying_star", "qimen", "liuyao", "meihua", "daliuren", "taiyi") {
+		return nil
+	}
+	basis := stringValue(inputs["timeBasis"])
+	place := defaultString(stringValue(inputs["birthplace"]), stringValue(inputs["location"]))
+	longitude := stringValue(inputs["longitude"])
+	if basis == "" {
+		basis = "beijing"
+		if place != "" || longitude != "" {
+			basis = "true_solar"
+		}
+	}
+	if !oneOf(basis, "true_solar", "beijing") {
+		return fmt.Errorf("invalid time basis")
+	}
+	args["timeBasis"] = basis
+	if basis == "beijing" {
+		delete(args, "birthPlace")
+		return nil
+	}
+	if place == "" && longitude == "" {
+		return fmt.Errorf("真太阳时需要确认地点或经度")
+	}
+	if place != "" {
+		args["birthPlace"] = place
+	}
+	if longitude != "" {
+		v, err := boundedNumber(inputs, "longitude", -180, 180, false)
+		if err != nil {
+			return err
+		}
+		args["longitude"] = v
+	}
+	return nil
 }
 
 // Lunar dates must not pass through the Gregorian parser (e.g. lunar 02-30).

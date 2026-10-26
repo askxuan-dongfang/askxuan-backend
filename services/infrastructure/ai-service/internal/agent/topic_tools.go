@@ -64,7 +64,7 @@ func topicArguments(code, question string, inputs map[string]any) (string, error
 }
 func birthFacts(in map[string]any) map[string]any {
 	out := map[string]any{}
-	for _, k := range []string{"calendarType", "birthDate", "birthTime", "gender"} {
+	for _, k := range []string{"calendarType", "birthDate", "birthTime", "gender", "birthplace", "longitude", "timeBasis"} {
 		if v, ok := in[k]; ok {
 			out[k] = v
 		}

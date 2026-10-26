@@ -90,7 +90,7 @@ func extendedToolArguments(code, question string, in map[string]interface{}) (ma
 		}
 		a["question"] = question
 		if code != "meihua" {
-			a["date"], a["hour"], a["minute"], a["timezone"] = t.Format("2006-01-02"), t.Hour(), t.Minute(), "Asia/Shanghai"
+			a["date"], a["hour"], a["minute"], a["timezone"] = t.Format("2006-01-02"), t.Hour(), t.Minute(), "Etc/GMT-8"
 		}
 		if code == "taiyi" {
 			mode := stringValue(in["taiyiMode"])

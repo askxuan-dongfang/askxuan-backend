@@ -75,6 +75,7 @@ func Structured(raw string) map[string]any {
 	return nil
 }
 func (d *Document) Add(tool, raw string) {
+	defer d.DeduplicateBlocks()
 	if tool == "recall_memory" {
 		return
 	}
@@ -88,6 +89,15 @@ func (d *Document) Add(tool, raw string) {
 	m := Structured(raw)
 	if m == nil {
 		return
+	}
+	if correction := obj(m["时间校正"]); len(correction) > 0 {
+		block := Block{Kind: "pairs", Title: "排盘时间核对", Source: tool}
+		for _, key := range []string{"输入时间", "输入时区", "实际排盘时间", "时间口径", "经度", "经度时差分钟", "均时差分钟", "总校正分钟", "跨日偏移", "精度说明"} {
+			if value, ok := correction[key]; ok {
+				block.Items = append(block.Items, Item{Label: key, Value: scalar(value)})
+			}
+		}
+		d.Blocks = append(d.Blocks, block)
 	}
 	table := func(title string, fields []string, rows []any) {
 		if len(rows) == 0 {
@@ -376,4 +386,21 @@ func (d *Document) Add(tool, raw string) {
 		}
 		d.Blocks = append(d.Blocks, b)
 	}
+}
+
+// Identical charts can arrive through a topic's nested calculation and a direct
+// tool call. Subject/date labels stay in the key; only transport source differs.
+func (d *Document) DeduplicateBlocks() {
+	seen := map[string]bool{}
+	blocks := make([]Block, 0, len(d.Blocks))
+	for _, block := range d.Blocks {
+		key := block
+		key.Source = ""
+		raw, _ := json.Marshal(key)
+		if !seen[string(raw)] {
+			blocks = append(blocks, block)
+			seen[string(raw)] = true
+		}
+	}
+	d.Blocks = blocks
 }

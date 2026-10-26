@@ -32,7 +32,12 @@ func ReviewedTools() []ToolDefinition {
 	if err := json.Unmarshal(topicCatalogJSON, &topics); err != nil {
 		panic("invalid topic catalog")
 	}
-	return append(list, topics...)
+	list = append(list, topics...)
+	for i := range list {
+		raw, _ := json.Marshal(list[i].InputSchema)
+		_ = json.Unmarshal([]byte(GuidedInputSchema(list[i].Code, string(raw))), &list[i].InputSchema)
+	}
+	return list
 }
 func IsReadOnlyTool(code string) bool {
 	for _, t := range ReviewedTools() {

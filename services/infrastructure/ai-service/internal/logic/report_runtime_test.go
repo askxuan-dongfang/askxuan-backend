@@ -32,17 +32,23 @@ func (s reportSkills) FindByCode(_ context.Context, code string) (*model.AISkill
 	return nil, fmt.Errorf("missing %s", code)
 }
 func TestReportRunsHarnessWithComputedCharts(t *testing.T) {
-	for _, code := range []string{"bazi", "marriage"} {
-		t.Run(code, func(t *testing.T) { testReportHarness(t, code) })
+	for _, code := range []string{"bazi", "marriage", "ziwei"} {
+		t.Run(code, func(t *testing.T) { testReportHarness(t, code, 0) })
 	}
 }
-func testReportHarness(t *testing.T, code string) {
+func TestMarriageReportRepairsOnceWithoutRecalculating(t *testing.T) {
+	t.Run("corrected", func(t *testing.T) { testReportHarness(t, "marriage", 1) })
+	t.Run("still_conflicts", func(t *testing.T) { testReportHarness(t, "marriage", 2) })
+}
+func testReportHarness(t *testing.T, code string, conflictingResponses int) {
 	fixture, e := os.ReadFile("../reportdoc/testdata/synthetic.json")
 	if e != nil {
 		t.Fatal(e)
 	}
 	var results map[string]json.RawMessage
 	_ = json.Unmarshal(fixture, &results)
+	results["ziwei_horoscope"] = json.RawMessage(`{"运限叠宫":[{"层次":"流年","落入本命宫位":"命宫","干支":"甲子"}]}`)
+	var targetDates []string
 	var toolCalls, modelCalls atomic.Int32
 	mcp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
@@ -53,12 +59,16 @@ func testReportHarness(t *testing.T, code string) {
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		toolCalls.Add(1)
+		if req.Params.Name == "ziwei_horoscope" {
+			targetDates = append(targetDates, fmt.Sprint(req.Params.Arguments["targetDate"]))
+		}
 		if req.Params.Arguments["birthYear"] != float64(1990) && (code != "marriage" || req.Params.Arguments["birthYear"] != float64(1992)) {
 			t.Error("lost confirmed birth date")
 		}
 		var result map[string]any
 		_ = json.Unmarshal(results[req.Params.Name], &result)
 		result["fixtureBirthYear"] = req.Params.Arguments["birthYear"]
+		result["fixtureTargetDate"] = req.Params.Arguments["targetDate"]
 		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"structuredContent": result}})
 	}))
 	defer mcp.Close()
@@ -70,15 +80,21 @@ func testReportHarness(t *testing.T, code string) {
 		n := modelCalls.Add(1)
 		var delta map[string]any
 		reason := "stop"
-		if n == 1 {
+		if n == 1 || (conflictingResponses > 0 && n == 3) {
 			reason = "tool_calls"
 			delta = map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "read_1", "type": "function", "function": map[string]any{"name": "read_report", "arguments": "{}"}}}}
 		} else {
 			b, _ := json.Marshal(req["messages"])
-			if !strings.Contains(string(b), "四柱") || (code == "bazi" && !strings.Contains(string(b), "大运列表")) || (code == "marriage" && !strings.Contains(string(b), "对方的计算结果")) {
+			if !strings.Contains(string(b), "current_calculation") || !strings.Contains(string(b), "四柱") || (code == "bazi" && !strings.Contains(string(b), "大运列表")) || (code == "marriage" && !strings.Contains(string(b), "对方 · 四柱命盘")) {
 				t.Error("agent did not receive calculation evidence")
 			}
-			delta = map[string]any{"role": "assistant", "content": string(rawBody)}
+			response := rawBody
+			if conflictingResponses > 0 && (n == 2 || conflictingResponses > 1) {
+				wrong := body
+				wrong.Summary = "女方八字与紫微命盘均未取得，因此本报告不是双人合盘，仅男方的关系模式分析。"
+				response, _ = json.Marshal(wrong)
+			}
+			delta = map[string]any{"role": "assistant", "content": string(response)}
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		event, _ := json.Marshal(map[string]any{"id": "fixture", "object": "chat.completion.chunk", "model": "fixture", "choices": []any{map[string]any{"index": 0, "delta": delta, "finish_reason": reason}}})
@@ -94,7 +110,7 @@ func testReportHarness(t *testing.T, code string) {
 		m.ExpectExec("UPDATE ai_report SET generation_stage").WithArgs(stage, int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
 	}
 	skills := reportSkills{}
-	for _, code := range []string{"bazi", "bazi_dayun"} {
+	for _, code := range []string{"bazi", "bazi_dayun", "ziwei", "ziwei_horoscope"} {
 		skills = append(skills, &model.AISkill{Code: code, Name: code, Status: "enabled", InputSchema: reportToolSchema(code), ToolConfig: `{"enabled":true,"server":"taibu","tool":"` + code + `"}`})
 	}
 	skills = append(skills, &model.AISkill{Code: "marriage", Status: "enabled", InputSchema: `{"fields":[]}`, ToolConfig: `{"enabled":false}`})
@@ -104,11 +120,30 @@ func testReportHarness(t *testing.T, code string) {
 	if code == "marriage" {
 		r.InputsJSON = `{"calendarType":"solar","birthDate":"1990-01-02","birthTime":"08:30","gender":"male","partnerCalendarType":"lunar","partnerBirthDate":"1992-02-30","partnerBirthTime":"10:30","partnerGender":"female"}`
 	}
+	if code == "ziwei" {
+		r.InputsJSON = strings.TrimSuffix(r.InputsJSON, "}") + `,"targetDate":"2026-10-26"}`
+	}
 	result, doc, _, e := executeReport(context.Background(), s, r)
+	if conflictingResponses == 2 {
+		if e == nil || modelCalls.Load() != 4 || toolCalls.Load() != 2 {
+			t.Fatalf("contradiction not bounded: %v models=%d tools=%d", e, modelCalls.Load(), toolCalls.Load())
+		}
+		return
+	}
 	if e != nil {
 		t.Fatal(e)
 	}
-	if result.Content != body.Content || doc.Runtime != "harness" || doc.ToolCalls != 2 || toolCalls.Load() != 2 || modelCalls.Load() != 2 || len(doc.Blocks) < 4 {
+	expectedTools, expectedModels := int32(2), int32(2)
+	if code == "ziwei" {
+		expectedTools = 3
+		if strings.Join(targetDates, ",") != "2026-10-26,2027-10-26" {
+			t.Fatalf("missing year comparison: %v", targetDates)
+		}
+	}
+	if conflictingResponses > 0 {
+		expectedModels = 4
+	}
+	if result.Content != body.Content || doc.Runtime != "harness" || doc.ToolCalls != int(expectedTools) || toolCalls.Load() != expectedTools || modelCalls.Load() != expectedModels || len(doc.Blocks) < 4 {
 		t.Fatalf("report pipeline incorrect tools=%d models=%d blocks=%d", toolCalls.Load(), modelCalls.Load(), len(doc.Blocks))
 	}
 	if code == "marriage" {
