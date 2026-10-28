@@ -179,7 +179,7 @@ type DesignSaveReq struct {
 	Name             string  `json:"name"`
 	DesignData       string  `json:"designData"`
 	TotalPrice       float64 `json:"totalPrice"`
-	Status           string  `json:"status"`
+	Status           string  `json:"status,optional"`
 	BlessServiceCode string  `json:"blessServiceCode,optional"`
 }
 

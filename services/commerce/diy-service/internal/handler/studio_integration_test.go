@@ -104,7 +104,8 @@ func TestStudioIntegration(t *testing.T) {
 		return env.Data
 	}
 	document, _ := json.Marshal(map[string]any{"version": 2, "wristSizeMm": 160, "fitAllowanceMm": 8, "beads": []any{map[string]any{"materialId": mat.Id, "spec": "10mm", "unitPrice": .01, "image": "https://evil.invalid/fake.jpg"}}, "cord": map[string]any{"materialId": cord.Id, "spec": "1mm", "quantity": 999}, "items": []any{map[string]any{"materialId": 9999, "quantity": 99}}})
-	save := map[string]any{"userId": "99002", "name": "青金 · 月色", "description": "独立测试作品", "designData": string(document), "totalPrice": .01, "status": "public"}
+	// Current H5 and iOS clients omit status: saving a draft cannot publish it.
+	save := map[string]any{"userId": "99002", "name": "青金 · 月色", "description": "独立测试作品", "designData": string(document), "totalPrice": .01}
 	call("POST", "/diy/designs", "", save, false)
 	saved := call("POST", "/diy/designs", owner, save, true)
 	id := int64(saved["id"].(float64))
@@ -113,6 +114,14 @@ func TestStudioIntegration(t *testing.T) {
 	if d["userId"] != "99001" || d["status"] != "private" || d["totalPrice"].(float64) != 28 {
 		t.Fatalf("untrusted fields accepted: %#v", d)
 	}
+	// Legacy clients may still send status, but it never grants publication.
+	save["status"] = "public"
+	forged := call("POST", "/diy/designs", owner, save, true)
+	forgedDesign := call("GET", fmt.Sprintf("/diy/designs/%.0f", forged["id"]), owner, nil, true)
+	if forgedDesign["status"] != "private" || forgedDesign["publication"] != nil {
+		t.Fatal("client status bypassed publication gate", forgedDesign)
+	}
+	delete(save, "status")
 	var doc struct {
 		Items []struct {
 			Quantity int `json:"quantity"`
