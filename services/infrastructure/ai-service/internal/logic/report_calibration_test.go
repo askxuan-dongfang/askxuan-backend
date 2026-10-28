@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/reportdoc"
 )
@@ -55,5 +56,17 @@ func TestCalibrationRetainsEvidenceAndFailsInsteadOfTruncating(t *testing.T) {
 	in.Draft.Content = strings.Repeat("报告", 32768)
 	if _, err = reportCalibrationRequest(req, 32768, in); err == nil {
 		t.Fatal("oversized review silently truncated or sent")
+	}
+}
+
+func TestReportRoleInstructionsOnlyApplyToMarriage(t *testing.T) {
+	for _, code := range []string{"bazi", "fortune", "qimen", "ziwei"} {
+		instruction := reportInstruction(&Report{SkillCode: code}, &model.AISkill{})
+		if strings.Contains(instruction, "计划方") || strings.Contains(instruction, "临场方") {
+			t.Fatalf("unrelated role instructions leaked into %s", code)
+		}
+	}
+	if !strings.Contains(reportInstruction(&Report{SkillCode: "marriage"}, &model.AISkill{}), "计划方") {
+		t.Fatal("marriage lost role calibration")
 	}
 }

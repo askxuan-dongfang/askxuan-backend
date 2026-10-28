@@ -18,6 +18,7 @@ import (
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/types"
 	"github.com/cloudwego/eino/schema"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 // One cache covers both the required report evidence and model-directed tools.
@@ -108,7 +109,11 @@ func reportAvailableSkills(skills []*model.AISkill, facts map[string]any, questi
 }
 
 func reportInstruction(r *Report, skill *model.AISkill) string {
-	return skill.PromptTemplate + reportCalibrationWritingRules + "\n你正在生成可独立阅读的专题报告，不要以聊天开场。传统含义、象意和古籍解释须先检索相关知识原文，再在相应解释后用[资料N]标明所依据的实际片段；无命中时保留计算结果和一般性建议，并明确缺少文献依据，不编造出处。最终检查摘要、首段、表格与正文是否采用同一组已确认参数；存在冲突先说明限制，不在摘要中把未确认值写成结论。先阅读本次计算依据，按需调用已提供工具补充。不能重复抽牌或起卦；已有的计算结果优先使用。不得猜测用户缺失的出生资料。报告生成不支持继续补问，只依据已确认资料和本次计算依据完成指定章节；额外计算缺少资料时写明限制，不要求补充后才出报告。无计算依据的内容必须标明为文化解释，禁止凭空编造命盘、五行旺衰评分、匹配百分比、成功率或图表数据。不得根据照片推断性格、健康、命运或身份，不作医疗/投资/法律结论。\n最终仅返回 JSON，不能使用 Markdown 围栏：{\"summary\":\"150字以内摘要\",\"content\":\"完整 Markdown 报告\"}。正文至少覆盖指定章节，每章用 ## 标题，结合实际依据写具体解读，并包含至少一张有实际内容的比较表、清楚的行动清单。明确区分计算结果、解释与待确认项；避免重复免责声明凑字数。章节：" + r.ChaptersJSON + "\n当前北京时间：" + time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
+	rules := reportCalibrationWritingRules
+	if r.SkillCode == "marriage" {
+		rules += reportCalibrationRelationshipRules
+	}
+	return skill.PromptTemplate + rules + "\n你正在生成可独立阅读的专题报告，不要以聊天开场。传统含义、象意和古籍解释须先检索相关知识原文，再在相应解释后用[资料N]标明所依据的实际片段；无命中时保留计算结果和一般性建议，并明确缺少文献依据，不编造出处。最终检查摘要、首段、表格与正文是否采用同一组已确认参数；存在冲突先说明限制，不在摘要中把未确认值写成结论。先阅读本次计算依据，按需调用已提供工具补充。不能重复抽牌或起卦；已有的计算结果优先使用。不得猜测用户缺失的出生资料。报告生成不支持继续补问，只依据已确认资料和本次计算依据完成指定章节；额外计算缺少资料时写明限制，不要求补充后才出报告。无计算依据的内容必须标明为文化解释，禁止凭空编造命盘、五行旺衰评分、匹配百分比、成功率或图表数据。不得根据照片推断性格、健康、命运或身份，不作医疗/投资/法律结论。\n最终仅返回 JSON，不能使用 Markdown 围栏：{\"summary\":\"150字以内摘要\",\"content\":\"完整 Markdown 报告\"}。正文至少覆盖指定章节，每章用 ## 标题，结合实际依据写具体解读，并包含至少一张有实际内容的比较表、清楚的行动清单。明确区分计算结果、解释与待确认项；避免重复免责声明凑字数。章节：" + r.ChaptersJSON + "\n当前北京时间：" + time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
 }
 func parseReportBody(raw string) (reportBody, error) {
 	var body reportBody
@@ -309,6 +314,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 				Calculations: calculations, Charts: doc.Blocks, Sources: reportCalibrationSources(doc), Draft: body,
 			})
 			if checkErr != nil {
+				logx.Errorf("report calibration context rejected report_id=%d", r.ID)
 				return empty, doc, usage, checkErr
 			}
 			modelCalls++
@@ -319,16 +325,20 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 				addReportUsage(&usage, *review)
 			}
 			if reviewErr != nil {
+				logx.Errorf("report calibration provider failed report_id=%d empty_content=%t", r.ID, errors.Is(reviewErr, provider.ErrEmptyContent))
 				return empty, doc, usage, reviewErr
 			}
 			if review == nil {
+				logx.Errorf("report calibration response missing report_id=%d", r.ID)
 				return empty, doc, usage, errors.New("missing report calibration result")
 			}
 			if review.FinishReason != "stop" {
+				logx.Errorf("report calibration response incomplete report_id=%d token_limit=%t", r.ID, review.FinishReason == "length")
 				return empty, doc, usage, errors.New("incomplete report calibration result")
 			}
 			issues, checkErr := parseReportCalibration(review.Content, body)
 			if checkErr != nil {
+				logx.Errorf("report calibration result invalid report_id=%d", r.ID)
 				return empty, doc, usage, checkErr
 			}
 			if len(issues) == 0 {
@@ -339,6 +349,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 			conflict = fmt.Errorf("摘要或正文与已确认事实不一致：%s", raw)
 		}
 		if attempt == 1 {
+			logx.Errorf("report calibration conflict persisted report_id=%d", r.ID)
 			return empty, doc, usage, conflict
 		}
 		sources, _ := json.Marshal(reportCalibrationSources(doc))
