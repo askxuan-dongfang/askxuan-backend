@@ -398,7 +398,8 @@ func ReadPublicationEligibility(ctx context.Context, db sqlx.Session, d *DiyDesi
 	query := `SELECT ` + diyOrderRows + `,
  EXISTS(SELECT 1 FROM askxuan_payment.payment pay WHERE pay.order_no=diy_order.order_no AND pay.order_type='diy_order' AND pay.user_id=diy_order.user_id AND pay.status='success' AND pay.channel IN ('wechat','alipay','balance','mock','demo_balance')) AS valid_payment,
  EXISTS(SELECT 1 FROM askxuan_payment.refund f JOIN askxuan_payment.payment rp ON rp.id=f.payment_id WHERE rp.order_no=diy_order.order_no AND rp.order_type='diy_order' AND f.status IN ('pending','processing','success')) AS has_refund
- FROM askxuan_diy.diy_order WHERE design_id=? AND user_id=? ORDER BY id DESC`
+ FROM askxuan_diy.diy_order WHERE design_id=? AND user_id=?
+ ORDER BY EXISTS(SELECT 1 FROM askxuan_payment.payment pay WHERE pay.order_no=diy_order.order_no AND pay.order_type='diy_order' AND pay.user_id=diy_order.user_id AND pay.status='success' AND pay.channel IN ('wechat','alipay','balance')) DESC,id DESC`
 	if lock {
 		query += " FOR UPDATE"
 	}
@@ -408,7 +409,7 @@ func ReadPublicationEligibility(ctx context.Context, db sqlx.Session, d *DiyDesi
 	}
 	result := eligibility("order_required")
 	// A valid older same-composition order may qualify even if a more recent
-	// attempt was cancelled. Status-only revisions are not content changes.
+	// attempt was cancelled or simulated. Preserve an eligible real reward source.
 	priorities := map[string]int{"order_required": 0, "snapshot_unavailable": 1, "design_changed": 2, "order_inactive": 3, "payment_required": 4, "confirmation_required": 5}
 	for _, order := range orders {
 		snapshot, hash, snapshotErr := confirmedOrderDesign(&order.DiyOrder)
