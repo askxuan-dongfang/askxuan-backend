@@ -33,6 +33,7 @@ type AIConf struct {
 	BaseURL              string
 	APIKey               string `json:",optional"`
 	Model                string
+	ReportModel          string `json:",optional"`
 	VisionModel          string
 	ThinkingEnabled      bool
 	ReasoningEffort      string
@@ -76,6 +77,7 @@ func (c AIConf) Runtime() AIConf {
 	c.HarnessEnabled = envBool("AI_HARNESS_ENABLED", true)
 	c.APIKey = envString("AI_API_KEY", c.APIKey)
 	c.Model = envString("AI_MODEL", c.Model)
+	c.ReportModel = envString("AI_REPORT_MODEL", c.ReportModel)
 	c.VisionModel = envString("AI_VISION_MODEL", c.VisionModel)
 	c.ThinkingEnabled = envBool("AI_THINKING_ENABLED", c.ThinkingEnabled)
 	c.ReasoningEffort = envString("AI_REASONING_EFFORT", c.ReasoningEffort)

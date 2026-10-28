@@ -58,6 +58,8 @@ func extendedToolArguments(code, question string, in map[string]interface{}) (ma
 			return nil, e
 		}
 		a["birthYear"], a["birthMonth"], a["birthDay"], a["birthHour"], a["birthMinute"] = y, m, d, h, min
+		// Product birth clocks are fixed Beijing UTC+8, not coordinate-derived civil or solar time.
+		a["birthUtcOffsetMinutes"] = 480
 		a["latitude"], a["longitude"], a["transitDateTime"], a["houseSystem"] = lat, lng, transit.UTC().Format("2006-01-02T15:04:05Z"), "placidus"
 	case "almanac":
 		date := stringValue(in["targetDate"])

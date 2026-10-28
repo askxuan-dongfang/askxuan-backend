@@ -45,3 +45,16 @@ func TestImageReserveDoesNotCountBase64AsText(t *testing.T) {
 		t.Fatal(n)
 	}
 }
+
+func TestContextBudgetIncludesReplayedReasoning(t *testing.T) {
+	toolCall := &schema.Message{Role: schema.Assistant, ReasoningContent: strings.Repeat("私有推理", 4000), ToolCalls: []schema.ToolCall{{ID: "tool-1", Function: schema.FunctionCall{Name: "read_report", Arguments: "{}"}}}}
+	_, _, err := fitContext([]*schema.Message{schema.SystemMessage("规则"), schema.UserMessage("当前任务"), toolCall, {Role: schema.Tool, ToolCallID: "tool-1", Content: "依据"}}, 32768, 8192, 1024)
+	if err == nil {
+		t.Fatal("replayed reasoning escaped the current-turn context limit")
+	}
+	toolCall.ReasoningContent = "短推理"
+	got, st, err := fitContext([]*schema.Message{schema.UserMessage("当前任务"), toolCall, {Role: schema.Tool, ToolCallID: "tool-1", Content: "依据"}}, 32768, 8192, 1024)
+	if err != nil || len(got) != 3 || got[1] != toolCall || st.DroppedMessages != 0 {
+		t.Fatal("reasoning/tool pair was altered to fit", st, err)
+	}
+}

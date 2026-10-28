@@ -307,17 +307,21 @@ func (d *Document) Add(tool, raw string) {
 		}
 	case "bazi_dayun":
 		rows := list(m["大运列表"])
-		b := Block{Kind: "timeline", Title: "大运时间轴", Source: tool, Note: scalar(obj(m["起运信息"])["起运详情"])}
+		b := Block{Kind: "timeline", Title: "大运时间轴", Source: tool, Note: "首次起运详情：" + scalar(obj(m["起运信息"])["起运详情"]) + "；各步及流年年龄为虚岁（年份差加一），不是周岁。"}
 		for _, v := range rows {
 			r := obj(v)
-			b.Items = append(b.Items, Item{scalar(r["起运年份"]), scalar(r["干支"]), scalar(r["起运年龄"]) + "岁 · " + scalar(r["十神"])})
+			b.Items = append(b.Items, Item{scalar(r["起运年份"]), scalar(r["干支"]), scalar(r["起运年龄"]) + "虚岁 · " + scalar(r["十神"])})
 		}
 		if len(b.Items) > 0 {
 			d.Blocks = append(d.Blocks, b)
 		}
 		for _, v := range rows {
 			r := obj(v)
+			before := len(d.Blocks)
 			table(scalar(r["干支"])+"大运 · 流年", []string{"流年", "年龄", "干支", "十神", "太岁关系"}, list(r["流年列表"]))
+			if len(d.Blocks) > before {
+				d.Blocks[len(d.Blocks)-1].Columns[1] = "年龄（虚岁）"
+			}
 		}
 	case "ziwei":
 		b := Block{Kind: "palaces", Title: "紫微十二宫", Source: tool, Note: "按工具返回的宫位列示；点击展开星曜资料。"}

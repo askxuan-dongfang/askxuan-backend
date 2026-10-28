@@ -295,7 +295,9 @@ func ReportRetry(ctx context.Context, s *svc.ServiceContext, user string, id int
 	if err = s.UsageModel.Acquire(ctx, user, s.AIConfig.MinuteRequestLimit, s.AIConfig.DailyRequestLimit); err != nil {
 		return nil, common.ErrTooManyRequest
 	}
-	res, err := s.DB.ExecCtx(ctx, `UPDATE ai_report SET status='generating',version=?,error_message='',updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND (status='failed' OR (status='generating' AND updated_at<DATE_SUB(NOW(),INTERVAL 5 MINUTE)))`, reportAgentVersion(r.Version, s.AgentVersion), id, user)
+	// Reports can run for up to ten minutes; only reclaim after that deadline
+	// and a recovery buffer, never while a reasoning/tool generation is active.
+	res, err := s.DB.ExecCtx(ctx, `UPDATE ai_report SET status='generating',version=?,error_message='',updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND (status='failed' OR (status='generating' AND updated_at<DATE_SUB(NOW(),INTERVAL 15 MINUTE)))`, reportAgentVersion(r.Version, s.AgentVersion), id, user)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +308,7 @@ func ReportRetry(ctx context.Context, s *svc.ServiceContext, user string, id int
 	return ReportGet(ctx, s, user, id)
 }
 func generateReport(s *svc.ServiceContext, id int64) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(max(60, s.AIConfig.TaskTimeoutSeconds))*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), reportExecutionTimeout(s.AIConfig.TaskTimeoutSeconds))
 	defer cancel()
 	var r Report
 	if err := s.DB.QueryRowPartialCtx(ctx, &r, `SELECT `+reportSelectCols+` FROM ai_report WHERE id=?`, id); err != nil {
@@ -316,7 +318,8 @@ func generateReport(s *svc.ServiceContext, id int64) {
 	if err != nil || !validReportBody(body) || s.Guard.ValidateOutput(body.Content+body.Summary) != nil {
 		failureCtx, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
-		_, _ = s.DB.ExecCtx(failureCtx, `UPDATE ai_report SET status='failed',generation_stage='failed',provider=?,model=?,prompt_tokens=?,completion_tokens=?,cost_micros=?,error_message='报告暂未生成成功，请免费重试；尚未扣款' WHERE id=? AND status='generating'`, s.Provider.Name(), usage.Model, usage.PromptTokens, usage.CompletionTokens, calculateCostMicros(usage, s.AIConfig, time.Now()), id)
+		privateAudit, _ := json.Marshal(reportFailureAudit(doc))
+		_, _ = s.DB.ExecCtx(failureCtx, `UPDATE ai_report SET status='failed',generation_stage='failed',document_json=?,provider=?,model=?,prompt_tokens=?,completion_tokens=?,cost_micros=?,error_message='报告暂未生成成功，请免费重试；尚未扣款' WHERE id=? AND status='generating'`, string(privateAudit), s.Provider.Name(), usage.Model, usage.PromptTokens, usage.CompletionTokens, calculateCostMicros(usage, s.AIConfig, time.Now()), id)
 		return
 	}
 	raw, _ := json.Marshal(doc)
@@ -406,4 +409,15 @@ func reportVisionModel(ctx context.Context, s *svc.ServiceContext) (string, erro
 		}
 	}
 	return "", provider.ErrModelNeedsVision
+}
+
+// Failed drafts and raw tool payloads never become readable reports.
+func reportFailureAudit(doc reportdoc.Document) reportdoc.Document {
+	audit := reportdoc.Document{Version: doc.Version, Runtime: doc.Runtime, ModelCalls: doc.ModelCalls, ToolCalls: doc.ToolCalls, Blocks: []reportdoc.Block{}}
+	for _, evidence := range doc.Evidence {
+		if evidence.Tool == "report_calibration" {
+			audit.Evidence = append(audit.Evidence, evidence)
+		}
+	}
+	return audit
 }

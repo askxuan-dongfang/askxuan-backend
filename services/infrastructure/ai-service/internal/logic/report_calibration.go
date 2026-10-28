@@ -3,15 +3,18 @@ package logic
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"regexp"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/reportdoc"
 )
 
-const reportCalibrationWritingRules = "\n校准要求：摘要、表格和正文均逐项对照本次计算。透干仅指四柱天干，藏干不称透出；五行数量注明统计口径，不能遗漏天干或把等权数量当旺衰；部分爻的旺衰不能扩展到未输出旺衰的变爻。年龄注明周岁或工具采用的虚岁口径。引文必须来自本轮资料，保留原字形；转简体或改写须标为转写或释义，推论须标为解释，不把相关片段当成直接论证。原始计算没有的关键词或象意不得说成工具返回。资料和完整盘面以平台图表为准，正文只选与问题直接相关的3至5条关键盘面事实，不再抄写整张四柱、十二宫、九宫或六爻表；比较表应围绕用户的实际选择。知识依据区已有原文，正文优先用标为释义或解释的简短转述；必要的直接引文只用不超过20字的连续原文，不拼接长段、不重复书名，标转写也不能添加片段不存在的信息。实际只算到参考日期节点时，不把现实行动建议写成未经计算的运限起止时间。不要展示 current_calculation 等内部标签。"
+const reportCalibrationWritingRules = "\n校准要求：摘要、表格和正文均逐项对照本次计算。透干仅指四柱天干，藏干不称透出；五行数量注明统计口径，不能遗漏天干或把等权数量当旺衰；部分爻的旺衰不能扩展到未输出旺衰的变爻。年龄注明周岁或工具采用的虚岁口径。引文必须来自本轮资料，保留原字形；转简体或改写须标为转写或释义，推论须标为解释，不把相关片段当成直接论证。原始计算没有的关键词或象意不得说成工具返回。资料和完整盘面以平台图表为准，正文只选与问题直接相关的3至5条关键盘面事实，不再抄写整张四柱、十二宫、九宫或六爻表；比较表应围绕用户的实际选择。知识依据区已有原文，正文优先用标为释义或解释的简短转述；必要的直接引文只用不超过20字的连续原文，不拼接长段、不重复书名，标转写也不能添加片段不存在的信息。实际只算到参考日期节点时，不把现实行动建议写成未经计算的运限起止时间。直接引文不做繁简转写，忠实保留原字形；释义改用不带引号的叙述并标明。不要展示校准、核验更正、上一版、current_calculation 等生成过程标签。"
 
 const reportCalibrationRelationshipRules = "\n合盘角色规则：用户没说明谁重计划、谁偏临场时只称计划方、临场方，不由命盘或性别替用户分配角色；已明确的归属必须保持。"
 
@@ -65,7 +68,7 @@ func reportCalibrationRequest(req provider.Request, window int, input reportCali
 	req.SystemPrompt = reportCalibrationInstruction
 	req.Messages = []provider.Message{{Role: "user", Content: string(raw)}}
 	req.JSONMode = true
-	req.MaxTokens = min(req.MaxTokens, 4096)
+	req.MaxTokens = min(req.MaxTokens, 8192)
 	if window <= 0 {
 		window = 32768
 	}
@@ -109,4 +112,88 @@ func addReportUsage(total *provider.Response, part provider.Response) {
 	total.PromptCacheHitTokens += part.PromptCacheHitTokens
 	total.PromptCacheMissTokens += part.PromptCacheMissTokens
 	total.ReasoningTokens += part.ReasoningTokens
+}
+
+var reportCitationPattern = regexp.MustCompile(`\[资料([0-9]+)[^\]]*\]`)
+var reportQuoteAtom = regexp.MustCompile(`“([^”\n]+)”|「([^」\n]+)」|"([^"\n]+)"`)
+var reportQuotePattern = regexp.MustCompile(`((?:“[^”\n]+”|「[^」\n]+」|"[^"\n]+")(?:[ \t、，,与和及]*(?:“[^”\n]+”|「[^」\n]+」|"[^"\n]+"))*)\s*((?:\[资料[0-9]+[^\]]*\]\s*)+)`)
+var reportQuoteOmission = regexp.MustCompile(`\.{3,}|…+`)
+
+func reportQuoteText(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) || unicode.IsPunct(r) {
+			return -1
+		}
+		return r
+	}, s)
+}
+
+// Literal checks supplement semantic review; they never certify interpretation.
+func validateReportCitations(body reportBody, doc reportdoc.Document) error {
+	sources := map[string]string{}
+	for _, block := range doc.Blocks {
+		if block.Kind != "citations" {
+			continue
+		}
+		for _, item := range block.Items {
+			sources[strings.TrimPrefix(item.Label, "资料")] = reportQuoteText(item.Value)
+		}
+	}
+	for _, text := range []string{body.Summary, body.Content} {
+		for _, ref := range reportCitationPattern.FindAllStringSubmatch(text, -1) {
+			if _, ok := sources[ref[1]]; !ok {
+				return fmt.Errorf("资料%s未出现在本轮检索片段中", ref[1])
+			}
+		}
+		for _, match := range reportQuotePattern.FindAllStringSubmatch(text, -1) {
+			for _, atom := range reportQuoteAtom.FindAllStringSubmatch(match[1], -1) {
+				quote := atom[1] + atom[2] + atom[3]
+				found := false
+				for _, ref := range reportCitationPattern.FindAllStringSubmatch(match[2], -1) {
+					source := sources[ref[1]]
+					pos := 0
+					valid := true
+					for _, part := range reportQuoteOmission.Split(quote, -1) {
+						fragment := reportQuoteText(part)
+						if fragment == "" {
+							continue
+						}
+						at := strings.Index(source[pos:], fragment)
+						if at < 0 {
+							valid = false
+							break
+						}
+						pos += at + len(fragment)
+					}
+					if valid && reportQuoteText(quote) != "" {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("直接引文%s与%s的原字形不一致；改用忠实原文，或移除引号并明确写为释义，不得补造原句", quote, match[2])
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func recordReportCalibration(doc *reportdoc.Document, status, reason string, reviews, protocolRepairs int, issues []reportCalibrationIssue, repaired bool) {
+	if utf8.RuneCountInString(reason) > 500 {
+		reason = string([]rune(reason)[:500])
+	}
+	raw, _ := json.Marshal(map[string]any{"version": 2, "status": status, "reason": reason, "reviews": reviews, "protocolRepairs": protocolRepairs, "issues": issues, "repaired": repaired})
+	doc.Evidence = append(doc.Evidence, reportdoc.Evidence{Tool: "report_calibration", Text: string(raw)})
+}
+
+func reportCalibrationFits(req provider.Request, window int) bool {
+	if window <= 0 {
+		window = 32768
+	}
+	size := len(req.SystemPrompt) + req.MaxTokens + 4096
+	for _, message := range req.Messages {
+		size += len(message.Content)
+	}
+	return size <= window
 }

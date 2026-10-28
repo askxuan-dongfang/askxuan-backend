@@ -45,3 +45,18 @@ func TestLegacyAndPartialSearchYAML(t *testing.T) {
 		}
 	}
 }
+
+func TestReportModelEnvironmentDoesNotChangeChatDefaults(t *testing.T) {
+	t.Setenv("AI_REPORT_MODEL", "deepseek-v4-pro")
+	t.Setenv("AI_MODEL", "")
+	t.Setenv("AI_THINKING_ENABLED", "")
+	t.Setenv("AI_REASONING_EFFORT", "")
+	runtime := (AIConf{Model: "chat-default", ReasoningEffort: "low"}).Runtime()
+	if runtime.ReportModel != "deepseek-v4-pro" || runtime.Model != "chat-default" || runtime.ThinkingEnabled || runtime.ReasoningEffort != "low" {
+		t.Fatalf("report policy leaked into chat defaults: model=%q report=%q thinking=%t effort=%q", runtime.Model, runtime.ReportModel, runtime.ThinkingEnabled, runtime.ReasoningEffort)
+	}
+	t.Setenv("AI_REPORT_MODEL", "")
+	if got := (AIConf{}).Runtime().ReportModel; got != "" {
+		t.Fatalf("empty report model must preserve the existing selection: %q", got)
+	}
+}

@@ -43,10 +43,10 @@ func TestFailedReportSavesChargedUsageWithoutPublishingDraft(t *testing.T) {
 	for _, stage := range []string{"checking", "calculating", "writing"} {
 		mock.ExpectExec(`UPDATE ai_report SET generation_stage=? WHERE id=? AND status='generating'`).WithArgs(stage, int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
 	}
-	// An exact statement and argument list prevent a draft, question or review
-	// diagnostic from being persisted as report content or the public error.
-	mock.ExpectExec(`UPDATE ai_report SET status='failed',generation_stage='failed',provider=?,model=?,prompt_tokens=?,completion_tokens=?,cost_micros=?,error_message='报告暂未生成成功，请免费重试；尚未扣款' WHERE id=? AND status='generating'`).
-		WithArgs(p.Name(), "fixture-model", 17, 9, int64(61), int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
+	// Only audit counts may survive this malformed draft; the exact arguments
+	// exclude its private text from both document_json and the public error.
+	mock.ExpectExec(`UPDATE ai_report SET status='failed',generation_stage='failed',document_json=?,provider=?,model=?,prompt_tokens=?,completion_tokens=?,cost_micros=?,error_message='报告暂未生成成功，请免费重试；尚未扣款' WHERE id=? AND status='generating'`).
+		WithArgs(`{"version":1,"runtime":"harness","modelCalls":1,"toolCalls":0,"blocks":[]}`, p.Name(), "fixture-model", 17, 9, int64(61), int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
 	s := &svc.ServiceContext{DB: sqlx.NewSqlConnFromDB(db), SkillModel: reportSkills{&model.AISkill{Code: "fixture-report", Status: model.SkillStatusEnabled, InputSchema: `{"fields":[]}`, ToolConfig: `{"enabled":false}`}}, Guard: agent.NewGuard(20000, nil), Provider: p}
 	s.AIConfig.ContextWindow = 1048576
 	s.AIConfig.InputCostPerMillion = 2

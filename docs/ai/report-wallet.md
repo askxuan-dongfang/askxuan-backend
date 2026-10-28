@@ -41,6 +41,18 @@ Guards require: original negative `redeem` rows with exact `ai-report:<report_no
 
 `rollback` restores the original content rows and adds compensating negative ledger entries; it never deletes accounting history. It refuses to overwrite rows or cross any later account transaction/balance change. This is intentionally stricter than restoring an old balance snapshot. If later user activity occurred, stop and reconcile separately rather than forcing rollback.
 
+## Report model and execution budget
+
+`AI_REPORT_MODEL` is an optional deployment setting for topic reports. Leave it empty to retain the published agent/provider model selection. A configured value must be available in the existing enabled model catalog; an unavailable value fails explicitly rather than silently switching models. A text-report deployment can select `AI_REPORT_MODEL=deepseek-v4-pro` through the existing registered connection. This does not change `AI_MODEL`, the model library's Chat default, or the published agent model.
+
+The selected model is shared by report writing, bounded repair, and factual review so the existing single-model usage/cost accounting remains consistent. Face/palm reports retain the existing vision-capable selection; an incompatible text-only override is not applied to their images.
+
+Reports request thinking with high reasoning effort locally; ordinary chat retains its own settings. Reasoning stays in the internal Eino tool conversation and is included in context estimates and token usage, but is not published as report content. A reasoning-only length limit fails with its charged usage retained; reports do not silently retry with thinking disabled.
+
+Writer output uses `ComplexOutputTokens` (16384 when unset), bounded by 32768 and the selected model/agent limits. Factual review reserves at most 8192 tokens within that same cap, including its reasoning. Truncated or invalid review output cannot count as a pass. The entire report receives four stages' worth of the existing `TaskTimeoutSeconds` budget, bounded to four through ten minutes; each harness retains its stage limit. A generating report is reclaimed only after fifteen minutes, beyond the maximum report deadline and a recovery buffer, so simultaneous Retry calls cannot restart an active random draw.
+
+Provider/settings snapshots retain the deployment-owned report setting. Updating provider settings or selecting a published agent does not overwrite it. These policies and HTTP fixtures are source validation; actual model, payment, and content-quality acceptance must be recorded separately after deployment.
+
 ## Verification
 
 `bash scripts/test-ai-topic-reports.sh` uses a disposable local MySQL database. It tests generation through a synthetic model endpoint, price snapshots/CAS, production service privileges, wallet insufficient funds/concurrency/idempotency, both balance modes, discounted/historical entitlements, refund states, and cleanup snapshot guards/atomic failure/concurrent retries/cross-batch rejection/rollback. Synthetic output is not live model quality acceptance. This script is a required gate in both normal deployment and recovery package workflows.

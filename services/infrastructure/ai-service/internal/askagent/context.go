@@ -24,7 +24,7 @@ type ContextStats struct {
 }
 
 func estimateMessage(m *schema.Message) int {
-	n := len(m.Content) + len(m.Role) + 64
+	n := len(m.Content) + len(m.ReasoningContent) + len(m.Role) + 64
 	b, _ := json.Marshal(m.ToolCalls)
 	n += len(b) + len(m.ToolCallID)
 	for _, p := range m.MultiContent {
