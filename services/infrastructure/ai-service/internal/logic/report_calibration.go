@@ -73,6 +73,9 @@ func reportCalibrationRequest(req provider.Request, window int, input reportCali
 		return req, err
 	}
 	req.SystemPrompt = reportCalibrationInstruction
+	if input.Topic == "face_palm" {
+		req.SystemPrompt += "\n图像核对只检查表述边界，不凭未见的图片纠正线条位置：单张图不能证明图外真实纹理的密度、相对深浅或光照成因；把这类未测量的比较或成因写成事实应报冲突。可见外观、明确假设和拍摄核对建议不等于已证实的成因。"
+	}
 	req.Messages = []provider.Message{{Role: "user", Content: string(raw)}}
 	req.JSONMode = true
 	req.MaxTokens = min(req.MaxTokens, 16384)
@@ -245,10 +248,16 @@ func validateReportCitations(body reportBody, doc reportdoc.Document) error {
 			sources[strings.TrimPrefix(item.Label, "资料")] = reportQuoteText(item.Value)
 		}
 	}
-	for _, raw := range []string{body.Summary, body.Content} {
-		text := reportCitationVisibleText(raw)
-		if reportCitationMentionPattern.MatchString(reportCitationPattern.ReplaceAllString(text, "")) {
-			return errors.New("引用编号必须使用[资料N]，不能用其他括号或裸编号绕过本轮资料核对")
+	for _, field := range []struct{ name, raw string }{{"summary", body.Summary}, {"content", body.Content}} {
+		text := reportCitationVisibleText(field.raw)
+		// Mask canonical spans without shifting the visible text's byte positions.
+		masked := reportCitationPattern.ReplaceAllStringFunc(text, func(ref string) string { return strings.Repeat(" ", len(ref)) })
+		if invalid := reportCitationMentionPattern.FindStringIndex(masked); invalid != nil {
+			position := utf8.RuneCountInString(text[:invalid[0]])
+			runes := []rune(text)
+			start := max(0, position-12)
+			nearby := string(runes[start:min(len(runes), start+40)])
+			return fmt.Errorf("%s可见文字第%d字附近 %q：引用编号必须使用[资料N]，不能用其他括号或裸编号绕过本轮资料核对", field.name, position+1, nearby)
 		}
 		for _, ref := range reportCitationPattern.FindAllStringSubmatch(text, -1) {
 			if _, ok := sources[ref[1]]; !ok {

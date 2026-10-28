@@ -77,6 +77,8 @@ type Outcome struct {
 	ModelCalls, ToolCalls int
 }
 
+const maxModelCalls = 4
+
 func Execute(ctx context.Context, chat model.BaseChatModel, input Input, mcp einopoc.MCPCaller, guard *agent.Guard, hooks Hooks) (out Outcome, err error) {
 	if chat == nil || guard == nil {
 		return out, errors.New("agent dependencies unavailable")
@@ -120,7 +122,7 @@ func Execute(ctx context.Context, chat model.BaseChatModel, input Input, mcp ein
 	if timeout <= 0 {
 		timeout = 180 * time.Second
 	}
-	meter := &meteredModel{BaseChatModel: chat, stage: hooks.Stage, window: window, output: output}
+	meter := &meteredModel{BaseChatModel: chat, stage: hooks.Stage, window: window, output: output, calculatedReport: input.Report != nil && input.Report.Calculated}
 	var clarification *Clarification
 	tools := []tool.BaseTool{}
 	for _, configured := range input.Skills {
@@ -195,7 +197,7 @@ func Execute(ctx context.Context, chat model.BaseChatModel, input Input, mcp ein
 	if input.Report != nil && input.Report.Calculated {
 		toolLimit = 8
 	}
-	h, e := einopoc.NewConfiguredRetry(ctx, meter, tools, guard, einopoc.Limits{ModelCalls: 4, ToolCalls: toolLimit, Timeout: timeout}, input.Instruction+"\n"+Instruction, retry)
+	h, e := einopoc.NewConfiguredRetry(ctx, meter, tools, guard, einopoc.Limits{ModelCalls: maxModelCalls, ToolCalls: toolLimit, Timeout: timeout}, input.Instruction+"\n"+Instruction, retry)
 	if e != nil {
 		return out, e
 	}
@@ -342,6 +344,8 @@ var ErrReasoningBudget = errors.New("agent reasoning exhausted output budget bef
 type meteredModel struct {
 	window, output, toolReserve int
 	contextStats                ContextStats
+	calculatedReport            bool
+	calls                       int
 	model.BaseChatModel
 	mu    sync.Mutex
 	total provider.Response
@@ -349,6 +353,20 @@ type meteredModel struct {
 }
 
 func (m *meteredModel) usage() provider.Response { m.mu.Lock(); defer m.mu.Unlock(); return m.total }
+func (m *meteredModel) stepOptions(opts []model.Option) []model.Option {
+	if !m.calculatedReport {
+		return opts
+	}
+	m.mu.Lock()
+	m.calls++
+	last := m.calls == maxModelCalls
+	m.mu.Unlock()
+	if last {
+		// Spend the final allowed model call answering from already gathered evidence.
+		return append(opts, model.WithToolChoice(schema.ToolChoiceForbidden))
+	}
+	return opts
+}
 func (m *meteredModel) add(u *schema.TokenUsage, previous *schema.TokenUsage) {
 	if u == nil {
 		return
@@ -373,7 +391,7 @@ func (m *meteredModel) Generate(ctx context.Context, in []*schema.Message, opts 
 	if e != nil {
 		return nil, e
 	}
-	out, e := m.BaseChatModel.Generate(ctx, prepared, opts...)
+	out, e := m.BaseChatModel.Generate(ctx, prepared, m.stepOptions(opts)...)
 	if out != nil && out.ResponseMeta != nil {
 		m.add(out.ResponseMeta.Usage, &schema.TokenUsage{})
 	}
@@ -390,7 +408,7 @@ func (m *meteredModel) Stream(ctx context.Context, in []*schema.Message, opts ..
 	if e != nil {
 		return nil, e
 	}
-	stream, e := m.BaseChatModel.Stream(ctx, prepared, opts...)
+	stream, e := m.BaseChatModel.Stream(ctx, prepared, m.stepOptions(opts)...)
 	if e != nil {
 		return nil, e
 	}
