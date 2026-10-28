@@ -90,3 +90,33 @@ func TestReportImplementationDetailsBindOnlyActualToolEvidence(t *testing.T) {
 		}
 	}
 }
+
+func TestReportRejectsObservedRawFormValuesOnlyInTheirTopic(t *testing.T) {
+	for _, tc := range []struct {
+		tool, text string
+		wantErr    bool
+	}{
+		{"dream", "重复情况为 repeated，次数未提供。", true},
+		{"dream", "重复情况原始字段值为 `repeated`。", true},
+		{"dream", "- **重复情况（原始字段值）**：repeated（平台梦境图表转写）。", true},
+		{"dream", "| 重复情况 | repeated | 用户原述 |", true},
+		{"dream", "recurrence=unknown，具体次数未确认。", true},
+		{"dream", "重复情况为 once。", true},
+		{"dream", "曾重复出现，次数未提供。", false},
+		{"dream", "用户项目名为 repeated，近期压力待自行核对。", false},
+		{"dream", "梦境原述：梦中我反复唱英文歌 once，醒后记得这句歌词。", false},
+		{"dream", "参见[说明](https://example.org/recurrence=repeated)。", false},
+		{"date_select", "周末与工作日均纳入（weekdayOnly=all）。", true},
+		{"date_select", "用户项目名为weekdayOnly。", false},
+		{"date_select", "包含周末与周内日期，不包含节假日或调休判断。", false},
+		{"naming", "英文项目名为 repeated。", false},
+	} {
+		doc := reportdoc.New()
+		doc.Evidence = []reportdoc.Evidence{{Tool: tc.tool, Text: `{}`}}
+		for _, body := range []reportBody{{Summary: tc.text}, {Content: tc.text}} {
+			if err := validateReportImplementationDetails(body, doc); (err != nil) != tc.wantErr {
+				t.Fatalf("tool=%s text=%q err=%v wantErr=%t", tc.tool, tc.text, err, tc.wantErr)
+			}
+		}
+	}
+}
