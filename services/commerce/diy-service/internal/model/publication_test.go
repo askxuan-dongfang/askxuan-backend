@@ -230,6 +230,12 @@ func TestPublicationMySQL(t *testing.T) {
 		if _, e := ChangePublicationStatus(ctx, db, d.Id, d.Revision, d.UserId, DesignStatusPublic, false); e == nil {
 			t.Fatal("unpaid draft published")
 		}
+		unknownPayment := newDesign("990912")
+		ownOrder(unknownPayment, DiyStatusInMaking, "success", "unknown")
+		checkReason(unknownPayment, "payment_required")
+		if _, e := ChangePublicationStatus(ctx, db, unknownPayment.Id, unknownPayment.Revision, unknownPayment.UserId, DesignStatusPublic, false); e == nil {
+			t.Fatal("unknown payment channel published")
+		}
 		foreign := *d
 		foreign.UserId = "990911"
 		ownOrder(&foreign, DiyStatusInMaking, "success", "alipay")
@@ -246,8 +252,9 @@ func TestPublicationMySQL(t *testing.T) {
 		}
 		checkReason(d, "payment_required")
 		exec("UPDATE diy_order SET payment_status='success' WHERE id=?", o.Id)
-		exec("INSERT INTO askxuan_payment.payment(payment_no,user_id,order_type,order_no,amount,channel,status) VALUES(?,?,'diy_order',?,20,'mock','success')", o.OrderNo, d.UserId, o.OrderNo)
 		checkReason(d, "payment_required")
+		exec("INSERT INTO askxuan_payment.payment(payment_no,user_id,order_type,order_no,amount,channel,status) VALUES(?,?,'diy_order',?,20,'mock','success')", o.OrderNo, d.UserId, o.OrderNo)
+		checkReason(d, "confirmation_required")
 		exec("UPDATE askxuan_payment.payment SET channel='alipay' WHERE order_no=?", o.OrderNo)
 		checkReason(d, "confirmation_required")
 		exec("UPDATE diy_order SET status='in_making' WHERE id=?", o.Id)
@@ -274,6 +281,94 @@ func TestPublicationMySQL(t *testing.T) {
 		checkReason(&changed, "design_changed")
 		exec("UPDATE diy_order SET pricing_snapshot='{}' WHERE id=?", o.Id)
 		checkReason(d, "snapshot_unavailable")
+	})
+	t.Run("approved demo publications stay visible without monetary attribution", func(t *testing.T) {
+		for index, channel := range []string{"mock", "demo_balance"} {
+			t.Run(channel, func(t *testing.T) {
+				d := newDesign(fmt.Sprintf("99096%d", index))
+				o := ownOrder(d, DiyStatusPendingReview, "pending", channel)
+				checkReason(d, "payment_required")
+				exec("UPDATE diy_order SET payment_status='success' WHERE id=?", o.Id)
+				checkReason(d, "confirmation_required")
+				if _, err := ChangePublicationStatus(ctx, db, d.Id, d.Revision, d.UserId, DesignStatusPublic, false); err == nil {
+					t.Fatal("unapproved demo order published")
+				}
+				exec("UPDATE diy_order SET status='in_making' WHERE id=?", o.Id)
+				checkReason(d, "ready")
+				d = publish(d)
+				published, p, err := PublishedDesign(ctx, db, d)
+				if err != nil || p.Id != d.PublicationId || published.TotalPrice != 20 {
+					t.Fatal("approved demo publication unavailable", err)
+				}
+				listed := func() bool {
+					t.Helper()
+					list, _, err := findPublishedDesigns(ctx, db, 1, 100)
+					if err != nil {
+						t.Fatal(err)
+					}
+					for _, item := range list {
+						if item.Id == d.Id {
+							return true
+						}
+					}
+					return false
+				}
+				if !listed() {
+					t.Fatal("demo publication missing from public list")
+				}
+				if _, err := FindAttributionPublication(ctx, db, p.Id, false); !errors.Is(err, sqlx.ErrNotFound) {
+					t.Fatal("demo payment qualified as a monetary source", err)
+				}
+				assertNoReward := func(order *DiyOrder) {
+					t.Helper()
+					if order.CreatorId != "" || order.CreatorShareRate != 0 {
+						t.Fatalf("demo source gained a creator: %+v", order)
+					}
+					// A real downstream payment must not turn a demo root into income.
+					exec("INSERT INTO askxuan_payment.payment(payment_no,user_id,order_type,order_no,amount,channel,status) VALUES(?,?,'diy_order',?,?,'alipay','success')", order.OrderNo, order.UserId, order.OrderNo, order.TotalFee)
+					if err := NewCreatorEarningModel(db).RecordPaymentSuccess(ctx, order.OrderNo, order.OrderNo); err != nil {
+						t.Fatal(err)
+					}
+					stored, err := orders.FindOne(ctx, order.Id)
+					if err != nil || stored.CreatorId != "" || stored.CreatorShareRate != 0 {
+						t.Fatal("demo source persisted creator income", err)
+					}
+					publicationID, designID := publicationSnapshotForReward(stored.DesignSnapshot)
+					if publicationID != 0 || designID != 0 {
+						t.Fatal("demo source persisted reward attribution")
+					}
+					for _, table := range []string{"creator_reward", "diy_creator_earning"} {
+						var count int
+						if err := db.QueryRowCtx(ctx, &count, "SELECT COUNT(*) FROM "+table+" WHERE order_id=?", order.Id); err != nil || count != 0 {
+							t.Fatalf("demo source created %s rows: %d, %v", table, count, err)
+						}
+					}
+				}
+				assertNoReward(checkout(published, fmt.Sprintf("99097%d", index), "design_square"))
+				copy := copyOf(d, fmt.Sprintf("99098%d", index))
+				copyOrder := checkout(copy, copy.UserId, "custom")
+				assertNoReward(copyOrder)
+				exec("UPDATE diy_order SET status='in_making' WHERE id=?", copyOrder.Id)
+				copy = publish(copy)
+				forward := copyOf(copy, fmt.Sprintf("99099%d", index))
+				assertNoReward(checkout(forward, forward.UserId, "custom"))
+				forwardPublication, _, err := PublishedDesign(ctx, db, copy)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertNoReward(checkout(forwardPublication, forward.UserId, "design_square"))
+
+				refund := fmt.Sprintf("%s-demo-%d", nonce, index)
+				exec("INSERT INTO askxuan_payment.refund(refund_no,payment_id,amount,status) SELECT ?,id,20,'pending' FROM askxuan_payment.payment WHERE order_no=?", refund, o.OrderNo)
+				for _, status := range []string{"pending", "processing", "success"} {
+					exec("UPDATE askxuan_payment.refund SET status=? WHERE refund_no=?", status, refund)
+					checkReason(d, "order_inactive")
+					if _, _, err := PublishedDesign(ctx, db, d); !errors.Is(err, sqlx.ErrNotFound) || listed() {
+						t.Fatal("refunded demo publication remained public", status, err)
+					}
+				}
+			})
+		}
 	})
 	t.Run("snapshot stays fixed through draft changes and revision conflicts", func(t *testing.T) {
 		d := newDesign("990920")
