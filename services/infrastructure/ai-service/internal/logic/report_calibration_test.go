@@ -42,8 +42,8 @@ func TestCalibrationRetainsEvidenceAndFailsInsteadOfTruncating(t *testing.T) {
 	doc.Blocks = []reportdoc.Block{{Kind: "citations", Items: []reportdoc.Item{{Label: "资料7", Value: "本次实际检索片段", Detail: "原文位置"}}}}
 	doc.Evidence = []reportdoc.Evidence{{Tool: "recall_memory", Text: "PRIVATE MEMORY"}, {Tool: "search_knowledge", Text: "资料7：本次实际检索片段"}, {Tool: "participant", Text: "duplicate chart"}}
 	in := reportCalibrationInput{Topic: "marriage", Question: "一个计划一个临场", Inputs: json.RawMessage(`{"birthplace":"沙依巴克区","partnerBirthplace":"西湖区"}`), Calculations: json.RawMessage(`[{"对象":"你","四柱":"乙巳"},{"对象":"对方","四柱":"戊子"}]`), Sources: reportCalibrationSources(doc), Draft: reportBody{Summary: "待核对摘要", Content: "待核对正文"}}
-	req, err := reportCalibrationRequest(provider.Request{Model: "selected-model", MaxTokens: 8192, ThinkingEnabled: true}, 32768, in)
-	if err != nil || req.Model != "selected-model" || req.MaxTokens != 4096 || !req.ThinkingEnabled || len(req.Messages) != 1 {
+	req, err := reportCalibrationRequest(provider.Request{Model: "selected-model", MaxTokens: 8192, ThinkingEnabled: true, ReasoningEffort: "high"}, 32768, in)
+	if err != nil || req.Model != "selected-model" || req.MaxTokens != 4096 || !req.JSONMode || !req.ThinkingEnabled || req.ReasoningEffort != "high" || len(req.Messages) != 1 {
 		t.Fatal(req, err)
 	}
 	for _, required := range []string{"沙依巴克区", "西湖区", "乙巳", "戊子", "资料7"} {

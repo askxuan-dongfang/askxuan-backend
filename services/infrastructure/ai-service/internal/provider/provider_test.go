@@ -46,6 +46,40 @@ func TestOpenAICompatible(t *testing.T) {
 	}
 }
 
+func TestOpenAICompatibleJSONModeIsOptIn(t *testing.T) {
+	for name, enabled := range map[string]bool{"default": false, "enabled": true} {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var payload map[string]interface{}
+				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+					t.Error(err)
+					return
+				}
+				format, present := payload["response_format"]
+				if enabled {
+					object, _ := format.(map[string]interface{})
+					if len(object) != 1 || object["type"] != "json_object" {
+						t.Errorf("JSON response format=%v", format)
+					}
+				} else if present {
+					t.Errorf("default request set response_format=%v", format)
+				}
+				thinking, _ := payload["thinking"].(map[string]interface{})
+				if thinking["type"] != "enabled" || payload["reasoning_effort"] != "high" {
+					t.Errorf("thinking payload=%v", payload)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{\"issues\":[]}"},"finish_reason":"stop"}]}`))
+			}))
+			defer server.Close()
+			resp, err := NewOpenAICompatible(server.URL, "key", "model", "").Complete(context.Background(), Request{JSONMode: enabled, ThinkingEnabled: true, ReasoningEffort: "high", Messages: []Message{{Role: "user", Content: "Return JSON."}}})
+			if err != nil || resp.Content != `{"issues":[]}` || resp.FinishReason != "stop" {
+				t.Fatalf("unexpected JSON response: %#v %v", resp, err)
+			}
+		})
+	}
+}
+
 func TestOpenAICompatibleStream(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")

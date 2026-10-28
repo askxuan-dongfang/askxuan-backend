@@ -376,7 +376,7 @@ func (d *Document) Add(tool, raw string) {
 			}
 			for _, value := range list(group["候选用神"]) {
 				candidate := obj(value)
-				selections = append(selections, map[string]any{"层次": "备选用神", "目标六亲": group["目标六亲"], "取用状态": group["取用状态"], "爻位": candidate["爻位"], "六亲": candidate["六亲"], "纳甲": candidate["纳甲"], "来源": candidate["来源"], "依据": candidate["依据"]})
+				selections = append(selections, map[string]any{"层次": "备选用神", "目标六亲": group["目标六亲"], "取用状态": "备选", "爻位": candidate["爻位"], "六亲": candidate["六亲"], "纳甲": candidate["纳甲"], "来源": candidate["来源"], "依据": candidate["依据"]})
 			}
 		}
 		table("用神主次与取用依据", []string{"层次", "目标六亲", "爻位", "六亲", "纳甲", "来源", "依据", "取用状态"}, selections)

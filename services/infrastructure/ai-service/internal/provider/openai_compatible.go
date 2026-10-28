@@ -245,6 +245,9 @@ func wireMessages(req Request) []wireMessage {
 
 func basePayload(req Request, model string, messages []wireMessage) map[string]interface{} {
 	payload := map[string]interface{}{"model": model, "messages": messages}
+	if req.JSONMode {
+		payload["response_format"] = map[string]string{"type": "json_object"}
+	}
 	if req.MaxTokens > 0 {
 		payload["max_tokens"] = req.MaxTokens
 	}

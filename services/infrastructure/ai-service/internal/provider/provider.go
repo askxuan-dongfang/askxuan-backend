@@ -17,6 +17,7 @@ type Request struct {
 	SystemPrompt    string
 	Messages        []Message
 	MaxTokens       int
+	JSONMode        bool
 	ThinkingEnabled bool
 	ReasoningEffort string
 }
