@@ -33,14 +33,46 @@ func (s reportSkills) FindByCode(_ context.Context, code string) (*model.AISkill
 }
 func TestReportRunsHarnessWithComputedCharts(t *testing.T) {
 	for _, code := range []string{"bazi", "marriage", "ziwei"} {
-		t.Run(code, func(t *testing.T) { testReportHarness(t, code, 0) })
+		t.Run(code, func(t *testing.T) { testReportHarness(t, code, 0, 0) })
 	}
 }
 func TestMarriageReportRepairsOnceWithoutRecalculating(t *testing.T) {
-	t.Run("corrected", func(t *testing.T) { testReportHarness(t, "marriage", 1) })
-	t.Run("still_conflicts", func(t *testing.T) { testReportHarness(t, "marriage", 2) })
+	t.Run("corrected", func(t *testing.T) { testReportHarness(t, "marriage", 1, 0) })
+	t.Run("still_conflicts", func(t *testing.T) { testReportHarness(t, "marriage", 2, 0) })
 }
-func testReportHarness(t *testing.T, code string, conflictingResponses int) {
+func TestReportCalibrationRepairsOnceWithoutRecalculating(t *testing.T) {
+	t.Run("corrected", func(t *testing.T) { testReportHarness(t, "marriage", 0, 1) })
+	t.Run("still_conflicts", func(t *testing.T) { testReportHarness(t, "marriage", 0, 2) })
+}
+func TestReportCalibrationRejectsInvalidReviewWithoutRepair(t *testing.T) {
+	for _, failure := range []string{"length", "ungrounded_quote", "null_issues"} {
+		t.Run(failure, func(t *testing.T) { testReportHarness(t, "marriage", 0, 0, failure) })
+	}
+}
+
+func isReportCalibrationFixtureRequest(req map[string]any) bool {
+	raw, _ := json.Marshal(req["messages"])
+	return req["stream"] == false || strings.Contains(string(raw), "report_calibration_v1")
+}
+
+func writeReportCalibrationFixture(w http.ResponseWriter, content string, finishReasons ...string) {
+	finishReason := "stop"
+	if len(finishReasons) > 0 {
+		finishReason = finishReasons[0]
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"id": "calibration-fixture", "object": "chat.completion", "model": "fixture",
+		"choices": []any{map[string]any{"index": 0, "message": map[string]any{"role": "assistant", "content": content}, "finish_reason": finishReason}},
+		"usage":   map[string]any{"prompt_tokens": 11, "completion_tokens": 7, "prompt_cache_hit_tokens": 5, "prompt_cache_miss_tokens": 6, "completion_tokens_details": map[string]any{"reasoning_tokens": 3}},
+	})
+}
+
+func testReportHarness(t *testing.T, code string, conflictingResponses, calibrationConflicts int, calibrationFailures ...string) {
+	calibrationFailure := ""
+	if len(calibrationFailures) > 0 {
+		calibrationFailure = calibrationFailures[0]
+	}
 	fixture, e := os.ReadFile("../reportdoc/testdata/synthetic.json")
 	if e != nil {
 		t.Fatal(e)
@@ -49,7 +81,7 @@ func testReportHarness(t *testing.T, code string, conflictingResponses int) {
 	_ = json.Unmarshal(fixture, &results)
 	results["ziwei_horoscope"] = json.RawMessage(`{"运限叠宫":[{"层次":"流年","落入本命宫位":"命宫","干支":"甲子"}]}`)
 	var targetDates []string
-	var toolCalls, modelCalls atomic.Int32
+	var toolCalls, modelCalls, generationCalls, calibrationCalls atomic.Int32
 	mcp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Params struct {
@@ -77,10 +109,37 @@ func testReportHarness(t *testing.T, code string, conflictingResponses int) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		n := modelCalls.Add(1)
+		modelCalls.Add(1)
+		if isReportCalibrationFixtureRequest(req) {
+			n := calibrationCalls.Add(1)
+			raw, _ := json.Marshal(req["messages"])
+			if !strings.Contains(string(raw), "report_calibration_v1") || !strings.Contains(string(raw), "fixtureBirthYear") || ((code == "bazi" || code == "marriage") && !strings.Contains(string(raw), "四柱")) {
+				t.Error("calibration did not receive current calculation evidence")
+			}
+			response := `{"issues":[]}`
+			conflictingDraft := calibrationConflicts > 0 && (n == 1 || calibrationConflicts > 1)
+			if strings.Contains(string(raw), "对方伤官透于时") != conflictingDraft {
+				t.Error("calibration did not receive the current draft")
+			}
+			if conflictingDraft {
+				response = `{"issues":[{"quote":"对方伤官透于时","basis":"对方时柱为甲辰，时干甲为正印，辰中戊为伤官；不能称伤官透干。"}]}`
+			}
+			finishReason := "stop"
+			switch calibrationFailure {
+			case "length":
+				finishReason = "length"
+			case "ungrounded_quote":
+				response = `{"issues":[{"quote":"审读伪造且不在草稿中的断言","basis":"审读声称存在的句子没有出现在报告草稿中。"}]}`
+			case "null_issues":
+				response = `{"issues":null}`
+			}
+			writeReportCalibrationFixture(w, response, finishReason)
+			return
+		}
+		n := generationCalls.Add(1)
 		var delta map[string]any
 		reason := "stop"
-		if n == 1 || (conflictingResponses > 0 && n == 3) {
+		if n%2 == 1 {
 			reason = "tool_calls"
 			delta = map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "read_1", "type": "function", "function": map[string]any{"name": "read_report", "arguments": "{}"}}}}
 		} else {
@@ -94,10 +153,15 @@ func testReportHarness(t *testing.T, code string, conflictingResponses int) {
 				wrong.Summary = "女方八字与紫微命盘均未取得，因此本报告不是双人合盘，仅男方的关系模式分析。"
 				response, _ = json.Marshal(wrong)
 			}
+			if calibrationConflicts > 0 && (n == 2 || calibrationConflicts > 1) {
+				wrong := body
+				wrong.Summary = "对方伤官透于时。" + wrong.Summary
+				response, _ = json.Marshal(wrong)
+			}
 			delta = map[string]any{"role": "assistant", "content": string(response)}
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
-		event, _ := json.Marshal(map[string]any{"id": "fixture", "object": "chat.completion.chunk", "model": "fixture", "choices": []any{map[string]any{"index": 0, "delta": delta, "finish_reason": reason}}})
+		event, _ := json.Marshal(map[string]any{"id": "fixture", "object": "chat.completion.chunk", "model": "fixture", "choices": []any{map[string]any{"index": 0, "delta": delta, "finish_reason": reason}}, "usage": map[string]any{"prompt_tokens": 3, "completion_tokens": 2, "completion_tokens_details": map[string]any{"reasoning_tokens": 1}}})
 		fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", event)
 	}))
 	defer server.Close()
@@ -123,17 +187,38 @@ func testReportHarness(t *testing.T, code string, conflictingResponses int) {
 	if code == "ziwei" {
 		r.InputsJSON = strings.TrimSuffix(r.InputsJSON, "}") + `,"targetDate":"2026-10-26"}`
 	}
-	result, doc, _, e := executeReport(context.Background(), s, r)
+	result, doc, usage, e := executeReport(context.Background(), s, r)
+	if usage.PromptTokens != int(generationCalls.Load())*3+int(calibrationCalls.Load())*11 || usage.CompletionTokens != int(generationCalls.Load())*2+int(calibrationCalls.Load())*7 || usage.PromptCacheHitTokens != int(calibrationCalls.Load())*5 || usage.PromptCacheMissTokens != int(generationCalls.Load())*3+int(calibrationCalls.Load())*6 || usage.ReasoningTokens != int(generationCalls.Load())+int(calibrationCalls.Load())*3 {
+		t.Fatalf("generation/calibration usage lost: %+v generations=%d calibrations=%d", usage, generationCalls.Load(), calibrationCalls.Load())
+	}
+	if doc.ModelCalls != int(modelCalls.Load()) {
+		t.Fatalf("model calls lost: document=%d actual=%d", doc.ModelCalls, modelCalls.Load())
+	}
+	if calibrationFailure != "" {
+		if e == nil || modelCalls.Load() != 3 || generationCalls.Load() != 2 || calibrationCalls.Load() != 1 || toolCalls.Load() != 2 || result.Summary != "" || result.Content != "" {
+			t.Fatalf("invalid review was published or repaired: %v models=%d generations=%d calibrations=%d tools=%d", e, modelCalls.Load(), generationCalls.Load(), calibrationCalls.Load(), toolCalls.Load())
+		}
+		if e = m.ExpectationsWereMet(); e != nil {
+			t.Fatal(e)
+		}
+		return
+	}
 	if conflictingResponses == 2 {
-		if e == nil || modelCalls.Load() != 4 || toolCalls.Load() != 2 {
+		if e == nil || modelCalls.Load() != 4 || calibrationCalls.Load() != 0 || toolCalls.Load() != 2 {
 			t.Fatalf("contradiction not bounded: %v models=%d tools=%d", e, modelCalls.Load(), toolCalls.Load())
+		}
+		return
+	}
+	if calibrationConflicts == 2 {
+		if e == nil || modelCalls.Load() != 6 || calibrationCalls.Load() != 2 || toolCalls.Load() != 2 {
+			t.Fatalf("semantic contradiction not bounded: %v models=%d calibrations=%d tools=%d", e, modelCalls.Load(), calibrationCalls.Load(), toolCalls.Load())
 		}
 		return
 	}
 	if e != nil {
 		t.Fatal(e)
 	}
-	expectedTools, expectedModels := int32(2), int32(2)
+	expectedTools, expectedModels := int32(2), int32(3)
 	if code == "ziwei" {
 		expectedTools = 3
 		if strings.Join(targetDates, ",") != "2026-10-26,2027-10-26" {
@@ -141,9 +226,12 @@ func testReportHarness(t *testing.T, code string, conflictingResponses int) {
 		}
 	}
 	if conflictingResponses > 0 {
-		expectedModels = 4
+		expectedModels = 5
 	}
-	if result.Content != body.Content || doc.Runtime != "harness" || doc.ToolCalls != int(expectedTools) || toolCalls.Load() != expectedTools || modelCalls.Load() != expectedModels || len(doc.Blocks) < 4 {
+	if calibrationConflicts > 0 {
+		expectedModels = 6
+	}
+	if result.Summary != body.Summary || result.Content != body.Content || doc.Runtime != "harness" || doc.ToolCalls != int(expectedTools) || toolCalls.Load() != expectedTools || modelCalls.Load() != expectedModels || len(doc.Blocks) < 4 {
 		t.Fatalf("report pipeline incorrect tools=%d models=%d blocks=%d", toolCalls.Load(), modelCalls.Load(), len(doc.Blocks))
 	}
 	if code == "marriage" {
@@ -199,15 +287,20 @@ func TestTopicReportsRequireAndReadToolEvidence(t *testing.T) {
 		{"fortune", `{"targetDate":"2026-09-29"}`},
 	} {
 		t.Run(tc.code, func(t *testing.T) {
-			var calls atomic.Int32
+			var calls, generationCalls atomic.Int32
 			body := reportBody{Summary: "依据用户已确认资料和工具返回结果整理，区分实际计算依据与待补充的信息。", Content: "## 核验依据\n" + strings.Repeat("这里只解释工具实际返回的信息，缺失资料保留待确认。", 12) + "\n## 结果对照\n" + strings.Repeat("依据来源与用户原述分开呈现，不添加未经验证的计算结果。", 12) + "\n## 下一步\n补充尚未确认的信息后再继续分析。"}
 			encoded, _ := json.Marshal(body)
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var req map[string]any
 				_ = json.NewDecoder(r.Body).Decode(&req)
+				calls.Add(1)
+				if isReportCalibrationFixtureRequest(req) {
+					writeReportCalibrationFixture(w, `{"issues":[]}`)
+					return
+				}
 				var delta map[string]any
 				reason := "stop"
-				if calls.Add(1) == 1 {
+				if generationCalls.Add(1) == 1 {
 					reason = "tool_calls"
 					delta = map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "read", "type": "function", "function": map[string]any{"name": "read_report", "arguments": "{}"}}}}
 				} else {
@@ -237,8 +330,8 @@ func TestTopicReportsRequireAndReadToolEvidence(t *testing.T) {
 			skill := &model.AISkill{Code: tc.code, Name: tc.code, Status: "enabled", InputSchema: reportToolSchema(tc.code), ToolConfig: `{"enabled":true,"server":"builtin","tool":"` + tc.code + `"}`}
 			s := &svc.ServiceContext{DB: sqlx.NewSqlConnFromDB(db), SkillModel: reportSkills{skill}, Guard: agent.NewGuard(20000, nil), Provider: p, MCP: agent.NewMCPClient(true, mcp.URL, 1)}
 			s.AIConfig.ContextWindow = 1048576
-			result, doc, _, e := executeReport(context.Background(), s, &Report{ID: 1, SkillCode: tc.code, Question: "整理专题", InputsJSON: tc.input, ChaptersJSON: `["核验依据"]`})
-			if e != nil || result.Content != body.Content || len(doc.Blocks) == 0 || doc.Blocks[0].Kind != "table" || doc.Blocks[0].Source != tc.code || calls.Load() != 2 {
+			result, doc, usage, e := executeReport(context.Background(), s, &Report{ID: 1, SkillCode: tc.code, Question: "整理专题", InputsJSON: tc.input, ChaptersJSON: `["核验依据"]`})
+			if e != nil || result.Content != body.Content || len(doc.Blocks) == 0 || doc.Blocks[0].Kind != "table" || doc.Blocks[0].Source != tc.code || calls.Load() != 3 || doc.ModelCalls != 3 || usage.PromptTokens != 11 || usage.CompletionTokens != 7 || usage.PromptCacheHitTokens != 5 || usage.PromptCacheMissTokens != 6 || usage.ReasoningTokens != 3 {
 				t.Fatalf("topic %s evidence pipeline: %+v %v", tc.code, doc, e)
 			}
 			if e = m.ExpectationsWereMet(); e != nil {

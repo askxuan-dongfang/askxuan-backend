@@ -29,6 +29,12 @@ func reportTestContext(t *testing.T) *svc.ServiceContext {
 	db := sqlx.NewMysql(dsn)
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if isReportCalibrationFixtureRequest(req) {
+			writeReportCalibrationFixture(w, `{"issues":[]}`)
+			return
+		}
 		content := "## 梦境线索\n" + strings.Repeat("这是隔离数据库验收内容，不代表真实模型质量。", 20) + "\n## 意象整理\n| 意象 | 解释 |\n| --- | --- |\n| 道路 | 个人联想 |\n## 行动建议\n记录与复盘。"
 		raw, _ := json.Marshal(reportBody{Summary: strings.Repeat("依据梦境描述整理线索。", 6), Content: content})
 		delta := map[string]any{"role": "assistant", "content": string(raw)}
@@ -73,6 +79,20 @@ func TestMySQLReportGenerate(t *testing.T) {
 	}
 	if r.Title != "周公解梦" || r.Status != "ready" || r.Content != "" || r.Unlocked {
 		t.Fatalf("preview boundary %+v", r)
+	}
+	var generated struct {
+		DocumentJSON     string `db:"document_json"`
+		PromptTokens     int    `db:"prompt_tokens"`
+		CompletionTokens int    `db:"completion_tokens"`
+	}
+	if e = s.DB.QueryRowCtx(ctx, &generated, `SELECT document_json,prompt_tokens,completion_tokens FROM ai_report WHERE id=?`, r.ID); e != nil {
+		t.Fatal(e)
+	}
+	var document struct {
+		ModelCalls int `json:"modelCalls"`
+	}
+	if e = json.Unmarshal([]byte(generated.DocumentJSON), &document); e != nil || document.ModelCalls != 3 || generated.PromptTokens != 11 || generated.CompletionTokens != 7 {
+		t.Fatalf("persisted calibration usage: %+v document=%+v err=%v", generated, document, e)
 	}
 	if _, e = ReportGet(ctx, s, "9502", r.ID); e == nil {
 		t.Fatal("other user accessed report")

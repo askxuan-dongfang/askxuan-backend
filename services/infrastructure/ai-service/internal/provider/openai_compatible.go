@@ -84,7 +84,8 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 	}
 	var decoded struct {
 		Choices []struct {
-			Message Message `json:"message"`
+			Message      Message `json:"message"`
+			FinishReason string  `json:"finish_reason"`
 		} `json:"choices"`
 		Usage struct {
 			PromptTokens           int `json:"prompt_tokens"`
@@ -100,10 +101,15 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return nil, fmt.Errorf("decode provider response: %w", err)
 	}
-	if len(decoded.Choices) == 0 || strings.TrimSpace(decoded.Choices[0].Message.Content) == "" {
-		return nil, ErrEmptyContent
+	result := &Response{PromptTokens: decoded.Usage.PromptTokens, CompletionTokens: decoded.Usage.CompletionTokens, PromptCacheHitTokens: decoded.Usage.PromptCacheHitTokens, PromptCacheMissTokens: decoded.Usage.PromptCacheMissTokens, ReasoningTokens: decoded.Usage.CompletionTokenDetails.ReasoningTokens, Model: defaultValue(decoded.Model, model)}
+	if len(decoded.Choices) > 0 {
+		result.Content = decoded.Choices[0].Message.Content
+		result.FinishReason = decoded.Choices[0].FinishReason
 	}
-	return &Response{Content: decoded.Choices[0].Message.Content, PromptTokens: decoded.Usage.PromptTokens, CompletionTokens: decoded.Usage.CompletionTokens, PromptCacheHitTokens: decoded.Usage.PromptCacheHitTokens, PromptCacheMissTokens: decoded.Usage.PromptCacheMissTokens, ReasoningTokens: decoded.Usage.CompletionTokenDetails.ReasoningTokens, FinishReason: "stop", Model: defaultValue(decoded.Model, model)}, nil
+	if strings.TrimSpace(result.Content) == "" {
+		return result, ErrEmptyContent
+	}
+	return result, nil
 }
 
 func (p *OpenAICompatible) Stream(ctx context.Context, req Request, onDelta func(StreamDelta) error) (*Response, error) {

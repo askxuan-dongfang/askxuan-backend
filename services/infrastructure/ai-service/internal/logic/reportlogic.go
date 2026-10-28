@@ -312,12 +312,11 @@ func generateReport(s *svc.ServiceContext, id int64) {
 	if err := s.DB.QueryRowPartialCtx(ctx, &r, `SELECT `+reportSelectCols+` FROM ai_report WHERE id=?`, id); err != nil {
 		return
 	}
-	fail := func() {
-		_, _ = s.DB.ExecCtx(context.Background(), `UPDATE ai_report SET status='failed',generation_stage='failed',error_message='报告暂未生成成功，请免费重试；尚未扣款' WHERE id=? AND status='generating'`, id)
-	}
 	body, doc, usage, err := executeReport(ctx, s, &r)
 	if err != nil || !validReportBody(body) || s.Guard.ValidateOutput(body.Content+body.Summary) != nil {
-		fail()
+		failureCtx, stop := context.WithTimeout(context.Background(), 5*time.Second)
+		defer stop()
+		_, _ = s.DB.ExecCtx(failureCtx, `UPDATE ai_report SET status='failed',generation_stage='failed',provider=?,model=?,prompt_tokens=?,completion_tokens=?,cost_micros=?,error_message='报告暂未生成成功，请免费重试；尚未扣款' WHERE id=? AND status='generating'`, s.Provider.Name(), usage.Model, usage.PromptTokens, usage.CompletionTokens, calculateCostMicros(usage, s.AIConfig, time.Now()), id)
 		return
 	}
 	raw, _ := json.Marshal(doc)
