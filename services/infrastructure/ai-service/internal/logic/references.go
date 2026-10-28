@@ -57,6 +57,11 @@ func bindReferences(s *svc.ServiceContext, in *askagent.Input, user string, obse
 		if e == nil && observe != nil {
 			observe(name, string(b))
 		}
+		if e == nil && kind == "knowledge" && in.Report != nil && in.Report.Calculated && len(r.Graph) > 0 {
+			// Report claims use cited passages; retain the full graph only in the private audit.
+			r.Graph = nil
+			b, e = json.Marshal(r)
+		}
 		return string(b), e
 	}
 }

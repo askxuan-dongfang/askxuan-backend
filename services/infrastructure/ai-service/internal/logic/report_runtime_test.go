@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -45,15 +46,19 @@ func TestReportCalibrationRepairsOnceWithoutRecalculating(t *testing.T) {
 	t.Run("still_conflicts", func(t *testing.T) { testReportHarness(t, "marriage", 0, 2) })
 }
 func TestReportCalibrationRejectsInvalidReviewAfterBoundedProtocolRepair(t *testing.T) {
-	for _, failure := range []string{"length", "provider_error", "empty_content", "ungrounded_quote", "null_issues"} {
+	for _, failure := range []string{"length", "provider_error", "empty_content", "empty_length", "empty_content_filter", "empty_tool_calls", "empty_function_call", "empty_unknown_finish", "empty_then_invalid", "invalid_then_empty", "ungrounded_quote", "null_issues"} {
 		t.Run(failure, func(t *testing.T) { testReportHarness(t, "marriage", 0, 0, failure) })
 	}
 }
 func TestReportCalibrationProtocolRepairDoesNotRewriteOrRecalculate(t *testing.T) {
-	testReportHarness(t, "marriage", 0, 0, "invalid_then_valid")
+	for _, response := range []string{"invalid_then_valid", "empty_then_valid", "empty_missing_finish_then_valid"} {
+		t.Run(response, func(t *testing.T) { testReportHarness(t, "marriage", 0, 0, response) })
+	}
 }
 func TestReportCalibrationAllowsOneProtocolRepairPerDraft(t *testing.T) {
-	testReportHarness(t, "marriage", 0, 1, "invalid_each_round_then_valid")
+	for _, response := range []string{"invalid_each_round_then_valid", "empty_each_round_then_valid"} {
+		t.Run(response, func(t *testing.T) { testReportHarness(t, "marriage", 0, 1, response) })
+	}
 }
 
 func isReportCalibrationFixtureRequest(req map[string]any) bool {
@@ -67,9 +72,13 @@ func writeReportCalibrationFixture(w http.ResponseWriter, content string, finish
 		finishReason = finishReasons[0]
 	}
 	w.Header().Set("Content-Type", "application/json")
+	choice := map[string]any{"index": 0, "message": map[string]any{"role": "assistant", "content": content}}
+	if finishReason != "" {
+		choice["finish_reason"] = finishReason
+	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"id": "calibration-fixture", "object": "chat.completion", "model": "fixture",
-		"choices": []any{map[string]any{"index": 0, "message": map[string]any{"role": "assistant", "content": content}, "finish_reason": finishReason}},
+		"choices": []any{choice},
 		"usage":   map[string]any{"prompt_tokens": 11, "completion_tokens": 7, "prompt_cache_hit_tokens": 5, "prompt_cache_miss_tokens": 6, "completion_tokens_details": map[string]any{"reasoning_tokens": 3}},
 	})
 }
@@ -112,12 +121,27 @@ func testReportHarness(t *testing.T, code string, conflictingResponses, calibrat
 	defer mcp.Close()
 	body := reportBody{Summary: strings.Repeat("根据已确认资料和工具结果整理阅读线索。", 3), Content: "## 计算依据\n" + strings.Repeat("依据计算数据解释传统文化术语，不作结果保证。", 20) + "\n## 阶段比较\n| 阶段 | 参考 |\n| --- | --- |\n| 当前 | 核对现实条件 |\n## 行动建议\n记录并复盘。"}
 	rawBody, _ := json.Marshal(body)
+	var firstCalibrationRequest map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		modelCalls.Add(1)
 		if isReportCalibrationFixtureRequest(req) {
 			n := calibrationCalls.Add(1)
+			if n%2 == 1 {
+				firstCalibrationRequest = req
+			} else if calibrationFailure != "" {
+				before, _ := firstCalibrationRequest["messages"].([]any)
+				after, _ := req["messages"].([]any)
+				if len(after) != len(before)+1 || !reflect.DeepEqual(after[:len(before)], before) {
+					t.Error("protocol correction replaced the original calibration rules or draft")
+				}
+				for key, value := range firstCalibrationRequest {
+					if key != "messages" && !reflect.DeepEqual(req[key], value) {
+						t.Errorf("protocol correction changed request policy field %s", key)
+					}
+				}
+			}
 			raw, _ := json.Marshal(req["messages"])
 			if !strings.Contains(string(raw), "report_calibration_v1") || !strings.Contains(string(raw), "fixtureBirthYear") || ((code == "bazi" || code == "marriage") && !strings.Contains(string(raw), "四柱")) {
 				t.Error("calibration did not receive current calculation evidence")
@@ -139,6 +163,27 @@ func testReportHarness(t *testing.T, code string, conflictingResponses, calibrat
 				return
 			case "empty_content":
 				response = ""
+			case "empty_length", "empty_content_filter", "empty_tool_calls", "empty_function_call":
+				response, finishReason = "", strings.TrimPrefix(calibrationFailure, "empty_")
+			case "empty_unknown_finish":
+				response, finishReason = "", "untrusted_finish\nPRIVATE_REASONING"
+			case "empty_then_valid", "empty_missing_finish_then_valid":
+				if n == 1 {
+					response = ""
+					if calibrationFailure == "empty_missing_finish_then_valid" {
+						finishReason = "" // Reproduce absent metadata; do not invent stop.
+					}
+				}
+			case "empty_then_invalid":
+				response = `{"issues":null}`
+				if n == 1 {
+					response = ""
+				}
+			case "invalid_then_empty":
+				response = ""
+				if n == 1 {
+					response = `{"issues":null}`
+				}
 			case "ungrounded_quote":
 				response = `{"issues":[{"quote":"审读伪造且不在草稿中的断言","basis":"审读声称存在的句子没有出现在报告草稿中。"}]}`
 			case "null_issues":
@@ -151,10 +196,19 @@ func testReportHarness(t *testing.T, code string, conflictingResponses, calibrat
 				if n%2 == 1 {
 					response = `{"issues":null}`
 				}
+			case "empty_each_round_then_valid":
+				if n%2 == 1 {
+					response = ""
+				}
 			}
-			if n == 2 && (calibrationFailure == "ungrounded_quote" || calibrationFailure == "null_issues" || calibrationFailure == "invalid_then_valid") {
+			if n == 2 && (calibrationFailure == "ungrounded_quote" || calibrationFailure == "null_issues" || calibrationFailure == "invalid_then_valid" || calibrationFailure == "invalid_then_empty") {
 				if !strings.Contains(string(raw), "invalidReview") || !strings.Contains(string(raw), "validationError") || !strings.Contains(string(raw), "仅修正审读结果") {
 					t.Error("protocol repair lost invalid response, parser feedback or review-only instruction")
+				}
+			}
+			if n%2 == 0 && strings.HasPrefix(calibrationFailure, "empty_") && !strings.HasPrefix(calibrationFailure, "empty_content_") {
+				if !strings.Contains(string(raw), "上次审读未返回可用JSON正文") || !strings.Contains(string(raw), "同一组审读规则") || !strings.Contains(string(raw), "只返回JSON对象") {
+					t.Error("empty correction lost explicit JSON or unchanged calibration rules")
 				}
 			}
 			writeReportCalibrationFixture(w, response, finishReason)
@@ -222,13 +276,25 @@ func testReportHarness(t *testing.T, code string, conflictingResponses, calibrat
 	if doc.ModelCalls != int(modelCalls.Load()) {
 		t.Fatalf("model calls lost: document=%d actual=%d", doc.ModelCalls, modelCalls.Load())
 	}
-	if calibrationFailure != "" && calibrationFailure != "invalid_then_valid" && calibrationFailure != "invalid_each_round_then_valid" {
+	protocolSuccess := calibrationFailure == "invalid_then_valid" || calibrationFailure == "invalid_each_round_then_valid" || calibrationFailure == "empty_then_valid" || calibrationFailure == "empty_missing_finish_then_valid" || calibrationFailure == "empty_each_round_then_valid"
+	if calibrationFailure != "" && !protocolSuccess {
 		wantReviews := int32(2)
-		if calibrationFailure == "length" || calibrationFailure == "provider_error" || calibrationFailure == "empty_content" {
+		if calibrationFailure == "length" || calibrationFailure == "provider_error" || calibrationFailure == "empty_length" || calibrationFailure == "empty_content_filter" || calibrationFailure == "empty_tool_calls" || calibrationFailure == "empty_function_call" || calibrationFailure == "empty_unknown_finish" {
 			wantReviews = 1
 		}
 		if e == nil || modelCalls.Load() != 2+wantReviews || generationCalls.Load() != 2 || calibrationCalls.Load() != wantReviews || toolCalls.Load() != 2 || result.Summary != "" || result.Content != "" {
 			t.Fatalf("invalid review was published or exceeded its repair bound: %v models=%d generations=%d calibrations=%d tools=%d", e, modelCalls.Load(), generationCalls.Load(), calibrationCalls.Load(), toolCalls.Load())
+		}
+		var audit map[string]any
+		for _, evidence := range doc.Evidence {
+			if evidence.Tool == "report_calibration" {
+				if err := json.Unmarshal([]byte(evidence.Text), &audit); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		if audit["status"] == "passed" || audit["reviews"] != float64(wantReviews) || audit["protocolRepairs"] != float64(wantReviews-1) {
+			t.Fatalf("failed review lost its shared correction budget or audit counters: %v", audit)
 		}
 		if e = m.ExpectationsWereMet(); e != nil {
 			t.Fatal(e)
@@ -263,10 +329,10 @@ func testReportHarness(t *testing.T, code string, conflictingResponses, calibrat
 	if calibrationConflicts > 0 {
 		expectedModels = 6
 	}
-	if calibrationFailure == "invalid_then_valid" || calibrationFailure == "invalid_each_round_then_valid" {
+	if protocolSuccess {
 		expectedModels = 4
 		wantReviews, wantGenerations, wantProtocolRepairs := int32(2), int32(2), 1
-		if calibrationFailure == "invalid_each_round_then_valid" {
+		if calibrationFailure == "invalid_each_round_then_valid" || calibrationFailure == "empty_each_round_then_valid" {
 			expectedModels = 8
 			wantReviews, wantGenerations, wantProtocolRepairs = 4, 4, 2
 		}
@@ -284,7 +350,7 @@ func testReportHarness(t *testing.T, code string, conflictingResponses, calibrat
 			t.Fatalf("protocol repair changed the draft or lost its audit counters: %v generations=%d reviews=%d", audit, generationCalls.Load(), calibrationCalls.Load())
 		}
 		wantStatuses := "invalid_review,passed"
-		if calibrationFailure == "invalid_each_round_then_valid" {
+		if calibrationFailure == "invalid_each_round_then_valid" || calibrationFailure == "empty_each_round_then_valid" {
 			wantStatuses = "invalid_review,needs_repair,invalid_review,passed"
 		}
 		if strings.Join(statuses, ",") != wantStatuses {
