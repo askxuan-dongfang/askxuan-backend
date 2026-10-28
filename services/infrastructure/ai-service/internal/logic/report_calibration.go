@@ -21,9 +21,15 @@ const reportCalibrationRelationshipRules = "\n合盘角色规则：用户没说�
 
 const reportCalibrationGroundingRules = "\n排盘与牌卦事实据本次计算；现实情况只据用户已确认输入。加上提示、显示或象征，不等于条件句；未确认的能力、资源、经历、性格、流程现状、位置或成因仅作条件、反思或待确认，不写成已有或已发生。不能由一项已知顾虑排除其它顾虑。使用日常中文，不展示内部字段、枚举和转写过程。"
 
+const reportCalibrationCitationScopeRules = "\n资料原文或工具清单的描述，与报告自行提出的生活建议须分句写清。[资料N]紧贴其实际支持的释义句，不放在同时含有未经片段支持的建议或推论的长句末。片段若只要求核对环境、动线等项目，不把移物、施工等具体做法归为该片段的结论；这些建议可明确列为报告自己的建议。核对时也须按已明确标注的归属区分来源释义与独立建议，不要求独立建议伪造文献出处。"
+
+const reportCalibrationFengshuiGroundingRules = "\n物件朝向不等于物件位于对应方位或宫位；缺少家具尺寸、摆位和通道实测值时，不能由房间总长宽断言扣除家具后通道本应充足。已确认占道可建议整理，再现场核对净宽，不补造具体位置和剩余空间。"
+
+const reportCalibrationTarotGroundingRules = "\n牌义不能证明用户的收入、支付能力、经历或性格；课程三个月不等于十二次课，具体课次和安排待确认。过去、现在、未来仅为牌阵位置，不能据此断言真实过往能力、资源或稳定生活秩序。摘要只复述用户已确认的现实事实并列行动选项；牌义写为象征、条件或自问，不排除其他可能顾虑。仅有本人资料时写“仅为你本人读牌”，不展示对象字段或空值。牌面可以在传统上象征积累或自足，再问本人是否相符；不能换成“牌面象征你已有积累”“你已经能应付生活”，也不能据已知工作忙排除对能力等其他方面的顾虑。"
+
 const reportCalibrationLiuyaoGroundingRules = "\n兄弟旺不证明团队已具实力，父母日破不证明实际旧流程存在漏洞，世爻空亡不证明当前兜底未就绪。不得从爻辞推断真实合作关系、他人动机或猜疑成因。摘要和正文不能把这些象意写成用户已确认的现状，应改为条件或待核对检查项；总免责声明不能抵消具体断言。灰度、回滚可作为独立建议，不声称实际现状。"
 
-const reportCalibrationImageGroundingRules = "\n不得凭单张图与未核实的常见或真实解剖分布比较；线条交叉不直接等于断裂。"
+const reportCalibrationImageGroundingRules = "\n不得凭单张图与未核实的常见或真实解剖分布比较；线条交叉不直接等于断裂。编号须先对应同一条线的可见起止位置，核对时沿用草稿的编号与定义，不自行重编号。只在图中走向清晰时确认交叉或分离；对应关系或交汇处模糊时写无法确认，不肯定交叉，也不凭印象纠正为分离。"
 
 const reportCalibrationInstruction = `report_calibration_v1
 你是报告的事实核对员。只检查下列可核对错误，不评价文风、传统理论真伪或建议是否灵验：
@@ -81,6 +87,12 @@ func reportCalibrationRequest(req provider.Request, window int, input reportCali
 	if input.Topic == "liuyao" {
 		req.SystemPrompt += reportCalibrationLiuyaoGroundingRules
 	}
+	if input.Topic == "fengshui" {
+		req.SystemPrompt += reportCalibrationFengshuiGroundingRules + reportCalibrationCitationScopeRules
+	}
+	if input.Topic == "tarot" {
+		req.SystemPrompt += reportCalibrationTarotGroundingRules
+	}
 	if input.Topic == "face_palm" {
 		if len(input.ImageDataURLs) > 0 {
 			req.SystemPrompt += "\n按同一张图的可见方位核对线条与拇指方向，以从掌连接处指向指尖判断上下；指尖低于其他手指不等于该指从连接处向下，方位以画面为准。"
@@ -102,6 +114,18 @@ func reportCalibrationRequest(req provider.Request, window int, input reportCali
 	return req, nil
 }
 
+// Issue diagnostics contain positions, fixed categories and counts only. The
+// invalid review itself remains transient data for the existing protocol repair.
+type reportCalibrationIssueError struct {
+	Index int
+	Kind  string
+	Runes int
+}
+
+func (e *reportCalibrationIssueError) Error() string {
+	return fmt.Sprintf("ungrounded report calibration result: issue=%d reason=%s runes=%d", e.Index, e.Kind, e.Runes)
+}
+
 func parseReportCalibration(raw string, body reportBody) ([]reportCalibrationIssue, error) {
 	decoder := json.NewDecoder(strings.NewReader(raw))
 	decoder.DisallowUnknownFields()
@@ -121,12 +145,41 @@ func parseReportCalibration(raw string, body reportBody) ([]reportCalibrationIss
 	if err := decoder.Decode(new(any)); err != io.EOF {
 		return nil, errors.New("invalid trailing report calibration result")
 	}
-	for _, issue := range issues {
-		if strings.TrimSpace(issue.Quote) == "" || strings.TrimSpace(issue.Basis) == "" || utf8.RuneCountInString(issue.Quote) > 200 || utf8.RuneCountInString(issue.Basis) > 500 || (!strings.Contains(body.Summary, issue.Quote) && !strings.Contains(body.Content, issue.Quote)) {
-			return nil, errors.New("ungrounded report calibration result")
+	for index, issue := range issues {
+		quoteRunes, basisRunes := utf8.RuneCountInString(issue.Quote), utf8.RuneCountInString(issue.Basis)
+		switch {
+		case strings.TrimSpace(issue.Quote) == "":
+			return nil, &reportCalibrationIssueError{index + 1, "quote_empty", quoteRunes}
+		case strings.TrimSpace(issue.Basis) == "":
+			return nil, &reportCalibrationIssueError{index + 1, "basis_empty", basisRunes}
+		case quoteRunes > 200:
+			return nil, &reportCalibrationIssueError{index + 1, "quote_too_long", quoteRunes}
+		case basisRunes > 500:
+			return nil, &reportCalibrationIssueError{index + 1, "basis_too_long", basisRunes}
+		case !strings.Contains(body.Summary, issue.Quote) && !strings.Contains(body.Content, issue.Quote):
+			return nil, &reportCalibrationIssueError{index + 1, "quote_not_literal", quoteRunes}
 		}
 	}
 	return issues, nil
+}
+
+func reportCalibrationProtocolRule(err error) string {
+	var issue *reportCalibrationIssueError
+	if errors.As(err, &issue) {
+		switch issue.Kind {
+		case "quote_empty":
+			return fmt.Sprintf("第%d项quote为空或仅空白；无真实冲突的占位项应移除，有明确冲突则从draft.summary或draft.content逐字复制不超过200字的连续原字串", issue.Index)
+		case "basis_empty":
+			return fmt.Sprintf("第%d项basis为空或仅空白；无具体证据的占位项应移除，确有冲突则补充本次输入或计算的真实依据，最多500字", issue.Index)
+		case "quote_too_long":
+			return fmt.Sprintf("第%d项quote为%d字，超过200字；请截取包含实际冲突且不超过200字的连续原字串，不能改写或拼接不相邻片段", issue.Index, issue.Runes)
+		case "basis_too_long":
+			return fmt.Sprintf("第%d项basis为%d字，超过500字；请用最多500字简述本次证据字段与矛盾，不新增依据", issue.Index, issue.Runes)
+		case "quote_not_literal":
+			return fmt.Sprintf("第%d项quote不是draft.summary/content中的连续原字串；请逐字复制其中一处原字串并保留Markdown、空白和字形，不去标记、改字或拼接，最多200字；无实际冲突则移除该项", issue.Index)
+		}
+	}
+	return "quote必须摘自draft.summary/content的连续原字串，不能去掉其中Markdown或改字"
 }
 
 func addReportUsage(total *provider.Response, part provider.Response) {
