@@ -55,24 +55,34 @@ const attributionPublicationJoin = ` FROM askxuan_diy.diy_design_publication p
  JOIN askxuan_diy.diy_design d ON d.id=p.design_id AND d.status='public'
  JOIN askxuan_diy.diy_order o ON o.id=p.order_id AND o.design_id=p.design_id AND o.user_id=p.creator_id `
 
-const publicationValid = `o.payment_status='success'
+const publicationOrderValid = `o.payment_status='success'
  AND o.status IN ('in_making','awaiting_blessing','blessing_in_progress','blessing_completed','awaiting_shipment','shipped','completed')
- AND EXISTS(SELECT 1 FROM askxuan_payment.payment pay WHERE pay.order_no=o.order_no AND pay.order_type='diy_order' AND pay.user_id=o.user_id AND pay.status='success' AND pay.channel IN ('wechat','alipay','balance'))
  AND NOT EXISTS(SELECT 1 FROM askxuan_payment.refund f JOIN askxuan_payment.payment rp ON rp.id=f.payment_id WHERE rp.order_no=o.order_no AND rp.order_type='diy_order' AND f.status IN ('pending','processing','success'))`
 
+const publicationValid = publicationOrderValid + `
+ AND EXISTS(SELECT 1 FROM askxuan_payment.payment pay WHERE pay.order_no=o.order_no AND pay.order_type='diy_order' AND pay.user_id=o.user_id AND pay.status='success' AND pay.channel IN ('wechat','alipay','balance','mock','demo_balance'))`
+
+// Approved demos may be shown, but reward attribution still requires real payment.
+const attributionPublicationValid = publicationOrderValid + `
+ AND EXISTS(SELECT 1 FROM askxuan_payment.payment pay WHERE pay.order_no=o.order_no AND pay.order_type='diy_order' AND pay.user_id=o.user_id AND pay.status='success' AND pay.channel IN ('wechat','alipay','balance'))`
+
 func FindPublication(ctx context.Context, db sqlx.Session, id int64, lock bool) (*DesignPublication, error) {
-	return findPublication(ctx, db, id, lock, publicationJoin)
+	return findPublication(ctx, db, id, lock, publicationJoin, true)
 }
 
 func FindAttributionPublication(ctx context.Context, db sqlx.Session, id int64, lock bool) (*DesignPublication, error) {
-	return findPublication(ctx, db, id, lock, attributionPublicationJoin)
+	return findPublication(ctx, db, id, lock, attributionPublicationJoin, false)
 }
 
-func findPublication(ctx context.Context, db sqlx.Session, id int64, lock bool, join string) (*DesignPublication, error) {
+func findPublication(ctx context.Context, db sqlx.Session, id int64, lock bool, join string, allowDemo bool) (*DesignPublication, error) {
 	if id < 1 {
 		return nil, sqlx.ErrNotFound
 	}
-	query := "SELECT " + publicationFields + join + " WHERE p.id=? AND " + publicationValid
+	valid := attributionPublicationValid
+	if allowDemo {
+		valid = publicationValid
+	}
+	query := "SELECT " + publicationFields + join + " WHERE p.id=? AND " + valid
 	if lock {
 		query += " FOR UPDATE"
 	}
@@ -81,7 +91,7 @@ func findPublication(ctx context.Context, db sqlx.Session, id int64, lock bool, 
 		return nil, err
 	}
 	if lock {
-		validPayment, hasRefund, err := lockPublicationPayments(ctx, db, p.OrderId, p.CreatorId)
+		validPayment, hasRefund, err := lockPublicationPayments(ctx, db, p.OrderId, p.CreatorId, allowDemo)
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +105,7 @@ func findPublication(ctx context.Context, db sqlx.Session, id int64, lock bool, 
 // Direct balance refunds lock payment rather than the DIY order. Serialize on
 // the same rows, then read current refund state under lock. Lock the full refund
 // index range as well so a new pending refund cannot race the publication/order.
-func lockPublicationPayments(ctx context.Context, db sqlx.Session, orderID int64, user string) (valid, refunded bool, err error) {
+func lockPublicationPayments(ctx context.Context, db sqlx.Session, orderID int64, user string, allowDemo bool) (valid, refunded bool, err error) {
 	var payments []struct {
 		Id      int64  `db:"id"`
 		User    string `db:"user_id"`
@@ -110,7 +120,8 @@ func lockPublicationPayments(ctx context.Context, db sqlx.Session, orderID int64
 	}
 	for _, payment := range payments {
 		if payment.User == user && payment.Status == "success" &&
-			(payment.Channel == "wechat" || payment.Channel == "alipay" || payment.Channel == "balance") {
+			(payment.Channel == "wechat" || payment.Channel == "alipay" || payment.Channel == "balance" ||
+				(allowDemo && (payment.Channel == "mock" || payment.Channel == "demo_balance"))) {
 			valid = true
 		}
 		var refunds []string
@@ -351,7 +362,7 @@ func eligibility(reason string) PublicationEligibility {
 	messages := map[string]string{
 		"ready":                 "订单已付款且款式、用料和价格已确认，可以发布",
 		"order_required":        "完成设计并下单，付款且确认款式、用料和价格后可发布",
-		"payment_required":      "订单完成真实付款后才可发布，模拟支付不满足发布条件",
+		"payment_required":      "订单完成付款后才可发布",
 		"confirmation_required": "订单已付款，待确认款式、用料和价格后可发布",
 		"design_changed":        "草稿已修改，请为当前款式下单并完成付款与定稿确认后发布新定稿",
 		"order_inactive":        "定稿订单已取消、退款或处于售后中，暂不可发布",
@@ -385,7 +396,7 @@ func ReadPublicationEligibility(ctx context.Context, db sqlx.Session, d *DiyDesi
 		return eligibility("snapshot_unavailable"), nil, nil
 	}
 	query := `SELECT ` + diyOrderRows + `,
- EXISTS(SELECT 1 FROM askxuan_payment.payment pay WHERE pay.order_no=diy_order.order_no AND pay.order_type='diy_order' AND pay.user_id=diy_order.user_id AND pay.status='success' AND pay.channel IN ('wechat','alipay','balance')) AS valid_payment,
+ EXISTS(SELECT 1 FROM askxuan_payment.payment pay WHERE pay.order_no=diy_order.order_no AND pay.order_type='diy_order' AND pay.user_id=diy_order.user_id AND pay.status='success' AND pay.channel IN ('wechat','alipay','balance','mock','demo_balance')) AS valid_payment,
  EXISTS(SELECT 1 FROM askxuan_payment.refund f JOIN askxuan_payment.payment rp ON rp.id=f.payment_id WHERE rp.order_no=diy_order.order_no AND rp.order_type='diy_order' AND f.status IN ('pending','processing','success')) AS has_refund
  FROM askxuan_diy.diy_order WHERE design_id=? AND user_id=? ORDER BY id DESC`
 	if lock {
@@ -402,7 +413,7 @@ func ReadPublicationEligibility(ctx context.Context, db sqlx.Session, d *DiyDesi
 	for _, order := range orders {
 		snapshot, hash, snapshotErr := confirmedOrderDesign(&order.DiyOrder)
 		if lock && snapshotErr == nil && hash == fingerprint {
-			validPayment, hasRefund, err := lockPublicationPayments(ctx, db, order.Id, d.UserId)
+			validPayment, hasRefund, err := lockPublicationPayments(ctx, db, order.Id, d.UserId, true)
 			if err != nil {
 				return PublicationEligibility{}, nil, err
 			}
@@ -539,7 +550,11 @@ func validateOrderDesign(ctx context.Context, tx sqlx.Session, in *PricedOrderIn
 		if err != nil {
 			return err
 		}
-		in.Design, publication = published, p
+		in.Design = published
+		publication, err = FindAttributionPublication(ctx, tx, p.Id, true)
+		if err != nil && !errors.Is(err, sqlx.ErrNotFound) {
+			return err
+		}
 	} else {
 		if current.UserId != in.UserId || current.Revision != in.Design.Revision {
 			return common.NewBizError(40914, "设计已更新，请重新打开后下单")
