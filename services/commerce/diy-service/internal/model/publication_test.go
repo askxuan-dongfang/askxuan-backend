@@ -370,6 +370,29 @@ func TestPublicationMySQL(t *testing.T) {
 			})
 		}
 	})
+	t.Run("real confirmations stay preferred over newer demos", func(t *testing.T) {
+		d := newDesign("990950")
+		realOrder := ownOrder(d, DiyStatusInMaking, "success", "alipay")
+		demoOrder := ownOrder(d, DiyStatusInMaking, "success", "mock")
+		e, order, err := ReadPublicationEligibility(ctx, db, d, false)
+		if err != nil || !e.CanPublish || order == nil || order.Id != realOrder.Id {
+			t.Fatal("new demo displaced eligible real confirmation", e, err)
+		}
+		d = publish(d)
+		p, err := FindAttributionPublication(ctx, db, d.PublicationId, false)
+		if err != nil || p.OrderId != realOrder.Id {
+			t.Fatal("existing real reward source was lost", err)
+		}
+		exec("INSERT INTO askxuan_payment.refund(refund_no,payment_id,amount,status) SELECT ?,id,20,'processing' FROM askxuan_payment.payment WHERE order_no=?", nonce+"prefer", realOrder.OrderNo)
+		d = publish(d)
+		p, err = FindPublication(ctx, db, d.PublicationId, false)
+		if err != nil || p.OrderId != demoOrder.Id {
+			t.Fatal("inactive real order blocked approved demo fallback", err)
+		}
+		if _, err := FindAttributionPublication(ctx, db, d.PublicationId, false); !errors.Is(err, sqlx.ErrNotFound) {
+			t.Fatal("demo fallback gained monetary attribution", err)
+		}
+	})
 	t.Run("snapshot stays fixed through draft changes and revision conflicts", func(t *testing.T) {
 		d := newDesign("990920")
 		ownOrder(d, DiyStatusInMaking, "success", "alipay")
