@@ -105,6 +105,7 @@ func findPublication(ctx context.Context, db sqlx.Session, id int64, lock bool, 
 // Direct balance refunds lock payment rather than the DIY order. Serialize on
 // the same rows, then read current refund state under lock. Lock the full refund
 // index range as well so a new pending refund cannot race the publication/order.
+// Shared locks preserve the payment service's write ownership and SELECT-only grants.
 func lockPublicationPayments(ctx context.Context, db sqlx.Session, orderID int64, user string, allowDemo bool) (valid, refunded bool, err error) {
 	var payments []struct {
 		Id      int64  `db:"id"`
@@ -114,7 +115,7 @@ func lockPublicationPayments(ctx context.Context, db sqlx.Session, orderID int64
 	}
 	err = db.QueryRowsCtx(ctx, &payments, `SELECT id,user_id,channel,status FROM askxuan_payment.payment
  WHERE order_type='diy_order' AND order_no=(SELECT order_no FROM askxuan_diy.diy_order WHERE id=?)
- ORDER BY id FOR UPDATE`, orderID)
+ ORDER BY id FOR SHARE`, orderID)
 	if err != nil {
 		return false, false, err
 	}
@@ -125,7 +126,7 @@ func lockPublicationPayments(ctx context.Context, db sqlx.Session, orderID int64
 			valid = true
 		}
 		var refunds []string
-		if err = db.QueryRowsCtx(ctx, &refunds, "SELECT status FROM askxuan_payment.refund WHERE payment_id=? FOR UPDATE", payment.Id); err != nil {
+		if err = db.QueryRowsCtx(ctx, &refunds, "SELECT status FROM askxuan_payment.refund WHERE payment_id=? FOR SHARE", payment.Id); err != nil {
 			return false, false, err
 		}
 		for _, status := range refunds {

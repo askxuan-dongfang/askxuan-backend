@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/askxuan/common"
+	"github.com/go-sql-driver/mysql"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -131,7 +132,15 @@ func TestPublicationMySQL(t *testing.T) {
 	logx.Disable()
 	ctx := context.Background()
 	db := sqlx.NewMysql(dsn)
+	appDSN := os.Getenv("DIY_PUBLICATION_APP_TEST_DSN")
+	appConfig, appErr := mysql.ParseDSN(appDSN)
+	fixtureConfig, fixtureErr := mysql.ParseDSN(dsn)
+	if appErr != nil || fixtureErr != nil || appConfig.User != "diy_publication_app" || appConfig.Net != "tcp" || appConfig.Addr != fixtureConfig.Addr || appConfig.DBName != "askxuan_diy" {
+		t.Fatal("requires restricted app account on the same disposable database")
+	}
+	appDB := sqlx.NewMysql(appDSN)
 	designs, orders, orderItems := NewDiyDesignModel(db), NewDiyOrderModel(db), NewDiyOrderItemModel(db)
+	appOrders, appOrderItems := NewDiyOrderModel(appDB), NewDiyOrderItemModel(appDB)
 	nonce := fmt.Sprintf("PUB%d", time.Now().UnixNano())
 	var seq int
 	exec := func(q string, args ...any) {
@@ -180,14 +189,14 @@ func TestPublicationMySQL(t *testing.T) {
 	}
 	checkReason := func(d *DiyDesign, want string) {
 		t.Helper()
-		e, _, err := ReadPublicationEligibility(ctx, db, d, false)
+		e, _, err := ReadPublicationEligibility(ctx, appDB, d, false)
 		if err != nil || e.Reason != want || e.CanPublish != (want == "ready") {
 			t.Fatalf("reason=%+v want=%s err=%v", e, want, err)
 		}
 	}
 	publish := func(d *DiyDesign) *DiyDesign {
 		t.Helper()
-		updated, e := ChangePublicationStatus(ctx, db, d.Id, d.Revision, d.UserId, DesignStatusPublic, false)
+		updated, e := ChangePublicationStatus(ctx, appDB, d.Id, d.Revision, d.UserId, DesignStatusPublic, false)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -214,7 +223,7 @@ func TestPublicationMySQL(t *testing.T) {
 		for key, qty := range compositionBill(c) {
 			items = append(items, PricedOrderItemInput{MaterialId: key.MaterialId, Spec: key.Spec, Quantity: qty, SnapshotUnitPrice: 20})
 		}
-		return CreatePricedOrder(ctx, db, orders, orderItems, PricedOrderInput{UserId: user, Design: d, Items: items, AddressId: 1, Source: source, CreatorId: "forged"})
+		return CreatePricedOrder(ctx, appDB, appOrders, appOrderItems, PricedOrderInput{UserId: user, Design: d, Items: items, AddressId: 1, Source: source, CreatorId: "forged"})
 	}
 	checkout := func(d *DiyDesign, user, source string) *DiyOrder {
 		t.Helper()
@@ -224,6 +233,60 @@ func TestPublicationMySQL(t *testing.T) {
 		}
 		return res.Order
 	}
+	t.Run("financial locks require only SELECT grants", func(t *testing.T) {
+		d := newDesign("990900")
+		o := ownOrder(d, DiyStatusInMaking, "success", "alipay")
+		var paymentID int64
+		if err := db.QueryRowCtx(ctx, &paymentID, "SELECT id FROM askxuan_payment.payment WHERE order_no=?", o.OrderNo); err != nil {
+			t.Fatal(err)
+		}
+		// These are the two former locking reads. Both must fail with the
+		// production-like grants, so a fixture running as root cannot hide 1142.
+		for name, oldRead := range map[string]func(sqlx.Session) error{
+			"payment": func(tx sqlx.Session) error {
+				var payments []struct {
+					Id      int64  `db:"id"`
+					User    string `db:"user_id"`
+					Channel string `db:"channel"`
+					Status  string `db:"status"`
+				}
+				return tx.QueryRowsCtx(ctx, &payments, `SELECT id,user_id,channel,status FROM askxuan_payment.payment
+ WHERE order_type='diy_order' AND order_no=(SELECT order_no FROM askxuan_diy.diy_order WHERE id=?)
+ ORDER BY id FOR UPDATE`, o.Id)
+			},
+			"refund": func(tx sqlx.Session) error {
+				var refunds []string
+				return tx.QueryRowsCtx(ctx, &refunds, "SELECT status FROM askxuan_payment.refund WHERE payment_id=? FOR UPDATE", paymentID)
+			},
+		} {
+			t.Run(name, func(t *testing.T) {
+				err := appDB.TransactCtx(ctx, func(_ context.Context, tx sqlx.Session) error { return oldRead(tx) })
+				var denied *mysql.MySQLError
+				if !errors.As(err, &denied) || denied.Number != 1142 {
+					t.Fatalf("former exclusive locking read must fail with MySQL 1142: %v", err)
+				}
+				t.Log("former FOR UPDATE denied with MySQL 1142")
+			})
+		}
+		// Publishing runs locked eligibility and both financial shared reads.
+		d = publish(d)
+		if err := appDB.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+			if _, err := FindPublication(ctx, tx, d.PublicationId, true); err != nil {
+				return err
+			}
+			_, err := FindAttributionPublication(ctx, tx, d.PublicationId, true)
+			return err
+		}); err != nil {
+			t.Fatal("shared financial locks rejected the SELECT-only app", err)
+		}
+		published, _, err := PublishedDesign(ctx, appDB, d)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if order := checkout(published, "990901", "design_square"); order.CreatorId != d.UserId {
+			t.Fatal("restricted app lost real-payment attribution")
+		}
+	})
 	t.Run("qualification states and owner binding", func(t *testing.T) {
 		d := newDesign("990910")
 		checkReason(d, "order_required")
@@ -689,7 +752,7 @@ func TestPublicationMySQL(t *testing.T) {
 		release, refunded := hold(paymentLock, o.OrderNo, refund(o))
 		publishDone := make(chan error, 1)
 		go func() {
-			_, e := ChangePublicationStatus(ctx, db, d.Id, d.Revision, d.UserId, DesignStatusPublic, false)
+			_, e := ChangePublicationStatus(ctx, appDB, d.Id, d.Revision, d.UserId, DesignStatusPublic, false)
 			var biz *common.BizError
 			if !errors.As(e, &biz) || biz.Code != 40915 {
 				publishDone <- fmt.Errorf("refund winner must reject publishing: %v", e)
