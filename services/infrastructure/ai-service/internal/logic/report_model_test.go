@@ -61,7 +61,11 @@ func TestReportReasoningPolicyAndExhaustionAreRequestLocal(t *testing.T) {
 				var req map[string]any
 				_ = json.NewDecoder(r.Body).Decode(&req)
 				thinking, _ := req["thinking"].(map[string]any)
-				if req["model"] != "deepseek-v4-pro" || thinking["type"] != "enabled" || req["reasoning_effort"] != "high" {
+				wantEffort := "low"
+				if isReportCalibrationFixtureRequest(req) {
+					wantEffort = "high"
+				}
+				if req["model"] != "deepseek-v4-pro" || thinking["type"] != "enabled" || req["reasoning_effort"] != wantEffort {
 					t.Error("report writer/reviewer lost its selected reasoning policy")
 				}
 				if isReportCalibrationFixtureRequest(req) {
@@ -99,7 +103,8 @@ func TestReportReasoningPolicyAndExhaustionAreRequestLocal(t *testing.T) {
 			s.AIConfig.ReportModel = "deepseek-v4-pro"
 			s.AIConfig.ContextWindow = 1048576
 			s.AIConfig.ComplexOutputTokens = 32768
-			s.AIConfig.ReasoningEffort = "low"
+			s.AIConfig.ReasoningEffort = "max"
+			s.AgentDefaultModel = "published-chat"
 			r := &Report{ID: 1, SkillCode: "fixture-topic", Question: "合成报告", InputsJSON: `{}`, ChaptersJSON: `["依据","对照","行动"]`}
 			got, doc, usage, err := executeReport(context.Background(), s, r)
 			if exhausted {
@@ -109,7 +114,7 @@ func TestReportReasoningPolicyAndExhaustionAreRequestLocal(t *testing.T) {
 			} else if err != nil || got.Content != body.Content || writers.Load() != 1 || reviews.Load() != 1 || doc.ModelCalls != 2 || usage.Model != "deepseek-v4-pro" || usage.PromptTokens != 24 || usage.CompletionTokens != 16 || usage.ReasoningTokens != 8 {
 				t.Fatalf("report profile/accounting incorrect: err=%v writers=%d reviews=%d models=%d usage=%+v", err, writers.Load(), reviews.Load(), doc.ModelCalls, usage)
 			}
-			if p.Model() != "deepseek-flash" || s.AIConfig.ThinkingEnabled || s.AIConfig.ReasoningEffort != "low" {
+			if p.Model() != "deepseek-flash" || s.AIConfig.ThinkingEnabled || s.AIConfig.ReasoningEffort != "max" || s.AgentDefaultModel != "published-chat" {
 				t.Fatal("report reasoning policy escaped into ordinary chat configuration")
 			}
 			if err := mock.ExpectationsWereMet(); err != nil {

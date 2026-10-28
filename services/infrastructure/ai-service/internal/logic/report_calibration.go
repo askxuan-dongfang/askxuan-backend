@@ -21,6 +21,10 @@ const reportCalibrationRelationshipRules = "\n合盘角色规则：用户没说�
 
 const reportCalibrationGroundingRules = "\n排盘与牌卦事实据本次计算；现实情况只据用户已确认输入。加上提示、显示或象征，不等于条件句；未确认的能力、资源、经历、性格、流程现状、位置或成因仅作条件、反思或待确认，不写成已有或已发生。不能由一项已知顾虑排除其它顾虑。使用日常中文，不展示内部字段、枚举和转写过程。"
 
+const reportCalibrationLiuyaoGroundingRules = "\n兄弟旺不证明团队已具实力，父母日破不证明实际旧流程存在漏洞，世爻空亡不证明当前兜底未就绪。不得从爻辞推断真实合作关系、他人动机或猜疑成因。摘要和正文不能把这些象意写成用户已确认的现状，应改为条件或待核对检查项；总免责声明不能抵消具体断言。灰度、回滚可作为独立建议，不声称实际现状。"
+
+const reportCalibrationImageGroundingRules = "\n不得凭单张图与未核实的常见或真实解剖分布比较；线条交叉不直接等于断裂。"
+
 const reportCalibrationInstruction = `report_calibration_v1
 你是报告的事实核对员。只检查下列可核对错误，不评价文风、传统理论真伪或建议是否灵验：
 1. 摘要、表格和正文中的对象、日期、时间、柱位、干支、十神、宫位、向心或离心自化、本变卦、动爻及用神主次等事实与本次计算是否矛盾。区分天干与藏干；只有天干才称透出。五行统计区分表层八字与藏干，不能在“仅、无、全部”等排他表述中漏掉实际存在的字段；不要求报告穷举所有字段。属性只适用于对应对象，不能把部分爻的旺衰扩展到未输出旺衰的变爻。周岁/虚岁不同应标口径，不强改数值。运限只能覆盖实际计算的日期节点。
@@ -35,13 +39,14 @@ const reportCalibrationInstruction = `report_calibration_v1
 只返回JSON：{"issues":[{"quote":"原文短句","basis":"输入或计算证据及冲突"}]}。`
 
 type reportCalibrationInput struct {
-	Topic        string               `json:"topic"`
-	Question     string               `json:"question"`
-	Inputs       json.RawMessage      `json:"confirmedInputs"`
-	Calculations json.RawMessage      `json:"calculations"`
-	Charts       []reportdoc.Block    `json:"charts"`
-	Sources      []reportdoc.Evidence `json:"retrievedSources"`
-	Draft        reportBody           `json:"draft"`
+	Topic         string               `json:"topic"`
+	Question      string               `json:"question"`
+	Inputs        json.RawMessage      `json:"confirmedInputs"`
+	ImageDataURLs []string             `json:"-"`
+	Calculations  json.RawMessage      `json:"calculations"`
+	Charts        []reportdoc.Block    `json:"charts"`
+	Sources       []reportdoc.Evidence `json:"retrievedSources"`
+	Draft         reportBody           `json:"draft"`
 }
 
 type reportCalibrationIssue struct {
@@ -73,17 +78,25 @@ func reportCalibrationRequest(req provider.Request, window int, input reportCali
 		return req, err
 	}
 	req.SystemPrompt = reportCalibrationInstruction
-	if input.Topic == "face_palm" {
-		req.SystemPrompt += "\n图像核对只检查表述边界，不凭未见的图片纠正线条位置：单张图不能证明图外真实纹理的密度、相对深浅或光照成因；把这类未测量的比较或成因写成事实应报冲突。可见外观、明确假设和拍摄核对建议不等于已证实的成因。"
+	if input.Topic == "liuyao" {
+		req.SystemPrompt += reportCalibrationLiuyaoGroundingRules
 	}
-	req.Messages = []provider.Message{{Role: "user", Content: string(raw)}}
+	if input.Topic == "face_palm" {
+		if len(input.ImageDataURLs) > 0 {
+			req.SystemPrompt += "\n按同一张图的可见方位核对线条与拇指方向，以从掌连接处指向指尖判断上下；指尖低于其他手指不等于该指从连接处向下，方位以画面为准。"
+		} else {
+			req.SystemPrompt += "\n图像核对只检查表述边界，不凭未见的图片纠正线条位置。"
+		}
+		req.SystemPrompt += "单张图不能证明图外真实纹理的密度、相对深浅或光照成因；把这类未测量的比较或成因写成事实应报冲突。可见外观、明确假设和拍摄核对建议不等于已证实的成因。" + reportCalibrationImageGroundingRules
+	}
+	req.Messages = []provider.Message{{Role: "user", Content: string(raw), ImageDataURLs: append([]string(nil), input.ImageDataURLs...)}}
 	req.JSONMode = true
 	req.MaxTokens = min(req.MaxTokens, 32768)
 	if window <= 0 {
 		window = 32768
 	}
 	// Match the agent's conservative UTF-8 estimate; never drop a participant or source.
-	if req.MaxTokens < 1 || len(raw)+len(req.SystemPrompt)+req.MaxTokens+4096 > window {
+	if req.MaxTokens < 1 || !reportCalibrationFits(req, window) {
 		return req, errors.New("report calibration exceeds context budget")
 	}
 	return req, nil
@@ -193,6 +206,13 @@ func validateReportImplementationDetails(body reportBody, doc reportdoc.Document
 		}
 	}
 	for _, evidence := range doc.Evidence {
+		if evidence.Tool == "tarot" {
+			for _, text := range texts {
+				if strings.Contains(text, "对象字段") {
+					return errors.New("塔罗对象信息应使用日常中文说明读牌对象，不能展示内部对象字段")
+				}
+			}
+		}
 		if !agent.IsTopicTool(evidence.Tool) {
 			continue
 		}
@@ -313,6 +333,8 @@ func reportCalibrationFits(req provider.Request, window int) bool {
 	size := len(req.SystemPrompt) + req.MaxTokens + 4096
 	for _, message := range req.Messages {
 		size += len(message.Content)
+		// Match askagent's image reserve, independent of base64 wire size.
+		size += len(message.ImageDataURLs) * 16384
 	}
 	return size <= window
 }

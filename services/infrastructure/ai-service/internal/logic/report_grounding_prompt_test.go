@@ -59,7 +59,11 @@ func TestReportGroundingPolicyIsSentToWriterCriticAndRepair(t *testing.T) {
 		messages := req["messages"].([]any)
 		system := fmt.Sprint(messages[0].(map[string]any)["content"])
 		thinking, _ := req["thinking"].(map[string]any)
-		if req["max_tokens"] != float64(16384) || req["reasoning_effort"] != "high" || thinking["type"] != "enabled" {
+		wantEffort := "low"
+		if isReportCalibrationFixtureRequest(req) {
+			wantEffort = "high"
+		}
+		if req["max_tokens"] != float64(16384) || req["reasoning_effort"] != wantEffort || thinking["type"] != "enabled" {
 			t.Error("grounding rules changed default budget or thinking policy")
 		}
 		w := httptest.NewRecorder()

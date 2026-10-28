@@ -85,7 +85,11 @@ func TestReportCalibrationOutputBudget(t *testing.T) {
 						return nil, err
 					}
 					thinking, _ := req["thinking"].(map[string]any)
-					if req["model"] != "fixture" || thinking["type"] != "enabled" || req["reasoning_effort"] != "high" {
+					wantEffort := "low"
+					if isReportCalibrationFixtureRequest(req) {
+						wantEffort = "high"
+					}
+					if req["model"] != "fixture" || thinking["type"] != "enabled" || req["reasoning_effort"] != wantEffort {
 						t.Errorf("changed selected report reasoning policy: model=%v thinking=%v effort=%v", req["model"], thinking, req["reasoning_effort"])
 					}
 					if isReportCalibrationFixtureRequest(req) {
