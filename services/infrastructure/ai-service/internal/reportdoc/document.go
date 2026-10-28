@@ -370,16 +370,16 @@ func (d *Document) Add(tool, raw string) {
 			group := obj(value)
 			selected := obj(group["已选用神"])
 			if len(selected) == 0 {
-				selections = append(selections, map[string]any{"层次": "未取定", "目标六亲": group["目标六亲"], "依据": group["取用说明"]})
+				selections = append(selections, map[string]any{"层次": "未取定", "目标六亲": group["目标六亲"], "取用状态": group["取用状态"], "依据": group["取用说明"]})
 			} else {
-				selections = append(selections, map[string]any{"层次": "主用神", "目标六亲": group["目标六亲"], "爻位": selected["爻位"], "六亲": selected["六亲"], "纳甲": selected["纳甲"], "来源": selected["来源"], "依据": selected["依据"]})
+				selections = append(selections, map[string]any{"层次": "主用神", "目标六亲": group["目标六亲"], "取用状态": group["取用状态"], "爻位": selected["爻位"], "六亲": selected["六亲"], "纳甲": selected["纳甲"], "来源": selected["来源"], "依据": selected["依据"]})
 			}
 			for _, value := range list(group["候选用神"]) {
 				candidate := obj(value)
-				selections = append(selections, map[string]any{"层次": "备选用神", "目标六亲": group["目标六亲"], "爻位": candidate["爻位"], "六亲": candidate["六亲"], "纳甲": candidate["纳甲"], "来源": candidate["来源"], "依据": candidate["依据"]})
+				selections = append(selections, map[string]any{"层次": "备选用神", "目标六亲": group["目标六亲"], "取用状态": group["取用状态"], "爻位": candidate["爻位"], "六亲": candidate["六亲"], "纳甲": candidate["纳甲"], "来源": candidate["来源"], "依据": candidate["依据"]})
 			}
 		}
-		table("用神主次与取用依据", []string{"层次", "目标六亲", "爻位", "六亲", "纳甲", "来源", "依据"}, selections)
+		table("用神主次与取用依据", []string{"层次", "目标六亲", "爻位", "六亲", "纳甲", "来源", "依据", "取用状态"}, selections)
 	case "qimen":
 		grid := Block{Kind: "palaces", Title: "奇门九宫", Source: tool, Note: "南在上、北在下；点击宫位展开本次工具返回的星、门、神资料。"}
 		for _, n := range []string{"4", "9", "2", "3", "5", "7", "8", "1", "6"} {

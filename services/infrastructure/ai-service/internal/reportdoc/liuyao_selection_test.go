@@ -9,7 +9,7 @@ func TestLiuyaoSelectionKeepsPrimaryAndCandidateSeparate(t *testing.T) {
 		t.Fatal(d.Blocks)
 	}
 	rows := d.Blocks[0].Rows
-	if rows[0][0] != "主用神" || rows[0][2] != "六三爻" || rows[0][4] != "丑" || rows[1][0] != "备选用神" || rows[1][2] != "六五爻" || rows[1][4] != "未" {
+	if rows[0][0] != "主用神" || rows[0][2] != "六三爻" || rows[0][4] != "丑" || rows[0][7] != "resolved" || rows[1][0] != "备选用神" || rows[1][2] != "六五爻" || rows[1][4] != "未" {
 		t.Fatal("selection lost or reversed", rows)
 	}
 	unknown := New()
