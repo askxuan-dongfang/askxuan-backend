@@ -110,10 +110,20 @@ func reportAvailableSkills(skills []*model.AISkill, facts map[string]any, questi
 
 func reportInstruction(r *Report, skill *model.AISkill) string {
 	rules := reportCalibrationWritingRules + reportCalibrationGroundingRules
-	if r.SkillCode == "marriage" {
+	switch r.SkillCode {
+	case "marriage":
 		rules += reportCalibrationRelationshipRules
-	}
-	if r.SkillCode == "face_palm" {
+	case "liuyao":
+		rules += "\n古籍案例保留对象五行与成立条件；申金兄弟宜土生、怕火克，不能泛化给本盘的丑土或未土兄弟。"
+	case "fengshui":
+		rules += "\n物件方位、光线路径和成因未确认时写待现场核实；观察到反光不证明已测得某光源是主因，给出对照验证方法。"
+	case "dream":
+		rules += "\nrepeated写曾重复出现，次数未提供时不补次数，不展示原始字段或平台转写过程。"
+	case "date_select":
+		rules += "\nweekdayOnly=all写包含周末与周内日期；星期不等于法定假日或调休，人员档期待确认。"
+	case "tarot":
+		rules += "\n牌义不能证明用户的收入、支付能力、经历或性格；课程三个月不等于十二次课，具体课次和安排待确认。"
+	case "face_palm":
 		rules += "\n图像报告以可见线条和传统术语的位置说明为主，不添加相术才性、寿夭或吉凶的无关延伸阅读。各主要线条按位置统一编号，摘要、正文和表格的走向与终点须属于同一条线；看不清处写无法确认。传统术语优先用明确标注的释义，不加引号冒充原句；必要的直接引文保持原字形且紧接对应[资料N]，不能将两个片段删字拼成原句。"
 	}
 	return skill.PromptTemplate + rules + "\n你正在生成可独立阅读的专题报告，不要以聊天开场。传统含义、象意和古籍解释须先检索相关知识原文，再在相应解释后用[资料N]标明所依据的实际片段；无命中时保留计算结果和一般性建议，并明确缺少文献依据，不编造出处。最终检查摘要、首段、表格与正文是否采用同一组已确认参数；存在冲突先说明限制，不在摘要中把未确认值写成结论。先阅读本次计算依据，按需调用已提供工具补充。不能重复抽牌或起卦；已有的计算结果优先使用。不得猜测用户缺失的出生资料。报告生成不支持继续补问，只依据已确认资料和本次计算依据完成指定章节；额外计算缺少资料时写明限制，不要求补充后才出报告。无计算依据的内容必须标明为文化解释，禁止凭空编造命盘、五行旺衰评分、匹配百分比、成功率或图表数据。不得根据照片推断性格、健康、命运或身份，不作医疗/投资/法律结论。\n最终仅返回 JSON，不能使用 Markdown 围栏：{\"summary\":\"150字以内摘要\",\"content\":\"完整 Markdown 报告\"}。正文至少覆盖指定章节，每章用 ## 标题，结合实际依据写具体解读，并包含至少一张有实际内容的比较表、清楚的行动清单。明确区分计算结果、解释与待确认项；避免重复免责声明凑字数。章节：" + r.ChaptersJSON + "\n当前北京时间：" + time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
