@@ -191,7 +191,11 @@ func Execute(ctx context.Context, chat model.BaseChatModel, input Input, mcp ein
 			return &adk.RetryDecision{Retry: true, AdditionalOptions: input.ReasoningFallback}
 		}}
 	}
-	h, e := einopoc.NewConfiguredRetry(ctx, meter, tools, guard, einopoc.Limits{ModelCalls: 4, ToolCalls: 4, Timeout: timeout}, input.Instruction+"\n"+Instruction, retry)
+	toolLimit := 4
+	if input.Report != nil && input.Report.Calculated {
+		toolLimit = 8
+	}
+	h, e := einopoc.NewConfiguredRetry(ctx, meter, tools, guard, einopoc.Limits{ModelCalls: 4, ToolCalls: toolLimit, Timeout: timeout}, input.Instruction+"\n"+Instruction, retry)
 	if e != nil {
 		return out, e
 	}

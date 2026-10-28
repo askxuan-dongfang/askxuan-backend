@@ -125,7 +125,7 @@ func TestPersonalFortuneBindsComputedDayMaster(t *testing.T) {
 	defer srv.Close()
 	c := NewMCPClient(true, srv.URL, 1)
 	out := invokeTopic(t, c, "fortune", `{"targetDate":"2026-09-29","fortuneMode":"personal","calendarType":"solar","birthDate":"1990-01-02","birthTime":"08:30","gender":"male"}`)
-	if strings.Join(calls, ",") != "bazi,almanac" || out.Rows[0][1] != "丁" || len(out.Calculations) != 2 {
+	if strings.Join(calls, ",") != "bazi,almanac" || out.Rows[0][1] != "丁" || out.Rows[3][1] != "劫财" || len(out.Calculations) != 2 {
 		t.Fatal(out, calls)
 	}
 	before := len(calls)

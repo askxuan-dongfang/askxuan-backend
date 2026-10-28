@@ -66,7 +66,7 @@ func TestReportReasoningPolicyAndExhaustionAreRequestLocal(t *testing.T) {
 				}
 				if isReportCalibrationFixtureRequest(req) {
 					reviews.Add(1)
-					if req["max_tokens"] != float64(8192) {
+					if req["max_tokens"] != float64(16384) {
 						t.Error("review did not receive its bounded reasoning budget")
 					}
 					writeReportCalibrationFixture(w, `{"issues":[]}`)

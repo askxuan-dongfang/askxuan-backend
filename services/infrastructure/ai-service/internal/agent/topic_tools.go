@@ -354,8 +354,7 @@ func (c *MCPClient) fortuneEvidence(ctx context.Context, in map[string]any) (Top
 		if strings.TrimSpace(v) == "" {
 			return out, errors.New("missing personal day evidence")
 		}
-		b, _ := json.Marshal(v)
-		out.Rows = append(out.Rows, []string{"流日十神", string(b)})
+		out.Rows = append(out.Rows, []string{"流日十神", v})
 	}
 	out.Calculations = append(out.Calculations, map[string]any{"tool": "almanac", "arguments": args, "data": m})
 	return out, nil
