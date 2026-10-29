@@ -37,6 +37,11 @@ var reportLiuyaoObserved95Rules = []string{
 	"必要文献释义逐项核对本轮片段编号，分别保留对应主体与适用条件",
 	"正文末尾不再另列整组来源或复述取用规则",
 	"未知团队与回退条件须在对应表格单元格用若或建议验证写清，不用表前总声明代替",
+	"古籍个案保留主体与组合条件，不能仅凭共同特征把个案泛化成该特征的吉凶通则",
+	"原文肯定一项不等于否定另一项",
+	"灰度、交接等应用须另句明确为本报告建议，不用[资料N]为新增结论背书",
+	"缺少适用通则片段时保留盘面事实和一般建议",
+	"回滚与风险控制效果也须写清待验证前提，不无条件声称不顺已受控制",
 }
 
 func TestReportLiuyaoRealWorldGroundingRulesStayTopicScoped(t *testing.T) {
@@ -61,8 +66,6 @@ func TestReportLiuyaoRealWorldGroundingRulesStayTopicScoped(t *testing.T) {
 // The short claims are from synthetic reports 95 and 97. MCP and model are
 // fixtures: this verifies policy transport and repair bounds, not model quality.
 func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing.T) {
-	const question = "现有模块先做小范围试用，还是一次替换全部旧流程？重点梳理团队协作、变更风险与可执行的验证步骤。"
-	const inputs = `{"method":"time","eventTime":"2026-10-28T14:30","location":"中国新疆乌鲁木齐市沙依巴克区","timeBasis":"true_solar","yongShenTarget":"兄弟"}`
 	const observed97Attribution = "兄弟爻主同辈、协作，占兄弟姐妹宜生旺、不宜月破旬空的取用方法见于古籍[资料7]"
 	bad := reportBody{
 		Summary: "用神兄弟丑土旺相，团队有实力可用；世爻子孙空亡、应爻父母日破并存，提示协作摩擦与旧流程破口。",
@@ -96,6 +99,51 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 	for i, text := range []string{"合成未采用来源一。", "合成未采用来源二。", "合成未采用来源三。", "合成未采用来源四。", "合成未采用来源五。", "如占弟兄姐妹之否泰者，宜其生旺不宜臨月破旬空。", "兄弟爻：占兄弟、姐妹、族中兄弟、姑姨、妹夫及結拜兄弟都以兄弟爻爲用神。"} {
 		sourceFixture.hits = append(sourceFixture.hits, knowledge.Hit{ID: fmt.Sprintf("liuyao-fixture-%d", i+1), Text: text, Source: "synthetic", Revision: 1, Hash: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))})
 	}
+	runReportLiuyaoGroundingFixture(t, bad, good, issues, sourceFixture)
+}
+
+// The claims and complete numbered passages are from normally unlocked report102.
+func TestReportLiuyaoObserved102SourceScopeReachesSingleRepair(t *testing.T) {
+	const caseClaim = "关于“化墓”，古籍中多将动爻化墓视为一种不吉或受困的象意，需谨慎对待[资料6]"
+	const extensionClaim = "睽卦辞与彖传的传统释义是：火泽相离、意见不同，但若能喜悦而附丽于光明、以柔顺上行、得中而应刚，则利于**小事、渐进、分而治之**，不利于以大事强行推进[资料2]。"
+	bad := reportBody{Summary: "本次保留盘面与既定用神，比较小范围试用与整体替换；现实条件仍需核实。", Content: "## 分析依据\n" + caseClaim + "。\n" + extensionClaim + "\n" + strings.Repeat("本地合成回归只验证规则传递，不代表真实模型质量。", 8) + "\n## 方案比较\n|方案|待核对|\n|---|---|\n|试用|验证回滚条件|\n## 行动建议\n保留本次计算，核对交接安排。"}
+	good := reportBody{Summary: bad.Summary, Content: "## 文献释义\n现代中文释义：睽的片段说小事吉，并说明相异之中仍可相通[资料2]。这不等于所有大事不利。\n现代中文释义：资料所述戌月占南行例中，官鬼巳火动而生世，却月墓又化墓，并兼六冲，作者对该组合疑为不吉[资料6]。不能只取共同的化墓特征，把这个案概括成本盘化墓的通则。\n" + strings.Repeat("本地合成回归只验证规则传递，不代表真实模型质量。", 8) + "\n## 条件比较\n|条件|核对行动|\n|---|---|\n|若试用要限定影响面并可回滚|建议先验证隔离与回退演练，效果未知|\n## 本报告建议\n可以把灰度、交接和回滚列为本报告的独立工程建议，先验证再决定范围；这些不是所引片段本身的结论。没有适用本盘的通则原文时，保留原盘面与一般建议，不新增吉凶规则。"}
+	issues := []reportCalibrationIssue{
+		{Quote: caseClaim, Basis: "资料6是官鬼巳火在戌月入墓又化墓且兼六冲的特定案例，作者疑该组合不吉；不能只因化墓共同特征，泛化成所有动爻化墓不吉或受困的通则。"},
+		{Quote: extensionClaim, Basis: "资料2说小事吉，不代表大事不利；分而治之是报告新增的工程应用，应另句明确为本报告建议，不能由[资料2]为额外结论背书。"},
+	}
+	var passages []struct {
+		Citation    int
+		Text, Title string
+		SHA256      string
+	}
+	raw, err := os.ReadFile("testdata/liuyao_report102_round13_sources.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &passages); err != nil || len(passages) != 2 {
+		t.Fatal("actual numbered source fixture missing", err)
+	}
+	sourceFixture := &reportAttributionSearch{}
+	for number := 1; number <= 6; number++ {
+		text, title := fmt.Sprintf("合成未采用来源%d。", number), "synthetic"
+		for _, passage := range passages {
+			if passage.Citation == number {
+				if fmt.Sprintf("%x", sha256.Sum256([]byte(passage.Text))) != passage.SHA256 {
+					t.Fatal("actual public source text changed")
+				}
+				text, title = passage.Text, passage.Title
+			}
+		}
+		sourceFixture.hits = append(sourceFixture.hits, knowledge.Hit{ID: fmt.Sprintf("report102-source-%d", number), Text: text, Source: title, Revision: 2, Hash: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))})
+	}
+	runReportLiuyaoGroundingFixture(t, bad, good, issues, sourceFixture)
+}
+
+func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues []reportCalibrationIssue, sourceFixture *reportAttributionSearch) {
+	t.Helper()
+	const question = "现有模块先做小范围试用，还是一次替换全部旧流程？重点梳理团队协作、变更风险与可执行的验证步骤。"
+	const inputs = `{"method":"time","eventTime":"2026-10-28T14:30","location":"中国新疆乌鲁木齐市沙依巴克区","timeBasis":"true_solar","yongShenTarget":"兄弟"}`
 	fixture, err := os.ReadFile("../reportdoc/testdata/synthetic.json")
 	if err != nil {
 		t.Fatal(err)
@@ -185,9 +233,16 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 				if !strings.Contains(last, "不要重新计算") {
 					t.Error("single repair lost cached calculation boundary")
 				}
-				for _, hit := range sourceFixture.hits {
-					if !strings.Contains(last, hit.Text) {
-						t.Error("repair lost original numbered source passages")
+				_, sourceJSON, ok := strings.Cut(last, "本轮已检索片段（保留原资料编号）：")
+				sourceJSON, _, end := strings.Cut(sourceJSON, "\n请重新读取已计算图表")
+				var frames []reportdoc.Evidence
+				var items []reportdoc.Item
+				if !ok || !end || json.Unmarshal([]byte(sourceJSON), &frames) != nil || len(frames) != 1 || json.Unmarshal([]byte(frames[0].Text), &items) != nil || len(items) != len(sourceFixture.hits) {
+					t.Fatal("repair lost complete numbered source frames")
+				}
+				for i, hit := range sourceFixture.hits {
+					if items[i].Label != fmt.Sprintf("资料%d", i+1) || items[i].Value != hit.Text {
+						t.Error("repair changed original numbered source passages")
 					}
 				}
 			}
