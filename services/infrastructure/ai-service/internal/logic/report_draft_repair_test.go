@@ -146,6 +146,9 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 				if evidence.Tool == "report_calibration" {
 					var audit map[string]any
 					_ = json.Unmarshal([]byte(evidence.Text), &audit)
+					if audit["phase"] != nil {
+						t.Fatal("already calibrated draft gained an extra early failure diagnostic")
+					}
 					audits = append(audits, audit)
 				}
 			}

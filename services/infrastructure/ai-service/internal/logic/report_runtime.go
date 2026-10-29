@@ -155,17 +155,34 @@ func reportCalibrationEmptyLog(reportID int64, review *provider.Response, maxTok
 	return fmt.Sprintf("report calibration empty response report_id=%d finish=%s prompt_tokens=%d completion_tokens=%d max_tokens=%d empty_content=true", reportID, finish, prompt, completion, maxTokens)
 }
 
-func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (reportBody, reportdoc.Document, provider.Response, error) {
-	doc := reportdoc.New()
+func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (result reportBody, doc reportdoc.Document, usage provider.Response, retErr error) {
+	doc = reportdoc.New()
 	empty := reportBody{}
-	usage := provider.Response{}
+	phase := "checking"
+	var mcp *reportMCP
+	defer func() {
+		if retErr == nil || phase == "" {
+			return
+		}
+		for _, evidence := range doc.Evidence {
+			if evidence.Tool == "report_calibration" {
+				return
+			}
+		}
+		if mcp != nil {
+			doc.ToolCalls = max(doc.ToolCalls, mcp.calls)
+		}
+		recordReportExecutionFailure(&doc, phase, askagent.Outcome{ModelCalls: doc.ModelCalls, ToolCalls: doc.ToolCalls}, retErr)
+	}()
 	stage := func(value string) error {
+		phase = value
 		_, err := s.DB.ExecCtx(ctx, `UPDATE ai_report SET generation_stage=? WHERE id=? AND status='generating'`, value, r.ID)
 		return err
 	}
 	if err := stage("checking"); err != nil {
 		return empty, doc, usage, err
 	}
+	phase = "skills"
 	skill, err := s.SkillModel.FindByCode(ctx, r.SkillCode)
 	if err != nil || skill.Status != model.SkillStatusEnabled {
 		return empty, doc, usage, errors.New("report skill unavailable")
@@ -174,6 +191,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 	if err != nil {
 		return empty, doc, usage, err
 	}
+	phase = "input"
 	facts := map[string]any{}
 	if err = json.Unmarshal([]byte(r.InputsJSON), &facts); err != nil {
 		return empty, doc, usage, err
@@ -181,7 +199,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 	if r.SkillCode == "ziwei" && (facts["targetDate"] == nil || facts["targetDate"] == "") {
 		facts["targetDate"] = time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
 	}
-	mcp := &reportMCP{s: s, cache: map[string]string{}, doc: doc}
+	mcp = &reportMCP{s: s, cache: map[string]string{}, doc: doc}
 	calculationEvidence := []map[string]any{}
 	if err = stage("calculating"); err != nil {
 		return empty, doc, usage, err
@@ -267,12 +285,14 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 			return empty, doc, usage, e
 		}
 	}
+	phase = "model_selection"
 	selected, err := selectReportModel(ctx, s, r.SkillCode)
 	if err != nil {
 		return empty, doc, usage, err
 	}
 	var imageURLs []string
 	if r.SkillCode == "face_palm" {
+		phase = "input"
 		raw, _ := json.Marshal(facts["_reportImages"])
 		var images []types.AIImageAttachment
 		if json.Unmarshal(raw, &images) != nil || len(images) != 1 {
@@ -286,6 +306,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 	delete(facts, "_reportImages")
 	safeInputs, _ := json.Marshal(facts)
 
+	phase = "model_limits"
 	window, output := s.AIConfig.ContextWindow, s.AIConfig.ComplexOutputTokens
 	if output <= 0 {
 		output = 16384
@@ -300,6 +321,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 	// Reports use a local reasoning policy. Never change the shared chat model,
 	// the published agent's model, or the immutable provider/settings snapshot.
 	req := provider.Request{Model: selected, MaxTokens: output, ThinkingEnabled: true, ReasoningEffort: "low"}
+	phase = "model_init"
 	chat, err := provider.NewEinoModel(ctx, s.Provider, req)
 	if err != nil {
 		return empty, doc, usage, err
@@ -323,6 +345,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 		return empty, doc, usage, err
 	}
 	bindReferences(s, &input, r.UserID, func(name, raw string) { mcp.doc.Add(name, raw) })
+	phase = "" // Writer and calibration failures already have their own audit records.
 	out, err := askagent.Execute(ctx, chat, input, mcp, s.Guard, askagent.Hooks{})
 	doc = mcp.doc
 	doc.ModelCalls = out.ModelCalls
@@ -333,6 +356,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 		return empty, doc, usage, err
 	}
 	if out.Clarification != nil {
+		phase = "clarification"
 		return empty, doc, usage, errors.New("report requires additional confirmed facts")
 	}
 	text, modelCalls, reviews, protocolRepairs := out.Text, out.ModelCalls, 0, 0
@@ -479,6 +503,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (repor
 			return empty, doc, usage, repairErr
 		}
 		if repaired.Clarification != nil {
+			phase = "clarification"
 			return empty, doc, usage, errors.New("report requires additional confirmed facts")
 		}
 		text = repaired.Text
