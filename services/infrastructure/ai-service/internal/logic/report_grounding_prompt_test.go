@@ -20,7 +20,7 @@ import (
 func TestReportGroundingAndParaphraseRulesReachEveryTopic(t *testing.T) {
 	for _, topic := range []string{"bazi", "marriage", "fengshui", "ziwei", "qimen", "tarot", "liuyao", "naming", "dream", "date_select", "fortune", "face_palm"} {
 		instruction := reportInstruction(&Report{SkillCode: topic}, &model.AISkill{})
-		for _, required := range []string{"排盘与牌卦事实据本次计算", "现实情况只据用户已确认输入", "提示、显示或象征，不等于条件句", "不能由一项已知顾虑排除其它顾虑", "优先作明确标为释义或解释的转述", "必要的短引文须忠实保留原字形和本轮实际来源", "完整原文仍由平台知识依据图表忠实展示", "格式化执行状态标签"} {
+		for _, required := range []string{"排盘与牌卦事实据本次计算", "现实情况只据用户已确认输入", "提示、显示或象征，不等于条件句", "不能由一项已知顾虑排除其它顾虑", "文献优先明确标为释义", "[资料N]或书籍引文仍按该片段原字形", "全文由平台知识图表展示", "格式化执行状态标签"} {
 			if !strings.Contains(instruction, required) {
 				t.Errorf("%s writer missing grounding/source policy %q", topic, required)
 			}
@@ -29,6 +29,20 @@ func TestReportGroundingAndParaphraseRulesReachEveryTopic(t *testing.T) {
 			if strings.Contains(instruction, obsolete) {
 				t.Errorf("%s writer kept ambiguous or duplicate quote policy %q", topic, obsolete)
 			}
+		}
+		critic, err := reportCalibrationRequest(provider.Request{MaxTokens: 8192}, 32768, reportCalibrationInput{Topic: topic})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, prompt := range []string{instruction, critic.SystemPrompt} {
+			for _, required := range reportNativeSourceRules {
+				if !strings.Contains(prompt, required) {
+					t.Errorf("%s writer/critic missing source attribution rule %q", topic, required)
+				}
+			}
+		}
+		if strings.Contains(critic.SystemPrompt, "引用编号与直接引文必须存在于本次检索片段") {
+			t.Errorf("%s critic still forces calculation fields to match a different book version", topic)
 		}
 		dateRule := "只讨论本次实际日期和对应宜忌项"
 		if strings.Contains(instruction, dateRule) != (topic == "date_select") {
@@ -92,7 +106,7 @@ func TestReportGroundingPolicyIsSentToWriterCriticAndRepair(t *testing.T) {
 			}
 		} else {
 			writers++
-			for _, required := range []string{"现实情况只据用户已确认输入", "优先作明确标为释义或解释的转述"} {
+			for _, required := range []string{"现实情况只据用户已确认输入", "文献优先明确标为释义"} {
 				if !strings.Contains(system, required) {
 					t.Errorf("writer/repair missing boundary %q", required)
 				}

@@ -44,6 +44,14 @@ var reportLiuyaoObserved95Rules = []string{
 	"回滚与风险控制效果也须写清待验证前提，不无条件声称不顺已受控制",
 }
 
+var reportNativeSourceRules = []string{
+	"对应本次计算对象与字段的逐字复述沿用工具字形，不强改为检索版本",
+	"[资料N]或书籍引文仍按该片段原字形，不能借工具另版放行",
+	"混合来源分句标清，不任选来源",
+	"工具不背书未输出的关键词、象意或解释",
+	"拼接、编造、错对象和未计算事实仍属冲突",
+}
+
 func TestReportLiuyaoRealWorldGroundingRulesStayTopicScoped(t *testing.T) {
 	for _, topic := range []string{"bazi", "marriage", "fengshui", "ziwei", "qimen", "tarot", "liuyao", "naming", "dream", "date_select", "fortune", "face_palm"} {
 		t.Run(topic, func(t *testing.T) {
@@ -98,7 +106,7 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 	for i, text := range []string{"合成未采用来源一。", "合成未采用来源二。", "合成未采用来源三。", "合成未采用来源四。", "合成未采用来源五。", "如占弟兄姐妹之否泰者，宜其生旺不宜臨月破旬空。", "兄弟爻：占兄弟、姐妹、族中兄弟、姑姨、妹夫及結拜兄弟都以兄弟爻爲用神。"} {
 		sourceFixture.hits = append(sourceFixture.hits, knowledge.Hit{ID: fmt.Sprintf("liuyao-fixture-%d", i+1), Text: text, Source: "synthetic", Revision: 1, Hash: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))})
 	}
-	runReportLiuyaoGroundingFixture(t, bad, good, issues, sourceFixture)
+	runReportLiuyaoGroundingFixture(t, bad, good, issues, sourceFixture, nil)
 }
 
 // The claims and complete numbered passages are from normally unlocked report102.
@@ -136,7 +144,7 @@ func TestReportLiuyaoObserved102SourceScopeReachesSingleRepair(t *testing.T) {
 		}
 		sourceFixture.hits = append(sourceFixture.hits, knowledge.Hit{ID: fmt.Sprintf("report102-source-%d", number), Text: text, Source: title, Revision: 2, Hash: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))})
 	}
-	runReportLiuyaoGroundingFixture(t, bad, good, issues, sourceFixture)
+	runReportLiuyaoGroundingFixture(t, bad, good, issues, sourceFixture, nil)
 }
 
 // Only the short claims in this scenario are from report104's safe audit.
@@ -164,12 +172,75 @@ func TestReportLiuyaoObserved104LiteralAndSemanticShareRepair(t *testing.T) {
 			if semantic {
 				required = append(required, "摘要或正文与已确认事实不一致", changedGlyph)
 			}
-			runReportLiuyaoGroundingFixture(t, bad, good, issues, fixture, required...)
+			runReportLiuyaoGroundingFixture(t, bad, good, issues, fixture, nil, required...)
 		})
 	}
 }
 
-func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues []reportCalibrationIssue, sourceFixture *reportAttributionSearch, requiredRepairText ...string) {
+// Both complete sources and the complete calculation are from normally unlocked
+// report102, not report104's failed body or its unavailable source attribution.
+func TestReportNativeFieldsAndBookQuotesKeepTheirOwnSource(t *testing.T) {
+	var fixture struct {
+		Canonical       json.RawMessage
+		CanonicalSHA256 string
+		Sources         []struct {
+			Citation            int
+			Text, Title, SHA256 string
+		}
+	}
+	raw, err := os.ReadFile("testdata/liuyao_report102_round13_dual_sources.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	var canonical any
+	if err := json.Unmarshal(fixture.Canonical, &canonical); err != nil {
+		t.Fatal(err)
+	}
+	fixture.Canonical, _ = json.Marshal(canonical)
+	if fmt.Sprintf("%x", sha256.Sum256(fixture.Canonical)) != fixture.CanonicalSHA256 || fixture.CanonicalSHA256 != "cf20c6c8c7ffd4ca5d8baee6a68599367a0de7e835efd28dcd4af0d78c91c7d8" || len(fixture.Sources) != 2 {
+		t.Fatal("normally unlocked complete canonical/source fixture changed")
+	}
+	sourceFixture := &reportAttributionSearch{}
+	doc := reportdoc.New()
+	for i, passage := range fixture.Sources {
+		if passage.Citation != i+1 || fmt.Sprintf("%x", sha256.Sum256([]byte(passage.Text))) != passage.SHA256 {
+			t.Fatal("normally unlocked numbered book passage changed")
+		}
+		sourceFixture.hits = append(sourceFixture.hits, knowledge.Hit{ID: fmt.Sprintf("report102-book-%d", i+1), Text: passage.Text, Source: passage.Title, Revision: 2, Hash: passage.SHA256})
+		doc.Blocks = append(doc.Blocks, reportdoc.Block{Kind: "citations", Items: []reportdoc.Item{{Label: fmt.Sprintf("资料%d", i+1), Value: passage.Text}}})
+	}
+	const nativeHexagram = "归妹：征凶，无攸利。"
+	const nativeLine = "上九：睽孤，见豕负涂，载鬼一车，先张之弧，后说之弧，匪寇婚媾，往遇雨则吉。"
+	for _, value := range []string{nativeHexagram, nativeLine} {
+		if !strings.Contains(string(fixture.Canonical), value) {
+			t.Fatal("native display text missing from actual canonical")
+		}
+	}
+	const explicitBook = "“归妹：征凶，无攸利。”[资料1]"
+	if err := validateReportCitations(reportBody{Content: explicitBook}, doc); err == nil {
+		t.Fatal("the same native text must still fail when explicitly attributed to the different book version")
+	}
+	const wrongObject = "本次计算本卦卦辞为“归妹：征凶，无攸利。”"
+	const stitched = "本次计算上九爻辞为“先张之弧，群疑亡也。”"
+	const invented = "本次计算确认团队现已消除猜疑。"
+	bad := reportBody{Summary: "对照本次计算与各自来源，比较小范围试用与一次替换，实际协作和回退条件待核实。", Content: "## 依据\n文献原句：" + explicitBook + "\n" + wrongObject + "\n" + stitched + "\n" + invented + "\n" + strings.Repeat("本地合成回归只验证来源归属传递与拒绝边界，不代表真实模型质量。", 8) + "\n## 条件比较\n|方案|待核对|\n|---|---|\n|试用|验证回退条件|\n## 本报告建议\n先核实再决定范围。"}
+	good := bad
+	good.Content = "## 本次计算字段\n|对应字段|本次计算原文|\n|---|---|\n|变卦卦辞|“" + nativeHexagram + "”|\n|返回的动爻爻辞，上九|“" + nativeLine + "”|\n## 文献原句\n书籍卦辞：“歸妹：征凶，无攸利。”[资料1]。书籍上九爻辞节选：“見豕負涂，載鬼一車”[资料2]。以上分别核对计算字段和所引书籍，不混为同一版本。\n" + strings.Repeat("本地合成回归只验证来源归属传递与拒绝边界，不代表真实模型质量。", 8) + "\n## 条件比较\n|条件|本报告建议|\n|---|---|\n|若回退条件尚未确认|先验证隔离和回退可行性|\n## 本报告建议\n实际团队状态待核实；工程验证是独立建议，不归为计算字段输出或文献结论。"
+	if err := validateReportCitations(good, doc); err != nil {
+		t.Fatalf("correctly separated native fields and faithful book quotes failed: %v", err)
+	}
+	issues := []reportCalibrationIssue{
+		{Quote: wrongObject, Basis: "本次计算本卦是火泽睽，所引字段实际属于变卦雷泽归妹；字串存在也不能错配对象。"},
+		{Quote: stitched, Basis: "本次计算上九爻辞没有这个连续字串；不能把不同段落拼接后声称为计算字段。"},
+		{Quote: invented, Basis: "本次计算没有输出真实团队已消除猜疑；字段不能为未输出的现实解释背书。"},
+	}
+	runReportLiuyaoGroundingFixture(t, bad, good, issues, sourceFixture, fixture.Canonical, "直接引文归妹：征凶，无攸利。", wrongObject, stitched, invented)
+}
+
+func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues []reportCalibrationIssue, sourceFixture *reportAttributionSearch, calculation json.RawMessage, requiredRepairText ...string) {
 	t.Helper()
 	const question = "现有模块先做小范围试用，还是一次替换全部旧流程？重点梳理团队协作、变更风险与可执行的验证步骤。"
 	const inputs = `{"method":"time","eventTime":"2026-10-28T14:30","location":"中国新疆乌鲁木齐市沙依巴克区","timeBasis":"true_solar","yongShenTarget":"兄弟"}`
@@ -181,10 +252,14 @@ func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues 
 	if err := json.Unmarshal(fixture, &calculations); err != nil {
 		t.Fatal(err)
 	}
+	actualCalculation := calculation != nil
+	if calculation == nil {
+		calculation = calculations["liuyao"]
+	}
 	mcpCalls := 0
 	mcp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mcpCalls++
-		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"structuredContent": calculations["liuyao"]}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"structuredContent": calculation}})
 	}))
 	t.Cleanup(mcp.Close)
 	writers, reviews, searchRequests := 0, 0, 0
@@ -201,7 +276,33 @@ func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues 
 				t.Errorf("writer, repair or critic lost liuyao grounding: %q", rule)
 			}
 		}
+		for _, rule := range reportNativeSourceRules {
+			if !strings.Contains(system, rule) {
+				t.Errorf("writer, repair or critic lost native/book source attribution: %q", rule)
+			}
+		}
+		allMessages := ""
+		for _, message := range messages {
+			content := fmt.Sprint(message.(map[string]any)["content"])
+			allMessages += content
+			if message.(map[string]any)["role"] == "tool" {
+				var read struct{ Content string }
+				_ = json.Unmarshal([]byte(content), &read)
+				allMessages += read.Content
+			}
+		}
 		critic := isReportCalibrationFixtureRequest(req)
+		if actualCalculation {
+			if searchRequests > 0 && (critic || writers == 0) && !strings.Contains(allMessages, string(calculation)) {
+				t.Error("initial writer or critic lost the complete unchanged calculation")
+			}
+			if !critic {
+				tools, _ := json.Marshal(req["tools"])
+				if !strings.Contains(string(tools), `"name":"read_report"`) {
+					t.Error("writer or repair lost access to the original calculation")
+				}
+			}
+		}
 		if critic && !strings.Contains(system, "普通“本次计算已完成，盘面关键事实如下”等自然陈述不是机器状态标签") {
 			t.Error("critic may invent a machine-status violation from an ordinary sentence")
 		}
@@ -245,7 +346,11 @@ func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues 
 		} else {
 			if searchRequests == 0 {
 				searchRequests++
-				event, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"index": 0, "delta": map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "source-1", "type": "function", "function": map[string]any{"name": "search_knowledge", "arguments": `{"query":"合成用神依据"}`}}}}, "finish_reason": "tool_calls"}}, "usage": map[string]any{"prompt_tokens": 3, "completion_tokens": 2, "completion_tokens_details": map[string]any{"reasoning_tokens": 1}}})
+				calls := []any{map[string]any{"index": 0, "id": "source-1", "type": "function", "function": map[string]any{"name": "search_knowledge", "arguments": `{"query":"合成用神依据"}`}}}
+				if actualCalculation {
+					calls = append(calls, map[string]any{"index": 1, "id": "calculation-1", "type": "function", "function": map[string]any{"name": "read_report", "arguments": `{}`}})
+				}
+				event, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"index": 0, "delta": map[string]any{"role": "assistant", "tool_calls": calls}, "finish_reason": "tool_calls"}}, "usage": map[string]any{"prompt_tokens": 3, "completion_tokens": 2, "completion_tokens_details": map[string]any{"reasoning_tokens": 1}}})
 				w.Header().Set("Content-Type", "text/event-stream")
 				fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", event)
 				response := w.Result()

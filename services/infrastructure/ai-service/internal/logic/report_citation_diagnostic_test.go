@@ -136,7 +136,7 @@ func TestDateWritingUsesReadableRangeAndFaithfulMethodParaphrases(t *testing.T) 
 	if strings.Contains(instruction, "weekdayOnly") {
 		t.Fatal("date writing examples repeat the internal field they must avoid")
 	}
-	for _, required := range []string{"是否包含周末与周内", "星期不等于法定假日或调休", "明确标为释义或解释的转述", "不用引号把转述冒充原句", "只讨论本次实际日期和对应宜忌项", "未列出不等于忌"} {
+	for _, required := range []string{"是否包含周末与周内", "星期不等于法定假日或调休", "文献优先明确标为释义", "勿用引号将转述冒充原句或补造信息", "只讨论本次实际日期和对应宜忌项", "未列出不等于忌"} {
 		if !strings.Contains(instruction, required) {
 			t.Fatalf("missing date method/status boundary: %s", required)
 		}
