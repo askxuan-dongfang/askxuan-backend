@@ -240,6 +240,53 @@ func TestReportNativeFieldsAndBookQuotesKeepTheirOwnSource(t *testing.T) {
 	runReportLiuyaoGroundingFixture(t, bad, good, issues, sourceFixture, fixture.Canonical, "直接引文归妹：征凶，无攸利。", wrongObject, stitched, invented)
 }
 
+// Short claims and complete evidence are from normally paid/unlocked report104.
+// The mock review proves transport and bounded repair, not real-model judgement.
+func TestReportObserved104LabelsAndTableEffectsReachCriticAndRepair(t *testing.T) {
+	var fixture struct {
+		Canonical       json.RawMessage
+		CanonicalSHA256 string
+		Sources         []struct {
+			Citation            int
+			Text, Title, SHA256 string
+		}
+	}
+	raw, err := os.ReadFile("testdata/liuyao_report104_round17_sources.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	var canonical any
+	if err := json.Unmarshal(fixture.Canonical, &canonical); err != nil {
+		t.Fatal(err)
+	}
+	fixture.Canonical, _ = json.Marshal(canonical)
+	if fmt.Sprintf("%x", sha256.Sum256(fixture.Canonical)) != fixture.CanonicalSHA256 || fixture.CanonicalSHA256 != "cf20c6c8c7ffd4ca5d8baee6a68599367a0de7e835efd28dcd4af0d78c91c7d8" || len(fixture.Sources) != 10 {
+		t.Fatal("normally unlocked complete report104 canonical/sources changed")
+	}
+	sourceFixture := &reportAttributionSearch{}
+	for i, source := range fixture.Sources {
+		if source.Citation != i+1 || fmt.Sprintf("%x", sha256.Sum256([]byte(source.Text))) != source.SHA256 {
+			t.Fatal("report104 numbered complete public source changed")
+		}
+		sourceFixture.hits = append(sourceFixture.hits, knowledge.Hit{ID: fmt.Sprintf("report104-source-%d", i+1), Text: source.Text, Source: source.Title, Revision: 2, Hash: source.SHA256})
+	}
+	const sourceClaim = "传统释义认为睽卦象征乖离、分歧，适合从小处着手，不宜大举推进。"
+	const currentClaim = "九四子孙酉金空亡，传统上表示决策者当前思虑未定或准备未足。"
+	const effectClaim = "容易回滚，只影响局部用户，恢复快"
+	padding := strings.Repeat("本地合成回归只验证核对范围和修订边界，不代表真实模型或新报告内容质量。", 8)
+	bad := reportBody{Summary: "保留本次计算与原始问题，比较小范围试用和一次替换，实际团队与技术条件仍待核对。", Content: "## 分析依据\n本卦卦辞为“睽：小事吉”[资料1]，" + sourceClaim + "\n## 影响因素\n" + currentClaim + "若现实中决策者已有清晰计划，可忽略此象。\n" + padding + "\n## 方案比较\n|维度|小范围试用|一次替换|\n|---|---|---|\n|回滚与恢复|" + effectClaim + "|整体回滚复杂，服务中断风险大|\n## 行动建议\n执行前核对实际条件。"}
+	good := reportBody{Summary: bad.Summary, Content: "## 本次计算\n本卦火泽睽、变卦雷泽归妹，上九父母巳火明动化兄弟戌土且化墓，实际排盘时间为12:37。\n## 文献与报告建议\n本卦卦辞为“睽：小事吉”[资料1]。现代释义仅说明小事吉，不能由此反推大事不利。本报告另建议先验证小范围方案，这是工程建议，不归作该片段的原有结论。\n## 待核对问题\n决策者当前依据是否充足，应查实际需求与评估记录，空亡本身不指定其当前状态。\n" + padding + "\n## 条件比较\n|条件或方案要求|本报告建议|\n|---|---|\n|小范围方案的要求|先验证影响隔离、数据兼容和回退演练，这些条件尚未证明|\n|若上述前提已经验证|再比较局部恢复的影响与实测耗时|\n|若全量切换可由已验证的开关撤回|全量也可能有较低回退成本，仍据实际测量比较|\n## 行动建议\n先核实现实条件，再决定试用和替换范围；不以传统标签或免责声明替代所需证据。"}
+	issues := []reportCalibrationIssue{
+		{Quote: sourceClaim, Basis: "资料1只肯定小事吉，不提供大举不宜的否定通则；传统释义标签不能补足缺失结论，工程建议须另句归报告。"},
+		{Quote: currentClaim, Basis: "用户没有确认决策者当前思虑或准备状态；传统上表示及后续可忽略不把具体当前状态改成条件，应写为待核对问题。"},
+		{Quote: effectClaim, Basis: "输入没有确认影响隔离、数据兼容或回退演练；这是未确认的方案效果，不能因不是盘面字段而免审，须列明确前提。"},
+	}
+	runReportLiuyaoGroundingFixture(t, bad, good, issues, sourceFixture, fixture.Canonical, sourceClaim, currentClaim, effectClaim)
+}
+
 func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues []reportCalibrationIssue, sourceFixture *reportAttributionSearch, calculation json.RawMessage, requiredRepairText ...string) {
 	t.Helper()
 	const question = "现有模块先做小范围试用，还是一次替换全部旧流程？重点梳理团队协作、变更风险与可执行的验证步骤。"
@@ -292,6 +339,13 @@ func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues 
 			}
 		}
 		critic := isReportCalibrationFixtureRequest(req)
+		if critic {
+			for _, rule := range reportCriticFactScopeRules {
+				if !strings.Contains(system, rule) {
+					t.Errorf("critic lost actual fact/condition/source scope: %q", rule)
+				}
+			}
+		}
 		if actualCalculation {
 			if searchRequests > 0 && (critic || writers == 0) && !strings.Contains(allMessages, string(calculation)) {
 				t.Error("initial writer or critic lost the complete unchanged calculation")

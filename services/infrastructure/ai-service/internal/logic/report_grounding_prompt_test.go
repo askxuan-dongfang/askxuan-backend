@@ -17,6 +17,16 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
+var reportCriticFactScopeRules = []string{
+	"候选岗位或方案的要求、适用条件或明确假设，不等于已确认事实",
+	"现实状态与方案效果仍须已确认输入或明确前提，不能因不属盘面而免审",
+	"以提示、显示、象征或传统上开头",
+	"具体对象的当前状态，仍须按现实断言核对",
+	"可能或事后免责声明不替代明确条件或待核对问题",
+	"释义也须保留片段的主体与逻辑范围，标为传统释义不提供原文没有的结论",
+	"报告自有建议应另句明示，不借引用号冒充原文结论",
+}
+
 func TestReportGroundingAndParaphraseRulesReachEveryTopic(t *testing.T) {
 	for _, topic := range []string{"bazi", "marriage", "fengshui", "ziwei", "qimen", "tarot", "liuyao", "naming", "dream", "date_select", "fortune", "face_palm"} {
 		instruction := reportInstruction(&Report{SkillCode: topic}, &model.AISkill{})
@@ -43,6 +53,14 @@ func TestReportGroundingAndParaphraseRulesReachEveryTopic(t *testing.T) {
 		}
 		if strings.Contains(critic.SystemPrompt, "引用编号与直接引文必须存在于本次检索片段") {
 			t.Errorf("%s critic still forces calculation fields to match a different book version", topic)
+		}
+		for _, rule := range reportCriticFactScopeRules {
+			if !strings.Contains(critic.SystemPrompt, rule) {
+				t.Errorf("%s critic lost fact/condition/source boundary %q", topic, rule)
+			}
+		}
+		if strings.Contains(critic.SystemPrompt, "只有实际归属本盘且与本次计算矛盾时才报冲突") {
+			t.Errorf("%s critic still exempts unconfirmed non-chart claims in comparison tables", topic)
 		}
 		dateRule := "只讨论本次实际日期和对应宜忌项"
 		if strings.Contains(instruction, dateRule) != (topic == "date_select") {
@@ -83,7 +101,7 @@ func TestReportGroundingPolicyIsSentToWriterCriticAndRepair(t *testing.T) {
 		w := httptest.NewRecorder()
 		if isReportCalibrationFixtureRequest(req) {
 			reviews++
-			for _, required := range []string{"现实情况只据用户已确认输入", "已有或已发生仍是事实断言", "引号与编号之间隔有提示或解释语", "同句或同段"} {
+			for _, required := range append([]string{"现实情况只据用户已确认输入", "引号与编号之间隔有提示或解释语", "同句或同段"}, reportCriticFactScopeRules...) {
 				if !strings.Contains(system, required) {
 					t.Errorf("critic missing boundary %q", required)
 				}
