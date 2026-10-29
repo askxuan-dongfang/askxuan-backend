@@ -381,7 +381,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (resul
 		if conflict != nil && parseErr == nil {
 			recordReportCalibration(&doc, "needs_repair", "literal_evidence: "+conflict.Error(), reviews, protocolRepairs, nil, attempt > 0)
 		}
-		if conflict == nil {
+		if conflict == nil || (attempt == 0 && parseErr == nil) {
 			calculations := json.RawMessage("null")
 			if input.Report != nil {
 				calculations = json.RawMessage(input.Report.Content)
@@ -473,13 +473,15 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (resul
 				}
 				protocolRepairs++
 			}
-			if len(issues) == 0 {
+			if len(issues) == 0 && conflict == nil {
 				recordReportCalibration(&doc, "passed", "", reviews, protocolRepairs, nil, attempt > 0)
 				return body, doc, usage, nil
 			}
-			recordReportCalibration(&doc, "needs_repair", "semantic_conflict", reviews, protocolRepairs, issues, attempt > 0)
-			raw, _ := json.Marshal(issues)
-			conflict = fmt.Errorf("摘要或正文与已确认事实不一致：%s", raw)
+			if len(issues) > 0 {
+				recordReportCalibration(&doc, "needs_repair", "semantic_conflict", reviews, protocolRepairs, issues, attempt > 0)
+				raw, _ := json.Marshal(issues)
+				conflict = errors.Join(conflict, fmt.Errorf("摘要或正文与已确认事实不一致：%s", raw))
+			}
 		}
 		if attempt == 1 {
 			recordReportCalibration(&doc, "failed", "conflict_persisted", reviews, protocolRepairs, nil, attempt > 0)

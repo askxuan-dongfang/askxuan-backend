@@ -20,12 +20,12 @@ import (
 func TestReportGroundingAndParaphraseRulesReachEveryTopic(t *testing.T) {
 	for _, topic := range []string{"bazi", "marriage", "fengshui", "ziwei", "qimen", "tarot", "liuyao", "naming", "dream", "date_select", "fortune", "face_palm"} {
 		instruction := reportInstruction(&Report{SkillCode: topic}, &model.AISkill{})
-		for _, required := range []string{"排盘与牌卦事实据本次计算", "现实情况只据用户已确认输入", "提示、显示或象征，不等于条件句", "不能由一项已知顾虑排除其它顾虑", "正文只作明确标为释义或解释的转述", "完整原文仍由平台知识依据图表忠实展示"} {
+		for _, required := range []string{"排盘与牌卦事实据本次计算", "现实情况只据用户已确认输入", "提示、显示或象征，不等于条件句", "不能由一项已知顾虑排除其它顾虑", "优先作明确标为释义或解释的转述", "必要的短引文须忠实保留原字形和本轮实际来源", "完整原文仍由平台知识依据图表忠实展示", "格式化执行状态标签"} {
 			if !strings.Contains(instruction, required) {
 				t.Errorf("%s writer missing grounding/source policy %q", topic, required)
 			}
 		}
-		for _, obsolete := range []string{"现实事实只据本次输入和计算", "必要的直接引文", "转简体或改写须标为转写"} {
+		for _, obsolete := range []string{"现实事实只据本次输入和计算", "必要的直接引文", "转简体或改写须标为转写", "正文不重复直接引文", "正文只作明确标为释义或解释的转述", "不复引原句"} {
 			if strings.Contains(instruction, obsolete) {
 				t.Errorf("%s writer kept ambiguous or duplicate quote policy %q", topic, obsolete)
 			}
@@ -92,7 +92,7 @@ func TestReportGroundingPolicyIsSentToWriterCriticAndRepair(t *testing.T) {
 			}
 		} else {
 			writers++
-			for _, required := range []string{"现实情况只据用户已确认输入", "正文只作明确标为释义或解释的转述"} {
+			for _, required := range []string{"现实情况只据用户已确认输入", "优先作明确标为释义或解释的转述"} {
 				if !strings.Contains(system, required) {
 					t.Errorf("writer/repair missing boundary %q", required)
 				}

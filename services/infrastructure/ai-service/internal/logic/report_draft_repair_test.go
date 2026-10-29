@@ -31,11 +31,12 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 		{name: "four_calls_then_format_repair", first: "invalid", planning: 3, wantSuccess: true, wantReviews: 1},
 		{name: "incomplete_then_valid", first: "incomplete", wantSuccess: true, wantReviews: 1},
 		{name: "two_invalid_drafts", first: "invalid", second: "invalid"},
-		{name: "citation_repair_then_invalid", first: "citation", second: "invalid"},
+		{name: "citation_repair_then_invalid", first: "citation", second: "invalid", wantReviews: 1},
+		{name: "literal_both_drafts_critic_empty_cannot_pass", first: "citation", second: "citation", wantReviews: 1},
 		{name: "format_repair_then_citation_conflict", first: "invalid", second: "citation"},
 		{name: "semantic_repair_then_invalid", second: "invalid", semantic: true, wantReviews: 1},
 		{name: "format_repair_then_semantic_conflict", first: "invalid", semantic: true, wantReviews: 1},
-		{name: "same_draft_literal_failures_share_rewrite", first: "multiple_citations", planning: 1, references: true, wantSuccess: true, wantReviews: 1},
+		{name: "same_draft_literal_failures_share_rewrite", first: "multiple_citations", planning: 1, references: true, wantSuccess: true, wantReviews: 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fixture, err := os.ReadFile("../reportdoc/testdata/synthetic.json")
@@ -79,7 +80,11 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 					if tc.references {
 						var input reportCalibrationInput
 						messages := req["messages"].([]any)
-						if json.Unmarshal([]byte(messages[1].(map[string]any)["content"].(string)), &input) != nil || input.Draft != body || !strings.Contains(fmt.Sprint(input.Sources), "引用原文") || !strings.Contains(string(input.Calculations), "四柱") || !strings.Contains(string(input.Inputs), "1990-01-02") {
+						wantDraft := body
+						if reviews == 1 {
+							wantDraft.Content += "\n资料1说明方法，另见[资料99]。原文“引用原聞”[资料1]。"
+						}
+						if json.Unmarshal([]byte(messages[1].(map[string]any)["content"].(string)), &input) != nil || input.Draft != wantDraft || !strings.Contains(fmt.Sprint(input.Sources), "引用原文") || !strings.Contains(string(input.Calculations), "四柱") || !strings.Contains(string(input.Inputs), "1990-01-02") {
 							t.Error("critic lost the repaired draft, actual sources or original calculation")
 						}
 					}
@@ -186,6 +191,9 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 						t.Fatal("already calibrated draft gained an extra early failure diagnostic")
 					}
 					audits = append(audits, audit)
+					if audit["status"] == "passed" && (!tc.wantSuccess || audit["repaired"] != true) {
+						t.Fatal("a literal or semantic conflict produced a premature passed audit")
+					}
 				}
 			}
 			if len(audits) < 2 || audits[0]["status"] != "needs_repair" || audits[len(audits)-1]["repaired"] != true {

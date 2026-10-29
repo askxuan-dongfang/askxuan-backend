@@ -352,7 +352,7 @@ func testReportHarness(t *testing.T, code string, conflictingResponses, calibrat
 		return
 	}
 	if conflictingResponses == 2 {
-		if e == nil || modelCalls.Load() != 4 || calibrationCalls.Load() != 0 || toolCalls.Load() != 2 {
+		if e == nil || modelCalls.Load() != 5 || calibrationCalls.Load() != 1 || toolCalls.Load() != 2 {
 			t.Fatalf("contradiction not bounded: %v models=%d tools=%d", e, modelCalls.Load(), toolCalls.Load())
 		}
 		return
@@ -374,7 +374,7 @@ func testReportHarness(t *testing.T, code string, conflictingResponses, calibrat
 		}
 	}
 	if conflictingResponses > 0 {
-		expectedModels = 5
+		expectedModels = 6
 	}
 	if calibrationConflicts > 0 {
 		expectedModels = 6

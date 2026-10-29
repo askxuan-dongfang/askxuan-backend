@@ -69,6 +69,7 @@ func TestReportImplementationDetailsBindOnlyActualToolEvidence(t *testing.T) {
 		{"different_version", "规则版本20260929.10。", false},
 		{"ordinary_version", "本次版本更新后，请按周记录。", false},
 		{"ordinary_fact", "本次按梦境原述、醒来感受、现实背景和重复情况整理。", false},
+		{"observed104_ordinary_completed", "本次计算已完成，盘面关键事实如下：", false},
 		{"url_not_visible_version", "参见[说明](https://example.org/current_calculation)。", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

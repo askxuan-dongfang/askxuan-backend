@@ -33,7 +33,7 @@ var reportLiuyaoObserved95Rules = []string{
 	"总免责声明不能抵消具体断言",
 	"灰度、回滚可作为独立建议，不声称实际现状",
 	"起卦方式只写时间、数字、手选或自动等中文名称，不在正文附带time、number、select、auto等方法枚举值",
-	"卦辞、爻辞原文由平台图表展示；正文只写明确标为现代中文释义的解释，不复引原句，也不以省略号拼接原句",
+	"正文优先采用明确标为现代中文释义的解释；必要短引文须忠实保留本轮来源的原字形和适用条件，不整段复述",
 	"必要文献释义逐项核对本轮片段编号，分别保留对应主体与适用条件",
 	"正文末尾不再另列整组来源或复述取用规则",
 	"未知团队与回退条件须在对应表格单元格用若或建议验证写清，不用表前总声明代替",
@@ -74,7 +74,7 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 			"## 方案比较\n| 选择 | 核对项目 |\n| --- | --- |\n| 小范围试用 | 核对回退步骤 |\n| 全量替换 | 核对覆盖范围 |\n" +
 			"当前保障机制（世爻子孙空亡）与旧流程破口（应爻父母日破）尚未处理到位前，不宜一步到位。\n" +
 			"世持子孙而空亡，提示**新方案/新模块本身目前处于“未落实、未填实”的状态**。\n" +
-			"起卦方式：时间起卦（time）。上九爻辞“睽孤……往遇雨则吉”。\n" +
+			"起卦方式：时间起卦（time）。\n" +
 			"## 行动建议\n先记录模块范围与验证指标。卦象不是确定性的成败预言；模块规模、团队人数、验收指标、时间窗口等现实参数未包含在本次资料中，最终决策仍需结合实际测试结果与专业意见。\n传统依据说明：" + observed97Attribution + "。",
 	}
 	good := reportBody{
@@ -91,7 +91,6 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 		{Quote: "猜疑多半是自我放大的，真实关系仍是协作", Basis: "用户没有确认真实合作关系、他人动机或猜疑成因，不能从爻辞推断这些现实情况。"},
 		{Quote: "世持子孙而空亡，提示**新方案/新模块本身目前处于“未落实、未填实”的状态**", Basis: "用户未确认模块实施状态；空亡不能证明项目、方案或流程是否实际落地。"},
 		{Quote: "起卦方式：时间起卦（time）", Basis: "本地合成输入method仍为time，但正文只写中文起卦名称，不附原始方法枚举；计算输入不因此改动。"},
-		{Quote: "上九爻辞“睽孤……往遇雨则吉”", Basis: "本地回归仅检验正文释义边界：原文在图表，正文应明确标为现代中文释义，不复引或省略拼接。这不判断09失败全文的引文归属或字形责任。"},
 		{Quote: observed97Attribution, Basis: "资料7只有兄弟等用神对象说明，没有生旺、月破旬空条件；实际资料6的占弟兄姐妹否泰段才有这些条件。不能把资料6的条件归入资料7，也不应为补末尾来源说明新增无必要的取用规则。"},
 	}
 	// Model only the two relevant source distinctions, preserving numbers 6/7.
@@ -140,7 +139,37 @@ func TestReportLiuyaoObserved102SourceScopeReachesSingleRepair(t *testing.T) {
 	runReportLiuyaoGroundingFixture(t, bad, good, issues, sourceFixture)
 }
 
-func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues []reportCalibrationIssue, sourceFixture *reportAttributionSearch) {
+// Only the short claims in this scenario are from report104's safe audit.
+// The three short source distinctions are synthetic, not an export of its failed body/tools.
+func TestReportLiuyaoObserved104LiteralAndSemanticShareRepair(t *testing.T) {
+	const literalOne = "“小规模、小事可行，大事需谨慎”[资料2]"
+	const literalTwo = "“贸然全面前进不利、宜预知弊端”[资料1]"
+	const changedGlyph = "如占弟兄姐妹之否泰者，宜其生旺，不宜临月破旬空[资料3]"
+	sources := []string{"歸妹：征凶，无攸利。象曰：澤上有雷，歸妹；君子以永終知敝。", "睽：小事吉。彖曰：是以小事吉。象曰：君子以同而異。", "如占弟兄姐妹之否泰者，宜其生旺不宜臨月破旬空。"}
+	sourceFixture := &reportAttributionSearch{}
+	for i, text := range sources {
+		sourceFixture.hits = append(sourceFixture.hits, knowledge.Hit{ID: fmt.Sprintf("report104-synthetic-source-%d", i+1), Text: text, Source: "synthetic-short-audit-distinction", Revision: 1, Hash: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))})
+	}
+	bad := reportBody{Summary: "保留本次计算和已确认输入，比较小范围试用与一次替换，现实条件仍需核对。", Content: "## 分析依据\n" + literalOne + "。\n" + literalTwo + "。\n" + changedGlyph + "。\n" + strings.Repeat("本地合成回归只验证双重反馈和既有修订上限，不代表真实模型质量。", 10) + "\n## 方案比较\n|方案|待核对|\n|---|---|\n|试用|验证回滚条件|\n## 行动建议\n先核实再决定范围。"}
+	good := bad
+	good.Content = "## 分析依据\n本次计算已完成，盘面关键事实如下：\n睽卦经文卦辞作“小事吉”[资料2]，彖辞谓“是以小事吉”[资料2]，象辞谓“君子以同而異”[资料2]。\n“如占弟兄姐妹之否泰者，宜其生旺不宜臨月破旬空”[资料3]。这是所引片段对该对象的传统观点，不是对项目实际团队或风险的证明。\n" + strings.Repeat("本地合成回归只验证双重反馈和既有修订上限，不代表真实模型质量。", 10) + "\n## 方案比较\n|条件|本报告建议|\n|---|---|\n|若回滚可行性未知|先验证隔离与回退演练|\n## 行动建议\n灰度、交接等为本报告自己的建议，先核实再决定范围。"
+	for _, semantic := range []bool{true, false} {
+		t.Run(fmt.Sprint("semantic_", semantic), func(t *testing.T) {
+			issues := []reportCalibrationIssue{}
+			if semantic {
+				issues = []reportCalibrationIssue{{Quote: changedGlyph, Basis: "资料3原文为臨而非临；该直接转述未标转写，必须忠实字形或明确改作释义。"}}
+			}
+			fixture := &reportAttributionSearch{hits: sourceFixture.hits}
+			required := []string{"直接引文小规模、小事可行，大事需谨慎", "直接引文贸然全面前进不利、宜预知弊端"}
+			if semantic {
+				required = append(required, "摘要或正文与已确认事实不一致", changedGlyph)
+			}
+			runReportLiuyaoGroundingFixture(t, bad, good, issues, fixture, required...)
+		})
+	}
+}
+
+func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues []reportCalibrationIssue, sourceFixture *reportAttributionSearch, requiredRepairText ...string) {
 	t.Helper()
 	const question = "现有模块先做小范围试用，还是一次替换全部旧流程？重点梳理团队协作、变更风险与可执行的验证步骤。"
 	const inputs = `{"method":"time","eventTime":"2026-10-28T14:30","location":"中国新疆乌鲁木齐市沙依巴克区","timeBasis":"true_solar","yongShenTarget":"兄弟"}`
@@ -173,6 +202,9 @@ func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues 
 			}
 		}
 		critic := isReportCalibrationFixtureRequest(req)
+		if critic && !strings.Contains(system, "普通“本次计算已完成，盘面关键事实如下”等自然陈述不是机器状态标签") {
+			t.Error("critic may invent a machine-status violation from an ordinary sentence")
+		}
 		wantEffort := "low"
 		if critic {
 			wantEffort = "high"
@@ -228,6 +260,11 @@ func runReportLiuyaoGroundingFixture(t *testing.T, bad, good reportBody, issues 
 				for _, issue := range issues {
 					if !strings.Contains(last, issue.Quote) {
 						t.Errorf("single repair lost exact issue: %q", issue.Quote)
+					}
+				}
+				for _, required := range requiredRepairText {
+					if !strings.Contains(last, required) {
+						t.Errorf("single repair lost literal/semantic feedback %q", required)
 					}
 				}
 				if !strings.Contains(last, "不要重新计算") {

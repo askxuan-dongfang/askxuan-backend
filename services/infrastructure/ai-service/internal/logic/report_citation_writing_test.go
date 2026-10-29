@@ -20,7 +20,7 @@ import (
 
 func requireReportCitationWritingRules(t *testing.T, instruction string) {
 	t.Helper()
-	for _, rule := range []string{"仅标在片段实际支持的释义句后", "来源列表和依据说明也用[资料N]", "不用裸资料1、资料2"} {
+	for _, rule := range []string{"仅标在片段实际支持的释义或忠实引文后", "来源列表和依据说明也用[资料N]", "不用裸资料1、资料2"} {
 		if !strings.Contains(instruction, rule) {
 			t.Errorf("missing citation scope/list rule %q", rule)
 		}
