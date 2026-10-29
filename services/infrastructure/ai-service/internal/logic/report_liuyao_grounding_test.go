@@ -22,6 +22,9 @@ var reportLiuyaoObserved95Rules = []string{
 	"兄弟旺不证明团队已具实力",
 	"父母日破不证明实际旧流程存在漏洞",
 	"世爻空亡不证明当前兜底未就绪",
+	"空亡、日破、动变等只描述传统卦象倾向，不能证明任何对象的现实实施或完成状态",
+	"项目、方案或流程是否已启动、落地、验收，须从用户确认或实际记录核实",
+	"先列已确认现实条件，再把象意单列为传统解释，不用提示或说明当前把二者连接为现状结论",
 	"不得从爻辞推断真实合作关系、他人动机或猜疑成因",
 	"摘要和正文不能把这些象意写成用户已确认的现状，应改为条件或待核对检查项",
 	"总免责声明不能抵消具体断言",
@@ -47,8 +50,8 @@ func TestReportLiuyaoRealWorldGroundingRulesStayTopicScoped(t *testing.T) {
 	}
 }
 
-// The short claims and question are from synthetic report 95. The MCP and model
-// are fixtures: this verifies policy transport and repair bounds, not model quality.
+// The short claims are from synthetic reports 95 and 97. MCP and model are
+// fixtures: this verifies policy transport and repair bounds, not model quality.
 func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing.T) {
 	const question = "现有模块先做小范围试用，还是一次替换全部旧流程？重点梳理团队协作、变更风险与可执行的验证步骤。"
 	const inputs = `{"method":"time","eventTime":"2026-10-28T14:30","location":"中国新疆乌鲁木齐市沙依巴克区","timeBasis":"true_solar","yongShenTarget":"兄弟"}`
@@ -58,12 +61,13 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 			"应爻初九父母巳火“日破”，指向对方环境或旧流程一侧有“破口”，一次性触碰全部旧流程，风险会叠加在这处破口上。世爻子孙酉金为“制鬼、解忧”之位，但当前值空亡，说明“化解压力、兜底保障”的能力此刻尚未到位。\n" +
 			"## 方案比较\n| 选择 | 核对项目 |\n| --- | --- |\n| 小范围试用 | 核对回退步骤 |\n| 全量替换 | 核对覆盖范围 |\n" +
 			"当前保障机制（世爻子孙空亡）与旧流程破口（应爻父母日破）尚未处理到位前，不宜一步到位。\n" +
+			"世持子孙而空亡，提示**新方案/新模块本身目前处于“未落实、未填实”的状态**。\n" +
 			"## 行动建议\n先记录模块范围与验证指标。卦象不是确定性的成败预言；模块规模、团队人数、验收指标、时间窗口等现实参数未包含在本次资料中，最终决策仍需结合实际测试结果与专业意见。",
 	}
 	good := reportBody{
 		Summary: "团队能力、旧流程漏洞及兜底保障状态均未在用户资料中确认。可把它们列为待核对项，灰度与回滚作为独立行动选项。",
 		Content: "## 依据与边界\n" + strings.Repeat("本地合成回归只验证指令传递，不代表真实模型质量。", 8) +
-			"\n团队是否已有推进实力、旧流程是否存在漏洞、当前兜底是否就绪，都应以用户确认或实际测试记录为准。兄弟旺、父母日破和世爻空亡本身不能证明这些现实状态。\n" +
+			"\n团队是否已有推进实力、旧流程是否存在漏洞、当前兜底是否就绪，都应以用户确认或实际测试记录为准。兄弟旺、父母日破和世爻空亡本身不能证明这些现实状态。新方案是否已经启动或落地，须从实际实施记录核实；空亡仅作传统卦象倾向解释。\n" +
 			"## 条件比较\n| 条件 | 核对行动 |\n| --- | --- |\n| 若现有记录不能说明团队能力 | 先核对负责人和验收经验 |\n| 若尚无流程缺陷证据 | 先做差异测试 |\n| 若保障状态未知 | 核对监控与回退演练记录 |\n" +
 			"## 独立行动建议\n可选择小范围验证并准备回滚，具体规模与时点待确认。这些是独立的执行建议，不意味着已有漏洞或当前保障不足；没有证据时不排除其他可行选择。",
 	}
@@ -72,6 +76,7 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 		{Quote: "旧流程一侧有“破口”", Basis: "用户没有确认旧流程存在漏洞；父母日破不能证明实际缺陷。"},
 		{Quote: "“化解压力、兜底保障”的能力此刻尚未到位", Basis: "用户没有确认当前兜底未就绪；世爻空亡不能证明现实状态，总免责声明不能抵消该断言。"},
 		{Quote: "猜疑多半是自我放大的，真实关系仍是协作", Basis: "用户没有确认真实合作关系、他人动机或猜疑成因，不能从爻辞推断这些现实情况。"},
+		{Quote: "世持子孙而空亡，提示**新方案/新模块本身目前处于“未落实、未填实”的状态**", Basis: "用户未确认模块实施状态；空亡不能证明项目、方案或流程是否实际落地。"},
 	}
 	fixture, err := os.ReadFile("../reportdoc/testdata/synthetic.json")
 	if err != nil {

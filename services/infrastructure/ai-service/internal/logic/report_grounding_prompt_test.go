@@ -101,7 +101,7 @@ func TestReportGroundingPolicyIsSentToWriterCriticAndRepair(t *testing.T) {
 			if writers == 2 {
 				body = good
 				last := fmt.Sprint(messages[len(messages)-1].(map[string]any)["content"])
-				if !strings.Contains(last, "最终所有编号，包括列表标题和来源说明，均写为[资料N]") || !strings.Contains(last, "不复述诊断") {
+				if !strings.Contains(last, reportCitationWritingRules) || !strings.Contains(last, "不复述诊断") {
 					t.Error("repair request lost final source numbering/diagnostic boundary")
 				}
 			}
