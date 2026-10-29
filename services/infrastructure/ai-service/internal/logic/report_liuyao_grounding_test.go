@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,8 +13,10 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/askxuan/ai-service/internal/agent"
+	"github.com/askxuan/ai-service/internal/knowledge"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
+	"github.com/askxuan/ai-service/internal/reportdoc"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -31,6 +34,9 @@ var reportLiuyaoObserved95Rules = []string{
 	"灰度、回滚可作为独立建议，不声称实际现状",
 	"起卦方式只写时间、数字、手选或自动等中文名称，不在正文附带time、number、select、auto等方法枚举值",
 	"卦辞、爻辞原文由平台图表展示；正文只写明确标为现代中文释义的解释，不复引原句，也不以省略号拼接原句",
+	"必要文献释义逐项核对本轮片段编号，分别保留对应主体与适用条件",
+	"正文末尾不再另列整组来源或复述取用规则",
+	"未知团队与回退条件须在对应表格单元格用若或建议验证写清，不用表前总声明代替",
 }
 
 func TestReportLiuyaoRealWorldGroundingRulesStayTopicScoped(t *testing.T) {
@@ -57,6 +63,7 @@ func TestReportLiuyaoRealWorldGroundingRulesStayTopicScoped(t *testing.T) {
 func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing.T) {
 	const question = "现有模块先做小范围试用，还是一次替换全部旧流程？重点梳理团队协作、变更风险与可执行的验证步骤。"
 	const inputs = `{"method":"time","eventTime":"2026-10-28T14:30","location":"中国新疆乌鲁木齐市沙依巴克区","timeBasis":"true_solar","yongShenTarget":"兄弟"}`
+	const observed97Attribution = "兄弟爻主同辈、协作，占兄弟姐妹宜生旺、不宜月破旬空的取用方法见于古籍[资料7]"
 	bad := reportBody{
 		Summary: "用神兄弟丑土旺相，团队有实力可用；世爻子孙空亡、应爻父母日破并存，提示协作摩擦与旧流程破口。",
 		Content: "## 影响因素\n用神兄弟丑土旺相、静、不空，说明“同类之人”（团队成员、协作方）本身是有实力、可依靠的，具备推进试点的条件。猜疑多半是自我放大的，真实关系仍是协作，可通过沟通化解。\n" +
@@ -65,13 +72,13 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 			"当前保障机制（世爻子孙空亡）与旧流程破口（应爻父母日破）尚未处理到位前，不宜一步到位。\n" +
 			"世持子孙而空亡，提示**新方案/新模块本身目前处于“未落实、未填实”的状态**。\n" +
 			"起卦方式：时间起卦（time）。上九爻辞“睽孤……往遇雨则吉”。\n" +
-			"## 行动建议\n先记录模块范围与验证指标。卦象不是确定性的成败预言；模块规模、团队人数、验收指标、时间窗口等现实参数未包含在本次资料中，最终决策仍需结合实际测试结果与专业意见。",
+			"## 行动建议\n先记录模块范围与验证指标。卦象不是确定性的成败预言；模块规模、团队人数、验收指标、时间窗口等现实参数未包含在本次资料中，最终决策仍需结合实际测试结果与专业意见。\n传统依据说明：" + observed97Attribution + "。",
 	}
 	good := reportBody{
 		Summary: "团队能力、旧流程漏洞及兜底保障状态均未在用户资料中确认。可把它们列为待核对项，灰度与回滚作为独立行动选项。",
 		Content: "## 依据与边界\n" + strings.Repeat("本地合成回归只验证指令传递，不代表真实模型质量。", 8) +
 			"\n起卦方式：时间起卦。现代中文释义：遇到疑虑时可先核对信息并沟通；这是传统象意的转述，不证明实际团队已有猜疑或关系变化。\n团队是否已有推进实力、旧流程是否存在漏洞、当前兜底是否就绪，都应以用户确认或实际测试记录为准。兄弟旺、父母日破和世爻空亡本身不能证明这些现实状态。新方案是否已经启动或落地，须从实际实施记录核实；空亡仅作传统卦象倾向解释。\n" +
-			"## 条件比较\n| 条件 | 核对行动 |\n| --- | --- |\n| 若现有记录不能说明团队能力 | 先核对负责人和验收经验 |\n| 若尚无流程缺陷证据 | 先做差异测试 |\n| 若保障状态未知 | 核对监控与回退演练记录 |\n" +
+			"## 条件比较\n| 条件 | 核对行动 |\n| --- | --- |\n| 若现有记录不能说明团队能力 | 先核对负责人和验收经验 |\n| 若尚无流程缺陷证据 | 先做差异测试 |\n| 若保障状态未知 | 核对监控与回退演练记录 |\n| 若试点涉及多个团队 | 建议分别验证负责人和协作接口 |\n| 若回退条件未知 | 建议验证旧流程是否保留及回退是否可用 |\n" +
 			"## 独立行动建议\n可选择小范围验证并准备回滚，具体规模与时点待确认。这些是独立的执行建议，不意味着已有漏洞或当前保障不足；没有证据时不排除其他可行选择。",
 	}
 	issues := []reportCalibrationIssue{
@@ -82,6 +89,12 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 		{Quote: "世持子孙而空亡，提示**新方案/新模块本身目前处于“未落实、未填实”的状态**", Basis: "用户未确认模块实施状态；空亡不能证明项目、方案或流程是否实际落地。"},
 		{Quote: "起卦方式：时间起卦（time）", Basis: "本地合成输入method仍为time，但正文只写中文起卦名称，不附原始方法枚举；计算输入不因此改动。"},
 		{Quote: "上九爻辞“睽孤……往遇雨则吉”", Basis: "本地回归仅检验正文释义边界：原文在图表，正文应明确标为现代中文释义，不复引或省略拼接。这不判断09失败全文的引文归属或字形责任。"},
+		{Quote: observed97Attribution, Basis: "资料7只有兄弟等用神对象说明，没有生旺、月破旬空条件；实际资料6的占弟兄姐妹否泰段才有这些条件。不能把资料6的条件归入资料7，也不应为补末尾来源说明新增无必要的取用规则。"},
+	}
+	// Model only the two relevant source distinctions, preserving numbers 6/7.
+	sourceFixture := &reportAttributionSearch{}
+	for i, text := range []string{"合成未采用来源一。", "合成未采用来源二。", "合成未采用来源三。", "合成未采用来源四。", "合成未采用来源五。", "如占弟兄姐妹之否泰者，宜其生旺不宜臨月破旬空。", "兄弟爻：占兄弟、姐妹、族中兄弟、姑姨、妹夫及結拜兄弟都以兄弟爻爲用神。"} {
+		sourceFixture.hits = append(sourceFixture.hits, knowledge.Hit{ID: fmt.Sprintf("liuyao-fixture-%d", i+1), Text: text, Source: "synthetic", Revision: 1, Hash: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))})
 	}
 	fixture, err := os.ReadFile("../reportdoc/testdata/synthetic.json")
 	if err != nil {
@@ -97,7 +110,7 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"structuredContent": calculations["liuyao"]}})
 	}))
 	t.Cleanup(mcp.Close)
-	writers, reviews := 0, 0
+	writers, reviews, searchRequests := 0, 0, 0
 	p := provider.NewOpenAICompatible("http://liuyao-grounding.invalid", "fixture", "fixture", "")
 	p.SetHTTPClient(&http.Client{Transport: defaultContextTransport(func(r *http.Request) (*http.Response, error) {
 		var req map[string]any
@@ -134,6 +147,15 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 			if input.Topic != "liuyao" || input.Question != question || string(input.Inputs) != `{"eventTime":"2026-10-28T14:30","location":"中国新疆乌鲁木齐市沙依巴克区","method":"time","timeBasis":"true_solar","yongShenTarget":"兄弟"}` || input.Draft != want {
 				t.Error("critic lost actual question, confirmed inputs or exact current draft")
 			}
+			var items []reportdoc.Item
+			if len(input.Sources) != 1 || json.Unmarshal([]byte(input.Sources[0].Text), &items) != nil || len(items) != len(sourceFixture.hits) {
+				t.Fatal("critic lost complete source passages and original numbers")
+			}
+			for i, item := range items {
+				if item.Label != fmt.Sprintf("资料%d", i+1) || item.Value != sourceFixture.hits[i].Text {
+					t.Error("critic changed actual source number or passage")
+				}
+			}
 			result := `{"issues":[]}`
 			if reviews == 1 {
 				raw, _ := json.Marshal(map[string]any{"issues": issues})
@@ -141,6 +163,15 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 			}
 			writeReportCalibrationFixture(w, result)
 		} else {
+			if searchRequests == 0 {
+				searchRequests++
+				event, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"index": 0, "delta": map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "source-1", "type": "function", "function": map[string]any{"name": "search_knowledge", "arguments": `{"query":"合成用神依据"}`}}}}, "finish_reason": "tool_calls"}}, "usage": map[string]any{"prompt_tokens": 3, "completion_tokens": 2, "completion_tokens_details": map[string]any{"reasoning_tokens": 1}}})
+				w.Header().Set("Content-Type", "text/event-stream")
+				fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", event)
+				response := w.Result()
+				response.Request = r
+				return response, nil
+			}
 			writers++
 			body := bad
 			if writers == 2 {
@@ -153,6 +184,11 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 				}
 				if !strings.Contains(last, "不要重新计算") {
 					t.Error("single repair lost cached calculation boundary")
+				}
+				for _, hit := range sourceFixture.hits {
+					if !strings.Contains(last, hit.Text) {
+						t.Error("repair lost original numbered source passages")
+					}
 				}
 			}
 			raw, _ := json.Marshal(body)
@@ -173,10 +209,10 @@ func TestReportLiuyaoObserved95ClaimsReachWriterCriticAndSingleRepair(t *testing
 		mock.ExpectExec("UPDATE ai_report SET generation_stage").WithArgs(stage, int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
 	}
 	skill := &model.AISkill{Code: "liuyao", Status: model.SkillStatusEnabled, InputSchema: reportToolSchema("liuyao"), ToolConfig: `{"enabled":true,"server":"taibu","tool":"liuyao"}`}
-	s := &svc.ServiceContext{DB: sqlx.NewSqlConnFromDB(db), SkillModel: reportSkills{skill}, Provider: p, MCP: agent.NewMCPClient(true, mcp.URL, 10), Guard: agent.NewGuard(20000, nil)}
+	s := &svc.ServiceContext{DB: sqlx.NewSqlConnFromDB(db), SkillModel: reportSkills{skill}, Provider: p, MCP: agent.NewMCPClient(true, mcp.URL, 10), Guard: agent.NewGuard(20000, nil), Knowledge: &knowledge.Store{Remote: sourceFixture}, KnowledgeEnabled: true}
 	s.AIConfig.ContextWindow = 1048576
-	got, doc, usage, err := executeReport(context.Background(), s, &Report{ID: 1, SkillCode: "liuyao", Question: question, InputsJSON: inputs, ChaptersJSON: `["依据与边界","条件比较","独立行动建议"]`})
-	if err != nil || got != good || writers != 2 || reviews != 2 || doc.ModelCalls != 4 || mcpCalls != 1 || doc.ToolCalls != 1 || usage.PromptTokens != 28 || usage.CompletionTokens != 18 || usage.ReasoningTokens != 8 {
+	got, doc, usage, err := executeReport(context.Background(), s, &Report{ID: 1, UserID: "synthetic-owner", SkillCode: "liuyao", Question: question, InputsJSON: inputs, ChaptersJSON: `["依据与边界","条件比较","独立行动建议"]`})
+	if err != nil || got != good || writers != 2 || reviews != 2 || doc.ModelCalls != 5 || mcpCalls != 1 || doc.ToolCalls != 2 || searchRequests != 1 || sourceFixture.calls != 1 || usage.PromptTokens != 31 || usage.CompletionTokens != 20 || usage.ReasoningTokens != 9 {
 		t.Fatalf("changed shared repair/calculation/usage bounds: err=%v bodyEqual=%t writers=%d reviews=%d models=%d mcp=%d tools=%d usage=%+v", err, got == good, writers, reviews, doc.ModelCalls, mcpCalls, doc.ToolCalls, usage)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {

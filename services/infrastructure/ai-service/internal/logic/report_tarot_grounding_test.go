@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/askxuan/ai-service/internal/agent"
+	"github.com/askxuan/ai-service/internal/knowledge"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/reportdoc"
@@ -55,6 +57,18 @@ func TestReportTarotObjectFieldIsRejectedOnlyWhenVisible(t *testing.T) {
 
 var reportTarotEmotionRules = []string{"牌义不能判定用户当前情绪或顾虑成因", "摘要不作这类判断", "二分顾虑或排除能力不足", "情绪归因只能写成本人验证的问题或条件"}
 
+var reportTarotCitationRules = []string{"除用户明确要求外，不补中英牌名或花色对照、起源史论及无关检索综述", "缺少与本次牌义对应的原文时只简短说明缺失", "不同片段支持的事实分句标实际编号", "修正时优先删除无关或无准确出处的背景句"}
+
+type reportAttributionSearch struct {
+	calls int
+	hits  []knowledge.Hit
+}
+
+func (s *reportAttributionSearch) Search(context.Context, string, []string) (knowledge.Result, error) {
+	s.calls++
+	return knowledge.Result{Mode: "synthetic", Hits: append([]knowledge.Hit(nil), s.hits...)}, nil
+}
+
 func TestReportTarotPositionAndSummaryGroundingRulesStayTopicScoped(t *testing.T) {
 	tarotOnly := []string{
 		"过去、现在、未来仅为牌阵位置",
@@ -65,6 +79,7 @@ func TestReportTarotPositionAndSummaryGroundingRulesStayTopicScoped(t *testing.T
 		"不展示对象字段或空值",
 	}
 	tarotOnly = append(tarotOnly, reportTarotEmotionRules...)
+	tarotOnly = append(tarotOnly, reportTarotCitationRules...)
 	for _, topic := range []string{"bazi", "marriage", "fengshui", "ziwei", "qimen", "tarot", "liuyao", "naming", "dream", "date_select", "fortune", "face_palm"} {
 		t.Run(topic, func(t *testing.T) {
 			instruction := reportInstruction(&Report{SkillCode: topic}, &model.AISkill{})
@@ -140,11 +155,8 @@ func TestReportTarotObserved96IssuesKeepStrictLiteralGrounding(t *testing.T) {
 	}
 }
 
-// Observed report99 claims test shared rules and the existing one-repair path;
-// synthetic responses do not establish real-model quality or draw new cards.
+// Observed report99 claims retain the original no-retrieval four-call fixture.
 func TestReportTarotObserved99EmotionIssuesReachWriterCriticAndSingleRepair(t *testing.T) {
-	const question = "我在考虑报名持续三个月的周末插画课程，有兴趣但担心工作忙。请比较先试听和直接报名。"
-	const inputs = `{"spread":"three"}`
 	const summaryClaim = "当前顾虑偏情绪化"
 	const contentClaim = "结合你的实际情况（有兴趣、担心工作忙），这更接近一种“想投入又怕坚持不下来”的忐忑，而不是能力不足。"
 	bad := reportBody{Summary: "你有兴趣并担心工作忙。" + summaryClaim + "；可比较试听与直接报名的安排。", Content: "## 已确认情况\n" + contentClaim + "\n" + strings.Repeat("本地合成回归只验证指令传递，不代表真实模型质量。", 15) + "\n## 比较\n|选项|核对|\n|---|---|\n|试听|确认课程规则|\n## 行动\n先核对课次和时间。"}
@@ -152,6 +164,44 @@ func TestReportTarotObserved99EmotionIssuesReachWriterCriticAndSingleRepair(t *t
 	good.Summary = "你对课程有兴趣并担心工作忙。可以先核对课次、时段和试听规则，再决定。"
 	good.Content = strings.Replace(bad.Content, contentClaim, "可以自问：除了工作安排，是否还有精力、费用、学习基础或情绪方面的顾虑？哪些相符需要本人确认，牌义不能替本人归因或排除能力问题。", 1)
 	issues := []reportCalibrationIssue{{Quote: summaryClaim, Basis: "用户只确认兴趣及工作忙，未确认顾虑偏情绪化，牌义不能确定实际情绪或顾虑成因。"}, {Quote: contentClaim, Basis: "兴趣或工作忙不能排除未确认的能力顾虑；总免责声明或后续自问不撤回这项现实归因及排他判断。"}}
+	runReportTarotGroundingFixture(t, bad, good, issues, nil, false)
+}
+
+// The two short quotes are from report101's safe audit, not its failed full body.
+func TestReportTarotObserved101AttributionIssuesReachSingleRepair(t *testing.T) {
+	observed101 := []reportCalibrationIssue{
+		{Quote: "中文牌名与四组花色名称采用平台自编导读的对照，例如圣杯 C Cup、宝剑 Swords、节制 Temperance。[资料4]", Basis: "该句将三个中英对照归入[资料4]，但资料4片段实际写作“四组常用中文名为权杖Wands、圣杯Cups、宝剑Swords、星币Pentacles”，其中“圣杯Cups”被草稿写成“圣杯 C Cup”，且资料4未包含“节制Temperance”；节制牌名实际出现在资料5。引用与检索片段不符。"},
+		{Quote: "知识库本轮检索到的韦特原书文字片段，主要涉及塔罗的象征性质、秘密传统与历史疑点，以及大阿卡纳序列的评述与花色对应的总论，并未逐条返还宝剑五、圣杯侍从、节制三张牌在原书中的占断语。[资料1][资料2][资料3]", Basis: "资料1涉及秘密传统与大阿卡纳序列评述，资料2涉及象征本质与历史起源疑点并开始列举大阿卡纳牌义，资料3逐张解说从魔术师到命运之轮的大阿卡纳，三者均不包含花色对应总论。实际包含花色对应描述的是资料8，但未被引用，不能借用其他编号支持未包含的内容。"},
+	}
+	bad := reportBody{Summary: "你对课程有兴趣并担心工作忙，先确认安排再选择。", Content: "## 已确认情况\n" + observed101[0].Quote + "\n" + strings.Repeat("本地合成回归只验证指令传递，不代表真实模型质量。", 15) + "\n## 比较\n|选项|核对|\n|---|---|\n|试听|确认课程规则|\n## 行动\n先核对课次和时间。"}
+	good := bad
+	good.Content = strings.Replace(bad.Content, observed101[0].Quote, "本次合成片段没有与所问选择直接相关的牌义说明；保留已算牌阵，课程安排仍待本人确认。", 1)
+	stillWrong := bad
+	stillWrong.Content = strings.Replace(bad.Content, observed101[0].Quote, observed101[1].Quote, 1)
+	for _, tc := range []struct {
+		name   string
+		repair reportBody
+		after  []reportCalibrationIssue
+	}{
+		{"unrelated_background_removed", good, nil},
+		{"repair_new_attribution_still_rejected", stillWrong, observed101[1:]},
+	} {
+		t.Run(tc.name, func(t *testing.T) { runReportTarotGroundingFixture(t, bad, tc.repair, observed101[:1], tc.after, true) })
+	}
+}
+
+// Reuse the original writer/critic/one-repair exchange; only the attribution
+// cases add one synthetic source lookup so actual numbered passages reach both.
+func runReportTarotGroundingFixture(t *testing.T, bad, good reportBody, issues, after []reportCalibrationIssue, references bool) {
+	t.Helper()
+	const question = "我在考虑报名持续三个月的周末插画课程，有兴趣但担心工作忙。请比较先试听和直接报名。"
+	const inputs = `{"spread":"three"}`
+	// Short synthetic passages model only the source distinctions stated in
+	// the safe audit; they are not an export of report101's failed sources.
+	sourceFixture := &reportAttributionSearch{}
+	for i, text := range []string{"秘密传统与大阿卡纳序列评述。", "塔罗的象征性质与历史起源疑点。", "大阿卡纳：魔术师至命运之轮。", "四组常用中文名为权杖Wands、圣杯Cups、宝剑Swords、星币Pentacles。", "节制Temperance。", "合成未采用来源六。", "合成未采用来源七。", "花色对应总论：Diamonds对应Spades。"} {
+		sourceFixture.hits = append(sourceFixture.hits, knowledge.Hit{ID: fmt.Sprintf("fixture-%d", i+1), Text: text, Source: "synthetic", Revision: 1, Hash: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))})
+	}
 	native := `{"问卜设定":{"牌阵":"三牌阵","随机种子":"synthetic-fixed-native-seed"},"牌阵展开":[{"位置":"过去","塔罗牌":"宝剑五","状态":"逆位","元素":"风","核心基调":["怨恨不散","渴望和解","学会宽恕"]},{"位置":"现在","塔罗牌":"圣杯侍从","状态":"逆位","元素":"水","核心基调":["情感不成熟","不安全感","失望沮丧"]},{"位置":"未来","塔罗牌":"节制","状态":"正位","元素":"火","星象":"射手座","核心基调":["平衡","耐心","调和"]}]}`
 	mcpCalls := 0
 	mcp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -174,7 +224,7 @@ func TestReportTarotObserved99EmotionIssuesReachWriterCriticAndSingleRepair(t *t
 		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":{"structuredContent":%s}}`, native)
 	}))
 	t.Cleanup(mcp.Close)
-	writers, reviews := 0, 0
+	writers, reviews, searchRequests := 0, 0, 0
 	p := provider.NewOpenAICompatible("http://tarot-grounding.invalid", "fixture", "fixture", "")
 	p.SetHTTPClient(&http.Client{Transport: defaultContextTransport(func(r *http.Request) (*http.Response, error) {
 		var req map[string]any
@@ -185,6 +235,11 @@ func TestReportTarotObserved99EmotionIssuesReachWriterCriticAndSingleRepair(t *t
 		for _, rule := range reportTarotEmotionRules {
 			if !strings.Contains(fmt.Sprint(messages[0].(map[string]any)["content"]), rule) {
 				t.Errorf("writer, critic or repair lost emotion boundary: %q", rule)
+			}
+		}
+		for _, rule := range reportTarotCitationRules {
+			if !strings.Contains(fmt.Sprint(messages[0].(map[string]any)["content"]), rule) {
+				t.Errorf("writer, critic or repair lost source relevance boundary: %q", rule)
 			}
 		}
 		critic := isReportCalibrationFixtureRequest(req)
@@ -210,13 +265,36 @@ func TestReportTarotObserved99EmotionIssuesReachWriterCriticAndSingleRepair(t *t
 			if input.Topic != "tarot" || input.Question != question || string(input.Inputs) != inputs || input.Draft != want || len(input.Charts) != 1 || !strings.Contains(string(input.Calculations), "synthetic-fixed-native-seed") {
 				t.Error("critic lost known inputs, exact draft or original native calculation")
 			}
+			if references {
+				var items []reportdoc.Item
+				if len(input.Sources) != 1 || json.Unmarshal([]byte(input.Sources[0].Text), &items) != nil || len(items) != len(sourceFixture.hits) {
+					t.Fatal("critic lost complete numbered source passages")
+				}
+				for i, item := range items {
+					if item.Label != fmt.Sprintf("资料%d", i+1) || item.Value != sourceFixture.hits[i].Text {
+						t.Error("critic source number or actual passage changed")
+					}
+				}
+			}
 			result := `{"issues":[]}`
 			if reviews == 1 {
 				raw, _ := json.Marshal(map[string]any{"issues": issues})
 				result = string(raw)
+			} else if len(after) > 0 {
+				raw, _ := json.Marshal(map[string]any{"issues": after})
+				result = string(raw)
 			}
 			writeReportCalibrationFixture(w, result)
 		} else {
+			if references && searchRequests == 0 {
+				searchRequests++
+				event, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"index": 0, "delta": map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "source-1", "type": "function", "function": map[string]any{"name": "search_knowledge", "arguments": `{"query":"合成牌义依据"}`}}}}, "finish_reason": "tool_calls"}}, "usage": map[string]any{"prompt_tokens": 3, "completion_tokens": 2, "completion_tokens_details": map[string]any{"reasoning_tokens": 1}}})
+				w.Header().Set("Content-Type", "text/event-stream")
+				fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", event)
+				response := w.Result()
+				response.Request = r
+				return response, nil
+			}
 			writers++
 			body := bad
 			if writers == 2 {
@@ -229,6 +307,13 @@ func TestReportTarotObserved99EmotionIssuesReachWriterCriticAndSingleRepair(t *t
 				}
 				if !strings.Contains(last, "不要重新计算") {
 					t.Error("single repair lost native draw preservation")
+				}
+				if references {
+					for _, hit := range sourceFixture.hits {
+						if !strings.Contains(last, hit.Text) {
+							t.Error("repair lost exact original source passages")
+						}
+					}
 				}
 			}
 			raw, _ := json.Marshal(body)
@@ -250,10 +335,32 @@ func TestReportTarotObserved99EmotionIssuesReachWriterCriticAndSingleRepair(t *t
 	}
 	skill := &model.AISkill{Code: "tarot", Status: model.SkillStatusEnabled, InputSchema: reportToolSchema("tarot"), ToolConfig: `{"enabled":true,"server":"taibu","tool":"tarot"}`}
 	s := &svc.ServiceContext{DB: sqlx.NewSqlConnFromDB(db), SkillModel: reportSkills{skill}, Provider: p, MCP: agent.NewMCPClient(true, mcp.URL, 10), Guard: agent.NewGuard(20000, nil)}
+	if references {
+		s.Knowledge = &knowledge.Store{Remote: sourceFixture}
+		s.KnowledgeEnabled = true
+	}
 	s.AIConfig.ContextWindow = 1048576
-	got, doc, usage, err := executeReport(context.Background(), s, &Report{ID: 1, SkillCode: "tarot", Question: question, InputsJSON: inputs, ChaptersJSON: `["已确认情况","比较","行动"]`})
-	if err != nil || got != good || writers != 2 || reviews != 2 || doc.ModelCalls != 4 || mcpCalls != 1 || doc.ToolCalls != 1 || usage.PromptTokens != 28 || usage.CompletionTokens != 18 || usage.ReasoningTokens != 8 {
+	got, doc, usage, err := executeReport(context.Background(), s, &Report{ID: 1, UserID: "synthetic-owner", SkillCode: "tarot", Question: question, InputsJSON: inputs, ChaptersJSON: `["已确认情况","比较","行动"]`})
+	wantFailure := len(after) > 0
+	if (err != nil) != wantFailure || (!wantFailure && got != good) || (wantFailure && got != (reportBody{})) || writers != 2 || reviews != 2 || doc.ModelCalls != 4+searchRequests || mcpCalls != 1 || doc.ToolCalls != 1+searchRequests || sourceFixture.calls != searchRequests || usage.PromptTokens != 28+3*searchRequests || usage.CompletionTokens != 18+2*searchRequests || usage.ReasoningTokens != 8+searchRequests {
 		t.Fatalf("changed repair/draw/usage bounds: err=%v bodyEqual=%t writers=%d reviews=%d models=%d mcp=%d tools=%d usage=%+v", err, got == good, writers, reviews, doc.ModelCalls, mcpCalls, doc.ToolCalls, usage)
+	}
+	if wantFailure {
+		var final struct {
+			Status, Reason           string
+			Reviews, ProtocolRepairs int
+			Repaired                 bool
+		}
+		for _, evidence := range doc.Evidence {
+			if evidence.Tool == "report_calibration" {
+				if err := json.Unmarshal([]byte(evidence.Text), &final); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		if final.Status != "failed" || final.Reason != "conflict_persisted" || final.Reviews != 2 || final.ProtocolRepairs != 0 || !final.Repaired {
+			t.Fatalf("unresolved actual attribution conflict was softened: %+v", final)
+		}
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatal(err)
