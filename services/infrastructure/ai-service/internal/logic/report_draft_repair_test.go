@@ -12,6 +12,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/askxuan/ai-service/internal/agent"
+	"github.com/askxuan/ai-service/internal/knowledge"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/svc"
@@ -23,6 +24,7 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 		name, first, second string
 		planning            int
 		semantic            bool
+		references          bool
 		wantSuccess         bool
 		wantReviews         int
 	}{
@@ -33,6 +35,7 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 		{name: "format_repair_then_citation_conflict", first: "invalid", second: "citation"},
 		{name: "semantic_repair_then_invalid", second: "invalid", semantic: true, wantReviews: 1},
 		{name: "format_repair_then_semantic_conflict", first: "invalid", semantic: true, wantReviews: 1},
+		{name: "same_draft_literal_failures_share_rewrite", first: "multiple_citations", planning: 1, references: true, wantSuccess: true, wantReviews: 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fixture, err := os.ReadFile("../reportdoc/testdata/synthetic.json")
@@ -73,6 +76,13 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 				}
 				if isReportCalibrationFixtureRequest(req) {
 					reviews++
+					if tc.references {
+						var input reportCalibrationInput
+						messages := req["messages"].([]any)
+						if json.Unmarshal([]byte(messages[1].(map[string]any)["content"].(string)), &input) != nil || input.Draft != body || !strings.Contains(fmt.Sprint(input.Sources), "引用原文") || !strings.Contains(string(input.Calculations), "四柱") || !strings.Contains(string(input.Inputs), "1990-01-02") {
+							t.Error("critic lost the repaired draft, actual sources or original calculation")
+						}
+					}
 					result := `{"issues":[]}`
 					if tc.semantic {
 						raw, _ := json.Marshal(map[string]any{"issues": []reportCalibrationIssue{{Quote: "合成摘要", Basis: "合成语义冲突，不代表真实报告。"}}})
@@ -85,6 +95,9 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 				delta, finish := map[string]any{"role": "assistant", "content": string(rawBody)}, "stop"
 				if writers <= tc.planning {
 					delta = map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": fmt.Sprint("read-", writers), "type": "function", "function": map[string]any{"name": "read_report", "arguments": "{}"}}}}
+					if tc.references {
+						delta = map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "sources", "type": "function", "function": map[string]any{"name": "search_knowledge", "arguments": `{"query":"合成引用原文"}`}}}}
+					}
 					finish = "tool_calls"
 				} else {
 					kind := tc.second
@@ -98,6 +111,15 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 						if tc.first != "" && !strings.Contains(string(messages), "summary") {
 							t.Error("format rewrite lost its JSON contract")
 						}
+						if tc.references {
+							messages := req["messages"].([]any)
+							last := messages[len(messages)-1].(map[string]any)["content"].(string)
+							for _, required := range []string{"引用编号必须使用[资料N]", "资料99未出现在本轮检索片段中", "直接引文引用原聞", `\"label\":\"资料1\"`, `\"value\":\"引用原文\"`} {
+								if !strings.Contains(last, required) {
+									t.Errorf("the only rewrite did not receive same-draft diagnostic/source %q", required)
+								}
+							}
+						}
 					}
 					switch kind {
 					case "invalid":
@@ -107,6 +129,11 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 					case "citation":
 						wrong := body
 						wrong.Content += "[资料999]"
+						raw, _ := json.Marshal(wrong)
+						delta["content"] = string(raw)
+					case "multiple_citations":
+						wrong := body
+						wrong.Content += "\n资料1说明方法，另见[资料99]。原文“引用原聞”[资料1]。"
 						raw, _ := json.Marshal(wrong)
 						delta["content"] = string(raw)
 					}
@@ -131,8 +158,13 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 			}
 			s := &svc.ServiceContext{DB: sqlx.NewSqlConnFromDB(db), SkillModel: skills, Provider: p, MCP: agent.NewMCPClient(true, mcp.URL, 10), Guard: agent.NewGuard(20000, nil)}
 			s.AIConfig.ContextWindow = 1048576
-			got, doc, usage, err := executeReport(context.Background(), s, &Report{ID: 1, SkillCode: "bazi", Question: "PRIVATE USER QUESTION", InputsJSON: `{"calendarType":"solar","birthDate":"1990-01-02","birthTime":"08:30","gender":"male"}`, ChaptersJSON: `["计算依据","选择比较","行动建议"]`})
-			if writers != tc.planning+2 || reviews != tc.wantReviews || doc.ModelCalls != writers+reviews || mcpCalls != 2 || doc.ToolCalls != 2 {
+			wantTools := 2
+			if tc.references {
+				s.Knowledge, s.KnowledgeEnabled = &knowledge.Store{Remote: graphReferenceSearch{}}, true
+				wantTools++
+			}
+			got, doc, usage, err := executeReport(context.Background(), s, &Report{ID: 1, UserID: "1", SkillCode: "bazi", Question: "PRIVATE USER QUESTION", InputsJSON: `{"calendarType":"solar","birthDate":"1990-01-02","birthTime":"08:30","gender":"male"}`, ChaptersJSON: `["计算依据","选择比较","行动建议"]`})
+			if writers != tc.planning+2 || reviews != tc.wantReviews || doc.ModelCalls != writers+reviews || mcpCalls != 2 || doc.ToolCalls != wantTools {
 				t.Fatalf("shared rewrite/cached calculation bound changed: err=%v writers=%d reviews=%d models=%d mcp=%d tools=%d", err, writers, reviews, doc.ModelCalls, mcpCalls, doc.ToolCalls)
 			}
 			if usage.PromptTokens != writers*3+reviews*11 || usage.CompletionTokens != writers*2+reviews*7 || usage.ReasoningTokens != writers+reviews*3 {

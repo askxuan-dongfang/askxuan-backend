@@ -60,6 +60,8 @@ var reportTarotEmotionRules = []string{"牌义不能判定用户当前情绪或�
 
 var reportTarotCitationRules = []string{"除用户明确要求外，不补中英牌名或花色对照、起源史论及无关检索综述", "缺少与本次牌义对应的原文时只简短说明缺失", "不同片段支持的事实分句标实际编号", "修正时优先删除无关或无准确出处的背景句"}
 
+var reportTarotCostRules = []string{"未确认收费、课次或付款方式时", "不能把试听较便宜或一次性、预付、分期付款写为既定事实", "只作条件比较或列为待核实"}
+
 type reportAttributionSearch struct {
 	calls int
 	hits  []knowledge.Hit
@@ -81,6 +83,7 @@ func TestReportTarotPositionAndSummaryGroundingRulesStayTopicScoped(t *testing.T
 	}
 	tarotOnly = append(tarotOnly, reportTarotEmotionRules...)
 	tarotOnly = append(tarotOnly, reportTarotCitationRules...)
+	tarotOnly = append(tarotOnly, reportTarotCostRules...)
 	for _, topic := range []string{"bazi", "marriage", "fengshui", "ziwei", "qimen", "tarot", "liuyao", "naming", "dream", "date_select", "fortune", "face_palm"} {
 		t.Run(topic, func(t *testing.T) {
 			instruction := reportInstruction(&Report{SkillCode: topic}, &model.AISkill{})
@@ -168,6 +171,21 @@ func TestReportTarotObserved99EmotionIssuesReachWriterCriticAndSingleRepair(t *t
 	runReportTarotGroundingFixture(t, bad, good, issues, nil, false)
 }
 
+// These claims are from the normally unlocked report101 in round12.
+func TestReportTarotObserved101Round12CostIssuesReachSingleRepair(t *testing.T) {
+	const summary = "你考虑报名三个月周末插画课程，有兴趣但担心工作忙。三牌阵结果：过去宝剑五逆位、现在圣杯侍从逆位、未来节制正位。牌义仅作自我观察线索，不据此断言你的学习经历、能力或情绪成因。行动上可比较先试听与直接报名：试听成本低、更呼应节制牌的渐进调和，但需先确认机构是否提供试听及具体课次安排。"
+	const costRow = "| 时间/金钱成本 | 低，先体验一次再决定，试错成本小 | 需一次性承诺三个月，成本前置 |"
+	bad := reportBody{Summary: summary, Content: "## 已确认情况\n你有兴趣并担心工作忙，费用和课次尚未确认。\n" + strings.Repeat("本地合成回归只验证指令传递，不代表真实模型质量。", 15) + "\n## 比较\n|项目|先试听|直接报名|\n|---|---|---|\n" + costRow + "\n## 行动\n先核对收费和付款条件。"}
+	good := bad
+	good.Summary = "你对三个月周末插画课程有兴趣并担心工作忙。先核对是否提供试听、各方案收费、课次与付款条件，再按已确认安排比较。"
+	good.Content = strings.Replace(bad.Content, costRow, "| 时间/金钱成本 | 试听收费、时长、次数及退改规则待确认 | 总费用、付款周期和退改规则待确认 |", 1)
+	issues := []reportCalibrationIssue{
+		{Quote: "试听成本低", Basis: "输入没有试听收费、时长或次数，牌义不能证明试听较便宜；后续待确认不能撤回摘要的既定成本判断。"},
+		{Quote: costRow, Basis: "三个月是课程持续时间，不代表一次性付款或成本前置；试听是否单次及费用也未知，须按条件比较或列为待核实。"},
+	}
+	runReportTarotGroundingFixture(t, bad, good, issues, nil, false)
+}
+
 // The two short quotes are from report101's safe audit, not its failed full body.
 func TestReportTarotObserved101AttributionIssuesReachSingleRepair(t *testing.T) {
 	observed101 := []reportCalibrationIssue{
@@ -241,6 +259,11 @@ func runReportTarotGroundingFixture(t *testing.T, bad, good reportBody, issues, 
 		for _, rule := range reportTarotCitationRules {
 			if !strings.Contains(fmt.Sprint(messages[0].(map[string]any)["content"]), rule) {
 				t.Errorf("writer, critic or repair lost source relevance boundary: %q", rule)
+			}
+		}
+		for _, rule := range reportTarotCostRules {
+			if !strings.Contains(fmt.Sprint(messages[0].(map[string]any)["content"]), rule) {
+				t.Errorf("writer, critic or repair lost unconfirmed cost boundary: %q", rule)
 			}
 		}
 		critic := isReportCalibrationFixtureRequest(req)

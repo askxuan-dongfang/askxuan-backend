@@ -27,7 +27,7 @@ const reportCalibrationCitationScopeRules = "\n资料原文或工具清单的描
 
 const reportCalibrationFengshuiGroundingRules = "\n物件朝向不等于物件位于对应方位或宫位；缺少家具尺寸、摆位和通道实测值时，不能由房间总长宽断言扣除家具后通道本应充足。轮廓、房间功能及一处占道，不能推出家具摆位、路线数量或共享、物件与通道的空间关系。已确认情况只复述用户观察；未提供的布局关系须列为待现场核对，不夹入已确认段。已确认占道可建议整理，再现场核对净宽，不补造具体位置和剩余空间。"
 
-const reportCalibrationTarotGroundingRules = "\n牌义不能证明用户的收入、支付能力、经历或性格；课程三个月不等于十二次课，具体课次和安排待确认。过去、现在、未来仅为牌阵位置，不能据此断言真实过往能力、资源或稳定生活秩序。摘要只复述用户已确认的现实事实并列行动选项；牌义写为象征、条件或自问，不排除其他可能顾虑。仅有本人资料时写“仅为你本人读牌”，不展示对象字段或空值。牌面可以在传统上象征积累或自足，再问本人是否相符；不能换成“牌面象征你已有积累”“你已经能应付生活”，也不能据已知工作忙排除对能力等其他方面的顾虑。牌义不能判定用户当前情绪或顾虑成因；摘要不作这类判断。不能据牌义把实际顾虑归为情绪化、二分顾虑或排除能力不足；情绪归因只能写成本人验证的问题或条件，不用结合实际情况把牌义变成现实判断。正文围绕本次牌面与问题；除用户明确要求外，不补中英牌名或花色对照、起源史论及无关检索综述。缺少与本次牌义对应的原文时只简短说明缺失，不用无关片段凑依据。必要释义逐项核对本轮片段；不同片段支持的事实分句标实际编号，不把多项跨来源事实合并共引。修正时优先删除无关或无准确出处的背景句，不靠换编号或新增综述保留。"
+const reportCalibrationTarotGroundingRules = "\n牌义不能证明用户的收入、支付能力、经历或性格；课程三个月不等于十二次课，具体课次和安排待确认。过去、现在、未来仅为牌阵位置，不能据此断言真实过往能力、资源或稳定生活秩序。摘要只复述用户已确认的现实事实并列行动选项；牌义写为象征、条件或自问，不排除其他可能顾虑。仅有本人资料时写“仅为你本人读牌”，不展示对象字段或空值。牌面可以在传统上象征积累或自足，再问本人是否相符；不能换成“牌面象征你已有积累”“你已经能应付生活”，也不能据已知工作忙排除对能力等其他方面的顾虑。牌义不能判定用户当前情绪或顾虑成因；摘要不作这类判断。不能据牌义把实际顾虑归为情绪化、二分顾虑或排除能力不足；情绪归因只能写成本人验证的问题或条件，不用结合实际情况把牌义变成现实判断。正文围绕本次牌面与问题；除用户明确要求外，不补中英牌名或花色对照、起源史论及无关检索综述。缺少与本次牌义对应的原文时只简短说明缺失，不用无关片段凑依据。必要释义逐项核对本轮片段；不同片段支持的事实分句标实际编号，不把多项跨来源事实合并共引。修正时优先删除无关或无准确出处的背景句，不靠换编号或新增综述保留。未确认收费、课次或付款方式时，不能把试听较便宜或一次性、预付、分期付款写为既定事实；只作条件比较或列为待核实。"
 
 const reportCalibrationLiuyaoGroundingRules = "\n兄弟旺不证明团队已具实力，父母日破不证明实际旧流程存在漏洞，世爻空亡不证明当前兜底未就绪。空亡、日破、动变等只描述传统卦象倾向，不能证明任何对象的现实实施或完成状态；项目、方案或流程是否已启动、落地、验收，须从用户确认或实际记录核实。先列已确认现实条件，再把象意单列为传统解释，不用提示或说明当前把二者连接为现状结论。不得从爻辞推断真实合作关系、他人动机或猜疑成因。摘要和正文不能把这些象意写成用户已确认的现状，应改为条件或待核对检查项；总免责声明不能抵消具体断言。灰度、回滚可作为独立建议，不声称实际现状。起卦方式只写时间、数字、手选或自动等中文名称，不在正文附带time、number、select、auto等方法枚举值。卦辞、爻辞原文由平台图表展示；正文只写明确标为现代中文释义的解释，不复引原句，也不以省略号拼接原句。必要文献释义逐项核对本轮片段编号，分别保留对应主体与适用条件。平台已展示完整原文，正文末尾不再另列整组来源或复述取用规则。未知团队与回退条件须在对应表格单元格用若或建议验证写清，不用表前总声明代替。"
 
@@ -323,6 +323,23 @@ func validateReportCitations(body reportBody, doc reportdoc.Document) error {
 			sources[strings.TrimPrefix(item.Label, "资料")] = reportQuoteText(item.Value)
 		}
 	}
+	// Give the single rewrite same-draft failures without unbounded diagnostics.
+	var conflicts []error
+	more := false
+	addConflict := func(err error) {
+		if len(conflicts) < 8 {
+			conflicts = append(conflicts, err)
+		} else {
+			more = true
+		}
+	}
+	diagnosticText := func(text string) string {
+		runes := []rune(text)
+		if len(runes) > 80 {
+			return string(runes[:80]) + "…"
+		}
+		return text
+	}
 	for _, field := range []struct{ name, raw string }{{"summary", body.Summary}, {"content", body.Content}} {
 		text := reportCitationVisibleText(field.raw)
 		// Mask canonical spans without shifting the visible text's byte positions.
@@ -332,11 +349,11 @@ func validateReportCitations(body reportBody, doc reportdoc.Document) error {
 			runes := []rune(text)
 			start := max(0, position-12)
 			nearby := string(runes[start:min(len(runes), start+40)])
-			return fmt.Errorf("%s可见文字第%d字附近 %q：引用编号必须使用[资料N]，不能用其他括号或裸编号绕过本轮资料核对", field.name, position+1, nearby)
+			addConflict(fmt.Errorf("%s可见文字第%d字附近 %q：引用编号必须使用[资料N]，不能用其他括号或裸编号绕过本轮资料核对", field.name, position+1, nearby))
 		}
 		for _, ref := range reportCitationPattern.FindAllStringSubmatch(text, -1) {
 			if _, ok := sources[ref[1]]; !ok {
-				return fmt.Errorf("资料%s未出现在本轮检索片段中", ref[1])
+				addConflict(fmt.Errorf("资料%s未出现在本轮检索片段中", diagnosticText(ref[1])))
 			}
 		}
 		for _, match := range reportQuotePattern.FindAllStringSubmatch(text, -1) {
@@ -365,12 +382,15 @@ func validateReportCitations(body reportBody, doc reportdoc.Document) error {
 					}
 				}
 				if !found {
-					return fmt.Errorf("直接引文%s与%s的原字形不一致；改用忠实原文，或移除引号并明确写为释义，不得补造原句", quote, match[2])
+					addConflict(fmt.Errorf("直接引文%s与%s的原字形不一致；改用忠实原文，或移除引号并明确写为释义，不得补造原句", diagnosticText(quote), diagnosticText(match[2])))
 				}
 			}
 		}
 	}
-	return nil
+	if more {
+		conflicts = append(conflicts, errors.New("还有其它引用错误未列出；请完整核对本轮编号和直接引文"))
+	}
+	return errors.Join(conflicts...)
 }
 
 func recordReportCalibration(doc *reportdoc.Document, status, reason string, reviews, protocolRepairs int, issues []reportCalibrationIssue, repaired bool) {

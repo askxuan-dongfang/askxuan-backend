@@ -60,6 +60,49 @@ func TestCitationDiagnosticKeepsUnknownAndDistortedQuotesRejected(t *testing.T) 
 	}
 }
 
+func TestCitationDiagnosticCollectsSameDraftFailures(t *testing.T) {
+	doc := reportdoc.New()
+	doc.Blocks = []reportdoc.Block{{Kind: "citations", Items: []reportdoc.Item{{Label: "资料1", Value: "忠實原文。千株不長。"}}}}
+	body := reportBody{Summary: "摘要依据资料1说明，另见[资料98]；“忠实原文”[资料1]。", Content: "正文依据资料1说明，另见[资料99]；“千株不长”[资料1]。"}
+	err := validateReportCitations(body, doc)
+	if err == nil {
+		t.Fatal("same-draft citation failures passed")
+	}
+	for _, required := range []string{"summary可见文字", "content可见文字", "资料98未出现在本轮检索片段中", "资料99未出现在本轮检索片段中", "直接引文忠实原文", "直接引文千株不长"} {
+		if !strings.Contains(err.Error(), required) {
+			t.Errorf("same-draft repair diagnostic omitted %q: %v", required, err)
+		}
+	}
+}
+
+func TestCitationDiagnosticAggregationStaysBoundedAndStrict(t *testing.T) {
+	doc := reportdoc.New()
+	doc.Blocks = []reportdoc.Block{{Kind: "citations", Items: []reportdoc.Item{{Label: "资料1", Value: strings.Repeat("甲", 1000) + "乙"}}}}
+	for _, kind := range []string{"unknown", "quote"} {
+		t.Run(kind, func(t *testing.T) {
+			content := ""
+			for i := 0; i < 20; i++ {
+				if kind == "unknown" {
+					content += fmt.Sprintf("[资料%d]", 100+i)
+				} else {
+					content += "“" + strings.Repeat("甲", 1000) + "丙”[资料1]。"
+				}
+			}
+			err := validateReportCitations(reportBody{Content: content}, doc)
+			if err == nil || !strings.Contains(err.Error(), "还有其它引用错误未列出") || utf8.RuneCountInString(err.Error()) > 2000 {
+				t.Fatalf("diagnostic overflow passed or was unbounded: %v", err)
+			}
+			marker := "未出现在本轮检索片段中"
+			if kind == "quote" {
+				marker = "原字形不一致"
+			}
+			if strings.Count(err.Error(), marker) != 8 {
+				t.Fatal("detailed citation diagnostics exceeded or lost the fixed cap")
+			}
+		})
+	}
+}
+
 func TestZiweiWritingKeepsTransitCitationConditionsSeparate(t *testing.T) {
 	instruction := reportInstruction(&Report{SkillCode: "ziwei"}, &model.AISkill{})
 	for _, required := range []string{"本命、大限、小限、流年", "大小二限遇某星", "流年某星化忌不等于大小二限遇该星", "缺少条件时不套用该引文"} {
