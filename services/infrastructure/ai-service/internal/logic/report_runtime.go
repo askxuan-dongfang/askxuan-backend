@@ -128,7 +128,7 @@ func reportInstruction(r *Report, skill *model.AISkill) string {
 	case "face_palm":
 		rules += "\n图像报告以可见线条和传统术语的位置说明为主，不添加相术才性、寿夭或吉凶的无关延伸阅读。各主要线条按位置统一编号，摘要、正文和表格的走向与终点须属于同一条线；看不清处写无法确认。不能把画面纹理与不可见的真实纹理作比较，也不能把未经测量的光照或生成成因写成事实；只描述可见外观，原因留待核实。" + reportCalibrationImageGroundingRules
 	}
-	return skill.PromptTemplate + rules + "\n你正在生成可独立阅读的专题报告，不要以聊天开场。传统含义、象意和古籍解释须先检索相关知识原文，再在相应解释后用[资料N]标明所依据的实际片段；无命中时保留计算结果和一般性建议，并明确缺少文献依据，不编造出处。最终检查摘要、首段、表格与正文是否采用同一组已确认参数；存在冲突先说明限制，不在摘要中把未确认值写成结论。本次计算依据只读一次，不重复计算、抽牌或起卦。知识检索最多两次，依据足够即写报告；无相关原文则如实说明，不继续散开检索。不得猜测用户缺失的出生资料。报告生成不支持继续补问，只依据已确认资料和本次计算依据完成指定章节；额外计算缺少资料时写明限制，不要求补充后才出报告。无计算依据的内容必须标明为文化解释，禁止凭空编造命盘、五行旺衰评分、匹配百分比、成功率或图表数据。不得根据照片推断性格、健康、命运或身份，不作医疗/投资/法律结论。\n最终仅返回 JSON，不能使用 Markdown 围栏：{\"summary\":\"150字以内摘要\",\"content\":\"完整 Markdown 报告\"}。正文至少覆盖指定章节，每章用 ## 标题，结合实际依据写具体解读，并包含至少一张有实际内容的比较表、清楚的行动清单。明确区分计算结果、解释与待确认项；避免重复免责声明凑字数。章节：" + r.ChaptersJSON + "\n当前北京时间：" + time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
+	return skill.PromptTemplate + rules + "\n你正在生成可独立阅读的专题报告，不要以聊天开场。传统含义、象意和古籍解释须先检索相关知识原文，再在相应解释后用[资料N]标明所依据的实际片段；无命中时保留计算结果和一般性建议，并明确缺少文献依据，不编造出处。最终检查摘要、首段、表格与正文是否采用同一组已确认参数；存在冲突先说明限制，不在摘要中把未确认值写成结论。本次计算依据只读一次，不重复计算、抽牌或起卦。知识检索最多两次，依据足够即写报告；无相关原文则如实说明，不继续散开检索。不得猜测用户缺失的出生资料。报告生成不支持继续补问，只依据已确认资料和本次计算依据完成指定章节；额外计算缺少资料时写明限制，不要求补充后才出报告。无计算依据的内容必须标明为文化解释，禁止凭空编造命盘、五行旺衰评分、匹配百分比、成功率或图表数据。不得根据照片推断性格、健康、命运或身份，不作医疗/投资/法律结论。\n最终仅返回 JSON，不能使用 Markdown 围栏：{\"summary\":\"20至150字摘要\",\"content\":\"完整 Markdown 报告\"}。正文至少覆盖指定章节，每章用 ## 标题，结合实际依据写具体解读，并包含至少一张有实际内容的比较表、清楚的行动清单。明确区分计算结果、解释与待确认项；避免重复免责声明凑字数。章节：" + r.ChaptersJSON + "\n当前北京时间：" + time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
 }
 func parseReportBody(raw string) (reportBody, error) {
 	var body reportBody
@@ -237,7 +237,10 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (resul
 		if structured := reportdoc.Structured(result); structured != nil {
 			data = structured
 		}
-		entry := map[string]any{"对象": label, "tool": code, "状态": "已计算", "data": data}
+		entry := map[string]any{"tool": code, "状态": "已计算", "data": data}
+		if label != "" {
+			entry["对象"] = label
+		}
 		if code == "bazi_dayun" {
 			entry["字段口径"] = "起运信息为首次起运；大运列表每行的起运年份/年龄是该步大运起始，并非首次起运。工具年龄按年份差加一为虚岁，流年年龄也同此口径，不是周岁。"
 		}
@@ -320,7 +323,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (resul
 	}
 	// Reports use a local reasoning policy. Never change the shared chat model,
 	// the published agent's model, or the immutable provider/settings snapshot.
-	req := provider.Request{Model: selected, MaxTokens: output, ThinkingEnabled: true, ReasoningEffort: "low"}
+	req := provider.Request{Model: selected, MaxTokens: output, ThinkingEnabled: true, ReasoningEffort: "low", JSONMode: true}
 	phase = "model_init"
 	chat, err := provider.NewEinoModel(ctx, s.Provider, req)
 	if err != nil {

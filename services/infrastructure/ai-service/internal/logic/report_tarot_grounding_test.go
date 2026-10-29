@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -243,6 +244,13 @@ func runReportTarotGroundingFixture(t *testing.T, bad, good reportBody, issues, 
 			}
 		}
 		critic := isReportCalibrationFixtureRequest(req)
+		format, _ := req["response_format"].(map[string]any)
+		if format["type"] != "json_object" {
+			t.Error("report writer, repair or critic lost JSON mode")
+		}
+		if !critic && !strings.Contains(fmt.Sprint(messages[0].(map[string]any)["content"]), "20至150字摘要") {
+			t.Error("writer or repair lost the existing validator's minimum summary length")
+		}
 		effort := "low"
 		if critic {
 			effort = "high"
@@ -264,6 +272,12 @@ func runReportTarotGroundingFixture(t *testing.T, bad, good reportBody, issues, 
 			}
 			if input.Topic != "tarot" || input.Question != question || string(input.Inputs) != inputs || input.Draft != want || len(input.Charts) != 1 || !strings.Contains(string(input.Calculations), "synthetic-fixed-native-seed") {
 				t.Error("critic lost known inputs, exact draft or original native calculation")
+			}
+			var entries []map[string]json.RawMessage
+			if json.Unmarshal(input.Calculations, &entries) != nil || len(entries) != 1 {
+				t.Error("critic lost the single native tarot calculation")
+			} else if _, present := entries[0]["对象"]; present {
+				t.Error("critic received an inapplicable empty tarot subject")
 			}
 			if references {
 				var items []reportdoc.Item
@@ -288,7 +302,7 @@ func runReportTarotGroundingFixture(t *testing.T, bad, good reportBody, issues, 
 		} else {
 			if references && searchRequests == 0 {
 				searchRequests++
-				event, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"index": 0, "delta": map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "source-1", "type": "function", "function": map[string]any{"name": "search_knowledge", "arguments": `{"query":"合成牌义依据"}`}}}}, "finish_reason": "tool_calls"}}, "usage": map[string]any{"prompt_tokens": 3, "completion_tokens": 2, "completion_tokens_details": map[string]any{"reasoning_tokens": 1}}})
+				event, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"index": 0, "delta": map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "source-1", "type": "function", "function": map[string]any{"name": "search_knowledge", "arguments": `{"query":"合成牌义依据"}`}}, map[string]any{"index": 1, "id": "calculation-1", "type": "function", "function": map[string]any{"name": "read_report", "arguments": `{}`}}}}, "finish_reason": "tool_calls"}}, "usage": map[string]any{"prompt_tokens": 3, "completion_tokens": 2, "completion_tokens_details": map[string]any{"reasoning_tokens": 1}}})
 				w.Header().Set("Content-Type", "text/event-stream")
 				fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", event)
 				response := w.Result()
@@ -296,6 +310,31 @@ func runReportTarotGroundingFixture(t *testing.T, bad, good reportBody, issues, 
 				return response, nil
 			}
 			writers++
+			if references && writers == 1 {
+				seen := false
+				for _, value := range messages {
+					message := value.(map[string]any)
+					var frame struct{ Source, Content string }
+					if message["role"] == "tool" && json.Unmarshal([]byte(fmt.Sprint(message["content"])), &frame) == nil && frame.Source == "current_calculation" {
+						var entries []map[string]json.RawMessage
+						if json.Unmarshal([]byte(frame.Content), &entries) != nil || len(entries) != 1 {
+							t.Error("writer lost the single native tarot calculation")
+						} else {
+							if _, present := entries[0]["对象"]; present {
+								t.Error("writer received an inapplicable empty tarot subject")
+							}
+							var got, expected any
+							if json.Unmarshal(entries[0]["data"], &got) != nil || json.Unmarshal([]byte(native), &expected) != nil || !reflect.DeepEqual(got, expected) {
+								t.Error("model projection changed original native tarot fields")
+							}
+							seen = true
+						}
+					}
+				}
+				if !seen {
+					t.Error("writer never read the original calculation projection")
+				}
+			}
 			body := bad
 			if writers == 2 {
 				body = good
@@ -341,6 +380,20 @@ func runReportTarotGroundingFixture(t *testing.T, bad, good reportBody, issues, 
 	}
 	s.AIConfig.ContextWindow = 1048576
 	got, doc, usage, err := executeReport(context.Background(), s, &Report{ID: 1, UserID: "synthetic-owner", SkillCode: "tarot", Question: question, InputsJSON: inputs, ChaptersJSON: `["已确认情况","比较","行动"]`})
+	nativeEvidence := 0
+	var expectedNative any
+	_ = json.Unmarshal([]byte(native), &expectedNative)
+	for _, evidence := range doc.Evidence {
+		if evidence.Tool == "tarot" {
+			nativeEvidence++
+			if !reflect.DeepEqual(reportdoc.Structured(evidence.Text), expectedNative) {
+				t.Error("persisted native tarot evidence was rewritten")
+			}
+		}
+	}
+	if nativeEvidence != 1 {
+		t.Error("native tarot evidence was duplicated or removed")
+	}
 	wantFailure := len(after) > 0
 	if (err != nil) != wantFailure || (!wantFailure && got != good) || (wantFailure && got != (reportBody{})) || writers != 2 || reviews != 2 || doc.ModelCalls != 4+searchRequests || mcpCalls != 1 || doc.ToolCalls != 1+searchRequests || sourceFixture.calls != searchRequests || usage.PromptTokens != 28+3*searchRequests || usage.CompletionTokens != 18+2*searchRequests || usage.ReasoningTokens != 8+searchRequests {
 		t.Fatalf("changed repair/draw/usage bounds: err=%v bodyEqual=%t writers=%d reviews=%d models=%d mcp=%d tools=%d usage=%+v", err, got == good, writers, reviews, doc.ModelCalls, mcpCalls, doc.ToolCalls, usage)

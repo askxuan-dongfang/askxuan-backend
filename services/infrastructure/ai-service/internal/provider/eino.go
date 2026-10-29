@@ -27,6 +27,9 @@ func NewEinoModel(ctx context.Context, source Provider, req Request) (model.Base
 		APIKey: p.apiKey, BaseURL: p.baseURL, Model: p.ModelFor(req),
 		HTTPClient: p.client, MaxTokens: &req.MaxTokens,
 	}
+	if req.JSONMode {
+		c.ResponseFormat = &openai.ChatCompletionResponseFormat{Type: openai.ChatCompletionResponseFormatTypeJSONObject}
+	}
 	if req.ThinkingEnabled && !p.modelDefaultReasoning {
 		c.ReasoningEffort = openai.ReasoningEffortLevel(req.ReasoningEffort)
 		if p.Name() == "volcengine" {

@@ -59,6 +59,10 @@ func TestReportDraftRepairSharesSingleWriterRewrite(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var req map[string]any
 				_ = json.NewDecoder(r.Body).Decode(&req)
+				format, _ := req["response_format"].(map[string]any)
+				if format["type"] != "json_object" {
+					t.Error("draft format repair lost JSON mode")
+				}
 				wantEffort := "low"
 				if isReportCalibrationFixtureRequest(req) {
 					wantEffort = "high"

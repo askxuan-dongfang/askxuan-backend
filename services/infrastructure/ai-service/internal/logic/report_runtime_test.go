@@ -121,12 +121,47 @@ func testReportHarness(t *testing.T, code string, conflictingResponses, calibrat
 	defer mcp.Close()
 	body := reportBody{Summary: strings.Repeat("根据已确认资料和工具结果整理阅读线索。", 3), Content: "## 计算依据\n" + strings.Repeat("依据计算数据解释传统文化术语，不作结果保证。", 20) + "\n## 阶段比较\n| 阶段 | 参考 |\n| --- | --- |\n| 当前 | 核对现实条件 |\n## 行动建议\n记录并复盘。"}
 	rawBody, _ := json.Marshal(body)
+	checkSubjects := func(raw string) {
+		var entries []map[string]json.RawMessage
+		labels := []string{"", ""}
+		if code == "marriage" {
+			labels = []string{"你", "对方"}
+		} else if code == "ziwei" {
+			labels = []string{"", "", "一年后参考"}
+		}
+		if json.Unmarshal([]byte(raw), &entries) != nil || len(entries) != len(labels) {
+			t.Error("model calculation projection lost a calculation")
+			return
+		}
+		for i, label := range labels {
+			value, present := entries[i]["对象"]
+			var got string
+			if label == "" {
+				if present {
+					t.Error("single-person calculation exposed an inapplicable empty subject")
+				}
+			} else if !present || json.Unmarshal(value, &got) != nil || got != label {
+				t.Error("model calculation lost a confirmed participant/year label")
+			}
+		}
+	}
 	var firstCalibrationRequest map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		modelCalls.Add(1)
+		format, _ := req["response_format"].(map[string]any)
+		if format["type"] != "json_object" {
+			t.Error("report writer, repair or critic did not request JSON mode")
+		}
 		if isReportCalibrationFixtureRequest(req) {
+			messages := req["messages"].([]any)
+			var input reportCalibrationInput
+			if json.Unmarshal([]byte(fmt.Sprint(messages[1].(map[string]any)["content"])), &input) != nil {
+				t.Error("critic calculation projection was not valid JSON")
+			} else {
+				checkSubjects(string(input.Calculations))
+			}
 			n := calibrationCalls.Add(1)
 			if n%2 == 1 {
 				firstCalibrationRequest = req
@@ -222,6 +257,21 @@ func testReportHarness(t *testing.T, code string, conflictingResponses, calibrat
 			delta = map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"index": 0, "id": "read_1", "type": "function", "function": map[string]any{"name": "read_report", "arguments": "{}"}}}}
 		} else {
 			b, _ := json.Marshal(req["messages"])
+			seen := false
+			for _, value := range req["messages"].([]any) {
+				message := value.(map[string]any)
+				if message["role"] != "tool" {
+					continue
+				}
+				var frame struct{ Source, Content string }
+				if json.Unmarshal([]byte(fmt.Sprint(message["content"])), &frame) == nil && frame.Source == "current_calculation" {
+					seen = true
+					checkSubjects(frame.Content)
+				}
+			}
+			if !seen {
+				t.Error("writer did not read the exact calculation projection")
+			}
 			if !strings.Contains(string(b), "current_calculation") || !strings.Contains(string(b), "四柱") || (code == "bazi" && !strings.Contains(string(b), "大运列表")) || (code == "marriage" && !strings.Contains(string(b), "对方 · 四柱命盘")) {
 				t.Error("agent did not receive calculation evidence")
 			}
