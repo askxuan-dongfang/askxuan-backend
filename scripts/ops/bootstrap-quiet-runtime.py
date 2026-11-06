@@ -12,18 +12,20 @@ import os
 from pathlib import Path
 import re
 import secrets
+import shlex
 import shutil
 import stat
 import subprocess
 import time
 
 BASE = Path('/opt/askxuan/ci')
+SECRETS = Path('/opt/askxuan/runtime/secrets.env')
 RUNTIME_BASE = 'askxuan/quiet-service:ci-runtime-base'
 REDIS = 'askxuan-quiet-redis'
 VOLUME = 'askxuan-quiet-redis-data'
 ORIGINS = 'https://101.96.228.71,https://eliaukcloud.cn,https://www.eliaukcloud.cn'
-MYSQL = ['docker', 'exec', '-i', 'askxuan-mysql', 'sh', '-ec',
-         'test -n "$MYSQL_ROOT_PASSWORD"; export MYSQL_PWD="$MYSQL_ROOT_PASSWORD"; exec mysql -uroot --batch --skip-column-names']
+MYSQL = ['docker', 'exec', '-i', '-e', 'MYSQL_PWD', 'askxuan-mysql',
+         'mysql', '-uroot', '--batch', '--skip-column-names']
 
 
 class Refused(Exception):
@@ -31,9 +33,14 @@ class Refused(Exception):
 
 
 def command(args, data=None, timeout=60):
+    options = {}
+    if args == MYSQL:
+        # Read only on the server, at the MySQL command boundary. Do not put the
+        # password in argv, stdin SQL, output, receipts, or another command's env.
+        options['env'] = {**os.environ, 'MYSQL_PWD': mysql_password()}
     try:
-        result = subprocess.run(args, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
-    except (OSError, subprocess.TimeoutExpired):
+        result = subprocess.run(args, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout, **options)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         raise Refused('A required local command failed or timed out; inspect the root-only recovery receipt') from None
     if result.returncode:
         # Do not print command arguments, MySQL errors or Redis configuration.
@@ -59,6 +66,29 @@ def root_path(path, regular=False):
             raise Refused('Required runtime paths must be root-owned, non-symlink and not group/world writable')
     if regular and not stat.S_ISREG(path.lstat().st_mode):
         raise Refused('Expected an existing regular runtime file')
+
+
+def mysql_password():
+    try:
+        root_path(SECRETS, regular=True)
+        if stat.S_IMODE(SECRETS.lstat().st_mode) != 0o600:
+            raise ValueError('invalid mode')
+        values = []
+        for line in SECRETS.read_text().splitlines():
+            if '=' not in line or line.lstrip().startswith('#'):
+                continue
+            name, raw = line.split('=', 1)
+            if name.strip() != 'MYSQL_ROOT_PASSWORD':
+                continue
+            parts = shlex.split(raw)
+            if len(parts) != 1 or not parts[0] or '\x00' in parts[0]:
+                raise ValueError('invalid scalar')
+            values.append(parts[0])
+        if len(values) != 1:
+            raise ValueError('missing or ambiguous value')
+        return values[0]
+    except (OSError, ValueError, Refused):
+        raise Refused('Validated server-local MySQL credential is unavailable') from None
 
 
 def preflight(base_image):

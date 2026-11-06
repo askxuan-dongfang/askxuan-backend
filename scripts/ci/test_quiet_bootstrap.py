@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shlex
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -147,6 +148,51 @@ class QuietBootstrapTests(unittest.TestCase):
             with self.assertRaises(ops.Refused) as error:
                 ops.command(['fixture', 'secret-value'], b'secret-value')
         self.assertNotIn('secret-value', str(error.exception))
+
+    def test_mysql_uses_validated_server_file_and_only_its_process_environment(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'secrets.env'
+            password = 'fixture $value; quote\' " # preserved'
+            path.write_text('# local runtime values\nOTHER_SECRET=ignored\nMYSQL_ROOT_PASSWORD=' + shlex.quote(password) + '\n')
+            path.chmod(0o600)
+            with patch.object(ops, 'SECRETS', path), patch.object(ops, 'root_path') as root, \
+                    patch.object(ops.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout=b'0\n0\n', stderr=b'')) as run:
+                self.assertEqual(ops.command(ops.MYSQL, b'SELECT 1;'), '0\n0')
+                root.assert_called_once_with(path, regular=True)
+                self.assertEqual(run.call_args.kwargs['env']['MYSQL_PWD'], password)
+                self.assertNotIn(password, str(run.call_args.args))
+                self.assertNotIn(password, run.call_args.kwargs['input'].decode())
+                ops.command(['docker', 'build', '-t', 'fixture', '-'], b'FROM fixture\n')
+                self.assertNotIn('env', run.call_args.kwargs)
+                self.assertNotEqual(os.environ.get('MYSQL_PWD'), password)
+
+    def test_mysql_credential_source_fails_closed_without_leaking_contents(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'secrets.env'
+            with patch.object(ops, 'SECRETS', path), patch.object(ops, 'root_path'), \
+                    patch.object(ops.subprocess, 'run') as run:
+                for raw, mode in [('MYSQL_ROOT_PASSWORD=fixture-secret', 0o644),
+                                  ("MYSQL_ROOT_PASSWORD='fixture-secret", 0o600),
+                                  ('MYSQL_ROOT_PASSWORD=\n', 0o600),
+                                  ('OTHER_SECRET=fixture-secret\n', 0o600),
+                                  ('MYSQL_ROOT_PASSWORD=fixture-secret\nMYSQL_ROOT_PASSWORD=second\n', 0o600)]:
+                    path.write_text(raw)
+                    path.chmod(mode)
+                    with self.subTest(mode=mode, case=raw.split('=')[0]), self.assertRaises(ops.Refused) as error:
+                        ops.command(ops.MYSQL, b'SELECT 1;')
+                    self.assertNotIn('fixture-secret', str(error.exception))
+                run.assert_not_called()
+            with patch.object(ops, 'SECRETS', path), \
+                    patch.object(Path, 'lstat', return_value=SimpleNamespace(st_uid=501, st_mode=0o100600)), \
+                    self.assertRaisesRegex(ops.Refused, 'credential is unavailable'):
+                ops.mysql_password()
+        with patch.object(ops, 'mysql_password', return_value='fixture-secret'), \
+                patch.object(ops.subprocess, 'run', return_value=SimpleNamespace(returncode=1, stdout=b'', stderr=b'fixture-secret')):
+            with self.assertRaises(ops.Refused) as error:
+                ops.command(ops.MYSQL, b'SELECT 1;')
+            self.assertNotIn('fixture-secret', str(error.exception))
 
 
 if __name__ == '__main__':
