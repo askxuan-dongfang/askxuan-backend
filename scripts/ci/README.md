@@ -84,3 +84,5 @@ claim that rebuilt bytes equal the public runner's original archive.
 Run workflows from main/master, or manually using workflow_dispatch. Only protected production deployment jobs receive secrets. Each frontend workflow pins this repository's tooling commit rather than executing a floating release script.
 
 Operational guide: the documentation repository's `docs/deployment/GITHUB-ACTIONS.md`.
+
+园区公网代理单独使用 `scripts/ops/refresh-quiet-proxy.sh deploy/nginx <new-root-backup-dir>` 安装；同一发布锁下备份三份文件，正常失败与HUP/INT/TERM均恢复，`nginx -t`通过才reload。`quiet-limits.conf`位于http层，`quiet-locations.conf`仅追加到既有应用server include；固定quiet-park预算键跨IP域名和站点别名共享，健康Ping仅loopback可见。先确认CI quiet容器健康，再启用这些路由，最后发布H5入口。
