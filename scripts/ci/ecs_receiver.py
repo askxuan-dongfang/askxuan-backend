@@ -20,6 +20,7 @@ import time
 import urllib.request
 import urllib.parse
 import ssl
+import stat
 
 BASE = Path('/opt/askxuan/ci')
 PUBLIC = Path('/var/www/askxuan/public')
@@ -29,6 +30,7 @@ SERVICES = {'gateway', 'auth', 'user', 'temple', 'master', 'booking', 'community
             'message', 'file', 'ai', 'media'}
 WEB = {'admin', 'temple'}
 SHA = re.compile(r'^[0-9a-f]{40}$')
+QUIET_BASE = 'askxuan/quiet-service:ci-runtime-base'
 
 
 def run(args, **kwargs):
@@ -90,10 +92,10 @@ def extract(archive, dest, scope):
                 with tar.extractfile(m) as src, open(p, 'xb') as target:
                     shutil.copyfileobj(src, target)
     manifest = json.loads((dest / 'manifest.json').read_text())
-    allowed = SERVICES if scope == 'backend' else (WEB if scope == 'web' else {'h5'})
+    allowed = SERVICES if scope == 'backend' else ({'quiet'} if scope == 'quiet' else (WEB if scope == 'web' else {'h5'}))
     if manifest.get('schema') != 1 or manifest.get('scope') != scope or set(manifest['components']) != allowed:
         raise ValueError('Release scope mismatch')
-    if not re.fullmatch(r'ci-(backend|web|h5)-[a-zA-Z0-9-]{1,100}', manifest['release']):
+    if not re.fullmatch(r'ci-(backend|quiet|web|h5)-[a-zA-Z0-9-]{1,100}', manifest['release']) or not manifest['release'].startswith('ci-' + scope + '-'):
         raise ValueError('Invalid release identifier')
     actual = {p.relative_to(dest).as_posix(): sha(p) for p in (dest / 'payload').rglob('*') if p.is_file()}
     if actual != manifest['files']:
@@ -102,7 +104,7 @@ def extract(archive, dest, scope):
         raise ValueError('Unexpected component path')
     for name in allowed:
         p = dest / 'payload' / name
-        if scope == 'backend':
+        if scope in ('backend', 'quiet'):
             if set(f.name for f in p.iterdir()) != {name}:
                 raise ValueError('Unexpected binary payload')
             header = (p / name).read_bytes()[:20]
@@ -112,15 +114,15 @@ def extract(archive, dest, scope):
             raise ValueError('Missing web index')
     if scope == 'web' and not (dest / 'payload/admin/legacy/shop/index.html').is_file():
         raise ValueError('Missing unified admin legacy shop entry')
-    if scope != 'backend' and any((dest / 'payload/h5' / n).exists() for n in ('admin', 'shop', 'temple')):
+    if scope == 'h5' and any((dest / 'payload/h5' / n).exists() for n in ('admin', 'shop', 'temple')):
         raise ValueError('H5 must not replace admin routes')
     return manifest
 
 
 def validate_versions(manifest, state):
     for component, value in manifest['components'].items():
-        key = ('backend/' if manifest['scope'] == 'backend' else 'web/') + component
-        required = {'backend'} if manifest['scope'] == 'backend' else ({'frontend', 'h5'} if component == 'h5' else {'frontend'})
+        key = ('backend/' if manifest['scope'] in ('backend', 'quiet') else 'web/') + component
+        required = {'backend'} if manifest['scope'] in ('backend', 'quiet') else ({'frontend', 'h5'} if component == 'h5' else {'frontend'})
         if set(value['sources']) != required:
             raise ValueError('Missing source provenance')
         for source, commit in value['sources'].items():
@@ -171,6 +173,106 @@ def compose_up(path):
     with open(path.parent / (path.stem + '.log'), 'ab') as log:
         subprocess.run(['docker', 'compose', '-p', 'askxuan', '-f', str(path), 'up', '-d', '--no-build', '--no-deps'],
                        stdout=log, stderr=log, check=True)
+
+
+def trusted_json(path):
+    # A template may contain runtime secrets. Only the separately installed,
+    # root-owned file is trusted; no archive path can provide this configuration.
+    for item in (path, *path.parents):
+        info = item.lstat()
+        if info.st_uid != 0 or info.st_mode & 0o022 or stat.S_ISLNK(info.st_mode):
+            raise ValueError('Runtime template and parents must be root-owned, non-symlink and not group/world writable')
+    if not stat.S_ISREG(path.lstat().st_mode):
+        raise ValueError('Runtime template must be a regular file')
+    return json.loads(path.read_text())
+
+
+def quiet_template(image):
+    definition = trusted_json(BASE / 'runtime/quiet.json')
+    if set(definition) - {'services', 'networks', 'volumes'} or set(definition.get('services', {})) != {'quiet-service'}:
+        raise ValueError('Quiet runtime template must contain only quiet-service')
+    d = definition['services']['quiet-service']
+    ports = [{'target': 8096, 'published': '18196', 'host_ip': '127.0.0.1', 'protocol': 'tcp'}]
+    env = d.get('environment', {})
+    required = ('QUIET_MYSQL_ADDR', 'QUIET_MYSQL_PASSWORD', 'QUIET_REDIS_ADDR', 'QUIET_CSRF_KEY', 'QUIET_PUBLIC_ORIGINS')
+    if (d.get('container_name') != 'askxuan-quiet-service' or d.get('image') != QUIET_BASE or
+            d.get('entrypoint') != ['/app/quiet'] or d.get('command') or d.get('user') != '1000:1000' or
+            d.get('ports') != ports or d.get('volumes') or definition.get('volumes') or
+            set(d.get('networks', {})) != {'askxuan-net'} or
+            definition.get('networks') != {'askxuan-net': {'external': True, 'name': 'askxuan-net'}} or
+            not isinstance(env, dict) or any(not isinstance(v, str) for v in env.values()) or
+            any(not env.get(k) for k in required) or env.get('QUIET_LISTEN') != '0.0.0.0:8096' or
+            env.get('QUIET_REDIS_PREFIX') != 'quiet-park-prod:' or not d.get('healthcheck', {}).get('test')):
+        raise ValueError('Quiet runtime template does not match the reviewed isolated runtime contract')
+    d['image'] = image
+    return definition
+
+
+def quiet_container():
+    # Do not mistake a Docker daemon/permission failure for a first deployment.
+    found = run(['docker', 'ps', '-aq', '--filter', 'name=^/askxuan-quiet-service$']).decode().strip()
+    if not found:
+        return None
+    if not re.fullmatch(r'[0-9a-f]{12,64}', found):
+        raise ValueError('Ambiguous quiet runtime container')
+    return json.loads(run(['docker', 'inspect', 'askxuan-quiet-service']))[0]
+
+
+def quiet_existing_definition(c, image):
+    d, networks, volumes = compose_definition(c, image)
+    check = c['Config'].get('Healthcheck', {})
+    if not check.get('Test') or check['Test'] == ['NONE']:
+        raise ValueError('Existing quiet runtime must have a healthcheck')
+    d['healthcheck'] = {'test': check['Test']}
+    for raw, key in [('Interval', 'interval'), ('Timeout', 'timeout'), ('StartPeriod', 'start_period'), ('StartInterval', 'start_interval')]:
+        if check.get(raw):
+            d['healthcheck'][key] = str(check[raw]) + 'ns'
+    if check.get('Retries') is not None:
+        d['healthcheck']['retries'] = check['Retries']
+    return {'services': {'quiet-service': d}, 'networks': networks, 'volumes': volumes}
+
+
+def deploy_quiet(candidate, manifest, state, journal):
+    value = manifest['components']['quiet']
+    c = quiet_container()
+    if c and state.get('components', {}).get('backend/quiet', {}).get('input') == value['input']:
+        return []
+    # The operator must pin/provision this base separately. Never bootstrap it
+    # from an arbitrary submitted image or execute a submitted Dockerfile/script.
+    if subprocess.run(['docker', 'image', 'inspect', QUIET_BASE], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+        raise ValueError('Quiet runtime base is not provisioned')
+    image = 'askxuan/quiet-service:' + manifest['release']
+    current = quiet_existing_definition(c, image) if c else quiet_template(image)
+    if c:
+        before = quiet_existing_definition(c, c['Image'])
+        atomic_compose(candidate / 'rollback.json', before)
+    target = candidate / 'payload/quiet'
+    (target / 'quiet').chmod(0o755)
+    (target / 'Dockerfile').write_text('FROM %s\nCOPY --chown=1000:1000 --chmod=755 quiet /app/quiet\n' % QUIET_BASE)
+    with open(candidate / 'build-quiet.log', 'wb') as log:
+        subprocess.run(['docker', 'build', '-t', image, str(target)], stdout=log, stderr=log, check=True)
+    atomic_compose(candidate / 'compose.json', current)
+    journal['created_services'] = [] if c else ['quiet']
+    journal['phase'] = 'switching-backend'
+    atomic_json(candidate / 'transaction.json', journal)
+    compose_up(candidate / 'compose.json')
+    healthy(['quiet'])
+    return ['quiet']
+
+
+def remove_created_services(names):
+    if names not in ([], ['quiet']):
+        raise ValueError('Unexpected first-deploy cleanup scope')
+    if names and quiet_container():
+        # No compose down, volume removal, database cleanup or other service.
+        run(['docker', 'rm', '-f', 'askxuan-quiet-service'])
+
+
+def smoke_quiet():
+    with urllib.request.urlopen('http://127.0.0.1:18196/health', timeout=15) as response:
+        data = json.load(response)
+        if data.get('status') != 'ok' or data.get('persistent') is not True or data.get('roomCapacity') != 20:
+            raise RuntimeError('Quiet persistent runtime smoke failed')
 
 
 def healthy(names):
@@ -226,7 +328,7 @@ def smoke_web(candidate, manifest):
 def deploy(candidate, manifest, state):
     release = manifest['release']
     rollback = candidate / 'rollback.json'
-    old_public = PUBLIC.resolve(strict=True)
+    old_public = PUBLIC.resolve(strict=manifest['scope'] != 'quiet')
     web_public = (RELEASES / release / 'public').resolve()
     changed = []
     old_state = json.loads(json.dumps(state))
@@ -264,6 +366,8 @@ def deploy(candidate, manifest, state):
                 atomic_json(candidate / 'transaction.json', journal)
                 compose_up(candidate / 'compose.json')
                 healthy(changed)
+        elif manifest['scope'] == 'quiet':
+            changed = deploy_quiet(candidate, manifest, state, journal)
         else:
             shutil.copytree(old_public, web_public)
             if 'h5' in manifest['components']:
@@ -294,9 +398,9 @@ def deploy(candidate, manifest, state):
             atomic_json(candidate / 'transaction.json', journal)
             switch_public(web_public, release)
             smoke_web(candidate, manifest)
-        smoke()
+        smoke_quiet() if manifest['scope'] == 'quiet' else smoke()
         for name, value in manifest['components'].items():
-            key = ('backend/' if manifest['scope'] == 'backend' else 'web/') + name
+            key = ('backend/' if manifest['scope'] in ('backend', 'quiet') else 'web/') + name
             state.setdefault('components', {})[key] = {**value, 'release': release}
         if manifest['scope'] == 'web':
             state['components'].pop('web/shop', None)
@@ -314,7 +418,9 @@ def deploy(candidate, manifest, state):
         # Roll back the entire affected component set, and record recovery evidence.
         if journal['phase'] == 'switching-backend' and rollback.exists():
             compose_up(rollback)
-            healthy(changed)
+            healthy(['quiet'] if manifest['scope'] == 'quiet' else changed)
+        if journal['phase'] == 'switching-backend':
+            remove_created_services(journal.get('created_services', []))
         if PUBLIC.resolve() == web_public:
             switch_public(old_public, release + '-rollback')
         atomic_json(BASE / 'state.json', old_state)
@@ -326,7 +432,7 @@ def deploy(candidate, manifest, state):
 def main():
     os.umask(0o077)
     scope = sys.argv[1]
-    if scope not in ('backend', 'web', 'h5'):
+    if scope not in ('backend', 'quiet', 'web', 'h5'):
         raise ValueError('Unknown scope')
     BASE.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='incoming-', dir=BASE) as temp:
@@ -364,8 +470,8 @@ def main():
 
 
 def rollback_latest(release):
-    """Operator-only CLI; the three sudo rules do not allow this argument."""
-    if not re.fullmatch(r'ci-(backend|web|h5)-[a-zA-Z0-9-]{1,100}', release):
+    """Operator-only CLI; the scope-specific sudo rules do not allow this argument."""
+    if not re.fullmatch(r'ci-(backend|quiet|web|h5)-[a-zA-Z0-9-]{1,100}', release):
         raise ValueError('Invalid release identifier')
     os.umask(0o077)
     with open(BASE / 'publish.lock', 'w') as lock:
@@ -380,9 +486,14 @@ def rollback_latest(release):
         if (candidate / 'rollback.json').exists():
             compose_up(candidate / 'rollback.json')
             healthy(journal['changed_services'])
+        remove_created_services(journal.get('created_services', []))
         if PUBLIC.resolve() == (RELEASES / release / 'public').resolve():
             switch_public(Path(journal['previous_public']), release + '-manual-rollback')
-        smoke()
+        if release.startswith('ci-quiet-'):
+            if not journal.get('created_services'):
+                smoke_quiet()
+        else:
+            smoke()
         atomic_json(BASE / 'state.json', journal['state_before'])
         journal['phase'] = 'rolled-back'
         atomic_json(candidate / 'transaction.json', journal)

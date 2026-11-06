@@ -18,7 +18,7 @@ def retag(source, target, run_id, attempt):
         raise ValueError('Expected numeric GitHub run and attempt')
     with tarfile.open(source, 'r:gz') as archive:
         manifest = json.load(archive.extractfile('manifest.json'))
-        match = re.fullmatch(r'ci-(backend|web|h5)-(\d+)-(\d+)-([0-9a-f]{12})', manifest['release'])
+        match = re.fullmatch(r'ci-(backend|quiet|web|h5)-(\d+)-(\d+)-([0-9a-f]{12})', manifest['release'])
         if not match or match[2] != run_id:
             raise ValueError('Artifact does not belong to this workflow run')
         release = 'ci-%s-%s-%s-%s' % (match[1], run_id, attempt, match[4])
