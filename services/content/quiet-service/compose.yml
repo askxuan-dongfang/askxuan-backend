@@ -1,0 +1,57 @@
+name: dongfang-quiet-local
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${QUIET_REDIS_PASSWORD:?run local-stack.sh}"]
+    ports: ["127.0.0.1:6386:6379"]
+    volumes: ["quiet-redis:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 3s
+      retries: 30
+    environment:
+      REDIS_PASSWORD: ${QUIET_REDIS_PASSWORD:?run local-stack.sh}
+  mysql:
+    image: mysql:8.4
+    ports: ["127.0.0.1:3316:3306"]
+    environment:
+      MYSQL_DATABASE: quiet_local
+      MYSQL_USER: quiet
+      MYSQL_PASSWORD: ${QUIET_MYSQL_PASSWORD:?run local-stack.sh}
+      MYSQL_ROOT_PASSWORD: ${QUIET_MYSQL_ROOT_PASSWORD:?run local-stack.sh}
+    volumes: ["quiet-mysql:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysqladmin ping -h127.0.0.1 -uquiet --silent"]
+      interval: 3s
+      retries: 40
+  room:
+    build: .
+    ports: ["127.0.0.1:8097:8096"]
+    environment:
+      QUIET_LISTEN: 0.0.0.0:8096
+      QUIET_MYSQL_ADDR: mysql:3306
+      QUIET_MYSQL_PASSWORD: ${QUIET_MYSQL_PASSWORD:?run local-stack.sh}
+      QUIET_REDIS_ADDR: redis:6379
+      QUIET_REDIS_PASSWORD: ${QUIET_REDIS_PASSWORD:?run local-stack.sh}
+      QUIET_CSRF_KEY: ${QUIET_CSRF_KEY:?run local-stack.sh}
+      QUIET_AUTH_URL: ${QUIET_AUTH_URL:-}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8096/health"]
+      interval: 3s
+      retries: 20
+    depends_on:
+      redis: { condition: service_healthy }
+      mysql: { condition: service_healthy }
+  nginx:
+    image: nginx:1.28-alpine
+    ports: ["127.0.0.1:8446:443"]
+    volumes:
+      - ./nginx-local.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./.local/certs:/etc/nginx/certs:ro
+    depends_on:
+      room: { condition: service_healthy }
+
+volumes:
+  quiet-redis:
+  quiet-mysql:

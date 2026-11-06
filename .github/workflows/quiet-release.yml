@@ -1,0 +1,73 @@
+name: Quiet independent verification and package
+on:
+  push:
+    branches: [main, develop]
+    paths: ['services/content/quiet-service/**', 'scripts/ci/**', 'scripts/ops/bootstrap-quiet-runtime.py', '.github/workflows/quiet-release.yml']
+  pull_request:
+    branches: [main, develop]
+    paths: ['services/content/quiet-service/**', 'scripts/ci/**', 'scripts/ops/bootstrap-quiet-runtime.py', '.github/workflows/quiet-release.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quiet-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify-quiet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: quiet-ci-root-only
+          MYSQL_DATABASE: quiet_local
+          MYSQL_USER: quiet
+          MYSQL_PASSWORD: quiet-ci-test-only
+        ports: ['3316:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pquiet-ci-root-only"
+          --health-interval=5s --health-timeout=5s --health-retries=24
+      redis:
+        image: redis:7-alpine
+        ports: ['6386:6379']
+        options: --health-cmd="redis-cli ping | grep -q PONG || redis-cli --no-auth-warning -a quiet-ci-redis-only ping | grep -q PONG" --health-interval=5s --health-timeout=5s --health-retries=24
+    env:
+      GOWORK: 'off'
+      QUIET_MYSQL_PASSWORD: quiet-ci-test-only
+      QUIET_REDIS_PASSWORD: quiet-ci-redis-only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: services/content/quiet-service/go.mod
+          cache-dependency-path: services/content/quiet-service/go.sum
+      - name: Configure isolated Redis authentication
+        run: docker exec ${{ job.services.redis.id }} redis-cli CONFIG SET requirepass quiet-ci-redis-only
+      - name: Verify quiet race and protocol boundaries
+        working-directory: services/content/quiet-service
+        run: go test -race -count=1 ./...
+      - name: Verify real MySQL persistence and Redis room isolation
+        working-directory: services/content/quiet-service
+        env:
+          QUIET_TEST_INTEGRATION: '1'
+        run: go test -race -count=1 -run '^TestMySQLPersistenceGuestIsolationAndRedisRooms$' -v ./...
+      - name: Vet quiet module
+        working-directory: services/content/quiet-service
+        run: go vet ./...
+      - name: Verify release isolation and rollback policy
+        run: python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
+      - name: Build only quiet with exact source provenance
+        run: python3 scripts/ci/release.py quiet
+      # No deployment credentials or automatic deployment job. An operator uses
+      # the separately installed quiet receiver after all checks pass.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: github.event_name != 'pull_request'
+        with:
+          name: quiet-release
+          path: release.tgz
+          retention-days: 3
+          if-no-files-found: error

@@ -47,14 +47,14 @@ def contract(root):
 def build(scope, frontend, output):
     root = Path.cwd()
     frontend = Path(frontend).resolve()
-    repos = {'backend': root} if scope == 'backend' else {'frontend': frontend}
+    repos = {'backend': root} if scope in ('backend', 'quiet') else {'frontend': frontend}
     if scope == 'h5':
         repos['h5'] = frontend / 'apps/web-h5'
     history = {k: git(p, 'rev-list', 'HEAD').splitlines() for k, p in repos.items()}
     manifest = {'schema': 1, 'scope': scope, 'history': history, 'components': {}, 'files': {}}
     run = os.environ.get('GITHUB_RUN_ID', 'local')
     attempt = os.environ.get('GITHUB_RUN_ATTEMPT', '1')
-    primary = 'backend' if scope == 'backend' else ('frontend' if scope == 'web' else 'h5')
+    primary = 'backend' if scope in ('backend', 'quiet') else ('frontend' if scope == 'web' else 'h5')
     manifest['release'] = 'ci-%s-%s-%s-%s' % (scope, run, attempt, history[primary][0][:12])
     with tempfile.TemporaryDirectory(prefix='askxuan-release-') as tmp:
         stage = Path(tmp)
@@ -74,6 +74,17 @@ def build(scope, frontend, output):
                     'sources': {'backend': history['backend'][0]},
                     'input': tree_hash(root, ['common', 'go.work', 'go.work.sum', module]),
                 }
+        elif scope == 'quiet':
+            module = 'services/content/quiet-service'
+            target = payload / 'quiet'
+            target.mkdir()
+            subprocess.run(['go', 'build', '-trimpath', '-buildvcs=false', '-ldflags=-s -w -buildid=',
+                            '-o', str(target / 'quiet'), '.'], cwd=root / module,
+                           env={**os.environ, 'GOWORK': 'off', 'CGO_ENABLED': '0', 'GOOS': 'linux', 'GOARCH': 'amd64'}, check=True)
+            manifest['components']['quiet'] = {
+                'sources': {'backend': history['backend'][0]},
+                'input': tree_hash(root, [module]),
+            }
         else:
             for name in (['admin', 'temple'] if scope == 'web' else ['h5']):
                 app = frontend / 'apps' / APPS[name]
@@ -101,7 +112,7 @@ def build(scope, frontend, output):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('scope', choices=['backend', 'web', 'h5', 'contract'])
+    parser.add_argument('scope', choices=['backend', 'quiet', 'web', 'h5', 'contract'])
     parser.add_argument('--frontend', default='.')
     parser.add_argument('--output', default='release.tgz')
     args = parser.parse_args()
