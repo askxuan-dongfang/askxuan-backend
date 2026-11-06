@@ -30,8 +30,9 @@ For the first installation, a reviewed root-owned copy of
 prints a read-only plan by default. Add `--apply` only after reviewing that plan.
 The script uses the same existing publish lock, rejects unfinished transactions
 and any existing quiet database/user/container/volume/template/base tag, and
-requires 3 GiB free. It reads the MySQL root password only inside the existing
-MySQL container via its environment, sending SQL over stdin. It creates a new
+requires 3 GiB free. It reads the MySQL root password only from the server-local, root-owned mode0600
+`/opt/askxuan/runtime/secrets.env`. Only the MySQL subprocess receives `MYSQL_PWD`;
+no password enters argv, SQL stdin, build commands or receipts. SQL goes over stdin. It creates a new
 `quiet_local` database and random-password `quiet` user with only CREATE, SELECT,
 INSERT, UPDATE and DELETE on `quiet_local.*`; no other schema is changed.
 
@@ -57,7 +58,7 @@ must already provide `/app`, CA certificates, and the healthcheck executable (wg
 Receiver builds contain only a generated `FROM`/`COPY` Dockerfile, never archive scripts.
 
 Runtime environment keys are `QUIET_LISTEN=0.0.0.0:8096`, `QUIET_MYSQL_ADDR`,
-`QUIET_MYSQL_PASSWORD`, `QUIET_REDIS_ADDR`, optional `QUIET_REDIS_PASSWORD`,
+`QUIET_MYSQL_PASSWORD`, `QUIET_REDIS_ADDR`, `QUIET_REDIS_PASSWORD`,
 `QUIET_CSRF_KEY`, `QUIET_REDIS_PREFIX=quiet-park-prod:`, and explicit HTTPS
 `QUIET_PUBLIC_ORIGINS`. `QUIET_AUTH_URL` is optional. The module uses database
 `quiet_local` and MySQL user `quiet`; storage/password provisioning remains an operator
