@@ -230,7 +230,7 @@ type TempleServiceDetailReq struct {
 type TempleServiceUpdateReq struct {
 	Id          int64               `path:"id"`
 	ServiceName string              `json:"serviceName,optional"` // 兼容旧客户端，服务端忽略
-	Price       float64             `json:"price,optional"`
+	Price       *float64            `json:"price,optional"`
 	TimeSlots   []string            `json:"timeSlots,optional"`
 	Slots       []TempleServiceSlot `json:"slots,optional"`
 	IntentMode  string              `json:"intentMode,optional"`

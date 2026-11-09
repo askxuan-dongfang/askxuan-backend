@@ -328,6 +328,9 @@ func NewAdminServiceUpdateLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminServiceUpdateLogic) AdminServiceUpdate(req *types.TempleServiceUpdateReq) (*types.TempleService, error) {
+	if req.Price != nil && *req.Price < 0 {
+		return nil, common.ErrParamInvalid
+	}
 	if req.IntentMode != "" && req.IntentMode != "inherit" && req.IntentMode != "custom" {
 		return nil, common.ErrParamInvalid
 	}
@@ -360,8 +363,8 @@ func (l *AdminServiceUpdateLogic) AdminServiceUpdate(req *types.TempleServiceUpd
 		return nil, err
 	}
 	record.ServiceName = serviceType.Name
-	if req.Price > 0 {
-		record.Price = req.Price
+	if req.Price != nil {
+		record.Price = *req.Price
 	}
 	if req.TimeSlots != nil {
 		record.TimeSlots = req.TimeSlots

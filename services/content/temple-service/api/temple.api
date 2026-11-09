@@ -184,7 +184,7 @@ type (
     TempleServiceUpdateReq {
         Id          int64    `path:"id"`
         ServiceName string   `json:"serviceName,optional"` // 旧客户端兼容，服务端忽略
-        Price       float64  `json:"price,optional"`
+        Price       *float64  `json:"price,optional"`
         TimeSlots   []string `json:"timeSlots,optional"`
         Slots       []TempleServiceSlot `json:"slots,optional"`
         IntentTags  []string `json:"intentTags,optional"`
