@@ -27,6 +27,7 @@ var ErrClosed = errors.New("活动未开始、已截止或名额已满")
 var ErrConflict = errors.New("状态已变化，请刷新；已发布的活动规则不能修改")
 var ErrNotFound = errors.New("记录不存在或无权操作")
 var ErrBalance = errors.New("积分不足，请返回积分页面查看余额")
+var ErrPrizeSelection = errors.New("请选择要参与的奖品；如未显示奖品选项，请更新客户端")
 var ErrPrice = errors.New("请确认本期参与积分后重试")
 
 type Store struct {
@@ -100,6 +101,7 @@ type Order struct {
 	CompletedAt   int64  `json:"completedAt"`
 }
 type Detail struct {
+	MineEntries   []Entry  `json:"mineEntries"`
 	Campaign      Campaign `json:"campaign"`
 	Mine          *Entry   `json:"mine"`
 	Winners       []Entry  `json:"winners"`
@@ -167,6 +169,14 @@ func (c Campaign) phase(now int64) string {
 	}
 	if c.Kind == "wheel" && c.AwardedCount >= c.PrizeQuantity {
 		return "exhausted"
+	}
+	if c.Kind == "pool" && len(c.Prizes) > 0 {
+		for _, p := range c.Prizes {
+			if p.phase(c, now) == "open" {
+				return "open"
+			}
+		}
+		return "awaiting_draw"
 	}
 	if !c.fixedOdds() && c.ParticipantCount >= c.Capacity {
 		return "full"
@@ -236,7 +246,7 @@ func lockedCampaign(ctx context.Context, tx *sql.Tx, id int64) (Campaign, error)
 	return c, e
 }
 func (s Store) Save(ctx context.Context, c Campaign, actor string) (Campaign, error) {
-	if len(c.Prizes) > 0 && !c.fixedOdds() {
+	if c.Kind == "wheel" && len(c.Prizes) > 0 && !c.fixedOdds() {
 		return c, ErrInvalid
 	}
 	normalizeCampaign(&c)
@@ -305,7 +315,7 @@ func (s Store) List(ctx context.Context, admin bool, page int, kind string) ([]C
 		q += " AND published_at>0"
 	}
 	if kind == "draws" {
-		q += " AND status='drawn'"
+		q += " AND (status='drawn' OR (kind='pool' AND EXISTS(SELECT 1 FROM reward_prize p WHERE p.campaign_id=reward_campaign.id AND p.drawn_at>0)))"
 	} else if kind != "" {
 		q += " AND kind=?"
 		args = append(args, kind)
@@ -337,7 +347,7 @@ func (s Store) List(ctx context.Context, admin bool, page int, kind string) ([]C
 	return out, nil
 }
 func (s Store) Detail(ctx context.Context, id int64, user string, admin bool) (Detail, error) {
-	d := Detail{Winners: []Entry{}}
+	d := Detail{Winners: []Entry{}, MineEntries: []Entry{}}
 	tx, e := s.DB.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
 	if e != nil {
 		return d, e
@@ -361,11 +371,29 @@ func (s Store) Detail(ctx context.Context, id int64, user string, admin bool) (D
 		}
 	}
 	if user != "" {
-		m, e := scanEntry(tx.QueryRowContext(ctx, "SELECT "+entryCols+" FROM reward_entry WHERE campaign_id=? AND user_id=? ORDER BY id DESC LIMIT 1", id, user))
-		if e == nil {
-			d.Mine = &m
-		} else if !errors.Is(e, sql.ErrNoRows) {
-			return d, e
+		limit := 1
+		if c.Kind == "pool" {
+			limit = 10
+		}
+		rows, err := tx.QueryContext(ctx, "SELECT "+entryCols+" FROM reward_entry WHERE campaign_id=? AND user_id=? ORDER BY id DESC LIMIT ?", id, user, limit)
+		if err != nil {
+			return d, err
+		}
+		for rows.Next() {
+			m, err := scanEntry(rows)
+			if err != nil {
+				rows.Close()
+				return d, err
+			}
+			d.MineEntries = append(d.MineEntries, m)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return d, err
+		}
+		if len(d.MineEntries) > 0 {
+			d.Mine = &d.MineEntries[0]
 		}
 	}
 	rows, e := tx.QueryContext(ctx, "SELECT "+entryCols+" FROM reward_entry WHERE campaign_id=? AND outcome='won' ORDER BY id LIMIT 1000", id)
@@ -401,7 +429,7 @@ func (s Store) Publish(ctx context.Context, id int64, actor string) error {
 		if e = Validate(c, time.Now().Unix()); e != nil {
 			return e
 		}
-		if len(c.Prizes) > 0 && !c.fixedOdds() {
+		if c.Kind == "wheel" && len(c.Prizes) > 0 && !c.fixedOdds() {
 			return ErrInvalid
 		}
 		for _, p := range c.Prizes {
@@ -455,7 +483,17 @@ func newOrder(ctx context.Context, tx *sql.Tx, c Campaign, e Entry) error {
 	return audit(ctx, tx, c.ID, oid, "system", "award", e.Code)
 }
 func (s Store) Join(ctx context.Context, id int64, user string, expectedPoints int64, requestKeys ...string) (Entry, error) {
+	requestKey := ""
+	if len(requestKeys) > 0 {
+		requestKey = requestKeys[0]
+	}
+	return s.JoinPrize(ctx, id, user, expectedPoints, requestKey, 0)
+}
+func (s Store) JoinPrize(ctx context.Context, id int64, user string, expectedPoints int64, suppliedKey string, prizeID int64) (Entry, error) {
 	var entry Entry
+	if prizeID < 0 {
+		return entry, ErrInvalid
+	}
 	if user == "" || user == "0" {
 		return entry, ErrNotFound
 	}
@@ -464,18 +502,39 @@ func (s Store) Join(ctx context.Context, id int64, user string, expectedPoints i
 		if e != nil {
 			return e
 		}
-		// A new wheel request key buys a new spin; retrying the same key returns
-		// exactly the original result. Pool entries remain one per account.
+		var poolPrize *Prize
+		if c.Kind == "pool" && len(c.Prizes) > 0 {
+			if prizeID == 0 && len(c.Prizes) == 1 {
+				prizeID = c.Prizes[0].ID
+			}
+			for i := range c.Prizes {
+				if c.Prizes[i].ID == prizeID {
+					poolPrize = &c.Prizes[i]
+					break
+				}
+			}
+			if poolPrize == nil {
+				return ErrPrizeSelection
+			}
+		} else if prizeID != 0 {
+			return ErrInvalid
+		}
+		// The existing unique attempt key scopes pool participation to its prize.
 		requestKey := "legacy"
 		query := "SELECT " + entryCols + " FROM reward_entry WHERE campaign_id=? AND user_id=?"
 		args := []any{id, user}
-		if c.Kind == "wheel" && len(requestKeys) > 0 && requestKeys[0] != "" {
-			requestKey = requestKeys[0]
+		if c.Kind == "wheel" && suppliedKey != "" {
+			requestKey = suppliedKey
 			if !rewardRequestKey.MatchString(requestKey) {
 				return ErrInvalid
 			}
 			query += " AND request_key=?"
 			args = append(args, requestKey)
+		}
+		if poolPrize != nil {
+			requestKey = fmt.Sprintf("pool:%d", poolPrize.ID)
+			query += " AND prize_id=?"
+			args = append(args, poolPrize.ID)
 		}
 		query += " ORDER BY id DESC LIMIT 1"
 		old, e := scanEntry(tx.QueryRowContext(ctx, query, args...))
@@ -486,13 +545,16 @@ func (s Store) Join(ctx context.Context, id int64, user string, expectedPoints i
 		if !errors.Is(e, sql.ErrNoRows) {
 			return e
 		}
-		if c.phase(time.Now().Unix()) != "open" {
+		if c.phase(time.Now().Unix()) != "open" || (poolPrize != nil && poolPrize.phase(c, time.Now().Unix()) != "open") {
 			return ErrClosed
 		}
 		if c.PointsCost < 1 || expectedPoints != c.PointsCost {
 			return ErrPrice
 		}
 		entry = Entry{CampaignID: id, UserID: user, Code: fmt.Sprintf("WX%08d-%06d", id, c.ParticipantCount+1), Outcome: "pending", CreatedAt: time.Now().Unix(), PointsSpent: c.PointsCost}
+		if poolPrize != nil {
+			entry.PrizeID, entry.PrizeName = poolPrize.ID, poolPrize.Name
+		}
 		// The existing account lock also serializes redemption, payment refunds and
 		// joins to other campaigns. Missing accounts have no spendable points.
 		var balance int64
@@ -559,84 +621,154 @@ func (s Store) Join(ctx context.Context, id int64, user string, expectedPoints i
 		if e != nil {
 			return e
 		}
+		c.ParticipantCount++
+		if poolPrize != nil {
+			if _, e = tx.ExecContext(ctx, "UPDATE reward_prize SET participant_count=participant_count+1 WHERE id=?", poolPrize.ID); e != nil {
+				return e
+			}
+			poolPrize.ParticipantCount++
+		}
+		if c.Kind == "pool" && ((poolPrize != nil && poolPrize.ParticipantCount >= poolPrize.Capacity) || (poolPrize == nil && c.ParticipantCount >= c.Capacity)) {
+			if poolPrize != nil {
+				e = s.drawPrizes(ctx, tx, c, poolPrize.ID)
+			} else {
+				e = s.drawLocked(ctx, tx, c)
+			}
+			if e != nil {
+				return e
+			}
+			entry, e = scanEntry(tx.QueryRowContext(ctx, "SELECT "+entryCols+" FROM reward_entry WHERE id=?", entry.ID))
+			if e != nil {
+				return e
+			}
+		}
 		return audit(ctx, tx, id, 0, user, "join", fmt.Sprintf("%s:%s；扣除 %d 积分", entry.Code, entry.Outcome, entry.PointsSpent))
 	})
 	return entry, err
 }
 func (s Store) Draw(ctx context.Context, id int64) error {
+	c, err := s.campaign(ctx, id, true)
+	if err != nil {
+		return err
+	}
+	if c.Status == "drawn" {
+		return nil
+	}
+	if c.Kind == "pool" && len(c.Prizes) > 0 {
+		var errs []error
+		eligible := false
+		for _, p := range c.Prizes {
+			if p.phase(c, time.Now().Unix()) != "awaiting_draw" {
+				continue
+			}
+			eligible = true
+			err := s.transaction(ctx, func(tx *sql.Tx) error {
+				current, err := lockedCampaign(ctx, tx, id)
+				if err != nil {
+					return err
+				}
+				if current.Status == "drawn" {
+					return nil
+				}
+				if current.Status != "published" {
+					return ErrClosed
+				}
+				return s.drawPrizes(ctx, tx, current, p.ID)
+			})
+			if err != nil {
+				errs = append(errs, fmt.Errorf("draw prize %d: %w", p.ID, err))
+			}
+		}
+		if !eligible {
+			for _, p := range c.Prizes {
+				if p.DrawnAt == 0 {
+					return ErrClosed
+				}
+			}
+			return nil
+		}
+		return errors.Join(errs...)
+	}
 	return s.transaction(ctx, func(tx *sql.Tx) error {
 		c, e := lockedCampaign(ctx, tx, id)
 		if e != nil {
 			return e
 		}
-		if c.Status == "drawn" {
-			return nil
-		}
-		if c.Status != "published" || time.Now().Unix() < c.EndsAt {
-			return ErrClosed
-		}
-		rows, e := tx.QueryContext(ctx, "SELECT "+entryCols+" FROM reward_entry WHERE campaign_id=? ORDER BY id", id)
-		if e != nil {
-			return e
-		}
-		entries := []Entry{}
-		h := sha256.New()
-		for rows.Next() {
-			v, e := scanEntry(rows)
-			if e != nil {
-				rows.Close()
-				return e
-			}
-			entries = append(entries, v)
-			fmt.Fprintln(h, v.Code)
-		}
-		e = rows.Err()
-		rows.Close()
-		if e != nil {
-			return e
-		}
-		if len(entries) != c.ParticipantCount {
-			return errors.New("reward participant count inconsistent")
-		}
-		winners := c.AwardedCount
-		if c.Kind == "pool" {
-			winners = c.PrizeQuantity
-			if winners > len(entries) {
-				winners = len(entries)
-			}
-			// Partial Fisher-Yates: every size-K subset is equally likely; no replacement.
-			for i := 0; i < winners; i++ {
-				j, e := s.uniform(len(entries) - i)
-				if e != nil {
-					return e
-				}
-				entries[i], entries[i+j] = entries[i+j], entries[i]
-			}
-			if _, e = tx.ExecContext(ctx, "UPDATE reward_entry SET outcome='lost' WHERE campaign_id=?", id); e != nil {
-				return e
-			}
-			for _, v := range entries[:winners] {
-				if _, e = tx.ExecContext(ctx, "UPDATE reward_entry SET outcome='won' WHERE id=?", v.ID); e != nil {
-					return e
-				}
-				if e = newOrder(ctx, tx, c, v); e != nil {
-					return e
-				}
-			}
-		}
-		announcement := fmt.Sprintf("活动已结束。有效参与 %d 人，实际中奖 %d 人；每人参与消耗 %d 积分，奖品由平台预算提供。", len(entries), winners, c.PointsCost)
-		if len(entries) == 0 {
-			announcement = "活动已到截止时间，本期无人参与，未发放奖品。"
-		}
-		_, e = tx.ExecContext(ctx, "UPDATE reward_campaign SET status='drawn',awarded_count=?,drawn_at=?,pool_digest=?,announcement=?,version=version+1 WHERE id=?", winners, time.Now().Unix(), hex.EncodeToString(h.Sum(nil)), announcement, id)
-		if e != nil {
-			return e
-		}
-		return audit(ctx, tx, id, 0, "system", "draw", announcement)
+		return s.drawLocked(ctx, tx, c)
 	})
 }
+func (s Store) drawLocked(ctx context.Context, tx *sql.Tx, c Campaign) error {
+	if c.Status == "drawn" {
+		return nil
+	}
+	if c.Status != "published" {
+		return ErrClosed
+	}
+	if time.Now().Unix() < c.EndsAt && (c.Kind != "pool" || c.ParticipantCount < c.Capacity) {
+		return ErrClosed
+	}
+	id := c.ID
+	rows, e := tx.QueryContext(ctx, "SELECT "+entryCols+" FROM reward_entry WHERE campaign_id=? ORDER BY id", id)
+	if e != nil {
+		return e
+	}
+	entries := []Entry{}
+	h := sha256.New()
+	for rows.Next() {
+		v, e := scanEntry(rows)
+		if e != nil {
+			rows.Close()
+			return e
+		}
+		entries = append(entries, v)
+		fmt.Fprintln(h, v.Code)
+	}
+	e = rows.Err()
+	rows.Close()
+	if e != nil {
+		return e
+	}
+	if len(entries) != c.ParticipantCount {
+		return errors.New("reward participant count inconsistent")
+	}
+	winners := c.AwardedCount
+	if c.Kind == "pool" {
+		winners = c.PrizeQuantity
+		if winners > len(entries) {
+			winners = len(entries)
+		}
+		// Partial Fisher-Yates: every size-K subset is equally likely; no replacement.
+		for i := 0; i < winners; i++ {
+			j, e := s.uniform(len(entries) - i)
+			if e != nil {
+				return e
+			}
+			entries[i], entries[i+j] = entries[i+j], entries[i]
+		}
+		if _, e = tx.ExecContext(ctx, "UPDATE reward_entry SET outcome='lost' WHERE campaign_id=?", id); e != nil {
+			return e
+		}
+		for _, v := range entries[:winners] {
+			if _, e = tx.ExecContext(ctx, "UPDATE reward_entry SET outcome='won' WHERE id=?", v.ID); e != nil {
+				return e
+			}
+			if e = newOrder(ctx, tx, c, v); e != nil {
+				return e
+			}
+		}
+	}
+	announcement := fmt.Sprintf("活动已结束。有效参与 %d 人，实际中奖 %d 人；每人参与消耗 %d 积分，奖品由平台预算提供。", len(entries), winners, c.PointsCost)
+	if len(entries) == 0 {
+		announcement = "活动已到截止时间，本期无人参与，未发放奖品。"
+	}
+	_, e = tx.ExecContext(ctx, "UPDATE reward_campaign SET status='drawn',awarded_count=?,drawn_at=?,pool_digest=?,announcement=?,version=version+1 WHERE id=?", winners, time.Now().Unix(), hex.EncodeToString(h.Sum(nil)), announcement, id)
+	if e != nil {
+		return e
+	}
+	return audit(ctx, tx, id, 0, "system", "draw", announcement)
+}
 func (s Store) DrawDue(ctx context.Context) error {
-	rows, e := s.DB.QueryContext(ctx, "SELECT id FROM reward_campaign WHERE status='published' AND ends_at<=? ORDER BY ends_at LIMIT 100", time.Now().Unix())
+	rows, e := s.DB.QueryContext(ctx, "SELECT id FROM reward_campaign WHERE status='published' AND (ends_at<=? OR (kind='pool' AND (participant_count>=capacity OR EXISTS(SELECT 1 FROM reward_prize p WHERE p.campaign_id=reward_campaign.id AND p.drawn_at=0 AND p.participant_count>=p.capacity)))) ORDER BY ends_at LIMIT 100", time.Now().Unix())
 	if e != nil {
 		return e
 	}

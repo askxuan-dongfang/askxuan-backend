@@ -112,6 +112,11 @@ func TestMySQLRewards(t *testing.T) {
 		t.Fatal(e)
 	}
 	schema = append(schema, []byte(strings.ReplaceAll(string(repeatMigration), "USE askxuan_marketing;", ""))...)
+	poolMigration, e := os.ReadFile("../../../../../scripts/db/20261117_reward_pool_prizes.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	schema = append(schema, []byte(strings.ReplaceAll(string(poolMigration), "USE askxuan_marketing;", ""))...)
 	for pass := 0; pass < 2; pass++ {
 		for _, q := range strings.Split(string(schema), ";") {
 			if strings.TrimSpace(q) != "" {
@@ -257,8 +262,11 @@ func TestMySQLRewards(t *testing.T) {
 		if _, e := s.Join(ctx, c.ID, "extra", 10); !errors.Is(e, ErrClosed) {
 			t.Fatalf("over capacity: %v", e)
 		}
-		if e = s.Draw(ctx, c.ID); !errors.Is(e, ErrClosed) {
-			t.Fatalf("early draw %v", e)
+		must(s.Draw(ctx, c.ID))
+		full, e := s.Detail(ctx, c.ID, "user-0", false)
+		must(e)
+		if full.Campaign.Status != "drawn" || len(full.Winners) != 1 {
+			t.Fatal("full pool was not drawn immediately")
 		}
 		if e = s.Cancel(ctx, c.ID, "admin", "取消理由"); !errors.Is(e, ErrConflict) {
 			t.Fatal("cancelled participated campaign")
@@ -719,6 +727,269 @@ func TestMySQLRewards(t *testing.T) {
 		must(err)
 		if *d.Campaign.Prizes[0].ProbabilityBps != 1250 || *d.Campaign.Prizes[1].ProbabilityBps != 250 {
 			t.Fatal("displayed odds drifted")
+		}
+	})
+
+	t.Run("independent_pool_prizes_full_deadline_retries_and_legacy_client", func(t *testing.T) {
+		c := fixture()
+		c.Prizes = []Prize{
+			{Name: "先满奖品", Kind: "physical", Value: 100, Quantity: 1, Capacity: 2},
+			{Name: "到期奖品", Kind: "physical", Value: 100, Quantity: 2, Capacity: 5},
+			{Name: "无人参与", Kind: "physical", Value: 100, Quantity: 1, Capacity: 4},
+		}
+		c = create(c)
+		if c.Capacity != 11 {
+			t.Fatal("capacity summary", c.Capacity)
+		}
+		firstID, secondID := c.Prizes[0].ID, c.Prizes[1].ID
+		fund("pool-multi-user", 30)
+		fund("pool-multi-second", 10)
+		fund("pool-multi-low", 9)
+		for _, prizeID := range []int64{0, secondID + 100000} {
+			if _, err := s.JoinPrize(ctx, c.ID, "pool-multi-user", 10, "", prizeID); !errors.Is(err, ErrPrizeSelection) {
+				t.Fatal("missing/foreign prize accepted", err)
+			}
+		}
+		if err := s.Draw(ctx, c.ID); !errors.Is(err, ErrClosed) {
+			t.Fatal("premature draw accepted", err)
+		}
+		if _, err := s.JoinPrize(ctx, c.ID, "pool-multi-low", 10, "", firstID); !errors.Is(err, ErrBalance) {
+			t.Fatal("low balance accepted", err)
+		}
+		if _, err := s.JoinPrize(ctx, c.ID, "pool-multi-user", 11, "", firstID); !errors.Is(err, ErrPrice) {
+			t.Fatal("wrong price accepted", err)
+		}
+		first, err := s.JoinPrize(ctx, c.ID, "pool-multi-user", 10, "attempt-0000000001", firstID)
+		must(err)
+		second, err := s.JoinPrize(ctx, c.ID, "pool-multi-user", 10, "attempt-0000000001", secondID)
+		must(err)
+		if first.ID == second.ID || first.Code == second.Code || first.PrizeID != firstID || second.PrizeID != secondID {
+			t.Fatal("prize entries not independent")
+		}
+		var wg sync.WaitGroup
+		for i := 0; i < 12; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				retry, err := s.JoinPrize(ctx, c.ID, "pool-multi-user", 10, "attempt-0000000002", firstID)
+				if err != nil || retry.ID != first.ID {
+					t.Error("duplicate prize retry", err, retry)
+				}
+			}()
+		}
+		wg.Wait()
+		last, err := s.JoinPrize(ctx, c.ID, "pool-multi-second", 10, "", firstID)
+		must(err)
+		if last.Outcome == "pending" {
+			t.Fatal("full join returned stale outcome")
+		}
+		d, err := s.Detail(ctx, c.ID, "pool-multi-user", false)
+		must(err)
+		if d.PointsBalance != 10 || len(d.MineEntries) != 2 || d.Campaign.Status != "published" || d.Campaign.Phase != "open" || d.Campaign.ParticipantCount != 3 {
+			t.Fatalf("bad partial campaign: %+v", d)
+		}
+		p1, p2 := d.Campaign.Prizes[0], d.Campaign.Prizes[1]
+		if p1.ParticipantCount != 2 || p1.DrawnAt == 0 || p1.Phase != "drawn" || p1.AwardedCount != 1 || len(p1.PoolDigest) != 64 || p2.ParticipantCount != 1 || p2.DrawnAt != 0 || p2.Phase != "open" || len(d.Winners) != 1 {
+			t.Fatalf("prizes not independently drawn: %+v", d.Campaign.Prizes)
+		}
+		draws, err := s.List(ctx, false, 1, "draws")
+		must(err)
+		found := false
+		for _, draw := range draws {
+			found = found || draw.ID == c.ID
+		}
+		if !found {
+			t.Fatal("partial results missing from draw list")
+		}
+		if _, err := s.JoinPrize(ctx, c.ID, "pool-new-user", 10, "", firstID); !errors.Is(err, ErrClosed) {
+			t.Fatal("full prize accepted", err)
+		}
+		must(s.DrawDue(ctx))
+		expire(c.ID)
+		for i := 0; i < 8; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if err := s.Draw(ctx, c.ID); err != nil {
+					t.Error(err)
+				}
+			}()
+		}
+		wg.Wait()
+		d, err = s.Detail(ctx, c.ID, "pool-multi-user", false)
+		must(err)
+		if d.Campaign.Status != "drawn" || len(d.Winners) != 2 || d.Campaign.AwardedCount != 2 || d.Campaign.Prizes[0].PoolDigest != p1.PoolDigest || d.Campaign.Prizes[1].AwardedCount != 1 || d.Campaign.Prizes[2].DrawnAt == 0 || d.Campaign.Prizes[2].AwardedCount != 0 {
+			t.Fatalf("deadline or duplicate draw failed: %+v", d)
+		}
+		late, err := s.JoinPrize(ctx, c.ID, "pool-multi-user", 10, "", secondID)
+		must(err)
+		if late.ID != second.ID || late.Outcome != "won" {
+			t.Fatal("late retry lost result")
+		}
+		var n int
+		must(db.QueryRow("SELECT COUNT(*) FROM askxuan_payment.points_ledger WHERE user_id='pool-multi-user'").Scan(&n))
+		if n != 2 {
+			t.Fatal("duplicate debit", n)
+		}
+		must(db.QueryRow("SELECT COUNT(*) FROM reward_order WHERE campaign_id=?", c.ID).Scan(&n))
+		if n != 2 {
+			t.Fatal("duplicate orders", n)
+		}
+		must(db.QueryRow("SELECT COUNT(*) FROM reward_audit WHERE campaign_id=? AND action='draw_prize'", c.ID).Scan(&n))
+		if n != 3 {
+			t.Fatal("duplicate prize draws", n)
+		}
+	})
+	t.Run("single_pool_prize_old_client_and_atomic_full_draw", func(t *testing.T) {
+		c := fixture()
+		c.Prizes = []Prize{{Name: "单奖品", Kind: "physical", Value: 100, Quantity: 1, Capacity: 2}}
+		c = create(c)
+		fund("pool-single-a", 20)
+		fund("pool-single-b", 20)
+		first, err := s.Join(ctx, c.ID, "pool-single-a", 10)
+		must(err)
+		if first.PrizeID != c.Prizes[0].ID {
+			t.Fatal("old client single selection failed")
+		}
+		broken := s
+		broken.Random = failedReader{}
+		if _, err = broken.Join(ctx, c.ID, "pool-single-b", 10); err == nil {
+			t.Fatal("entropy failure accepted")
+		}
+		d, err := s.Detail(ctx, c.ID, "pool-single-b", false)
+		must(err)
+		if d.PointsBalance != 20 || d.Mine != nil || d.Campaign.ParticipantCount != 1 || d.Campaign.Prizes[0].ParticipantCount != 1 || d.Campaign.Prizes[0].DrawnAt != 0 {
+			t.Fatal("full draw did not roll back debit, code and count")
+		}
+		_, err = s.Join(ctx, c.ID, "pool-single-b", 10)
+		must(err)
+		d, err = s.Detail(ctx, c.ID, "pool-single-b", false)
+		must(err)
+		if d.Campaign.Status != "drawn" || len(d.Winners) != 1 {
+			t.Fatal("single prize full did not close")
+		}
+	})
+	t.Run("pool_digital_inventory_and_old_binary_guard", func(t *testing.T) {
+		c := fixture()
+		c.Prizes = []Prize{{Name: "奖池礼品卡", Kind: "code", Value: 100, Quantity: 1, Capacity: 1, Platform: "测试平台", Instructions: "输入兑换码", ExpiresAt: c.EndsAt + 86400}}
+		c, err := s.Save(ctx, c, "admin")
+		must(err)
+		if err = s.Publish(ctx, c.ID, "admin"); !errors.Is(err, ErrStock) {
+			t.Fatal("empty stock published", err)
+		}
+		must(s.ImportStock(ctx, c.ID, c.Prizes[0].ID, []string{"POOL-ONLY-CODE"}, "admin"))
+		must(s.Publish(ctx, c.ID, "admin"))
+		_, err = db.Exec("INSERT INTO reward_entry(campaign_id,user_id,code,outcome,created_at,points_spent) VALUES(?,'old-pool','OLD-POOL','pending',?,10)", c.ID, time.Now().Unix())
+		if err == nil {
+			t.Fatal("old binary accepted unspecified pool prize")
+		}
+		fund("pool-digital", 10)
+		entry, err := s.Join(ctx, c.ID, "pool-digital", 10)
+		must(err)
+		if entry.Outcome != "won" {
+			t.Fatal("digital pool not drawn")
+		}
+		orders, err := s.Orders(ctx, "pool-digital", false, 1, "")
+		must(err)
+		if len(orders) != 1 || orders[0].Status != "delivered" {
+			t.Fatal("digital award not delivered")
+		}
+		r, err := s.Redemption(ctx, orders[0].ID, "pool-digital")
+		must(err)
+		if r.Code != "POOL-ONLY-CODE" {
+			t.Fatal("wrong pool credential")
+		}
+	})
+
+	t.Run("concurrent_pool_prize_capacities", func(t *testing.T) {
+		c := fixture()
+		c.Prizes = []Prize{{Name: "三人奖品", Kind: "physical", Value: 100, Quantity: 1, Capacity: 3}, {Name: "五人奖品", Kind: "physical", Value: 100, Quantity: 1, Capacity: 5}}
+		c = create(c)
+		for i := 0; i < 8; i++ {
+			fund(fmt.Sprintf("pool-race-%d", i), 100)
+		}
+		var wg sync.WaitGroup
+		for i := 0; i < 8; i++ {
+			for _, p := range c.Prizes {
+				wg.Add(1)
+				go func(user string, prizeID int64) {
+					defer wg.Done()
+					_, err := s.JoinPrize(ctx, c.ID, user, 10, "", prizeID)
+					if err != nil && !errors.Is(err, ErrClosed) {
+						t.Error(err)
+					}
+				}(fmt.Sprintf("pool-race-%d", i), p.ID)
+			}
+		}
+		wg.Wait()
+		d, err := s.Detail(ctx, c.ID, "", false)
+		must(err)
+		if d.Campaign.Status != "drawn" || d.Campaign.ParticipantCount != 8 || d.Campaign.Prizes[0].ParticipantCount != 3 || d.Campaign.Prizes[1].ParticipantCount != 5 || len(d.Winners) != 2 {
+			t.Fatalf("capacity race: %+v", d)
+		}
+		var balance, debits int
+		must(db.QueryRow("SELECT SUM(balance) FROM askxuan_payment.points_account WHERE user_id LIKE 'pool-race-%'").Scan(&balance))
+		must(db.QueryRow("SELECT COUNT(*) FROM askxuan_payment.points_ledger WHERE user_id LIKE 'pool-race-%'").Scan(&debits))
+		if balance != 720 || debits != 8 {
+			t.Fatal("capacity race overcharged", balance, debits)
+		}
+	})
+	t.Run("expired_digital_pool_does_not_block_other_prize", func(t *testing.T) {
+		c := fixture()
+		c.Prizes = []Prize{
+			{Name: "待处理过期卡", Kind: "code", Value: 100, Quantity: 1, Capacity: 2, Platform: "测试平台", Instructions: "输入兑换码", ExpiresAt: c.EndsAt + 86400},
+			{Name: "独立实物", Kind: "physical", Value: 100, Quantity: 1, Capacity: 2},
+		}
+		c, err := s.Save(ctx, c, "admin")
+		must(err)
+		must(s.ImportStock(ctx, c.ID, c.Prizes[0].ID, []string{"EXPIRED-POOL-CODE"}, "admin"))
+		must(s.Publish(ctx, c.ID, "admin"))
+		fund("pool-expired", 20)
+		for _, p := range c.Prizes {
+			_, err := s.JoinPrize(ctx, c.ID, "pool-expired", 10, "", p.ID)
+			must(err)
+		}
+		// Simulate a scheduler outage beyond the digital credential's validity.
+		_, err = db.Exec("UPDATE reward_prize SET expires_at=? WHERE id=?", time.Now().Unix()-1, c.Prizes[0].ID)
+		must(err)
+		expire(c.ID)
+		if err = s.Draw(ctx, c.ID); !errors.Is(err, ErrStock) {
+			t.Fatal("expired inventory not reported", err)
+		}
+		d, err := s.Detail(ctx, c.ID, "pool-expired", false)
+		must(err)
+		if d.Campaign.Status != "published" || d.Campaign.Prizes[0].DrawnAt != 0 || d.Campaign.Prizes[1].DrawnAt == 0 || len(d.Winners) != 1 || d.Winners[0].PrizeID != c.Prizes[1].ID {
+			t.Fatalf("expired prize blocked independent settlement: %+v", d)
+		}
+		if err = s.Draw(ctx, c.ID); !errors.Is(err, ErrStock) {
+			t.Fatal("pending failure hidden", err)
+		}
+		orders, err := s.Orders(ctx, "pool-expired", false, 1, "")
+		must(err)
+		if len(orders) != 1 || orders[0].PrizeID != c.Prizes[1].ID {
+			t.Fatal("expired or duplicate award")
+		}
+	})
+	t.Run("pool_migration_preserves_existing_entries", func(t *testing.T) {
+		c := create(fixture())
+		fund("pool-history", 20)
+		before, err := s.Join(ctx, c.ID, "pool-history", 10)
+		must(err)
+		for _, q := range strings.Split(strings.ReplaceAll(string(poolMigration), "USE askxuan_marketing;", ""), ";") {
+			if strings.TrimSpace(q) != "" {
+				_, err = db.Exec(q)
+				must(err)
+			}
+		}
+		after, err := s.Join(ctx, c.ID, "pool-history", 10)
+		must(err)
+		if before != after || after.PrizeID != 0 {
+			t.Fatal("migration rewrote historical entry")
+		}
+		d, err := s.Detail(ctx, c.ID, "pool-history", false)
+		must(err)
+		if len(d.Campaign.Prizes) != 0 || d.PointsBalance != 10 || len(d.MineEntries) != 1 {
+			t.Fatal("legacy pool semantics changed")
 		}
 	})
 

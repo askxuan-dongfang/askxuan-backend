@@ -116,13 +116,14 @@ func rewardHandler(store rewards.Store, admin bool, action string) http.HandlerF
 		case "join":
 			var b struct {
 				ExpectedPoints int64  `json:"expectedPoints"`
+				PrizeID        int64  `json:"prizeId"`
 				RequestKey     string `json:"requestKey"`
 			}
 			if decode(&b) != nil || b.ExpectedPoints < 1 {
 				e = rewards.ErrPrice
 				break
 			}
-			data, e = store.Join(r.Context(), path.ID, user, b.ExpectedPoints, b.RequestKey)
+			data, e = store.JoinPrize(r.Context(), path.ID, user, b.ExpectedPoints, b.RequestKey, b.PrizeID)
 		case "publish":
 			e = store.Publish(r.Context(), path.ID, user)
 		case "cancel":
@@ -148,7 +149,7 @@ func rewardHandler(store rewards.Store, admin bool, action string) http.HandlerF
 		}
 		if e != nil {
 			switch {
-			case errors.Is(e, rewards.ErrStock), errors.Is(e, rewards.ErrDuplicateStock), errors.Is(e, rewards.ErrVault), errors.Is(e, rewards.ErrInvalid), errors.Is(e, rewards.ErrClosed), errors.Is(e, rewards.ErrConflict), errors.Is(e, rewards.ErrNotFound), errors.Is(e, rewards.ErrBalance), errors.Is(e, rewards.ErrPrice):
+			case errors.Is(e, rewards.ErrPrizeSelection), errors.Is(e, rewards.ErrStock), errors.Is(e, rewards.ErrDuplicateStock), errors.Is(e, rewards.ErrVault), errors.Is(e, rewards.ErrInvalid), errors.Is(e, rewards.ErrClosed), errors.Is(e, rewards.ErrConflict), errors.Is(e, rewards.ErrNotFound), errors.Is(e, rewards.ErrBalance), errors.Is(e, rewards.ErrPrice):
 				common.JsonError(w, common.NewBizError(40001, e.Error()))
 			default:
 				logx.Errorf("reward %s: %v", action, e)
