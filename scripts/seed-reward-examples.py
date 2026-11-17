@@ -34,7 +34,7 @@ def seed(base, token, publish=False):
              description='示例活动：一枚草木香囊与便携礼袋。轻轻一转，为日常添一份草木清香。',
              pointsCost=10, prizeValue=3900, budget=100000, prizeQuantity=20, capacity=200),
         dict(title='一期一礼 · 天然香珠手串大奖池', kind='pool', prizeName='天然香珠手串礼盒',
-             description='示例活动：天然香珠手串一条，配礼盒与收纳袋。活动截止后，在所有有效参与码中等概率抽出一名中奖者。',
+             description='示例活动：天然香珠手串一条，配礼盒与收纳袋。该奖品满员或活动截止后，在有效参与码中等概率抽出一名中奖者。',
              pointsCost=20, prizeValue=12900, budget=18000, prizeQuantity=1, capacity=100),
     ]
     out = []
@@ -42,7 +42,7 @@ def seed(base, token, publish=False):
         current = next((c for c in existing if c['title'] == sample['title']), None)
         if current is None:
             sample.update(image='', startsAt=now-60, endsAt=now+14*86400,
-                rules='每人每期消耗页面标明的积分参与一次，一人一码。成功参与后无论是否中奖均不退回积分，失败不扣分，重复请求不重复扣分。奖品与中国大陆地区运费由平台预算承担，不按商品价值折算积分。大奖池到期自动开奖，不等满额。中奖后在“我的奖品”填写地址，由平台安排发货。功德值不受影响。')
+                rules='转盘可多次抽奖，每次消耗页面标明的积分；奖池每人每期每个奖品限一次，每次取得一个参与码。成功参与后无论是否中奖均不退回积分，失败不扣分，重复请求不重复扣分。奖品与中国大陆地区运费由平台预算承担，不按商品价值折算积分。奖池各奖品满员或到期即独立开奖。中奖后在“我的奖品”填写地址，由平台安排发货。功德值不受影响。')
             current = api('/campaigns', sample)
         if publish and current['status'] == 'draft':
             api('/campaigns/' + str(current['id']) + '/publish', {})

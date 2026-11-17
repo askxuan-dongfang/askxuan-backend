@@ -11,18 +11,24 @@ import (
 
 // Prize contains public configuration only. Redemption credentials live in a separate vault.
 type Prize struct {
-	ID            int64  `json:"id"`
-	Name          string `json:"name"`
-	Kind          string `json:"kind"`
-	Image         string `json:"image"`
-	Value         int64  `json:"value"`
-	Quantity      int    `json:"quantity"`
-	AwardedCount  int    `json:"awardedCount"`
-	Platform      string `json:"platform"`
-	Instructions  string `json:"instructions"`
-	ExpiresAt     int64  `json:"expiresAt"`
-	RedemptionURL string `json:"redemptionUrl"`
-	StockCount    int    `json:"stockCount,omitempty"`
+	Capacity         int    `json:"capacity"`
+	ParticipantCount int    `json:"participantCount"`
+	DrawnAt          int64  `json:"drawnAt"`
+	PoolDigest       string `json:"poolDigest"`
+	Announcement     string `json:"announcement"`
+	Phase            string `json:"phase"`
+	ID               int64  `json:"id"`
+	Name             string `json:"name"`
+	Kind             string `json:"kind"`
+	Image            string `json:"image"`
+	Value            int64  `json:"value"`
+	Quantity         int    `json:"quantity"`
+	AwardedCount     int    `json:"awardedCount"`
+	Platform         string `json:"platform"`
+	Instructions     string `json:"instructions"`
+	ExpiresAt        int64  `json:"expiresAt"`
+	RedemptionURL    string `json:"redemptionUrl"`
+	StockCount       int    `json:"stockCount,omitempty"`
 	// Nil preserves the published rules of campaigns created before fixed odds.
 	ProbabilityBps *int `json:"probabilityBps,omitempty"`
 }
@@ -41,13 +47,20 @@ func validatePrizes(c Campaign) error {
 		}
 		return nil
 	}
-	if c.Kind != "wheel" {
+	if c.Kind != "wheel" && c.Kind != "pool" {
 		return ErrInvalid
 	}
 	total, quantity, odds, configured := int64(0), 0, 0, 0
+	capacity := c.Capacity
+	if c.Kind == "pool" {
+		capacity = 0
+	}
 	ids := map[int64]bool{}
 	for _, p := range c.Prizes {
 		if !validText(p.Name, 1, 120) || p.Value < 1 || p.Value > 100000000 || p.Quantity < 1 || p.Quantity > 100000 || p.ID < 0 || (p.ID > 0 && ids[p.ID]) {
+			return ErrInvalid
+		}
+		if c.Kind == "pool" && (p.Capacity < p.Quantity || p.Capacity > 100000 || p.ProbabilityBps != nil) {
 			return ErrInvalid
 		}
 		if p.ProbabilityBps != nil {
@@ -65,7 +78,7 @@ func validatePrizes(c Campaign) error {
 			return ErrInvalid
 		}
 		if p.Kind != "physical" {
-			if !validText(p.Platform, 1, 80) || !validText(p.Instructions, 1, 2000) || p.ExpiresAt <= c.EndsAt {
+			if !validText(p.Platform, 1, 80) || !validText(p.Instructions, 1, 2000) || p.ExpiresAt <= c.EndsAt || (c.Kind == "pool" && p.ExpiresAt < c.EndsAt+86400) {
 				return ErrInvalid
 			}
 			if p.RedemptionURL != "" && (p.Kind != "code" || !safeHTTPS(p.RedemptionURL)) {
@@ -76,9 +89,18 @@ func validatePrizes(c Campaign) error {
 		}
 		total += p.Value * int64(p.Quantity)
 		quantity += p.Quantity
+		if c.Kind == "pool" {
+			capacity += p.Capacity
+		}
 	}
-	if (configured != 0 && configured != len(c.Prizes)) || odds > 10000 || c.Budget < total || (configured == 0 && (quantity > 1000 || quantity > c.Capacity)) {
+	if (configured != 0 && configured != len(c.Prizes)) || odds > 10000 || c.Budget < total || (configured == 0 && (quantity > 1000 || quantity > capacity)) {
 		return ErrInvalid
+	}
+	if c.Kind == "pool" {
+		if len(c.WheelSlots) > 0 {
+			return ErrInvalid
+		}
+		return nil
 	}
 	return validateWheelSlots(c, odds)
 }
@@ -118,8 +140,14 @@ func normalizeCampaign(c *Campaign) {
 		return
 	}
 	c.PrizeQuantity = 0
+	if c.Kind == "pool" {
+		c.Capacity = 0
+	}
 	for _, p := range c.Prizes {
 		c.PrizeQuantity += p.Quantity
+		if c.Kind == "pool" {
+			c.Capacity += p.Capacity
+		}
 	}
 	c.PrizeName = c.Prizes[0].Name
 	if len(c.Prizes) > 1 {
@@ -134,7 +162,7 @@ type prizeQuerier interface {
 }
 
 func loadPrizes(ctx context.Context, q prizeQuerier, c *Campaign, admin bool) error {
-	rows, err := q.QueryContext(ctx, `SELECT p.id,p.name,p.kind,p.image,p.value,p.quantity,p.awarded_count,p.platform,p.instructions,p.expires_at,p.redemption_url,p.probability_bps,(SELECT COUNT(*) FROM reward_stock s WHERE s.prize_id=p.id AND s.order_id IS NULL) FROM reward_prize p WHERE p.campaign_id=? ORDER BY p.position,p.id`, c.ID)
+	rows, err := q.QueryContext(ctx, `SELECT p.id,p.name,p.kind,p.image,p.value,p.quantity,p.awarded_count,p.platform,p.instructions,p.expires_at,p.redemption_url,p.probability_bps,p.capacity,p.participant_count,p.drawn_at,p.pool_digest,p.announcement,(SELECT COUNT(*) FROM reward_stock s WHERE s.prize_id=p.id AND s.order_id IS NULL) FROM reward_prize p WHERE p.campaign_id=? ORDER BY p.position,p.id`, c.ID)
 	if err != nil {
 		return err
 	}
@@ -142,11 +170,14 @@ func loadPrizes(ctx context.Context, q prizeQuerier, c *Campaign, admin bool) er
 	c.Prizes = []Prize{}
 	for rows.Next() {
 		var p Prize
-		if err = rows.Scan(&p.ID, &p.Name, &p.Kind, &p.Image, &p.Value, &p.Quantity, &p.AwardedCount, &p.Platform, &p.Instructions, &p.ExpiresAt, &p.RedemptionURL, &p.ProbabilityBps, &p.StockCount); err != nil {
+		if err = rows.Scan(&p.ID, &p.Name, &p.Kind, &p.Image, &p.Value, &p.Quantity, &p.AwardedCount, &p.Platform, &p.Instructions, &p.ExpiresAt, &p.RedemptionURL, &p.ProbabilityBps, &p.Capacity, &p.ParticipantCount, &p.DrawnAt, &p.PoolDigest, &p.Announcement, &p.StockCount); err != nil {
 			return err
 		}
 		if !admin {
 			p.StockCount = 0
+		}
+		if c.Kind == "pool" {
+			p.Phase = p.phase(*c, time.Now().Unix())
 		}
 		c.Prizes = append(c.Prizes, p)
 	}
@@ -163,7 +194,7 @@ func savePrizes(ctx context.Context, tx *sql.Tx, c Campaign, old []Prize) error 
 	}
 	for i, p := range c.Prizes {
 		if p.ID == 0 {
-			_, err := tx.ExecContext(ctx, `INSERT INTO reward_prize(campaign_id,position,name,kind,image,value,quantity,platform,instructions,expires_at,redemption_url,probability_bps) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, c.ID, i, p.Name, p.Kind, p.Image, p.Value, p.Quantity, p.Platform, p.Instructions, p.ExpiresAt, p.RedemptionURL, p.ProbabilityBps)
+			_, err := tx.ExecContext(ctx, `INSERT INTO reward_prize(campaign_id,position,name,kind,image,value,quantity,platform,instructions,expires_at,redemption_url,probability_bps,capacity) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, c.ID, i, p.Name, p.Kind, p.Image, p.Value, p.Quantity, p.Platform, p.Instructions, p.ExpiresAt, p.RedemptionURL, p.ProbabilityBps, p.Capacity)
 			if err != nil {
 				return err
 			}
@@ -176,7 +207,7 @@ func savePrizes(ctx context.Context, tx *sql.Tx, c Campaign, old []Prize) error 
 			if before.StockCount > 0 && (before.Kind != p.Kind || before.Platform != p.Platform || before.ExpiresAt != p.ExpiresAt) {
 				return ErrConflict
 			}
-			_, err := tx.ExecContext(ctx, `UPDATE reward_prize SET position=?,name=?,kind=?,image=?,value=?,quantity=?,platform=?,instructions=?,expires_at=?,redemption_url=?,probability_bps=? WHERE id=? AND campaign_id=?`, i, p.Name, p.Kind, p.Image, p.Value, p.Quantity, p.Platform, p.Instructions, p.ExpiresAt, p.RedemptionURL, p.ProbabilityBps, p.ID, c.ID)
+			_, err := tx.ExecContext(ctx, `UPDATE reward_prize SET position=?,name=?,kind=?,image=?,value=?,quantity=?,platform=?,instructions=?,expires_at=?,redemption_url=?,probability_bps=?,capacity=? WHERE id=? AND campaign_id=?`, i, p.Name, p.Kind, p.Image, p.Value, p.Quantity, p.Platform, p.Instructions, p.ExpiresAt, p.RedemptionURL, p.ProbabilityBps, p.Capacity, p.ID, c.ID)
 			if err != nil {
 				return err
 			}

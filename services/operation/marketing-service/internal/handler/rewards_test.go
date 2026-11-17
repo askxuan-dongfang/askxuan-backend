@@ -151,3 +151,36 @@ func TestVirtualRewardRoutesAreRoleBound(t *testing.T) {
 		}
 	}
 }
+
+func TestPoolJoinRejectsInvalidPrizeBeforeDebit(t *testing.T) {
+	var c rest.RestConf
+	conf.FillDefault(&c)
+	c.Name, c.Port = "pool-prize-input-test", 33380
+	server, err := rest.NewServer(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Stop()
+	ctx := &svc.ServiceContext{}
+	ctx.Config.Auth.AccessSecret = "local-pool-prize-test"
+	registerRewards(server, ctx)
+	token, err := common.GenAccessToken(ctx.Config.Auth.AccessSecret, common.TokenInfo{UserId: 1, Roles: []string{"customer"}}, 3600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/marketing/rewards/campaigns/1/join", strings.NewReader(`{"expectedPoints":10,"prizeId":-1}`))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	server.ServeHTTP(rr, req)
+	var resp struct {
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+	}
+	if err = json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Code != 40001 {
+		t.Fatalf("invalid prize accepted: %s", rr.Body.String())
+	}
+}

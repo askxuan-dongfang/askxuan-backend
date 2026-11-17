@@ -170,3 +170,58 @@ func TestTenSlotLayoutDoesNotChangeProbability(t *testing.T) {
 		}
 	}
 }
+
+func TestPoolPrizeValidationAndPhase(t *testing.T) {
+	c := fixture()
+	c.Prizes = []Prize{{Name: "奖品一", Kind: "physical", Value: 100, Quantity: 1, Capacity: 2}, {Name: "奖品二", Kind: "physical", Value: 100, Quantity: 2, Capacity: 5}}
+	if err := Validate(c, time.Now().Unix()); err != nil {
+		t.Fatal(err)
+	}
+	for name, mutate := range map[string]func(*Campaign){
+		"zero":           func(c *Campaign) { c.Prizes[0].Capacity = 0 },
+		"below_quantity": func(c *Campaign) { c.Prizes[1].Capacity = 1 },
+		"odds":           func(c *Campaign) { c.Prizes[0].ProbabilityBps = bps(100) },
+		"slots":          func(c *Campaign) { c.WheelSlots = []int{0} },
+	} {
+		t.Run(name, func(t *testing.T) {
+			bad := c
+			bad.Prizes = append([]Prize{}, c.Prizes...)
+			mutate(&bad)
+			if Validate(bad, time.Now().Unix()) == nil {
+				t.Fatal("invalid pool accepted")
+			}
+		})
+	}
+	c.Status = "published"
+	c.Prizes[0].ParticipantCount = 2
+	if c.Prizes[0].phase(c, c.StartsAt+1) != "awaiting_draw" || c.phase(c.StartsAt+1) != "open" {
+		t.Fatal("one full prize closed others")
+	}
+	c.Prizes[0].DrawnAt = c.StartsAt + 1
+	if c.Prizes[0].phase(c, c.EndsAt+1) != "drawn" || c.Prizes[1].phase(c, c.EndsAt) != "awaiting_draw" {
+		t.Fatal("independent deadline phase")
+	}
+}
+
+func TestPoolDigitalExpiryGraceDoesNotChangeWheelRules(t *testing.T) {
+	c := multiFixture()
+	c.Prizes = c.Prizes[1:2]
+	c.Prizes[0].ExpiresAt = c.EndsAt + 1
+	if err := Validate(c, time.Now().Unix()); err != nil {
+		t.Fatal("wheel rules changed", err)
+	}
+	c.Kind = "pool"
+	c.Prizes[0].ProbabilityBps = nil
+	c.Prizes[0].Capacity = 2
+	if Validate(c, time.Now().Unix()) == nil {
+		t.Fatal("pool credential may expire before next scheduler tick")
+	}
+	c.Prizes[0].ExpiresAt = c.EndsAt + 86400 - 1
+	if Validate(c, time.Now().Unix()) == nil {
+		t.Fatal("pool grace under 24 hours accepted")
+	}
+	c.Prizes[0].ExpiresAt++
+	if err := Validate(c, time.Now().Unix()); err != nil {
+		t.Fatal("24 hour expiry rejected", err)
+	}
+}
