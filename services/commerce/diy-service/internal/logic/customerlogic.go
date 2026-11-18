@@ -68,14 +68,21 @@ func (l *DesignListLogic) List(req *types.DesignListReq) (*types.DesignListResp,
 	if req.Size <= 0 || req.Size > 100 {
 		req.Size = 20
 	}
-	list, total, err := l.svcCtx.DiyDesignModel.FindListPublic(l.ctx, req.Page, req.Size)
+	list, total, err := l.svcCtx.DiyDesignModel.FindListPublic(l.ctx, req.Page, req.Size, model.DesignListFilter{Keyword: req.Keyword, FiveElement: req.FiveElement, Meaning: req.Meaning})
 	if err != nil {
+		if err == common.ErrParam {
+			return nil, err
+		}
 		l.Errorf("查询设计列表失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	resp := &types.DesignListResp{Total: total, Page: req.Page, Size: req.Size}
+	metadata, err := model.ReadDesignMetadata(l.ctx, l.svcCtx.DB, list)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	resp := &types.DesignListResp{Total: total, Page: req.Page, Size: req.Size, List: []types.DiyDesign{}}
 	for _, d := range list {
-		out, err := designResponse(l.ctx, l.svcCtx, d, false)
+		out, err := designResponse(l.ctx, l.svcCtx, d, false, metadata[d.Id])
 		if err != nil {
 			return nil, err
 		}
@@ -110,13 +117,22 @@ func (l *MyDesignListLogic) List(userId string, page, size int) (*types.MyDesign
 		l.Errorf("查询我的设计列表失败: %v", err)
 		return nil, common.ErrSystem
 	}
-	resp := &types.MyDesignListResp{Total: total, Page: page, Size: size}
+	designs := make([]*model.DiyDesign, 0, len(list))
 	for _, d := range list {
-		out, err := designResponse(l.ctx, l.svcCtx, &d.DiyDesign, true)
+		designs = append(designs, &d.DiyDesign)
+	}
+	metadata, err := model.ReadDesignMetadata(l.ctx, l.svcCtx.DB, designs)
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	resp := &types.MyDesignListResp{Total: total, Page: page, Size: size, List: []types.MyDesignItem{}}
+	for _, d := range list {
+		out, err := designResponse(l.ctx, l.svcCtx, &d.DiyDesign, true, metadata[d.Id])
 		if err != nil {
 			return nil, err
 		}
 		resp.List = append(resp.List, types.MyDesignItem{
+			AuthorName: out.AuthorName, UseCount: out.UseCount, FiveElements: out.FiveElements, Meanings: out.Meanings,
 			PublicationEligibility: out.PublicationEligibility, Publication: out.Publication, DraftChanged: out.DraftChanged, SourcePublicationId: d.SourcePublicationId,
 			Id: d.Id, Revision: d.Revision, SourceDesignId: d.SourceDesignId, Description: d.Description,
 			DesignNo:         d.DesignNo,
@@ -178,9 +194,9 @@ func (l *DesignDetailLogic) Detail(req *types.DesignDetailReq) (*types.DiyDesign
 		if err != nil {
 			return nil, ErrDesignNotFound
 		}
-		return designResponse(l.ctx, l.svcCtx, published, false)
+		return singleDesignResponse(l.ctx, l.svcCtx, published, false)
 	}
-	return designResponse(l.ctx, l.svcCtx, d, true)
+	return singleDesignResponse(l.ctx, l.svcCtx, d, true)
 }
 
 // MaterialListLogic 材料库列表
@@ -217,6 +233,7 @@ func (l *MaterialListLogic) List(req *types.MaterialListReq) (*types.MaterialLis
 
 func toTypesDesign(d *model.DiyDesign) types.DiyDesign {
 	return types.DiyDesign{
+		FiveElements: d.FiveElements, Meanings: d.Meanings,
 		Id: d.Id, Revision: d.Revision, SourceDesignId: d.SourceDesignId, SourcePublicationId: d.SourcePublicationId, Description: d.Description,
 		DesignNo:         d.DesignNo,
 		UserId:           d.UserId,
@@ -339,8 +356,28 @@ func toTypesDiyOrderDetailWithTask(ctx context.Context, svcCtx *svc.ServiceConte
 	return &t
 }
 
-func designResponse(ctx context.Context, svcCtx *svc.ServiceContext, d *model.DiyDesign, owner bool) (*types.DiyDesign, error) {
+func singleDesignResponse(ctx context.Context, svcCtx *svc.ServiceContext, d *model.DiyDesign, owner bool) (*types.DiyDesign, error) {
+	metadata, err := model.ReadDesignMetadata(ctx, svcCtx.DB, []*model.DiyDesign{d})
+	if err != nil {
+		return nil, common.ErrSystem
+	}
+	return designResponse(ctx, svcCtx, d, owner, metadata[d.Id])
+}
+
+func designResponse(ctx context.Context, svcCtx *svc.ServiceContext, d *model.DiyDesign, owner bool, metadata model.DesignMetadata) (*types.DiyDesign, error) {
 	out := toTypesDesign(d)
+	out.AuthorName, out.UseCount = metadata.AuthorName, metadata.UseCount
+	// The publication editor starts from the last published labels, including
+	// after unpublishing. Draft saves never overwrite publication metadata.
+	if owner || d.Status != model.DesignStatusPublic {
+		out.FiveElements, out.Meanings = metadata.FiveElements, metadata.Meanings
+	}
+	if out.FiveElements == nil {
+		out.FiveElements = []string{}
+	}
+	if out.Meanings == nil {
+		out.Meanings = []string{}
+	}
 	if owner {
 		eligible, _, err := model.ReadPublicationEligibility(ctx, svcCtx.DB, d, false)
 		if err != nil {

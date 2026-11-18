@@ -188,7 +188,7 @@ func (l *DesignStudio) Save(req *types.DesignSaveReq) (*types.DesignSaveResp, er
 	return &types.DesignSaveResp{Id: d.Id, Revision: d.Revision}, nil
 }
 
-func (l *DesignStudio) ChangeStatus(id, revision int64, status string, admin bool) (*types.DiyDesign, error) {
+func (l *DesignStudio) ChangeStatus(id, revision int64, status string, admin bool, tags *types.DesignTags) (*types.DiyDesign, error) {
 	user := studioUser(l.ctx)
 	if user == "" {
 		return nil, common.ErrUnauthorized
@@ -206,11 +206,15 @@ func (l *DesignStudio) ChangeStatus(id, revision int64, status string, admin boo
 	if revision < 1 {
 		return nil, common.ErrParam
 	}
-	updated, err := model.ChangePublicationStatus(l.ctx, l.svc.DB, id, revision, user, status, admin)
+	var selected *model.DesignTags
+	if tags != nil {
+		selected = &model.DesignTags{FiveElements: tags.FiveElements, Meanings: tags.Meanings}
+	}
+	updated, err := model.ChangePublicationStatus(l.ctx, l.svc.DB, id, revision, user, status, admin, selected)
 	if err != nil {
 		return nil, err
 	}
-	return designResponse(l.ctx, l.svc, updated, user == updated.UserId)
+	return singleDesignResponse(l.ctx, l.svc, updated, user == updated.UserId)
 }
 
 func (l *DesignStudio) Copy(id int64) (*types.DiyDesign, error) {
@@ -244,5 +248,5 @@ func (l *DesignStudio) Copy(id int64) (*types.DiyDesign, error) {
 	if e != nil {
 		return nil, common.ErrSystem
 	}
-	return designResponse(l.ctx, l.svc, d, true)
+	return singleDesignResponse(l.ctx, l.svc, d, true)
 }

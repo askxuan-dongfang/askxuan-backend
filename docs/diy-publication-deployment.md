@@ -1,6 +1,20 @@
 # DIY 定稿发布迁移与验收
 
-本次增加 `diy_design_publication`，以及 `diy_design.publication_id`、`diy_design.source_publication_id`、`creator_reward.source_publication_id`。仅加表/列，无历史发布资格或财务数据回填。旧 public 作品通过读取过滤保留为本人可编辑稿。
+2026-10-20 的基础迁移增加 `diy_design_publication`，以及 `diy_design.publication_id`、`diy_design.source_publication_id`、`creator_reward.source_publication_id`。仅加表/列，无历史发布资格或财务数据回填。旧 public 作品通过读取过滤保留为本人可编辑稿。
+
+## 2026-11-18 增量：广场标签与作者昵称
+
+本增量复用现有公开快照保存标签，通过现有直接复制关系统计使用次数，不新增表、列、计数器或数据回填，无需重复执行下文的既有加表/加列迁移。唯一权限变更为 [20261118_diy_plaza_author_permissions.sql](../scripts/db/20261118_diy_plaza_author_permissions.sql)：
+
+```sql
+GRANT SELECT(id,nickname) ON askxuan_user.user TO 'diy_user'@'%';
+```
+
+该语句可重复执行，不创建账号，不授予手机号、邮箱读取或用户表写权限。按既有发布锁与数据库管理员流程执行已审阅的目标文件，记录提交、SQL SHA-256 和执行结果；随后用 DIY 服务自身账号只读校验 `SELECT id,nickname FROM askxuan_user.user WHERE 1=0`，连接凭据仅在服务器内部使用。
+
+新增 `scripts/db` 文件会改变 `backend_contract`。授权和零行查询核验完成后，按下文流程从同一已提交目标版本计算 contract，保留旧值并更新运维基线，再发布该提交的官方包；不以本地未提交工作树计算值替代包的 contract。
+
+增量验收覆盖省略标签保留、双空数组清空、旧快照返回空数组、公开快照不随草稿修改、服务端组合筛选与分页总数、真实作者昵称及其他用户直接副本计数。标签变更不改变定稿材料价、订单快照、付款/审核门槛及既有归因，具体字段见 [发布契约](diy-publication-contract.md#广场标签作者与使用次数2026-11-18)。
 
 ## CI 与隔离数据库
 

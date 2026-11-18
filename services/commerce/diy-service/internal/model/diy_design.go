@@ -24,22 +24,26 @@ const designFields = "id, design_no, user_id, name, design_data, total_price, st
 const diyDesignTable = "askxuan_diy.diy_design"
 
 // DiyDesign DIY设计表
+// FiveElements and Meanings live only in publication JSON, so SQL reads use
+// the partial scanner for this model while selecting every persisted column.
 type DiyDesign struct {
-	PublicationId       int64   `db:"publication_id" json:"publicationId"`
-	SourcePublicationId int64   `db:"source_publication_id" json:"sourcePublicationId"`
-	Revision            int64   `db:"revision" json:"revision"`
-	SourceDesignId      int64   `db:"source_design_id" json:"sourceDesignId"`
-	Description         string  `db:"description" json:"description"`
-	Id                  int64   `db:"id" json:"id"`
-	DesignNo            string  `db:"design_no" json:"designNo"`
-	UserId              string  `db:"user_id" json:"userId"`
-	Name                string  `db:"name" json:"name"`
-	DesignData          string  `db:"design_data" json:"designData"`
-	TotalPrice          float64 `db:"total_price" json:"totalPrice"`
-	Status              string  `db:"status" json:"status"`
-	BlessServiceCode    string  `db:"bless_service_code" json:"blessServiceCode"`
-	CreateTime          string  `db:"create_time" json:"createTime"`
-	UpdateTime          string  `db:"update_time" json:"updateTime"`
+	FiveElements        []string `db:"-" json:"fiveElements"`
+	Meanings            []string `db:"-" json:"meanings"`
+	PublicationId       int64    `db:"publication_id" json:"publicationId"`
+	SourcePublicationId int64    `db:"source_publication_id" json:"sourcePublicationId"`
+	Revision            int64    `db:"revision" json:"revision"`
+	SourceDesignId      int64    `db:"source_design_id" json:"sourceDesignId"`
+	Description         string   `db:"description" json:"description"`
+	Id                  int64    `db:"id" json:"id"`
+	DesignNo            string   `db:"design_no" json:"designNo"`
+	UserId              string   `db:"user_id" json:"userId"`
+	Name                string   `db:"name" json:"name"`
+	DesignData          string   `db:"design_data" json:"designData"`
+	TotalPrice          float64  `db:"total_price" json:"totalPrice"`
+	Status              string   `db:"status" json:"status"`
+	BlessServiceCode    string   `db:"bless_service_code" json:"blessServiceCode"`
+	CreateTime          string   `db:"create_time" json:"createTime"`
+	UpdateTime          string   `db:"update_time" json:"updateTime"`
 }
 
 // DiyDesignWithOrder 我的设计（含最新订单信息，无订单时 OrderNo/OrderStatus 为空）
@@ -53,7 +57,7 @@ type DiyDesignWithOrder struct {
 type DiyDesignModel interface {
 	Insert(ctx context.Context, data *DiyDesign) (*DiyDesign, error)
 	FindOne(ctx context.Context, id int64) (*DiyDesign, error)
-	FindListPublic(ctx context.Context, page, size int) ([]*DiyDesign, int64, error)
+	FindListPublic(ctx context.Context, page, size int, filter DesignListFilter) ([]*DiyDesign, int64, error)
 	FindListByUserWithOrders(ctx context.Context, userId string, page, size int) ([]*DiyDesignWithOrder, int64, error)
 	Update(ctx context.Context, data *DiyDesign) error
 	UpdateOwned(ctx context.Context, data *DiyDesign, revision int64) error
@@ -100,15 +104,15 @@ func (m *defaultDiyDesignModel) Insert(ctx context.Context, data *DiyDesign) (*D
 func (m *defaultDiyDesignModel) FindOne(ctx context.Context, id int64) (*DiyDesign, error) {
 	var d DiyDesign
 	query := fmt.Sprintf(`SELECT id, design_no, user_id, name, design_data, total_price, status, bless_service_code, create_time, update_time, revision, source_design_id, description, publication_id, source_publication_id FROM %s WHERE id = ?`, diyDesignTable)
-	err := m.conn.QueryRowCtx(ctx, &d, query, id)
+	err := m.conn.QueryRowPartialCtx(ctx, &d, query, id)
 	if err != nil {
 		return nil, err
 	}
 	return &d, nil
 }
 
-func (m *defaultDiyDesignModel) FindListPublic(ctx context.Context, page, size int) ([]*DiyDesign, int64, error) {
-	return findPublishedDesigns(ctx, m.conn, page, size)
+func (m *defaultDiyDesignModel) FindListPublic(ctx context.Context, page, size int, filter DesignListFilter) ([]*DiyDesign, int64, error) {
+	return findPublishedDesigns(ctx, m.conn, page, size, filter)
 }
 
 func (m *defaultDiyDesignModel) FindListByUserWithOrders(ctx context.Context, userId string, page, size int) ([]*DiyDesignWithOrder, int64, error) {
@@ -129,7 +133,7 @@ func (m *defaultDiyDesignModel) FindListByUserWithOrders(ctx context.Context, us
 			AND o.id = (SELECT MAX(id) FROM askxuan_diy.diy_order o2 WHERE o2.design_id = d.id AND o2.user_id = d.user_id)
 		WHERE d.user_id = ? ORDER BY d.update_time DESC LIMIT ?, ?`, diyDesignTable)
 	var list []*DiyDesignWithOrder
-	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, userId, offset, size); err != nil {
+	if err := m.conn.QueryRowsPartialCtx(ctx, &list, listQuery, userId, offset, size); err != nil {
 		return nil, 0, err
 	}
 	return list, total, nil

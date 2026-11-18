@@ -44,6 +44,6 @@ func (m *defaultDiyDesignModel) FindStudioList(ctx context.Context, owner, statu
 	}
 	list := []*DiyDesign{}
 	args = append(args, (page-1)*size, size)
-	err := m.conn.QueryRowsCtx(ctx, &list, "SELECT "+designFields+" FROM askxuan_diy.diy_design WHERE "+where+" ORDER BY update_time DESC,id DESC LIMIT ?,?", args...)
+	err := m.conn.QueryRowsPartialCtx(ctx, &list, "SELECT "+designFields+" FROM askxuan_diy.diy_design WHERE "+where+" ORDER BY update_time DESC,id DESC LIMIT ?,?", args...)
 	return list, total, err
 }

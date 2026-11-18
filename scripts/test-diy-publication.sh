@@ -21,16 +21,24 @@ docker exec -i "$container" mysql -uroot < scripts/db/20261020_diy_publication_g
 # Match the DIY app's financial read-only boundary; root is only for fixtures.
 docker exec -i "$container" mysql -uroot <<'SQL'
 CREATE USER 'diy_publication_app'@'%' IDENTIFIED BY 'disposable-publication-test';
+CREATE USER 'diy_user'@'%' IDENTIFIED BY 'disposable-plaza-test';
 GRANT ALL PRIVILEGES ON askxuan_diy.* TO 'diy_publication_app'@'%';
 GRANT SELECT ON askxuan_payment.payment TO 'diy_publication_app'@'%';
 GRANT SELECT ON askxuan_payment.refund TO 'diy_publication_app'@'%';
+GRANT ALL PRIVILEGES ON askxuan_diy.* TO 'diy_user'@'%';
+GRANT SELECT ON askxuan_payment.payment TO 'diy_user'@'%';
+GRANT SELECT ON askxuan_payment.refund TO 'diy_user'@'%';
 SELECT VERSION() AS mysql_version, @@transaction_isolation AS isolation_level;
 SHOW GRANTS FOR 'diy_publication_app'@'%';
 SQL
+# Apply the exact additive column grant twice; the plaza tests use this account.
+docker exec -i "$container" mysql -uroot < scripts/db/20261118_diy_plaza_author_permissions.sql
+docker exec -i "$container" mysql -uroot < scripts/db/20261118_diy_plaza_author_permissions.sql
 port=$(docker port "$container" 3306/tcp | sed 's/.*://')
 export DIY_PUBLICATION_TEST_ISOLATED=1
 export DIY_PUBLICATION_TEST_DSN="root@tcp(127.0.0.1:$port)/askxuan_diy?charset=utf8mb4&parseTime=false"
 export DIY_PUBLICATION_APP_TEST_DSN="diy_publication_app:disposable-publication-test@tcp(127.0.0.1:$port)/askxuan_diy?charset=utf8mb4&parseTime=false"
+export DIY_PLAZA_APP_TEST_DSN="diy_user:disposable-plaza-test@tcp(127.0.0.1:$port)/askxuan_diy?charset=utf8mb4&parseTime=false"
 export DIY_STUDIO_TEST=1
 GOMAXPROCS=2 go test -p 2 ./services/commerce/diy-service/internal/model -run 'TestPublicationMySQL' -count=1 -v
 GOMAXPROCS=2 go test -p 2 ./services/commerce/diy-service/internal/handler -run TestStudioIntegration -count=1 -v
