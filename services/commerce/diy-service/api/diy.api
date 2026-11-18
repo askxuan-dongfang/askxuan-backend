@@ -25,6 +25,10 @@ type (
         PublishedAt string `json:"publishedAt"`
     }
     DiyDesign {
+        AuthorName string `json:"authorName"`
+        UseCount int64 `json:"useCount"`
+        FiveElements []string `json:"fiveElements"`
+        Meanings []string `json:"meanings"`
         PublicationEligibility *PublicationEligibility `json:"publicationEligibility,optional"`
         Publication *DesignPublication `json:"publication,optional"`
         DraftChanged bool `json:"draftChanged"`
@@ -118,6 +122,9 @@ type (
     DesignListReq {
         Page int `form:"page,default=1"`
         Size int `form:"size,default=20"`
+        Keyword string `form:"keyword,optional"`
+        FiveElement string `form:"fiveElement,optional"`
+        Meaning string `form:"meaning,optional"`
     }
 
     MyDesignListReq {
@@ -127,6 +134,10 @@ type (
 
     // MyDesignItem 我的设计（含最新订单信息）
     MyDesignItem {
+        AuthorName string `json:"authorName"`
+        UseCount int64 `json:"useCount"`
+        FiveElements []string `json:"fiveElements"`
+        Meanings []string `json:"meanings"`
         PublicationEligibility *PublicationEligibility `json:"publicationEligibility,optional"`
         Publication *DesignPublication `json:"publication,optional"`
         DraftChanged bool `json:"draftChanged"`
@@ -535,10 +546,15 @@ service diy-service {
 // are server-authoritative. Save always creates/updates a private v2 document.
 // New documents contain 1..60 beads, wristSizeMm 100..260, fitAllowanceMm 0..30.
 type (
+    DesignTags {
+        FiveElements []string `json:"fiveElements,optional"`
+        Meanings []string `json:"meanings,optional"`
+    }
     DesignStatusReq {
         Id int64 `path:"id"`
         Revision int64 `json:"revision"`
         Status string `json:"status"`
+        Tags *DesignTags `json:"tags,optional"`
     }
     StudioListReq {
         Page int `form:"page,default=1"`

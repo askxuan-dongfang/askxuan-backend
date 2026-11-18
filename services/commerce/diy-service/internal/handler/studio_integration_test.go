@@ -12,6 +12,7 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/rest"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -229,6 +230,77 @@ func TestStudioIntegration(t *testing.T) {
 		t.Fatal("unqualified legacy work mislabelled as published")
 	}
 	call("GET", path, "", nil, false)
+	t.Run("plaza response and publication labels", func(t *testing.T) {
+		if _, err = db.ExecCtx(ctx, "INSERT INTO askxuan_user.user(id,mobile,nickname) VALUES(99001,'secret-owner-99001','HTTP标签作者'),(99002,'secret-copy-99002','') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname)"); err != nil {
+			t.Fatal(err)
+		}
+		fresh := call("POST", "/diy/designs", owner, map[string]any{"userId": "99001", "name": "HTTP广场作品", "designData": string(document), "totalPrice": 28}, true)
+		freshID := int64(fresh["id"].(float64))
+		freshPath := fmt.Sprintf("/diy/designs/%d", freshID)
+		freshDesign, err := s.DiyDesignModel.FindOne(ctx, freshID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := json.Marshal(freshDesign)
+		confirmed, err := s.DiyOrderModel.Insert(ctx, &model.DiyOrder{OrderNo: fmt.Sprintf("PUBTAGS%d", time.Now().UnixNano()), UserId: "99001", DesignId: freshID, MaterialFee: 28, TotalFee: 28, Status: model.DiyStatusInMaking, PaymentStatus: "success", AddressId: 1, DesignSnapshot: string(raw), PricingSnapshot: string(priceSnapshot)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = db.ExecCtx(ctx, "INSERT INTO askxuan_payment.payment(payment_no,user_id,order_type,order_no,amount,channel,status) VALUES(?,'99001','diy_order',?,28,'alipay','success')", confirmed.OrderNo, confirmed.OrderNo); err != nil {
+			t.Fatal(err)
+		}
+		call("PUT", freshPath+"/status", owner, map[string]any{"revision": 1, "status": "public", "tags": map[string]any{"fiveElements": []string{"wood", "water"}, "meanings": []string{"sleep"}}}, true)
+		first := call("GET", freshPath+"?view=published", "", nil, true)
+		firstPublication := int64(first["publication"].(map[string]any)["id"].(float64))
+		var firstSnapshot string
+		if err = db.QueryRowCtx(ctx, &firstSnapshot, "SELECT design_snapshot FROM diy_design_publication WHERE id=?", firstPublication); err != nil {
+			t.Fatal(err)
+		}
+		call("POST", freshPath+"/copy", owner, map[string]any{}, true)
+		for i := 0; i < 2; i++ {
+			call("POST", freshPath+"/copy", other, map[string]any{}, true)
+		}
+		public := call("GET", freshPath, "", nil, true)
+		listed := call("GET", "/diy/designs?size=1&keyword="+url.QueryEscape("HTTP标签作者")+"&fiveElement=water&meaning=sleep", "", nil, true)
+		if listed["total"].(float64) != 1 {
+			t.Fatal("HTTP filtering did not use nickname and tags", listed)
+		}
+		listedDesign := listed["list"].([]any)[0].(map[string]any)
+		owned := call("GET", freshPath, owner, nil, true)
+		mine := call("GET", "/diy/my-designs", owner, nil, true)
+		var mineDesign map[string]any
+		for _, row := range mine["list"].([]any) {
+			candidate := row.(map[string]any)
+			if int64(candidate["id"].(float64)) == freshID {
+				mineDesign = candidate
+			}
+		}
+		for _, response := range []map[string]any{public, listedDesign, owned, mineDesign} {
+			if response == nil || response["authorName"] != "HTTP标签作者" || response["useCount"].(float64) != 2 || len(response["fiveElements"].([]any)) != 2 || response["meanings"].([]any)[0] != "sleep" {
+				t.Fatal("inconsistent plaza metadata", response)
+			}
+			encoded, _ := json.Marshal(response)
+			if strings.Contains(string(encoded), "secret-") || response["mobile"] != nil || response["email"] != nil {
+				t.Fatal("public author metadata exposed private fields")
+			}
+		}
+		// Existing iOS and admin payloads omit tags; a metadata-only publication
+		// reuses the already confirmed order and must keep the previous labels.
+		preserved := call("PUT", "/admin"+freshPath+"/status", admin, map[string]any{"revision": 2, "status": "public"}, true)
+		if len(preserved["fiveElements"].([]any)) != 2 || preserved["meanings"].([]any)[0] != "sleep" {
+			t.Fatal("legacy admin status cleared labels", preserved)
+		}
+		cleared := call("PUT", freshPath+"/status", owner, map[string]any{"revision": 3, "status": "public", "tags": map[string]any{"fiveElements": []string{}, "meanings": []string{}}}, true)
+		if len(cleared["fiveElements"].([]any)) != 0 || len(cleared["meanings"].([]any)) != 0 {
+			t.Fatal("explicit clear did not persist", cleared)
+		}
+		var unchanged string
+		if err = db.QueryRowCtx(ctx, &unchanged, "SELECT design_snapshot FROM diy_design_publication WHERE id=?", firstPublication); err != nil || unchanged != firstSnapshot {
+			t.Fatal("labels changed historical snapshot", err)
+		}
+		call("PUT", freshPath+"/status", owner, map[string]any{"revision": 4, "status": "public", "tags": map[string]any{"meanings": []string{"unknown"}}}, false)
+		call("GET", "/diy/designs?fiveElement=invalid", "", nil, false)
+	})
 	t.Log("PASS: JWT ownership, canonical pricing, paid and approved gate, fixed published view, copy isolation, CAS, moderation, stock checkout gate, draft/public independence, unpublish and legacy response")
 	if fixture := os.Getenv("DIY_STUDIO_BROWSER_FIXTURE"); fixture != "" {
 		raw, _ := json.Marshal(map[string]any{"owner": owner, "other": other, "admin": admin, "designId": id, "materialId": mat.Id, "cordId": cord.Id})

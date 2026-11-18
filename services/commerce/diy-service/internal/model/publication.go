@@ -8,6 +8,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"strings"
 
 	"github.com/askxuan/common"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -144,6 +145,12 @@ func PublicationDesign(p *DesignPublication) (*DiyDesign, error) {
 		return nil, ErrPublicationUnavailable
 	}
 	d.PublicationId, d.Status, d.TotalPrice = p.Id, DesignStatusPublic, p.MaterialFee
+	if d.FiveElements == nil {
+		d.FiveElements = []string{}
+	}
+	if d.Meanings == nil {
+		d.Meanings = []string{}
+	}
 	return &d, nil
 }
 
@@ -159,13 +166,33 @@ func PublishedDesign(ctx context.Context, db sqlx.Session, d *DiyDesign) (*DiyDe
 	return published, p, err
 }
 
-func findPublishedDesigns(ctx context.Context, db sqlx.Session, page, size int) ([]*DiyDesign, int64, error) {
+func findPublishedDesigns(ctx context.Context, db sqlx.Session, page, size int, filter DesignListFilter) ([]*DiyDesign, int64, error) {
+	if (filter.FiveElement != "" && !validFiveElement(filter.FiveElement)) || (filter.Meaning != "" && !validMeaning(filter.Meaning)) {
+		return nil, 0, common.ErrParam
+	}
+	join, where := publicationJoin, publicationValid
+	args := []interface{}{}
+	if keyword := strings.TrimSpace(filter.Keyword); keyword != "" {
+		join += " LEFT JOIN askxuan_user.user u ON u.id=p.creator_id"
+		where += " AND (JSON_UNQUOTE(JSON_EXTRACT(p.design_snapshot,'$.name')) LIKE ? ESCAPE '!' OR u.nickname LIKE ? ESCAPE '!')"
+		pattern := "%" + strings.NewReplacer("!", "!!", "%", "!%", "_", "!_").Replace(keyword) + "%"
+		args = append(args, pattern, pattern)
+	}
+	if filter.FiveElement != "" {
+		where += " AND JSON_CONTAINS(p.design_snapshot,JSON_QUOTE(?),'$.fiveElements')=1"
+		args = append(args, filter.FiveElement)
+	}
+	if filter.Meaning != "" {
+		where += " AND JSON_CONTAINS(p.design_snapshot,JSON_QUOTE(?),'$.meanings')=1"
+		args = append(args, filter.Meaning)
+	}
 	var total int64
-	if err := db.QueryRowCtx(ctx, &total, "SELECT COUNT(*)"+publicationJoin+" WHERE "+publicationValid); err != nil {
+	if err := db.QueryRowCtx(ctx, &total, "SELECT COUNT(*)"+join+" WHERE "+where, args...); err != nil {
 		return nil, 0, err
 	}
 	publications := []*DesignPublication{}
-	err := db.QueryRowsCtx(ctx, &publications, "SELECT "+publicationFields+publicationJoin+" WHERE "+publicationValid+" ORDER BY p.published_at DESC,p.id DESC LIMIT ?,?", (page-1)*size, size)
+	args = append(args, (page-1)*size, size)
+	err := db.QueryRowsCtx(ctx, &publications, "SELECT "+publicationFields+join+" WHERE "+where+" ORDER BY p.published_at DESC,p.id DESC LIMIT ?,?", args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -463,11 +490,18 @@ func DraftDiffers(d *DiyDesign, p *DesignPublication) bool {
 
 // Publish and unpublish serialize with draft saves and use the existing
 // optimistic revision contract. Admin publication follows the same paid gate.
-func ChangePublicationStatus(ctx context.Context, db sqlx.SqlConn, id, revision int64, user, status string, admin bool) (*DiyDesign, error) {
+func ChangePublicationStatus(ctx context.Context, db sqlx.SqlConn, id, revision int64, user, status string, admin bool, tags *DesignTags) (*DiyDesign, error) {
+	var err error
+	if status == DesignStatusPublic {
+		tags, err = normalizeDesignTags(tags)
+		if err != nil {
+			return nil, err
+		}
+	}
 	var result *DiyDesign
-	err := db.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
+	err = db.TransactCtx(ctx, func(ctx context.Context, tx sqlx.Session) error {
 		var d DiyDesign
-		if err := tx.QueryRowCtx(ctx, &d, "SELECT "+designFields+" FROM "+diyDesignTable+" WHERE id=? FOR UPDATE", id); err != nil {
+		if err := tx.QueryRowPartialCtx(ctx, &d, "SELECT "+designFields+" FROM "+diyDesignTable+" WHERE id=? FOR UPDATE", id); err != nil {
 			return err
 		}
 		if !admin && d.UserId != user {
@@ -491,6 +525,27 @@ func ChangePublicationStatus(ctx context.Context, db sqlx.SqlConn, id, revision 
 			// The style and prices are frozen from the approved order. The author
 			// may name/describe the version without changing the approved bill.
 			snapshot.Name, snapshot.Description = d.Name, d.Description
+			selected := DesignTags{FiveElements: []string{}, Meanings: []string{}}
+			if tags != nil {
+				selected = *tags
+			} else if d.PublicationId > 0 {
+				// Old iOS/admin clients omit tags. Preserve the last published
+				// labels even after unpublishing; an explicit empty set clears them.
+				var previous string
+				if err := tx.QueryRowCtx(ctx, &previous, "SELECT design_snapshot FROM askxuan_diy.diy_design_publication WHERE id=? AND design_id=?", d.PublicationId, d.Id); err != nil {
+					return err
+				}
+				if err := json.Unmarshal([]byte(previous), &selected); err != nil {
+					return err
+				}
+			}
+			if selected.FiveElements == nil {
+				selected.FiveElements = []string{}
+			}
+			if selected.Meanings == nil {
+				selected.Meanings = []string{}
+			}
+			snapshot.FiveElements, snapshot.Meanings = selected.FiveElements, selected.Meanings
 			snapshot.SourceDesignId, snapshot.SourcePublicationId = d.SourceDesignId, d.SourcePublicationId
 			snapshot.Revision, snapshot.Status, snapshot.PublicationId = d.Revision+1, DesignStatusPublic, 0
 			data, err := json.Marshal(snapshot)
@@ -521,6 +576,7 @@ func ChangePublicationStatus(ctx context.Context, db sqlx.SqlConn, id, revision 
 			if err != nil {
 				return err
 			}
+			d.FiveElements, d.Meanings = snapshot.FiveElements, snapshot.Meanings
 		}
 		if _, err := tx.ExecCtx(ctx, "UPDATE "+diyDesignTable+" SET status=?,publication_id=?,revision=revision+1,update_time=NOW() WHERE id=? AND revision=?", status, d.PublicationId, d.Id, revision); err != nil {
 			return err
@@ -536,7 +592,7 @@ func ChangePublicationStatus(ctx context.Context, db sqlx.SqlConn, id, revision 
 // cannot order/attribute a different revision after another device saves it.
 func validateOrderDesign(ctx context.Context, tx sqlx.Session, in *PricedOrderInput) error {
 	var current DiyDesign
-	if err := tx.QueryRowCtx(ctx, &current, "SELECT "+designFields+" FROM "+diyDesignTable+" WHERE id=? FOR UPDATE", in.Design.Id); err != nil {
+	if err := tx.QueryRowPartialCtx(ctx, &current, "SELECT "+designFields+" FROM "+diyDesignTable+" WHERE id=? FOR UPDATE", in.Design.Id); err != nil {
 		return err
 	}
 	var publication *DesignPublication

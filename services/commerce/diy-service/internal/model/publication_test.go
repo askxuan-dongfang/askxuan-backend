@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -119,6 +120,27 @@ func TestLegacyDraftCheckoutDoesNotGrantPublication(t *testing.T) {
 	}
 }
 
+func TestDesignTags(t *testing.T) {
+	for _, invalid := range []*DesignTags{
+		{FiveElements: []string{"金"}}, {FiveElements: []string{"unknown"}},
+		{Meanings: []string{"fortune"}}, {Meanings: []string{"peace", "invalid"}},
+	} {
+		if _, err := normalizeDesignTags(invalid); err == nil {
+			t.Fatalf("accepted unsupported tags: %+v", invalid)
+		}
+	}
+	got, err := normalizeDesignTags(&DesignTags{FiveElements: []string{"wood", "wood", "water"}, Meanings: []string{"sleep", "calm", "sleep"}})
+	if err != nil || !reflect.DeepEqual(got, &DesignTags{FiveElements: []string{"wood", "water"}, Meanings: []string{"sleep", "calm"}}) {
+		t.Fatalf("tag normalization: %+v %v", got, err)
+	}
+	if got, err := normalizeDesignTags(nil); err != nil || got != nil {
+		t.Fatal("omitted tags lost their preserve meaning")
+	}
+	if got, err := normalizeDesignTags(&DesignTags{}); err != nil || got.FiveElements == nil || got.Meanings == nil {
+		t.Fatal("explicit empty tags must serialize as arrays")
+	}
+}
+
 // Run only via the task's disposable local database script. No production DSN,
 // credentials or existing application database is accepted.
 func TestPublicationMySQL(t *testing.T) {
@@ -196,7 +218,7 @@ func TestPublicationMySQL(t *testing.T) {
 	}
 	publish := func(d *DiyDesign) *DiyDesign {
 		t.Helper()
-		updated, e := ChangePublicationStatus(ctx, appDB, d.Id, d.Revision, d.UserId, DesignStatusPublic, false)
+		updated, e := ChangePublicationStatus(ctx, appDB, d.Id, d.Revision, d.UserId, DesignStatusPublic, false, nil)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -233,6 +255,105 @@ func TestPublicationMySQL(t *testing.T) {
 		}
 		return res.Order
 	}
+	t.Run("plaza metadata filters and versioned tags", func(t *testing.T) {
+		plazaDSN := os.Getenv("DIY_PLAZA_APP_TEST_DSN")
+		plazaConfig, err := mysql.ParseDSN(plazaDSN)
+		if err != nil || plazaConfig.User != "diy_user" || plazaConfig.Net != "tcp" || plazaConfig.Addr != fixtureConfig.Addr || plazaConfig.DBName != "askxuan_diy" {
+			t.Fatal("requires minimally granted DIY user on the disposable database")
+		}
+		plazaDB := sqlx.NewMysql(plazaDSN)
+		exec("INSERT INTO askxuan_user.user(id,mobile,nickname) VALUES(990980,'private-mobile-plaza','标签作者'),(990981,'private-mobile-empty','   ')")
+		var private string
+		err = plazaDB.QueryRowCtx(ctx, &private, "SELECT mobile FROM askxuan_user.user WHERE id=990980")
+		var denied *mysql.MySQLError
+		if !errors.As(err, &denied) || (denied.Number != 1142 && denied.Number != 1143) {
+			t.Fatalf("private user columns must remain denied: %v", err)
+		}
+		d := newDesign("990980")
+		d.Name = "专属标签旧名称"
+		if err = designs.UpdateOwned(ctx, d, d.Revision); err != nil {
+			t.Fatal(err)
+		}
+		ownOrder(d, DiyStatusInMaking, "success", "alipay")
+		selected := &DesignTags{FiveElements: []string{"wood", "water"}, Meanings: []string{"peace", "sleep"}}
+		d, err = ChangePublicationStatus(ctx, plazaDB, d.Id, d.Revision, d.UserId, DesignStatusPublic, false, selected)
+		if err != nil {
+			t.Fatal(err)
+		}
+		oldPublication := d.PublicationId
+		var oldSnapshot string
+		if err = db.QueryRowCtx(ctx, &oldSnapshot, "SELECT design_snapshot FROM diy_design_publication WHERE id=?", oldPublication); err != nil {
+			t.Fatal(err)
+		}
+		// A newer, untagged work occupies the first unfiltered page.
+		newer := newDesign("990981")
+		ownOrder(newer, DiyStatusInMaking, "success", "alipay")
+		newer = publish(newer)
+		rows, _, err := findPublishedDesigns(ctx, plazaDB, 1, 1, DesignListFilter{})
+		if err != nil || len(rows) != 1 || rows[0].Id != newer.Id {
+			t.Fatalf("unfiltered pagination fixture: %+v %v", rows, err)
+		}
+		for _, filter := range []DesignListFilter{
+			{FiveElement: "wood", Meaning: "sleep"}, {Keyword: "标签作者", FiveElement: "water"}, {Keyword: "标签旧名称", Meaning: "peace"},
+		} {
+			rows, total, err := findPublishedDesigns(ctx, plazaDB, 1, 1, filter)
+			if err != nil || total != 1 || len(rows) != 1 || rows[0].Id != d.Id {
+				t.Fatalf("filter before count/limit failed: %+v total=%d rows=%+v %v", filter, total, rows, err)
+			}
+			rows, total, err = findPublishedDesigns(ctx, plazaDB, 2, 1, filter)
+			if err != nil || total != 1 || len(rows) != 0 {
+				t.Fatal("filtered second page or total changed", total, rows, err)
+			}
+		}
+		if _, _, err = findPublishedDesigns(ctx, plazaDB, 1, 10, DesignListFilter{Meaning: "invalid"}); err != common.ErrParam {
+			t.Fatal("unknown filter accepted", err)
+		}
+		copyOf(d, d.UserId) // owner copying their own work must not count.
+		copy := copyOf(d, "990981")
+		copyOf(d, "990981") // repeat copies are separate uses, not unique people.
+		metadata, err := ReadDesignMetadata(ctx, plazaDB, []*DiyDesign{d, newer})
+		if err != nil || metadata[d.Id].AuthorName != "标签作者" || metadata[d.Id].UseCount != 2 || metadata[newer.Id].AuthorName != "创作者" {
+			t.Fatalf("metadata or private-copy count: %+v %v", metadata, err)
+		}
+		copy.Name = "edited private copy"
+		if err = designs.UpdateOwned(ctx, copy, copy.Revision); err != nil {
+			t.Fatal(err)
+		}
+		d.Name = "尚未发布新名称"
+		if err = designs.UpdateOwned(ctx, d, d.Revision); err != nil {
+			t.Fatal(err)
+		}
+		rows, total, err := findPublishedDesigns(ctx, plazaDB, 1, 10, DesignListFilter{Keyword: "标签旧名称", Meaning: "sleep"})
+		if err != nil || total != 1 || len(rows) != 1 || rows[0].Name != "专属标签旧名称" {
+			t.Fatal("draft edits leaked into public filtering", rows, total, err)
+		}
+		// Legacy status clients preserve labels through unpublish and republish.
+		d, err = ChangePublicationStatus(ctx, plazaDB, d.Id, d.Revision, d.UserId, DesignStatusPrivate, false, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		metadata, err = ReadDesignMetadata(ctx, plazaDB, []*DiyDesign{d})
+		if err != nil || metadata[d.Id].UseCount != 2 || !reflect.DeepEqual(metadata[d.Id].FiveElements, selected.FiveElements) {
+			t.Fatal("unpublish/edit changed copy count or editor labels", metadata, err)
+		}
+		d, err = ChangePublicationStatus(ctx, plazaDB, d.Id, d.Revision, d.UserId, DesignStatusPublic, false, nil)
+		if err != nil || !reflect.DeepEqual(d.FiveElements, selected.FiveElements) || !reflect.DeepEqual(d.Meanings, selected.Meanings) {
+			t.Fatal("legacy client did not preserve labels", d, err)
+		}
+		d, err = ChangePublicationStatus(ctx, plazaDB, d.Id, d.Revision, d.UserId, DesignStatusPublic, false, &DesignTags{})
+		if err != nil || len(d.FiveElements) != 0 || len(d.Meanings) != 0 {
+			t.Fatal("explicit empty tags did not clear", d, err)
+		}
+		var unchanged string
+		if err = db.QueryRowCtx(ctx, &unchanged, "SELECT design_snapshot FROM diy_design_publication WHERE id=?", oldPublication); err != nil || unchanged != oldSnapshot {
+			t.Fatal("metadata publish rewrote historical snapshot", err)
+		}
+		unpaid := newDesign("990980")
+		if _, err = ChangePublicationStatus(ctx, plazaDB, unpaid.Id, unpaid.Revision, unpaid.UserId, DesignStatusPublic, false, selected); err == nil {
+			t.Fatal("labels bypassed the paid confirmed gate")
+		}
+		t.Log("PASS: restricted nickname grant, no mobile access, full-library filters, snapshot isolation, duplicate/own copy counts, legacy preserve and explicit clear")
+	})
 	t.Run("financial locks require only SELECT grants", func(t *testing.T) {
 		d := newDesign("990900")
 		o := ownOrder(d, DiyStatusInMaking, "success", "alipay")
@@ -290,13 +411,13 @@ func TestPublicationMySQL(t *testing.T) {
 	t.Run("qualification states and owner binding", func(t *testing.T) {
 		d := newDesign("990910")
 		checkReason(d, "order_required")
-		if _, e := ChangePublicationStatus(ctx, db, d.Id, d.Revision, d.UserId, DesignStatusPublic, false); e == nil {
+		if _, e := ChangePublicationStatus(ctx, db, d.Id, d.Revision, d.UserId, DesignStatusPublic, false, nil); e == nil {
 			t.Fatal("unpaid draft published")
 		}
 		unknownPayment := newDesign("990912")
 		ownOrder(unknownPayment, DiyStatusInMaking, "success", "unknown")
 		checkReason(unknownPayment, "payment_required")
-		if _, e := ChangePublicationStatus(ctx, db, unknownPayment.Id, unknownPayment.Revision, unknownPayment.UserId, DesignStatusPublic, false); e == nil {
+		if _, e := ChangePublicationStatus(ctx, db, unknownPayment.Id, unknownPayment.Revision, unknownPayment.UserId, DesignStatusPublic, false, nil); e == nil {
 			t.Fatal("unknown payment channel published")
 		}
 		foreign := *d
@@ -353,7 +474,7 @@ func TestPublicationMySQL(t *testing.T) {
 				checkReason(d, "payment_required")
 				exec("UPDATE diy_order SET payment_status='success' WHERE id=?", o.Id)
 				checkReason(d, "confirmation_required")
-				if _, err := ChangePublicationStatus(ctx, db, d.Id, d.Revision, d.UserId, DesignStatusPublic, false); err == nil {
+				if _, err := ChangePublicationStatus(ctx, db, d.Id, d.Revision, d.UserId, DesignStatusPublic, false, nil); err == nil {
 					t.Fatal("unapproved demo order published")
 				}
 				exec("UPDATE diy_order SET status='in_making' WHERE id=?", o.Id)
@@ -365,7 +486,7 @@ func TestPublicationMySQL(t *testing.T) {
 				}
 				listed := func() bool {
 					t.Helper()
-					list, _, err := findPublishedDesigns(ctx, db, 1, 100)
+					list, _, err := findPublishedDesigns(ctx, db, 1, 100, DesignListFilter{})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -461,7 +582,7 @@ func TestPublicationMySQL(t *testing.T) {
 		ownOrder(d, DiyStatusInMaking, "success", "alipay")
 		originalRevision := d.Revision
 		d = publish(d)
-		if _, err := ChangePublicationStatus(ctx, db, d.Id, originalRevision, d.UserId, DesignStatusPrivate, false); err == nil {
+		if _, err := ChangePublicationStatus(ctx, db, d.Id, originalRevision, d.UserId, DesignStatusPrivate, false, nil); err == nil {
 			t.Fatal("stale mutation accepted")
 		}
 		publicBefore, p, e := PublishedDesign(ctx, db, d)
@@ -501,7 +622,7 @@ func TestPublicationMySQL(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, err := ChangePublicationStatus(ctx, db, d.Id, d.Revision, d.UserId, DesignStatusPublic, false)
+				_, err := ChangePublicationStatus(ctx, db, d.Id, d.Revision, d.UserId, DesignStatusPublic, false, nil)
 				if err == nil {
 					success.Add(1)
 				} else {
@@ -598,7 +719,7 @@ func TestPublicationMySQL(t *testing.T) {
 			t.Fatal("A-v2 replacement rewrote B's A-v1 attribution")
 		}
 		var e error
-		a, e = ChangePublicationStatus(ctx, db, a.Id, a.Revision, a.UserId, DesignStatusPrivate, false)
+		a, e = ChangePublicationStatus(ctx, db, a.Id, a.Revision, a.UserId, DesignStatusPrivate, false, nil)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -663,7 +784,7 @@ func TestPublicationMySQL(t *testing.T) {
 		if _, _, e := PublishedDesign(ctx, db, d); e == nil {
 			t.Fatal("legacy public leaked")
 		}
-		if _, e := ChangePublicationStatus(ctx, db, d.Id, d.Revision, "990951", DesignStatusPublic, false); e == nil {
+		if _, e := ChangePublicationStatus(ctx, db, d.Id, d.Revision, "990951", DesignStatusPublic, false, nil); e == nil {
 			t.Fatal("foreign publisher accepted")
 		}
 	})
@@ -752,7 +873,7 @@ func TestPublicationMySQL(t *testing.T) {
 		release, refunded := hold(paymentLock, o.OrderNo, refund(o))
 		publishDone := make(chan error, 1)
 		go func() {
-			_, e := ChangePublicationStatus(ctx, appDB, d.Id, d.Revision, d.UserId, DesignStatusPublic, false)
+			_, e := ChangePublicationStatus(ctx, appDB, d.Id, d.Revision, d.UserId, DesignStatusPublic, false, nil)
 			var biz *common.BizError
 			if !errors.As(e, &biz) || biz.Code != 40915 {
 				publishDone <- fmt.Errorf("refund winner must reject publishing: %v", e)

@@ -2,6 +2,10 @@ package types
 
 // DiyDesign DIY设计
 type DiyDesign struct {
+	AuthorName             string                  `json:"authorName"`
+	UseCount               int64                   `json:"useCount"`
+	FiveElements           []string                `json:"fiveElements"`
+	Meanings               []string                `json:"meanings"`
 	PublicationEligibility *PublicationEligibility `json:"publicationEligibility,omitempty"`
 	Publication            *DesignPublication      `json:"publication,omitempty"`
 	DraftChanged           bool                    `json:"draftChanged"`
@@ -118,12 +122,31 @@ type BlessingService struct {
 // ===== C端请求/响应 =====
 
 type DesignListReq struct {
-	Page int `form:"page,default=1"`
-	Size int `form:"size,default=20"`
+	Page        int    `form:"page,default=1"`
+	Size        int    `form:"size,default=20"`
+	Keyword     string `form:"keyword,optional"`
+	FiveElement string `form:"fiveElement,optional"`
+	Meaning     string `form:"meaning,optional"`
+}
+
+type DesignTags struct {
+	FiveElements []string `json:"fiveElements,optional"`
+	Meanings     []string `json:"meanings,optional"`
+}
+
+type DesignStatusReq struct {
+	Id       int64       `path:"id"`
+	Revision int64       `json:"revision,optional"`
+	Status   string      `json:"status,optional"`
+	Tags     *DesignTags `json:"tags,optional"`
 }
 
 // MyDesignItem 我的设计（含最新订单信息）
 type MyDesignItem struct {
+	AuthorName             string                  `json:"authorName"`
+	UseCount               int64                   `json:"useCount"`
+	FiveElements           []string                `json:"fiveElements"`
+	Meanings               []string                `json:"meanings"`
 	PublicationEligibility *PublicationEligibility `json:"publicationEligibility,omitempty"`
 	Publication            *DesignPublication      `json:"publication,omitempty"`
 	DraftChanged           bool                    `json:"draftChanged"`

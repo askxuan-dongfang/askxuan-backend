@@ -5,6 +5,7 @@ import (
 	"github.com/askxuan/common/middleware"
 	"github.com/askxuan/diy-service/internal/logic"
 	"github.com/askxuan/diy-service/internal/svc"
+	"github.com/askxuan/diy-service/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"net/http"
 	"strconv"
@@ -24,11 +25,7 @@ func optionalDesignAuth(s *svc.ServiceContext, next http.HandlerFunc) http.Handl
 }
 func designStudioAction(s *svc.ServiceContext, action string, admin bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			Id       int64  `path:"id"`
-			Revision int64  `json:"revision,optional"`
-			Status   string `json:"status,optional"`
-		}
+		var req types.DesignStatusReq
 		if httpx.Parse(r, &req) != nil || req.Id < 1 {
 			common.JsonError(w, common.ErrParam)
 			return
@@ -43,7 +40,7 @@ func designStudioAction(s *svc.ServiceContext, action string, admin bool) http.H
 			}
 			return
 		}
-		out, err := l.ChangeStatus(req.Id, req.Revision, req.Status, admin)
+		out, err := l.ChangeStatus(req.Id, req.Revision, req.Status, admin, req.Tags)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/askxuan/diy-service/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
+	"github.com/zeromicro/go-zero/rest/pathvar"
 )
 
 // Exercise the same parser as designSaveHandler: encoding/json alone ignores
@@ -89,5 +90,32 @@ func TestDesignSaveRequestParse(t *testing.T) {
 				t.Fatalf("expected missing %s error, got %v", field, err)
 			}
 		})
+	}
+}
+
+func TestDesignPublicationTagsParse(t *testing.T) {
+	for _, tc := range []struct {
+		body     string
+		preserve bool
+		count    int
+	}{
+		{`{"revision":2,"status":"public"}`, true, 0},
+		{`{"revision":2,"status":"public","tags":null}`, true, 0},
+		{`{"revision":2,"status":"public","tags":{"fiveElements":[],"meanings":[]}}`, false, 0},
+		{`{"revision":2,"status":"public","tags":{"fiveElements":["wood","water"],"meanings":["sleep"]}}`, false, 2},
+	} {
+		r := httptest.NewRequest(http.MethodPut, "/api/v1/diy/designs/17/status", strings.NewReader(tc.body))
+		r.Header.Set("Content-Type", "application/json")
+		r = pathvar.WithVars(r, map[string]string{"id": "17"})
+		var req types.DesignStatusReq
+		if err := httpx.Parse(r, &req); err != nil {
+			t.Fatal(err)
+		}
+		if req.Id != 17 || req.Revision != 2 || req.Status != "public" || (req.Tags == nil) != tc.preserve {
+			t.Fatalf("publication tags lost omission semantics: %+v", req)
+		}
+		if req.Tags != nil && len(req.Tags.FiveElements) != tc.count {
+			t.Fatal("selected tags changed", req.Tags)
+		}
 	}
 }
