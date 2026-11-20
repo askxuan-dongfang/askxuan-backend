@@ -16,6 +16,7 @@ type Booking struct {
 	BookingDate       string  `json:"bookingDate"`
 	SlotCode          string  `json:"slotCode"`
 	TimeSlot          string  `json:"timeSlot"`
+	ParticipationMode string  `json:"participationMode,omitempty"`
 	ServiceFee        float64 `json:"serviceFee"`
 	MeritMoney        float64 `json:"meritMoney"`
 	MeritMoneyTier    string  `json:"meritMoneyTier"`
@@ -69,12 +70,13 @@ type AvailabilityReq struct {
 	BookingDate string `form:"date"`
 }
 type AvailableSlot struct {
-	SlotCode  string `json:"slotCode"`
-	Label     string `json:"label"`
-	TimeRange string `json:"timeRange"`
-	Capacity  int    `json:"capacity"`
-	Remaining int    `json:"remaining"`
-	Available bool   `json:"available"`
+	SlotCode          string `json:"slotCode"`
+	Label             string `json:"label"`
+	TimeRange         string `json:"timeRange"`
+	ParticipationMode string `json:"participationMode,omitempty"`
+	Capacity          int    `json:"capacity"`
+	Remaining         int    `json:"remaining"`
+	Available         bool   `json:"available"`
 }
 type AvailabilityResp struct {
 	TempleId    string          `json:"templeId"`

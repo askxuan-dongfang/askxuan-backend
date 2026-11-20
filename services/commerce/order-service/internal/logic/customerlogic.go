@@ -2,6 +2,8 @@ package logic
 
 import (
 	"context"
+	"errors"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -44,11 +46,11 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 	if requestID == "" {
 		requestID = uuid.NewString()
 	}
+	owner := strconv.FormatInt(userID, 10)
 	if existing, err := l.svcCtx.ShopOrderModel.FindByRequestId(l.ctx, requestID); err == nil {
-		if existing.UserId != strconv.FormatInt(userID, 10) {
-			return nil, common.ErrForbidden
-		}
-		return &types.OrderCreateResp{Id: existing.Id, OrderNo: existing.OrderNo, TotalAmount: existing.TotalAmount, PayAmount: existing.PayAmount}, nil
+		return existingCheckout(existing, owner)
+	} else if !errors.Is(err, sqlx.ErrNotFound) {
+		return nil, common.ErrSystem
 	}
 
 	lines := make([]*catalog.CartLine, 0, len(req.Items))
@@ -65,10 +67,26 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 	releaseReservation := true
 	defer func() {
 		if releaseReservation {
-			_ = l.svcCtx.CatalogClient.ReleaseCart(context.Background(), requestID)
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(l.ctx), 5*time.Second)
+			defer cancel()
+			if _, err := l.svcCtx.ShopOrderModel.FindByRequestId(ctx, requestID); errors.Is(err, sqlx.ErrNotFound) {
+				if err := l.svcCtx.CatalogClient.ReleaseCart(ctx, requestID); err != nil {
+					l.Errorf("退回未建单的库存失败: %v", err)
+				}
+			}
 		}
 	}()
 
+	freight, err := calculateFreight(l.ctx, l.svcCtx.DB, userID, req.AddressId, quote.Items)
+	if err != nil {
+		var business *common.BizError
+		if errors.As(err, &business) {
+			return nil, business
+		}
+		l.Errorf("计算商城订单运费失败: %v", err)
+		return nil, common.ErrSystem
+	}
+	totalAmount := (math.Round(quote.TotalAmount*100) + float64(freight)) / 100
 	initialOrderNo := ""
 	if len(quote.Items) > 0 && quote.Items[0].IsExperience {
 		initialOrderNo = common.ExperienceOrderPrefix + strings.ReplaceAll(uuid.NewString(), "-", "")[:24]
@@ -78,14 +96,15 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 	var orderId int64
 	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, session sqlx.Session) error {
 		o, err := l.svcCtx.ShopOrderModel.InsertWithSession(ctx, session, &model.ShopOrder{
-			OrderNo:     initialOrderNo,
-			RequestId:   requestID,
-			UserId:      strconv.FormatInt(userID, 10),
-			TotalAmount: quote.TotalAmount,
-			PayAmount:   quote.TotalAmount,
-			Status:      model.OrderStatusPendingPayment,
-			AddressId:   req.AddressId,
-			Note:        req.Note,
+			OrderNo:       initialOrderNo,
+			RequestId:     requestID,
+			UserId:        owner,
+			TotalAmount:   totalAmount,
+			PayAmount:     totalAmount,
+			FreightAmount: float64(freight) / 100,
+			Status:        model.OrderStatusPendingPayment,
+			AddressId:     req.AddressId,
+			Note:          req.Note,
 		})
 		if err != nil {
 			return err
@@ -110,6 +129,10 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 		return nil
 	})
 	if err != nil {
+		if existing, lookupErr := l.svcCtx.ShopOrderModel.FindByRequestId(l.ctx, requestID); lookupErr == nil {
+			releaseReservation = false
+			return existingCheckout(existing, owner)
+		}
 		l.Errorf("创建订单失败: %v", err)
 		return nil, common.ErrSystem
 	}
@@ -118,7 +141,14 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 	// 发 MQ 通知订单创建（失败不阻塞主流程）
 	_ = l.svcCtx.MqProducer.Publish(l.ctx, mqOrderNotify(orderNo, strconv.FormatInt(userID, 10), "created"))
 
-	return &types.OrderCreateResp{Id: orderId, OrderNo: orderNo, TotalAmount: quote.TotalAmount, PayAmount: quote.TotalAmount}, nil
+	return &types.OrderCreateResp{Id: orderId, OrderNo: orderNo, TotalAmount: totalAmount, PayAmount: totalAmount, FreightAmount: float64(freight) / 100}, nil
+}
+
+func existingCheckout(order *model.ShopOrder, owner string) (*types.OrderCreateResp, error) {
+	if order.UserId != owner {
+		return nil, common.ErrForbidden
+	}
+	return &types.OrderCreateResp{Id: order.Id, OrderNo: order.OrderNo, TotalAmount: order.TotalAmount, PayAmount: order.PayAmount, FreightAmount: order.FreightAmount}, nil
 }
 
 // OrderListLogic 我的订单列表
@@ -285,18 +315,20 @@ func mqOrderNotify(orderNo, userId, action string) mq.OrderNotify {
 // toTypesOrder 转换为 types.ShopOrder（列表用，不查 items/logistics）
 func toTypesOrder(o *model.ShopOrder, items []types.ShopOrderItem, logistics model.ShopOrderLogistics) types.ShopOrder {
 	return types.ShopOrder{
-		Id:           o.Id,
-		OrderNo:      o.OrderNo,
-		IsExperience: common.IsExperienceOrder(o.OrderNo),
-		UserId:       o.UserId,
-		TotalAmount:  o.TotalAmount,
-		PayAmount:    o.PayAmount,
-		Status:       o.Status,
-		AddressId:    o.AddressId,
-		Note:         o.Note,
-		Items:        items,
-		Logistics:    toTypesLogistics(logistics),
-		CreateTime:   o.CreateTime,
+		Id:                o.Id,
+		OrderNo:           o.OrderNo,
+		IsExperience:      common.IsExperienceOrder(o.OrderNo),
+		UserId:            o.UserId,
+		TotalAmount:       o.TotalAmount,
+		PayAmount:         o.PayAmount,
+		FreightAmount:     o.FreightAmount,
+		PaymentExpireTime: o.PaymentExpireTime,
+		Status:            o.Status,
+		AddressId:         o.AddressId,
+		Note:              o.Note,
+		Items:             items,
+		Logistics:         toTypesLogistics(logistics),
+		CreateTime:        o.CreateTime,
 	}
 }
 

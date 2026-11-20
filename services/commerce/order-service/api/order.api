@@ -11,12 +11,14 @@ info (
 
 type (
     ShopOrder {
+        PaymentExpireTime string `json:"paymentExpireTime,optional"`
         IsExperience bool `json:"isExperience"`
         Id           int64              `json:"id"`
         OrderNo      string             `json:"orderNo"`
         UserId       string             `json:"userId"`
         TotalAmount  float64            `json:"totalAmount"`
         PayAmount    float64            `json:"payAmount"`
+        FreightAmount float64 `json:"freightAmount"`
         Status       string             `json:"status"` // pending_payment/paid/shipped/completed/cancelled/in_return
         AddressId    int64              `json:"addressId"`
         Note         string             `json:"note"`
@@ -73,6 +75,7 @@ type (
         OrderNo     string  `json:"orderNo"`
         TotalAmount float64 `json:"totalAmount"`
         PayAmount   float64 `json:"payAmount"`
+        FreightAmount float64 `json:"freightAmount"`
         Status      string  `json:"status"`
     }
 
@@ -202,6 +205,9 @@ service order-service {
 
     @handler orderDetail
     get /:id (OrderDetailReq) returns (ShopOrder)
+
+    @handler orderCancel
+    post /:id/cancel (OrderDetailReq) returns (ShopOrder)
 
     @handler orderConfirm
     put /:id/confirm (OrderConfirmReq) returns (ShopOrder)

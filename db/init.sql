@@ -665,6 +665,7 @@ CREATE TABLE IF NOT EXISTS `temple_service_slot` (
 	`capacity` INT NOT NULL DEFAULT 10,
 	`status` VARCHAR(16) NOT NULL DEFAULT 'enabled',
 	`sort` INT NOT NULL DEFAULT 0,
+	`participation_mode` VARCHAR(16) NULL,
 	`create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	PRIMARY KEY (`id`),
@@ -1388,6 +1389,9 @@ CREATE TABLE IF NOT EXISTS `shop_order` (
   `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
   `total_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '订单总额',
   `pay_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '实付金额',
+  `freight_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '下单时冻结的运费',
+  `payment_expire_time` DATETIME NULL COMMENT '待付款截止时间',
+  `stock_release_pending` TINYINT NOT NULL DEFAULT 0 COMMENT '取消后待回补库存',
   `status` VARCHAR(32) NOT NULL DEFAULT 'pending_payment' COMMENT 'pending_payment/paid/shipped/completed/cancelled/in_return',
   `address_id` BIGINT NOT NULL DEFAULT 0 COMMENT '收货地址ID',
   `note` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '备注',
@@ -1396,6 +1400,8 @@ CREATE TABLE IF NOT EXISTS `shop_order` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order_no` (`order_no`),
   UNIQUE KEY `uk_request_id` (`request_id`),
+  KEY `idx_shop_order_expiry` (`status`,`payment_expire_time`),
+  KEY `idx_shop_order_stock_release` (`stock_release_pending`,`id`),
   KEY `idx_user` (`user_id`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商城订单';

@@ -36,13 +36,14 @@ type TempleServiceRecord struct {
 }
 
 type TempleServiceSlot struct {
-	Code      string `db:"slot_code" json:"code"`
-	Label     string `db:"label" json:"label"`
-	StartTime string `db:"start_time" json:"startTime"`
-	EndTime   string `db:"end_time" json:"endTime"`
-	Capacity  int    `db:"capacity" json:"capacity"`
-	Status    string `db:"status" json:"status"`
-	Sort      int    `db:"sort" json:"sort"`
+	Code              string  `db:"slot_code" json:"code"`
+	Label             string  `db:"label" json:"label"`
+	StartTime         string  `db:"start_time" json:"startTime"`
+	EndTime           string  `db:"end_time" json:"endTime"`
+	Capacity          int     `db:"capacity" json:"capacity"`
+	Status            string  `db:"status" json:"status"`
+	Sort              int     `db:"sort" json:"sort"`
+	ParticipationMode *string `db:"participation_mode" json:"participationMode,omitempty"`
 }
 
 // templeServiceRow 服务 DB 行结构（TimeSlots 为 JSON 字符串）
@@ -240,7 +241,7 @@ func (m *defaultTempleServiceModel) Delete(ctx context.Context, id int64) error 
 
 func (m *defaultTempleServiceModel) findSlots(ctx context.Context, id int64) ([]TempleServiceSlot, error) {
 	var slots []TempleServiceSlot
-	if err := m.conn.QueryRowsCtx(ctx, &slots, `SELECT slot_code,label,start_time,end_time,capacity,status,sort FROM temple_service_slot WHERE temple_service_id=? ORDER BY sort,id`, id); err != nil {
+	if err := m.conn.QueryRowsCtx(ctx, &slots, `SELECT slot_code,label,start_time,end_time,capacity,status,sort,COALESCE(participation_mode,'') participation_mode FROM temple_service_slot WHERE temple_service_id=? ORDER BY sort,id`, id); err != nil {
 		return nil, err
 	}
 	if slots == nil {
@@ -251,6 +252,19 @@ func (m *defaultTempleServiceModel) findSlots(ctx context.Context, id int64) ([]
 
 func (m *defaultTempleServiceModel) ReplaceSlots(ctx context.Context, id int64, slots []TempleServiceSlot) error {
 	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		var previous []struct {
+			Code string  `db:"slot_code"`
+			Mode *string `db:"participation_mode"`
+		}
+		if len(slots) > 0 {
+			if err := session.QueryRowsCtx(ctx, &previous, `SELECT slot_code,COALESCE(participation_mode,'') participation_mode FROM temple_service_slot WHERE temple_service_id=? FOR UPDATE`, id); err != nil {
+				return err
+			}
+		}
+		modes := make(map[string]*string, len(previous))
+		for _, slot := range previous {
+			modes[slot.Code] = slot.Mode
+		}
 		if _, err := session.ExecCtx(ctx, `DELETE FROM temple_service_slot WHERE temple_service_id=?`, id); err != nil {
 			return err
 		}
@@ -273,7 +287,12 @@ func (m *defaultTempleServiceModel) ReplaceSlots(ctx context.Context, id int64, 
 			if slot.StartTime == "" || slot.EndTime == "" || slot.StartTime >= slot.EndTime {
 				return fmt.Errorf("invalid service slot")
 			}
-			if _, err := session.ExecCtx(ctx, `INSERT INTO temple_service_slot(temple_service_id,slot_code,label,start_time,end_time,capacity,status,sort) VALUES(?,?,?,?,?,?,?,?)`, id, slot.Code, slot.Label, slot.StartTime, slot.EndTime, slot.Capacity, slot.Status, slot.Sort); err != nil {
+			if slot.ParticipationMode == nil {
+				slot.ParticipationMode = modes[slot.Code]
+			} else if *slot.ParticipationMode == "" {
+				slot.ParticipationMode = nil
+			}
+			if _, err := session.ExecCtx(ctx, `INSERT INTO temple_service_slot(temple_service_id,slot_code,label,start_time,end_time,capacity,status,sort,participation_mode) VALUES(?,?,?,?,?,?,?,?,?)`, id, slot.Code, slot.Label, slot.StartTime, slot.EndTime, slot.Capacity, slot.Status, slot.Sort, slot.ParticipationMode); err != nil {
 				return err
 			}
 		}

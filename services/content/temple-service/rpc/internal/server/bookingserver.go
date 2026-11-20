@@ -37,7 +37,11 @@ func (s *TempleBookingServer) GetBookingService(ctx context.Context, req *temple
 	}
 	slots := make([]*temple.BookingSlot, 0, len(service.Slots))
 	for _, slot := range service.Slots {
-		slots = append(slots, &temple.BookingSlot{Code: slot.Code, Label: slot.Label, StartTime: slot.StartTime, EndTime: slot.EndTime, Capacity: int64(slot.Capacity), Status: slot.Status})
+		entry := &temple.BookingSlot{Code: slot.Code, Label: slot.Label, StartTime: slot.StartTime, EndTime: slot.EndTime, Capacity: int64(slot.Capacity), Status: slot.Status}
+		if slot.ParticipationMode != nil {
+			entry.ParticipationMode = *slot.ParticipationMode
+		}
+		slots = append(slots, entry)
 	}
 	templeStatus := t.Status
 	if !model.IsTemplePublic(t) {

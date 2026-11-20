@@ -47,7 +47,7 @@ func checkDemoWallet(t *testing.T, db sqlx.SqlConn) {
 	if _, e = s.DemoRecharge(ctx, "demo-owner", "idempotency-demo-0002", 0); e == nil {
 		t.Fatal("invalid amount accepted")
 	}
-	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_order.shop_order VALUES('DEMO-1','demo-owner',80,'pending_payment'),('DEMO-2','demo-owner',80,'pending_payment')`)
+	_, e = db.ExecCtx(ctx, `INSERT INTO askxuan_order.shop_order(order_no,user_id,pay_amount,status) VALUES('DEMO-1','demo-owner',80,'pending_payment'),('DEMO-2','demo-owner',80,'pending_payment')`)
 	if e != nil {
 		t.Fatal(e)
 	}

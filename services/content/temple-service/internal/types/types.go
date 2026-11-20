@@ -186,13 +186,14 @@ type TempleService struct {
 }
 
 type TempleServiceSlot struct {
-	Code      string `json:"code"`
-	Label     string `json:"label"`
-	StartTime string `json:"startTime"`
-	EndTime   string `json:"endTime"`
-	Capacity  int    `json:"capacity"`
-	Status    string `json:"status"`
-	Sort      int    `json:"sort"`
+	Code              string  `json:"code"`
+	Label             string  `json:"label"`
+	StartTime         string  `json:"startTime"`
+	EndTime           string  `json:"endTime"`
+	Capacity          int     `json:"capacity"`
+	Status            string  `json:"status"`
+	Sort              int     `json:"sort"`
+	ParticipationMode *string `json:"participationMode,optional,omitempty"`
 }
 
 // TempleServiceListReq 服务列表请求（C端按寺院ID查询）

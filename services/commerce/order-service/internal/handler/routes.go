@@ -25,6 +25,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodGet, Path: "/api/v1/orders", Handler: orderListHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/api/v1/orders/:id", Handler: orderDetailHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/api/v1/orders/:id/confirm", Handler: orderConfirmHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/api/v1/orders/:id/cancel", Handler: orderCancelHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/api/v1/orders/:id/return", Handler: orderReturnHandler(svcCtx)},
 	}...))
 
@@ -99,6 +100,22 @@ func orderDetailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		resp, err := logic.NewOrderDetailLogic(r.Context(), svcCtx).Detail(&req)
+		if err != nil {
+			common.JsonError(w, err)
+		} else {
+			common.Ok(w, resp)
+		}
+	}
+}
+
+func orderCancelHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.OrderDetailReq
+		if err := httpx.Parse(r, &req); err != nil {
+			common.JsonError(w, common.ErrParam)
+			return
+		}
+		resp, err := logic.CancelPendingOrder(r.Context(), svcCtx, req.Id)
 		if err != nil {
 			common.JsonError(w, err)
 		} else {
