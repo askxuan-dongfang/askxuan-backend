@@ -20,7 +20,8 @@ is still mounted from the server. The file service image includes the MariaDB cl
 
 The H5 workflow publishes its existing static archive to GitHub Actions artifacts. The SSH jobs
 send an artifact ID, ZIP digest, and a job-scoped read token. The receiver downloads the ZIP,
-verifies it and the contents, then uses the same atomic public-directory switch. Docker
+using parallel HTTP ranges for large H5 artifacts on ECS. It verifies the whole ZIP and
+its contents, then uses the same atomic public-directory switch. Docker
 credentials exist only inside the receiver's temporary directory. Release receipts record the
 image digest or verified static files. Rollback uses the previously running local image or
 previous public directory, so it does not depend on GitHub's artifact retention.

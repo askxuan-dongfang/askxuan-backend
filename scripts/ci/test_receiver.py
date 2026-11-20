@@ -89,14 +89,38 @@ class ReceiverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, patch.object(urllib.request, 'build_opener') as opener:
             directory = Path(tmp)
             opener.return_value.open.return_value = io.BytesIO(data)
+            opener.return_value.open.return_value.status = 200
             self.assertEqual(receiver.download_artifact('h5', request, directory).read_bytes(), b'h5 release')
             original = opener.return_value.open.call_args.args[0]
             self.assertEqual(original.get_header('Authorization'), 'Bearer ' + A)
             redirected = receiver.ArtifactRedirect().redirect_request(original, None, 302, '', {}, 'https://blobs.example/test')
             self.assertIsNone(redirected.get_header('Authorization'))
             opener.return_value.open.return_value = io.BytesIO(data)
+            opener.return_value.open.return_value.status = 200
             with self.assertRaisesRegex(ValueError, 'checksum'):
                 receiver.download_artifact('h5', {**request, 'sha256': '0' * 64}, directory)
+
+    def test_h5_ranges_are_reassembled_and_checked(self):
+        import re
+
+        payload = b'a' * (4 * 1024**2)
+        zipped = io.BytesIO()
+        with zipfile.ZipFile(zipped, 'w') as output:
+            output.writestr('release.tgz', payload)
+        data = zipped.getvalue()
+        def response(request, *, timeout):
+            start, end = map(int, re.fullmatch(r'bytes=(\d+)-(\d+)', request.get_header('Range')).groups())
+            result = io.BytesIO(data[start:end+1])
+            result.status = 206
+            result.headers = {'Content-Range': f'bytes {start}-{end}/{len(data)}'}
+            self.assertEqual(request.get_header('Authorization'), 'Bearer ' + A)
+            return result
+
+        with tempfile.TemporaryDirectory() as tmp, patch.object(urllib.request, 'build_opener') as opener:
+            opener.return_value.open.side_effect = response
+            request = {'artifact_id': '123', 'sha256': hashlib.sha256(data).hexdigest(), 'token': A}
+            self.assertEqual(receiver.download_artifact('h5', request, Path(tmp)).read_bytes(), payload)
+            self.assertEqual(opener.return_value.open.call_count, 4)
 
     def test_backend_manifest_binds_each_service_to_a_digest(self):
         manifest = {'schema': 1, 'scope': 'backend', 'release': 'ci-backend-test-1',

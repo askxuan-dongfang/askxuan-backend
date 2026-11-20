@@ -5,6 +5,7 @@ Install manually from a reviewed commit. All writers share this process's flock.
 Production state and compose files remain root-only because they contain env vars.
 """
 import base64
+from concurrent.futures import ThreadPoolExecutor
 import fcntl
 import hashlib
 import json
@@ -81,25 +82,55 @@ class ArtifactRedirect(urllib.request.HTTPRedirectHandler):
 def download_artifact(scope, request, directory):
     repo = ARTIFACT_REPOS[scope]
     url = f'https://api.github.com/repos/askxuan-dongfang/{repo}/actions/artifacts/{request["artifact_id"]}/zip'
-    download = urllib.request.Request(url, headers={'Accept': 'application/vnd.github+json'})
-    # GitHub redirects to a signed storage URL. The authorization header applies only to the API request.
-    download.add_unredirected_header('Authorization', 'Bearer ' + request['token'])
     expected = 'manifest.json' if scope == 'backend' else 'release.tgz'
     archive = directory / 'artifact.zip'
     deadline = time.monotonic() + 900
-    size = 0
-    digest = hashlib.sha256()
+    opener = urllib.request.build_opener(ArtifactRedirect())
+
+    def open_download(byte_range=None):
+        download = urllib.request.Request(url, headers={'Accept': 'application/vnd.github+json'})
+        # The job token applies only to the API, and each range gets a fresh storage URL.
+        download.add_unredirected_header('Authorization', 'Bearer ' + request['token'])
+        if byte_range:
+            download.add_header('Range', byte_range)
+        return opener.open(download, timeout=30)
+
+    def copy(src, target, limit):
+        size = 0
+        for chunk in iter(lambda: src.read(256 * 1024), b''):
+            size += len(chunk)
+            if size > limit or time.monotonic() > deadline:
+                raise ValueError('Artifact download exceeds size or time limit')
+            target.write(chunk)
+        return size
+
     try:
-        with urllib.request.build_opener(ArtifactRedirect()).open(download, timeout=30) as src, archive.open('xb') as target:
-            for chunk in iter(lambda: src.read(1048576), b''):
-                size += len(chunk)
-                if size > MAX_RELEASE_BYTES or time.monotonic() > deadline:
-                    raise ValueError('Artifact download exceeds size or time limit')
-                digest.update(chunk)
-                target.write(chunk)
+        with open_download('bytes=0-0' if scope == 'h5' else None) as src, archive.open('xb') as target:
+            if scope == 'h5' and src.status == 206:
+                match = re.fullmatch(r'bytes 0-0/([1-9][0-9]*)', src.headers.get('Content-Range', ''))
+                if not match or int(match[1]) > MAX_RELEASE_BYTES:
+                    raise ValueError('Invalid H5 artifact size')
+                size = int(match[1])
+                # A slow ECS connection can delay the last range. Keep each range small.
+                block = 2 * 1024**2
+                target.truncate(size)
+
+                def receive_range(start):
+                    end = min(start + block, size) - 1
+                    with open_download(f'bytes={start}-{end}') as segment, archive.open('r+b') as output:
+                        if segment.status != 206 or segment.headers.get('Content-Range') != f'bytes {start}-{end}/{size}':
+                            raise ValueError('Unexpected H5 artifact range')
+                        output.seek(start)
+                        if copy(segment, output, end - start + 1) != end - start + 1:
+                            raise ValueError('Incomplete H5 artifact range')
+
+                with ThreadPoolExecutor(max_workers=16) as executor:
+                    list(executor.map(receive_range, range(0, size, block)))
+            else:
+                copy(src, target, MAX_RELEASE_BYTES)
     except (urllib.error.URLError, TimeoutError, OSError):
         raise RuntimeError('GitHub artifact download failed') from None
-    if digest.hexdigest() != request['sha256']:
+    if sha(archive) != request['sha256']:
         raise ValueError('Artifact archive checksum mismatch')
     output = directory / expected
     with zipfile.ZipFile(archive) as zipped:
