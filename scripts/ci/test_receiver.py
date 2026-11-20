@@ -6,6 +6,8 @@ import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
+import urllib.request
+import zipfile
 
 import ecs_receiver as receiver
 import release as builder
@@ -75,6 +77,39 @@ class ReceiverTests(unittest.TestCase):
                 receiver.extract(archive, base / 'first', 'h5')
             with self.assertRaisesRegex(ValueError, 'scope'):
                 receiver.extract(archive, base / 'second', 'web')
+
+    def test_artifact_digest_is_checked_and_token_does_not_follow_redirect(self):
+        zipped = io.BytesIO()
+        with zipfile.ZipFile(zipped, 'w') as output:
+            output.writestr('release.tgz', b'h5 release')
+        data = zipped.getvalue()
+        request = {'artifact_id': '123', 'sha256': hashlib.sha256(data).hexdigest(),
+                   'actor': 'actions', 'token': A, 'commit': B, 'run': '456', 'attempt': '2'}
+        self.assertEqual(receiver.artifact_request(io.BytesIO(json.dumps(request).encode())), request)
+        with tempfile.TemporaryDirectory() as tmp, patch.object(urllib.request, 'build_opener') as opener:
+            directory = Path(tmp)
+            opener.return_value.open.return_value = io.BytesIO(data)
+            self.assertEqual(receiver.download_artifact('h5', request, directory).read_bytes(), b'h5 release')
+            original = opener.return_value.open.call_args.args[0]
+            self.assertEqual(original.get_header('Authorization'), 'Bearer ' + A)
+            redirected = receiver.ArtifactRedirect().redirect_request(original, None, 302, '', {}, 'https://blobs.example/test')
+            self.assertIsNone(redirected.get_header('Authorization'))
+            opener.return_value.open.return_value = io.BytesIO(data)
+            with self.assertRaisesRegex(ValueError, 'checksum'):
+                receiver.download_artifact('h5', {**request, 'sha256': '0' * 64}, directory)
+
+    def test_backend_manifest_binds_each_service_to_a_digest(self):
+        manifest = {'schema': 1, 'scope': 'backend', 'release': 'ci-backend-test-1',
+                    'files': {'payload/diy/diy': '0' * 64}, 'components': {'diy': {
+                        'image': receiver.image_repository('diy') + '@sha256:' + '1' * 64,
+                    }}}
+        with patch.object(receiver, 'SERVICES', {'diy'}):
+            receiver.validate_image_manifest(manifest)
+            for image in (receiver.image_repository('diy') + ':latest',
+                          receiver.image_repository('file') + '@sha256:' + '1' * 64):
+                manifest['components']['diy']['image'] = image
+                with self.assertRaisesRegex(ValueError, 'fixed image digest'):
+                    receiver.validate_image_manifest(manifest)
 
     def web_fixture(self, base):
         releases = base / 'web'
