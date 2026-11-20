@@ -56,13 +56,13 @@ NoAuthPaths:
 ''')
     fixture = directory / 'fixture'
     fixture.mkdir()
-    (fixture / 'gateway').write_text('#!/bin/sh\nexec busybox httpd -f -p 8080 -h /www\n')
+    (fixture / 'gateway').write_text('#!/bin/sh\nexec busybox-extras httpd -f -p 8080 -h /www\n')
     for route in ('health', 'diy/materials', 'community/feed', 'products'):
         page = fixture / 'www/api/v1' / route
         page.parent.mkdir(parents=True, exist_ok=True)
         page.write_text('{"code":0,"version":"old"}')
     recipe = Path(__file__).with_name('Dockerfile.image').read_text()
-    (fixture / 'Dockerfile').write_text(recipe + '\nCOPY www /www\n')
+    (fixture / 'Dockerfile').write_text(recipe + '\nUSER root\nRUN apk add --no-cache busybox-extras\nCOPY www /www\nUSER appuser\n')
     baseline_image = 'askxuan-pull-fixture:gateway'
     command('docker', 'build', '--build-arg', 'BINARY=gateway', '-t', baseline_image, str(fixture))
     baseline_compose = directory / 'baseline.json'

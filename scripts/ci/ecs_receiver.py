@@ -4,8 +4,8 @@
 Install manually from a reviewed commit. All writers share this process's flock.
 Production state and compose files remain root-only because they contain env vars.
 """
-import fcntl
 import base64
+import fcntl
 import hashlib
 import json
 import os
@@ -263,7 +263,7 @@ def compose_definition(c, image):
 def compose_up(path):
     # Docker output/errors can contain env values. Keep full output in root-only logs.
     with open(path.parent / (path.stem + '.log'), 'ab') as log:
-        subprocess.run(['docker', 'compose', '-p', 'askxuan', '-f', str(path), 'up', '-d', '--no-build', '--no-deps'],
+        subprocess.run(['docker', 'compose', '-p', 'askxuan', '-f', str(path), 'up', '-d', '--no-build', '--no-deps', '--pull', 'never'],
                        stdout=log, stderr=log, check=True)
 
 
@@ -550,25 +550,25 @@ def receive(scope, stream):
                     if size > MAX_RELEASE_BYTES:
                         raise ValueError('Upload exceeds 1 GiB')
                     target.write(data)
-        unpacked = directory / 'unpacked'
-        unpacked.mkdir()
-        if request and scope == 'backend':
-            manifest = json.loads(archive.read_text())
-            validate_image_manifest(manifest)
-        else:
-            manifest = extract(archive, unpacked, scope)
-        if request:
-            prefix = f'ci-{scope}-{request["run"]}-'
-            suffix = request['commit'][:12]
-            if (not re.fullmatch(re.escape(prefix) + r'[1-9][0-9]*-' + suffix, manifest['release'])
-                    or manifest['history'][scope][0] != request['commit']):
-                raise ValueError('Artifact does not belong to this workflow run and commit')
-            manifest['release'] = prefix + request['attempt'] + '-' + suffix
-            atomic_json(unpacked / 'manifest.json', manifest)
         with open(BASE / 'publish.lock', 'w') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             if shutil.disk_usage(BASE).free < 3 * 1024**3:
                 raise RuntimeError('Need at least 3 GiB free for release and rollback')
+            unpacked = directory / 'unpacked'
+            unpacked.mkdir()
+            if request and scope == 'backend':
+                manifest = json.loads(archive.read_text())
+                validate_image_manifest(manifest)
+            else:
+                manifest = extract(archive, unpacked, scope)
+            if request:
+                prefix = f'ci-{scope}-{request["run"]}-'
+                suffix = request['commit'][:12]
+                if (not re.fullmatch(re.escape(prefix) + r'[1-9][0-9]*-' + suffix, manifest['release'])
+                        or manifest['history'][scope][0] != request['commit']):
+                    raise ValueError('Artifact does not belong to this workflow run and commit')
+                manifest['release'] = prefix + request['attempt'] + '-' + suffix
+                atomic_json(unpacked / 'manifest.json', manifest)
             state = json.loads((BASE / 'state.json').read_text())
             validate_versions(manifest, state)
             if scope == 'backend' and manifest.get('contract') != json.loads((BASE / 'config.json').read_text())['backend_contract']:

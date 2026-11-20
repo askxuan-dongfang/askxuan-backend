@@ -7,7 +7,7 @@ import os
 
 print(json.dumps({
     'artifact_id': os.environ['ARTIFACT_ID'],
-    'sha256': os.environ['ARTIFACT_SHA256'],
+    'sha256': os.environ['ARTIFACT_SHA256'].removeprefix('sha256:'),
     'commit': os.environ['GITHUB_SHA'],
     'run': os.environ['GITHUB_RUN_ID'],
     'attempt': os.environ['GITHUB_RUN_ATTEMPT'],
