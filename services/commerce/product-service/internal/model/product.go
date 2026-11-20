@@ -109,6 +109,10 @@ func (m *defaultProductModel) FindList(ctx context.Context, categoryId int64, ke
 	if option.InStock {
 		where += " AND stock > 0"
 	}
+	if option.Tag != "" {
+		where += " AND FIND_IN_SET(?, REPLACE(REPLACE(tags, '，', ','), ' ', '')) > 0"
+		args = append(args, option.Tag)
+	}
 	if page < 1 {
 		page = 1
 	}
@@ -175,6 +179,7 @@ func buildProductWhere(categoryId int64, keyword, status string) (string, []inte
 type CatalogOptions struct {
 	Sort    string
 	InStock bool
+	Tag     string
 }
 
 func CatalogOrder(sort string) (string, error) {

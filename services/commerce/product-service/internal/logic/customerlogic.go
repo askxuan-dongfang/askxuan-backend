@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/askxuan/common"
 	"github.com/askxuan/product-service/internal/model"
@@ -37,7 +38,11 @@ func (l *CustomerProductListLogic) List(req *types.CustomerProductListReq) (*typ
 	if _, err := model.CatalogOrder(req.Sort); err != nil {
 		return nil, common.ErrParamInvalid
 	}
-	list, total, err := l.svcCtx.ProductModel.FindList(l.ctx, req.CategoryId, req.Keyword, model.ProductStatusOnShelf, req.Page, req.Size, model.CatalogOptions{Sort: req.Sort, InStock: req.InStock})
+	tag := strings.ReplaceAll(strings.TrimSpace(req.Tag), " ", "")
+	if len([]rune(tag)) > 80 || strings.ContainsAny(tag, ",，") {
+		return nil, common.ErrParamInvalid
+	}
+	list, total, err := l.svcCtx.ProductModel.FindList(l.ctx, req.CategoryId, req.Keyword, model.ProductStatusOnShelf, req.Page, req.Size, model.CatalogOptions{Sort: req.Sort, InStock: req.InStock, Tag: tag})
 	if err != nil {
 		l.Errorf("查询商品列表失败: %v", err)
 		return nil, common.ErrSystem

@@ -76,24 +76,29 @@ func (s Store) Entries(ctx context.Context, user string, page int) ([]Entry, err
 	err := s.DB.QueryRowsCtx(ctx, &rows, `SELECT id,kind,delta,balance_after,reference_no,created_at FROM points_ledger WHERE user_id=? ORDER BY id DESC LIMIT 20 OFFSET ?`, user, (page-1)*20)
 	return rows, err
 }
-func (s Store) Products(ctx context.Context, admin bool, page int, filters ...string) ([]Product, error) {
+func (s Store) Products(ctx context.Context, admin bool, page int, keyword, status, priorityUser string) ([]Product, error) {
 	rows := make([]Product, 0)
 	where := " WHERE 1=1"
 	args := []interface{}{}
 	if !admin {
 		where += " AND status='on_sale'"
 	}
-	if len(filters) > 0 && strings.TrimSpace(filters[0]) != "" {
+	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		where += " AND (name LIKE ? OR category LIKE ?)"
-		q := "%" + strings.TrimSpace(filters[0]) + "%"
+		q := "%" + keyword + "%"
 		args = append(args, q, q)
 	}
-	if admin && len(filters) > 1 && filters[1] != "" {
+	if admin && status != "" {
 		where += " AND status=?"
-		args = append(args, filters[1])
+		args = append(args, status)
+	}
+	order := "id DESC"
+	if !admin && priorityUser != "" {
+		order = "CASE WHEN stock > 0 AND points_price <= COALESCE((SELECT balance FROM points_account WHERE user_id=?), 0) THEN 0 WHEN stock > 0 THEN 1 ELSE 2 END, id DESC"
+		args = append(args, priorityUser)
 	}
 	args = append(args, (page-1)*20)
-	err := s.DB.QueryRowsCtx(ctx, &rows, `SELECT `+productCols+` FROM points_product`+where+` ORDER BY id DESC LIMIT 20 OFFSET ?`, args...)
+	err := s.DB.QueryRowsCtx(ctx, &rows, `SELECT `+productCols+` FROM points_product`+where+` ORDER BY `+order+` LIMIT 20 OFFSET ?`, args...)
 	return rows, err
 }
 func ValidProduct(p Product) bool {

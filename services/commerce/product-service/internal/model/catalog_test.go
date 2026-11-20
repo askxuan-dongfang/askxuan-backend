@@ -29,7 +29,7 @@ func (c *catalogConn) QueryRowsCtx(_ context.Context, v any, query string, args 
 }
 func TestCatalogFiltersApplyBeforePaginationAndToTotal(t *testing.T) {
 	conn := &catalogConn{}
-	products, total, err := NewProductModel(conn).FindList(context.Background(), 7, "香' OR 1=1 --", "on_shelf", 2, 20, CatalogOptions{Sort: "price_asc", InStock: true})
+	products, total, err := NewProductModel(conn).FindList(context.Background(), 7, "香' OR 1=1 --", "on_shelf", 2, 20, CatalogOptions{Sort: "price_asc", InStock: true, Tag: "送礼"})
 	if err != nil || total != 43 || len(products) != 1 {
 		t.Fatalf("unexpected result: %v %d %v", products, total, err)
 	}
@@ -37,11 +37,15 @@ func TestCatalogFiltersApplyBeforePaginationAndToTotal(t *testing.T) {
 		if !strings.Contains(query, "category_id = ?") || !strings.Contains(query, "status = ?") || !strings.Contains(query, "stock > 0") || strings.Contains(query, "OR 1=1") {
 			t.Fatalf("unsafe/inconsistent filtering: %s", query)
 		}
+		if !strings.Contains(query, "FIND_IN_SET(?") || strings.Contains(query, "送礼") {
+			t.Fatalf("tag must be bound and applied to both queries: %s", query)
+		}
 	}
 	if !strings.Contains(conn.queries[1], "ORDER BY price ASC, id DESC LIMIT ?, ?") {
 		t.Fatalf("sort must precede paging: %s", conn.queries[1])
 	}
-	if !reflect.DeepEqual(conn.args[1][:3], conn.args[0]) || !reflect.DeepEqual(conn.args[1][3:], []any{20, 20}) {
+	if !reflect.DeepEqual(conn.args[0], []any{int64(7), "%香' OR 1=1 --%", "on_shelf", "送礼"}) ||
+		!reflect.DeepEqual(conn.args[1][4:], []any{20, 20}) || !reflect.DeepEqual(conn.args[1][:4], conn.args[0]) {
 		t.Fatalf("wrong paging/filter args: %#v", conn.args)
 	}
 }
