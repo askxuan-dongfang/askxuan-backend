@@ -464,13 +464,6 @@ def deploy(candidate, manifest, state, registry=None):
                 c = json.loads(run(['docker', 'inspect', 'askxuan-' + name + '-service']))[0]
                 if registry is not None:
                     image = value['image']
-                    with open(candidate / ('pull-' + name + '.log'), 'wb') as log:
-                        subprocess.run(['docker', '--config', str(registry), 'pull', '--platform', 'linux/amd64', image],
-                                       stdout=log, stderr=log, timeout=300, check=True)
-                    label = run(['docker', 'image', 'inspect', '--format',
-                                 '{{index .Config.Labels "org.askxuan.binary-sha256"}}', image]).decode().strip()
-                    if label != manifest['files'][f'payload/{name}/{name}']:
-                        raise ValueError('Pulled image binary checksum label differs from the release')
                 else:
                     base_tag = 'askxuan/%s-service:ci-runtime-base' % name
                     # Freeze one existing runtime base; do not stack a binary layer every release.
@@ -490,6 +483,19 @@ def deploy(candidate, manifest, state, registry=None):
                     obj['volumes'].update(vols)
                 changed.append(name)
             if changed:
+                if registry is not None:
+                    def pull_image(name):
+                        image = manifest['components'][name]['image']
+                        with open(candidate / ('pull-' + name + '.log'), 'wb') as log:
+                            subprocess.run(['docker', '--config', str(registry), 'pull', '--platform', 'linux/amd64', image],
+                                           stdout=log, stderr=log, timeout=1500, check=True)
+                        label = run(['docker', 'image', 'inspect', '--format',
+                                     '{{index .Config.Labels "org.askxuan.binary-sha256"}}', image]).decode().strip()
+                        if label != manifest['files'][f'payload/{name}/{name}']:
+                            raise ValueError('Pulled image binary checksum label differs from the release')
+
+                    with ThreadPoolExecutor(max_workers=4) as executor:
+                        list(executor.map(pull_image, changed))
                 atomic_compose(candidate / 'compose.json', current)
                 atomic_compose(rollback, before)
                 journal['phase'] = 'switching-backend'
