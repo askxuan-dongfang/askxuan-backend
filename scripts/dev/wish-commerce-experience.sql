@@ -30,10 +30,10 @@ VALUES
    'enabled');
 
 INSERT IGNORE INTO askxuan_product.product
-  (product_no,name,category_id,description,status,is_experience,price,stock,tags,freight_template_id)
+  (id,product_no,name,category_id,description,status,is_experience,price,stock,tags,freight_template_id)
 VALUES
-  ('EXP-1120-INCENSE','莲纹香插（体验）',4,'模拟陶制香插，体验礼物挑选和运费核对。','on_shelf',1,69.00,12,'体验商品,送礼',991120),
-  ('EXP-1120-BRACELET','青木手串（体验）',1,'模拟日常手串，可从送礼和日常佩戴两个主题选购。','on_shelf',1,49.00,12,'体验商品,送礼,日常佩戴',991120);
+  (991120,'EXP-1120-INCENSE','莲纹香插（体验）',4,'模拟陶制香插，体验礼物挑选和运费核对。','on_shelf',1,69.00,12,'体验商品,送礼',991120),
+  (991121,'EXP-1120-BRACELET','青木手串（体验）',1,'模拟日常手串，可从送礼和日常佩戴两个主题选购。','on_shelf',1,49.00,12,'体验商品,送礼,日常佩戴',991120);
 
 INSERT IGNORE INTO askxuan_payment.points_product
   (id,name,category,description,points_price,stock,status)

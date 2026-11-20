@@ -45,8 +45,8 @@ func TestExperienceShopCheckoutMySQL(t *testing.T) {
 	db := sqlx.NewMysql(dsn)
 	ctx := context.Background()
 	items := []*catalog.CatalogQuote{
-		{FreightTemplateId: 991120, Quantity: 1, IsExperience: true},
-		{FreightTemplateId: 991120, Quantity: 2, IsExperience: true},
+		{ProductId: 991120, Quantity: 1, IsExperience: true},
+		{ProductId: 991121, Quantity: 2, IsExperience: true},
 	}
 	for id, want := range map[int64]int64{991120: 1000, 991121: 1800} {
 		got, err := calculateFreight(ctx, db, 991120, id, items)

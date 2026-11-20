@@ -36,7 +36,7 @@ func TestReservationExperienceSnapshotAndAggregateStock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !got.Items[0].IsExperience || got.Items[0].FreightTemplateId != 51 || got.TotalAmount != 118 {
+	if !got.Items[0].IsExperience || got.TotalAmount != 118 {
 		t.Fatal(got)
 	}
 	if err = m.ExpectationsWereMet(); err != nil {
@@ -85,7 +85,7 @@ func TestExperienceCatalogStockMySQL(t *testing.T) {
 	release := &catalog.ReleaseCartReq{RequestId: key}
 	t.Cleanup(func() { _, _ = server.ReleaseCart(ctx, release) })
 	reserved, err := server.ReserveCart(ctx, req)
-	if err != nil || reserved.Items[0].FreightTemplateId != 991120 || reserved.TotalAmount != 147 {
+	if err != nil || reserved.TotalAmount != 147 {
 		t.Fatalf("reserve: %+v, %v", reserved, err)
 	}
 	assertStock := func(want int) {

@@ -19,7 +19,6 @@ message CatalogQuote {
   int32 quantity = 6;
   string image = 7;
   bool is_experience = 8;
-  int64 freight_template_id = 9;
 }
 
 message ReserveCartReq {

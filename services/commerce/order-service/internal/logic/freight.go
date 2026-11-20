@@ -20,10 +20,32 @@ type pieceRate struct {
 }
 
 func calculateFreight(ctx context.Context, db sqlx.SqlConn, userID, addressID int64, items []*catalog.CatalogQuote) (int64, error) {
-	quantities := make(map[int64]int64)
+	pieces := make(map[int64]int64)
 	for _, item := range items {
-		if item.FreightTemplateId > 0 {
-			quantities[item.FreightTemplateId] += int64(item.Quantity)
+		pieces[item.ProductId] += int64(item.Quantity)
+	}
+	if len(pieces) == 0 {
+		return 0, nil
+	}
+	productIDs := make([]any, 0, len(pieces))
+	for id := range pieces {
+		productIDs = append(productIDs, id)
+	}
+	placeholders := strings.Repeat("?,", len(productIDs)-1) + "?"
+	var products []struct {
+		ID         int64 `db:"id"`
+		TemplateID int64 `db:"freight_template_id"`
+	}
+	if err := db.QueryRowsCtx(ctx, &products, `SELECT id,freight_template_id FROM askxuan_product.product WHERE id IN (`+placeholders+`)`, productIDs...); err != nil {
+		return 0, err
+	}
+	if len(products) != len(pieces) {
+		return 0, common.ErrProductNotFound
+	}
+	quantities := make(map[int64]int64)
+	for _, product := range products {
+		if product.TemplateID > 0 {
+			quantities[product.TemplateID] += pieces[product.ID]
 		}
 	}
 	if len(quantities) == 0 {

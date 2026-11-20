@@ -45,6 +45,7 @@ PREPARE shop_stmt FROM @shop_ddl;
 EXECUTE shop_stmt;
 DEALLOCATE PREPARE shop_stmt;
 
+GRANT SELECT (id, freight_template_id) ON askxuan_product.product TO 'order_user'@'%';
 GRANT SELECT (id, user_id, province) ON askxuan_user.user_address TO 'order_user'@'%';
 GRANT SELECT (id, type, free_shipping, config, status) ON askxuan_logistics.freight_template TO 'order_user'@'%';
 GRANT SELECT (order_type, order_no, status) ON askxuan_payment.payment TO 'order_user'@'%';

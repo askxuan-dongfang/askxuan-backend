@@ -97,6 +97,7 @@ GRANT SELECT ON askxuan_temple.temple_service TO 'diy_user'@'%';
 GRANT SELECT ON askxuan_master.master TO 'diy_user'@'%';
 GRANT SELECT ON askxuan_master.master_service_tag TO 'diy_user'@'%';
 GRANT ALL PRIVILEGES ON askxuan_order.* TO 'order_user'@'%';
+GRANT SELECT (id, freight_template_id) ON askxuan_product.product TO 'order_user'@'%';
 GRANT SELECT (id, user_id, province) ON askxuan_user.user_address TO 'order_user'@'%';
 GRANT SELECT (id, type, free_shipping, config, status) ON askxuan_logistics.freight_template TO 'order_user'@'%';
 GRANT SELECT (order_type, order_no, status) ON askxuan_payment.payment TO 'order_user'@'%';

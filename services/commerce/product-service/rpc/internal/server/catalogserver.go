@@ -59,7 +59,7 @@ func (s *CatalogServer) ReserveCart(ctx context.Context, req *catalog.ReserveCar
 			}
 			quote := &catalog.CatalogQuote{ProductId: product.Id, ProductName: product.Name,
 				Quantity: line.GetQuantity(), Image: product.MainImage, UnitPrice: product.Price,
-				IsExperience: product.IsExperience, FreightTemplateId: product.FreightTemplateId}
+				IsExperience: product.IsExperience}
 			if line.GetSkuId() > 0 {
 				var sku model.ProductSku
 				if err := session.QueryRowCtx(ctx, &sku, `SELECT id,product_id,spec_name,spec_value,price,stock,sku_no FROM product_sku WHERE id=? AND product_id=? FOR UPDATE`, line.GetSkuId(), product.Id); err != nil {
