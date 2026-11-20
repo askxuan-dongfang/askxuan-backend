@@ -8,6 +8,7 @@ import base64
 from concurrent.futures import ThreadPoolExecutor
 import fcntl
 import hashlib
+from http.client import IncompleteRead
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -117,18 +118,25 @@ def download_artifact(scope, request, directory):
 
                 def receive_range(start):
                     end = min(start + block, size) - 1
-                    with open_download(f'bytes={start}-{end}') as segment, archive.open('r+b') as output:
-                        if segment.status != 206 or segment.headers.get('Content-Range') != f'bytes {start}-{end}/{size}':
-                            raise ValueError('Unexpected H5 artifact range')
-                        output.seek(start)
-                        if copy(segment, output, end - start + 1) != end - start + 1:
-                            raise ValueError('Incomplete H5 artifact range')
+                    for attempt in range(3):
+                        try:
+                            with open_download(f'bytes={start}-{end}') as segment, archive.open('r+b') as output:
+                                if segment.status != 206 or segment.headers.get('Content-Range') != f'bytes {start}-{end}/{size}':
+                                    raise ValueError('Unexpected H5 artifact range')
+                                output.seek(start)
+                                if copy(segment, output, end - start + 1) != end - start + 1:
+                                    raise OSError('Incomplete H5 artifact range')
+                                return
+                        except (urllib.error.URLError, OSError, IncompleteRead):
+                            if attempt == 2 or time.monotonic() >= deadline:
+                                raise
+                            time.sleep(1 << attempt)
 
                 with ThreadPoolExecutor(max_workers=16) as executor:
                     list(executor.map(receive_range, range(0, size, block)))
             else:
                 copy(src, target, MAX_RELEASE_BYTES)
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except (urllib.error.URLError, OSError, IncompleteRead):
         raise RuntimeError('GitHub artifact download failed') from None
     if sha(archive) != request['sha256']:
         raise ValueError('Artifact archive checksum mismatch')

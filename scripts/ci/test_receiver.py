@@ -100,7 +100,7 @@ class ReceiverTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'checksum'):
                 receiver.download_artifact('h5', {**request, 'sha256': '0' * 64}, directory)
 
-    def test_h5_ranges_are_reassembled_and_checked(self):
+    def test_h5_ranges_retry_short_reads_and_verify_reassembled_archive(self):
         import re
 
         payload = b'a' * (4 * 1024**2)
@@ -108,19 +108,28 @@ class ReceiverTests(unittest.TestCase):
         with zipfile.ZipFile(zipped, 'w') as output:
             output.writestr('release.tgz', payload)
         data = zipped.getvalue()
+        middle_attempts = []
         def response(request, *, timeout):
             start, end = map(int, re.fullmatch(r'bytes=(\d+)-(\d+)', request.get_header('Range')).groups())
-            result = io.BytesIO(data[start:end+1])
+            contents = data[start:end+1]
+            if start == 2 * 1024**2:
+                middle_attempts.append(start)
+                if len(middle_attempts) == 1:
+                    contents = contents[:256]
+            result = io.BytesIO(contents)
             result.status = 206
             result.headers = {'Content-Range': f'bytes {start}-{end}/{len(data)}'}
             self.assertEqual(request.get_header('Authorization'), 'Bearer ' + A)
             return result
 
-        with tempfile.TemporaryDirectory() as tmp, patch.object(urllib.request, 'build_opener') as opener:
+        with tempfile.TemporaryDirectory() as tmp, patch.object(urllib.request, 'build_opener') as opener, \
+             patch.object(receiver.time, 'sleep') as sleep:
             opener.return_value.open.side_effect = response
             request = {'artifact_id': '123', 'sha256': hashlib.sha256(data).hexdigest(), 'token': A}
             self.assertEqual(receiver.download_artifact('h5', request, Path(tmp)).read_bytes(), payload)
-            self.assertEqual(opener.return_value.open.call_count, 4)
+            self.assertEqual(opener.return_value.open.call_count, 5)
+            self.assertEqual(len(middle_attempts), 2)
+            sleep.assert_called_once_with(1)
 
     def test_backend_manifest_binds_each_service_to_a_digest(self):
         manifest = {'schema': 1, 'scope': 'backend', 'release': 'ci-backend-test-1',
