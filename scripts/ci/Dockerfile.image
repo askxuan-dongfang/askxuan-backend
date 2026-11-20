@@ -1,0 +1,10 @@
+FROM alpine:3.19@sha256:b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171
+RUN apk add --no-cache ca-certificates tzdata && adduser -D -u 1000 appuser
+ENV TZ=Asia/Shanghai
+ARG BINARY
+RUN if [ "$BINARY" = "file" ]; then apk add --no-cache mariadb-client; fi
+ENV BINARY=${BINARY}
+WORKDIR /app
+COPY --chown=1000:1000 --chmod=755 ${BINARY} /app/${BINARY}
+USER appuser
+CMD ["/bin/sh", "-c", "exec /app/${BINARY} -f etc/${BINARY}.yaml"]

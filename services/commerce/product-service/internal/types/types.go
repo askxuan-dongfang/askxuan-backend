@@ -61,6 +61,7 @@ type ProductImage struct {
 type CustomerProductListReq struct {
 	Sort       string `form:"sort,optional"`
 	InStock    bool   `form:"inStock,optional"`
+	Tag        string `form:"tag,optional"`
 	CategoryId int64  `form:"categoryId,optional"`
 	Keyword    string `form:"keyword,optional"`
 	Page       int    `form:"page,default=1"`

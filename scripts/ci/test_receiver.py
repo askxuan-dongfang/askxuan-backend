@@ -6,6 +6,8 @@ import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
+import urllib.request
+import zipfile
 
 import ecs_receiver as receiver
 import release as builder
@@ -75,6 +77,63 @@ class ReceiverTests(unittest.TestCase):
                 receiver.extract(archive, base / 'first', 'h5')
             with self.assertRaisesRegex(ValueError, 'scope'):
                 receiver.extract(archive, base / 'second', 'web')
+
+    def test_artifact_digest_is_checked_and_token_does_not_follow_redirect(self):
+        zipped = io.BytesIO()
+        with zipfile.ZipFile(zipped, 'w') as output:
+            output.writestr('release.tgz', b'h5 release')
+        data = zipped.getvalue()
+        request = {'artifact_id': '123', 'sha256': hashlib.sha256(data).hexdigest(),
+                   'actor': 'actions', 'token': A, 'commit': B, 'run': '456', 'attempt': '2'}
+        self.assertEqual(receiver.artifact_request(io.BytesIO(json.dumps(request).encode())), request)
+        with tempfile.TemporaryDirectory() as tmp, patch.object(urllib.request, 'build_opener') as opener:
+            directory = Path(tmp)
+            opener.return_value.open.return_value = io.BytesIO(data)
+            opener.return_value.open.return_value.status = 200
+            self.assertEqual(receiver.download_artifact('h5', request, directory).read_bytes(), b'h5 release')
+            original = opener.return_value.open.call_args.args[0]
+            self.assertEqual(original.get_header('Authorization'), 'Bearer ' + A)
+            redirected = receiver.ArtifactRedirect().redirect_request(original, None, 302, '', {}, 'https://blobs.example/test')
+            self.assertIsNone(redirected.get_header('Authorization'))
+            opener.return_value.open.return_value = io.BytesIO(data)
+            opener.return_value.open.return_value.status = 200
+            with self.assertRaisesRegex(ValueError, 'checksum'):
+                receiver.download_artifact('h5', {**request, 'sha256': '0' * 64}, directory)
+
+    def test_h5_ranges_are_reassembled_and_checked(self):
+        import re
+
+        payload = b'a' * (4 * 1024**2)
+        zipped = io.BytesIO()
+        with zipfile.ZipFile(zipped, 'w') as output:
+            output.writestr('release.tgz', payload)
+        data = zipped.getvalue()
+        def response(request, *, timeout):
+            start, end = map(int, re.fullmatch(r'bytes=(\d+)-(\d+)', request.get_header('Range')).groups())
+            result = io.BytesIO(data[start:end+1])
+            result.status = 206
+            result.headers = {'Content-Range': f'bytes {start}-{end}/{len(data)}'}
+            self.assertEqual(request.get_header('Authorization'), 'Bearer ' + A)
+            return result
+
+        with tempfile.TemporaryDirectory() as tmp, patch.object(urllib.request, 'build_opener') as opener:
+            opener.return_value.open.side_effect = response
+            request = {'artifact_id': '123', 'sha256': hashlib.sha256(data).hexdigest(), 'token': A}
+            self.assertEqual(receiver.download_artifact('h5', request, Path(tmp)).read_bytes(), payload)
+            self.assertEqual(opener.return_value.open.call_count, 4)
+
+    def test_backend_manifest_binds_each_service_to_a_digest(self):
+        manifest = {'schema': 1, 'scope': 'backend', 'release': 'ci-backend-test-1',
+                    'files': {'payload/diy/diy': '0' * 64}, 'components': {'diy': {
+                        'image': receiver.image_repository('diy') + '@sha256:' + '1' * 64,
+                    }}}
+        with patch.object(receiver, 'SERVICES', {'diy'}):
+            receiver.validate_image_manifest(manifest)
+            for image in (receiver.image_repository('diy') + ':latest',
+                          receiver.image_repository('file') + '@sha256:' + '1' * 64):
+                manifest['components']['diy']['image'] = image
+                with self.assertRaisesRegex(ValueError, 'fixed image digest'):
+                    receiver.validate_image_manifest(manifest)
 
     def web_fixture(self, base):
         releases = base / 'web'
@@ -232,6 +291,40 @@ class ReceiverTests(unittest.TestCase):
             (base / 'state.json').write_text(json.dumps({'last_release': 'ci-web-later-2'}))
             with patch.object(receiver, 'BASE', base), self.assertRaisesRegex(ValueError, 'latest global'):
                 receiver.rollback_latest('ci-h5-older-1')
+
+    def test_image_release_preserves_unchanged_runtime_and_its_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            releases, old, public, candidate = self.web_fixture(base)
+            old_product = {'sources': {'backend': A}, 'input': '1' * 64, 'release': 'ci-backend-previous-1'}
+            state = {'components': {
+                'backend/product': old_product,
+                'backend/payment': {**old_product, 'input': '2' * 64},
+            }}
+            components = {
+                'product': {'sources': {'backend': B}, 'source_input': old_product['input'], 'input': '3' * 64,
+                            'image': receiver.image_repository('product') + '@sha256:' + '4' * 64},
+                'payment': {'sources': {'backend': B}, 'source_input': '5' * 64, 'input': '6' * 64,
+                            'image': receiver.image_repository('payment') + '@sha256:' + '7' * 64},
+            }
+            binary = '8' * 64
+            manifest = {'release': 'ci-backend-pull-2', 'scope': 'backend', 'components': components,
+                        'files': {'payload/payment/payment': binary}}
+            inspected = json.dumps([{'Image': 'sha256:old-payment'}]).encode()
+            with patch.multiple(receiver, BASE=base, PUBLIC=public, RELEASES=releases), \
+                 patch.object(receiver, 'run', side_effect=[inspected, binary.encode()]) as run, \
+                 patch.object(receiver, 'compose_definition', return_value=({'image': components['payment']['image']}, {}, {})), \
+                 patch.object(receiver.subprocess, 'run') as pull, patch.object(receiver, 'compose_up'), \
+                 patch.object(receiver, 'healthy') as health, patch.object(receiver, 'smoke'):
+                receiver.deploy(candidate, manifest, state, registry=base)
+            self.assertEqual(run.call_args_list[0].args[0], ['docker', 'inspect', 'askxuan-payment-service'])
+            pull.assert_called_once()
+            self.assertEqual(pull.call_args.args[0][-1], components['payment']['image'])
+            health.assert_called_once_with(['payment'])
+            saved = json.loads((base / 'state.json').read_text())['components']
+            self.assertEqual(saved['backend/product'], old_product)
+            self.assertEqual(saved['backend/payment']['image'], components['payment']['image'])
+            self.assertEqual(json.loads((candidate / 'rollback.json').read_text())['services']['payment-service']['image'], 'sha256:old-payment')
 
     def test_retry_retags_only_metadata_without_changing_payload(self):
         with tempfile.TemporaryDirectory() as tmp:

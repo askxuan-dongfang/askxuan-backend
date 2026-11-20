@@ -10,6 +10,35 @@ When adopting this contract, first test and commit the tooling, install the revi
 
 Run receiver tests: `python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v`.
 
+### Pull releases from GitHub
+
+The backend workflow builds GHCR images from the same Linux amd64 binaries that passed CI.
+It publishes a manifest that binds each service to a repository and digest. ECS pulls the changed
+images by digest and uses the existing Compose configuration, health checks, and transaction.
+When first switching to image pulls, services with the same source fingerprint keep their
+current containers and provenance. They adopt the image workflow with their next source change.
+The image context contains only the CI binary and the runtime Dockerfile. Production configuration
+is still mounted from the server. The file service image includes the MariaDB client.
+
+The H5 workflow publishes its existing static archive to GitHub Actions artifacts. The SSH jobs
+send an artifact ID, ZIP digest, and a job-scoped read token. The receiver downloads the ZIP,
+using parallel HTTP ranges for large H5 artifacts on ECS. It verifies the whole ZIP and
+its contents, then uses the same atomic public-directory switch. Docker
+credentials exist only inside the receiver's temporary directory. Release receipts record the
+image digest or verified static files. Rollback uses the previously running local image or
+previous public directory, so it does not depend on GitHub's artifact retention.
+
+Rehearse by dispatching the two release workflows on their candidate branches with
+`verify_pull=true`. The isolated jobs exercise the GitHub download, receiver, service or static
+switch, health checks, and operator rollback. Backend verification starts the pinned gateway
+binary with isolated upstreams and Redis. H5 verification serves the real CI bundle from Nginx.
+
+For an approved production switch, install the reviewed root-owned receiver under the existing
+publication lock and verify its checksum. Review the running Docker mount and health contracts
+before the first image release. Set each repository's `ECS_RELEASE_TRANSPORT` to `pull` when
+its receiver and workflow are ready. Select `upload` for the compatibility path. Keep the
+previous local images and public directory as rollback targets.
+
 Quiet park is an independent `quiet` scope. `GOWORK=off python3 scripts/ci/release.py quiet`
 builds the entire `services/content/quiet-service` package for Linux amd64 and includes
 exactly `payload/quiet/quiet`. It records `backend/quiet`; the original twenty-service

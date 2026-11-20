@@ -82,7 +82,12 @@ func pointsHandler(store points.Store, admin bool, action string) http.HandlerFu
 		case "ledger":
 			data, err = store.Entries(r.Context(), user, page)
 		case "products":
-			data, err = store.Products(r.Context(), admin, page, r.URL.Query().Get("keyword"), r.URL.Query().Get("status"))
+			query := r.URL.Query()
+			var priorityUser string
+			if !admin && query.Get("redeemableFirst") == "true" {
+				priorityUser = user
+			}
+			data, err = store.Products(r.Context(), admin, page, query.Get("keyword"), query.Get("status"), priorityUser)
 		case "orders":
 			data, err = store.Orders(r.Context(), user, admin, page, r.URL.Query().Get("keyword"), r.URL.Query().Get("status"))
 		case "report":

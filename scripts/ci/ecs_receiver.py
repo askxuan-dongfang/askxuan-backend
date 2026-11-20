@@ -4,6 +4,8 @@
 Install manually from a reviewed commit. All writers share this process's flock.
 Production state and compose files remain root-only because they contain env vars.
 """
+import base64
+from concurrent.futures import ThreadPoolExecutor
 import fcntl
 import hashlib
 import json
@@ -21,6 +23,7 @@ import urllib.request
 import urllib.parse
 import ssl
 import stat
+import zipfile
 
 BASE = Path('/opt/askxuan/ci')
 PUBLIC = Path('/var/www/askxuan/public')
@@ -30,6 +33,9 @@ SERVICES = {'gateway', 'auth', 'user', 'temple', 'master', 'booking', 'community
             'message', 'file', 'ai', 'media'}
 WEB = {'admin', 'temple'}
 SHA = re.compile(r'^[0-9a-f]{40}$')
+SHA256 = re.compile(r'^[0-9a-f]{64}$')
+MAX_RELEASE_BYTES = 1024**3
+ARTIFACT_REPOS = {'backend': 'askxuan-backend', 'h5': 'askxuan-h5'}
 QUIET_BASE = 'askxuan/quiet-service:ci-runtime-base'
 
 
@@ -43,6 +49,121 @@ def sha(path):
         for data in iter(lambda: f.read(1048576), b''):
             h.update(data)
     return h.hexdigest()
+
+
+def image_repository(service):
+    return f'ghcr.io/askxuan-dongfang/askxuan-backend-{service}'
+
+
+def artifact_request(stream):
+    data = stream.read(16 * 1024 + 1)
+    if len(data) > 16 * 1024:
+        raise ValueError('Artifact request exceeds size limit')
+    request = json.loads(data)
+    fields = {
+        'artifact_id': r'[1-9][0-9]{0,18}', 'sha256': SHA256, 'commit': SHA,
+        'run': r'[1-9][0-9]{0,18}', 'attempt': r'[1-9][0-9]{0,8}',
+        'actor': r'[a-zA-Z0-9-]{1,64}(?:\[bot\])?', 'token': r'[a-zA-Z0-9_.-]{16,4096}',
+    }
+    if (not isinstance(request, dict) or set(request) != set(fields)
+            or any(not isinstance(request[name], str) or not re.fullmatch(pattern, request[name])
+                   for name, pattern in fields.items())):
+        raise ValueError('Invalid artifact request')
+    return request
+
+
+class ArtifactRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urllib.parse.urlsplit(newurl).scheme != 'https':
+            raise ValueError('Expected HTTPS artifact download')
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def download_artifact(scope, request, directory):
+    repo = ARTIFACT_REPOS[scope]
+    url = f'https://api.github.com/repos/askxuan-dongfang/{repo}/actions/artifacts/{request["artifact_id"]}/zip'
+    expected = 'manifest.json' if scope == 'backend' else 'release.tgz'
+    archive = directory / 'artifact.zip'
+    deadline = time.monotonic() + 900
+    opener = urllib.request.build_opener(ArtifactRedirect())
+
+    def open_download(byte_range=None):
+        download = urllib.request.Request(url, headers={'Accept': 'application/vnd.github+json'})
+        # The job token applies only to the API, and each range gets a fresh storage URL.
+        download.add_unredirected_header('Authorization', 'Bearer ' + request['token'])
+        if byte_range:
+            download.add_header('Range', byte_range)
+        return opener.open(download, timeout=30)
+
+    def copy(src, target, limit):
+        size = 0
+        for chunk in iter(lambda: src.read(256 * 1024), b''):
+            size += len(chunk)
+            if size > limit or time.monotonic() > deadline:
+                raise ValueError('Artifact download exceeds size or time limit')
+            target.write(chunk)
+        return size
+
+    try:
+        with open_download('bytes=0-0' if scope == 'h5' else None) as src, archive.open('xb') as target:
+            if scope == 'h5' and src.status == 206:
+                match = re.fullmatch(r'bytes 0-0/([1-9][0-9]*)', src.headers.get('Content-Range', ''))
+                if not match or int(match[1]) > MAX_RELEASE_BYTES:
+                    raise ValueError('Invalid H5 artifact size')
+                size = int(match[1])
+                # A slow ECS connection can delay the last range. Keep each range small.
+                block = 2 * 1024**2
+                target.truncate(size)
+
+                def receive_range(start):
+                    end = min(start + block, size) - 1
+                    with open_download(f'bytes={start}-{end}') as segment, archive.open('r+b') as output:
+                        if segment.status != 206 or segment.headers.get('Content-Range') != f'bytes {start}-{end}/{size}':
+                            raise ValueError('Unexpected H5 artifact range')
+                        output.seek(start)
+                        if copy(segment, output, end - start + 1) != end - start + 1:
+                            raise ValueError('Incomplete H5 artifact range')
+
+                with ThreadPoolExecutor(max_workers=16) as executor:
+                    list(executor.map(receive_range, range(0, size, block)))
+            else:
+                copy(src, target, MAX_RELEASE_BYTES)
+    except (urllib.error.URLError, TimeoutError, OSError):
+        raise RuntimeError('GitHub artifact download failed') from None
+    if sha(archive) != request['sha256']:
+        raise ValueError('Artifact archive checksum mismatch')
+    output = directory / expected
+    with zipfile.ZipFile(archive) as zipped:
+        members = zipped.infolist()
+        limit = 8 * 1024**2 if scope == 'backend' else MAX_RELEASE_BYTES
+        if len(members) != 1 or members[0].filename != expected or not 0 < members[0].file_size <= limit:
+            raise ValueError('Unexpected GitHub artifact contents')
+        with zipped.open(members[0]) as src, output.open('xb') as target:
+            shutil.copyfileobj(src, target)
+    archive.unlink()
+    return output
+
+
+def validate_release(manifest, scope):
+    allowed = SERVICES if scope == 'backend' else ({'quiet'} if scope == 'quiet' else (WEB if scope == 'web' else {'h5'}))
+    if manifest.get('schema') != 1 or manifest.get('scope') != scope or set(manifest['components']) != allowed:
+        raise ValueError('Release scope mismatch')
+    if not re.fullmatch(r'ci-(backend|quiet|web|h5)-[a-zA-Z0-9-]{1,100}', manifest['release']) or not manifest['release'].startswith('ci-' + scope + '-'):
+        raise ValueError('Invalid release identifier')
+    return allowed
+
+
+def validate_image_manifest(manifest):
+    allowed = validate_release(manifest, 'backend')
+    if (set(manifest['files']) != {f'payload/{name}/{name}' for name in allowed}
+            or any(not SHA256.fullmatch(value) for value in manifest['files'].values())):
+        raise ValueError('Unexpected image binary manifest')
+    for name, component in manifest['components'].items():
+        repository, separator, digest = component['image'].partition('@sha256:')
+        if not separator or repository != image_repository(name) or not SHA256.fullmatch(digest):
+            raise ValueError('Expected a fixed image digest from the service registry')
+        if 'source_input' in component and not SHA256.fullmatch(component['source_input']):
+            raise ValueError('Invalid service source fingerprint')
 
 
 def atomic_json(path, value):
@@ -92,11 +213,7 @@ def extract(archive, dest, scope):
                 with tar.extractfile(m) as src, open(p, 'xb') as target:
                     shutil.copyfileobj(src, target)
     manifest = json.loads((dest / 'manifest.json').read_text())
-    allowed = SERVICES if scope == 'backend' else ({'quiet'} if scope == 'quiet' else (WEB if scope == 'web' else {'h5'}))
-    if manifest.get('schema') != 1 or manifest.get('scope') != scope or set(manifest['components']) != allowed:
-        raise ValueError('Release scope mismatch')
-    if not re.fullmatch(r'ci-(backend|quiet|web|h5)-[a-zA-Z0-9-]{1,100}', manifest['release']) or not manifest['release'].startswith('ci-' + scope + '-'):
-        raise ValueError('Invalid release identifier')
+    allowed = validate_release(manifest, scope)
     actual = {p.relative_to(dest).as_posix(): sha(p) for p in (dest / 'payload').rglob('*') if p.is_file()}
     if actual != manifest['files']:
         raise ValueError('Payload checksum mismatch')
@@ -165,13 +282,21 @@ def compose_definition(c, image):
     for raw, key in [('User', 'user'), ('WorkingDir', 'working_dir'), ('Entrypoint', 'entrypoint'), ('Cmd', 'command')]:
         if cfg.get(raw):
             d[key] = cfg[raw]
+    check = cfg.get('Healthcheck') or {}
+    if check.get('Test'):
+        d['healthcheck'] = {'test': check['Test']}
+        for raw, key in [('Interval', 'interval'), ('Timeout', 'timeout'), ('StartPeriod', 'start_period'), ('StartInterval', 'start_interval')]:
+            if check.get(raw):
+                d['healthcheck'][key] = str(check[raw]) + 'ns'
+        if check.get('Retries') is not None:
+            d['healthcheck']['retries'] = check['Retries']
     return d, networks, volumes
 
 
 def compose_up(path):
     # Docker output/errors can contain env values. Keep full output in root-only logs.
     with open(path.parent / (path.stem + '.log'), 'ab') as log:
-        subprocess.run(['docker', 'compose', '-p', 'askxuan', '-f', str(path), 'up', '-d', '--no-build', '--no-deps'],
+        subprocess.run(['docker', 'compose', '-p', 'askxuan', '-f', str(path), 'up', '-d', '--no-build', '--no-deps', '--pull', 'never'],
                        stdout=log, stderr=log, check=True)
 
 
@@ -223,12 +348,6 @@ def quiet_existing_definition(c, image):
     check = c['Config'].get('Healthcheck', {})
     if not check.get('Test') or check['Test'] == ['NONE']:
         raise ValueError('Existing quiet runtime must have a healthcheck')
-    d['healthcheck'] = {'test': check['Test']}
-    for raw, key in [('Interval', 'interval'), ('Timeout', 'timeout'), ('StartPeriod', 'start_period'), ('StartInterval', 'start_interval')]:
-        if check.get(raw):
-            d['healthcheck'][key] = str(check[raw]) + 'ns'
-    if check.get('Retries') is not None:
-        d['healthcheck']['retries'] = check['Retries']
     return {'services': {'quiet-service': d}, 'networks': networks, 'volumes': volumes}
 
 
@@ -325,7 +444,7 @@ def smoke_web(candidate, manifest):
                     raise RuntimeError('Served legacy admin entry mismatch: ' + path)
 
 
-def deploy(candidate, manifest, state):
+def deploy(candidate, manifest, state, registry=None):
     release = manifest['release']
     rollback = candidate / 'rollback.json'
     old_public = PUBLIC.resolve(strict=manifest['scope'] != 'quiet')
@@ -339,19 +458,30 @@ def deploy(candidate, manifest, state):
             current = {'services': {}, 'networks': {}, 'volumes': {}}
             before = {'services': {}, 'networks': {}, 'volumes': {}}
             for name, value in manifest['components'].items():
-                if state.get('components', {}).get('backend/' + name, {}).get('input') == value['input']:
+                previous_input = state.get('components', {}).get('backend/' + name, {}).get('input')
+                if previous_input == value['input'] or (registry is not None and previous_input == value.get('source_input', value['input'])):
                     continue
                 c = json.loads(run(['docker', 'inspect', 'askxuan-' + name + '-service']))[0]
-                base_tag = 'askxuan/%s-service:ci-runtime-base' % name
-                # Freeze one existing runtime base; do not stack a binary layer every release.
-                if subprocess.run(['docker', 'image', 'inspect', base_tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
-                    run(['docker', 'tag', c['Image'], base_tag])
-                image = 'askxuan/%s-service:%s' % (name, release)
-                target = candidate / 'payload' / name
-                (target / name).chmod(0o755)
-                (target / 'Dockerfile').write_text('FROM %s\nCOPY --chown=1000:1000 --chmod=755 %s /app/%s\n' % (base_tag, name, name))
-                with open(candidate / ('build-' + name + '.log'), 'wb') as log:
-                    subprocess.run(['docker', 'build', '-t', image, str(target)], stdout=log, stderr=log, check=True)
+                if registry is not None:
+                    image = value['image']
+                    with open(candidate / ('pull-' + name + '.log'), 'wb') as log:
+                        subprocess.run(['docker', '--config', str(registry), 'pull', '--platform', 'linux/amd64', image],
+                                       stdout=log, stderr=log, timeout=300, check=True)
+                    label = run(['docker', 'image', 'inspect', '--format',
+                                 '{{index .Config.Labels "org.askxuan.binary-sha256"}}', image]).decode().strip()
+                    if label != manifest['files'][f'payload/{name}/{name}']:
+                        raise ValueError('Pulled image binary checksum label differs from the release')
+                else:
+                    base_tag = 'askxuan/%s-service:ci-runtime-base' % name
+                    # Freeze one existing runtime base; do not stack a binary layer every release.
+                    if subprocess.run(['docker', 'image', 'inspect', base_tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+                        run(['docker', 'tag', c['Image'], base_tag])
+                    image = 'askxuan/%s-service:%s' % (name, release)
+                    target = candidate / 'payload' / name
+                    (target / name).chmod(0o755)
+                    (target / 'Dockerfile').write_text('FROM %s\nCOPY --chown=1000:1000 --chmod=755 %s /app/%s\n' % (base_tag, name, name))
+                    with open(candidate / ('build-' + name + '.log'), 'wb') as log:
+                        subprocess.run(['docker', 'build', '-t', image, str(target)], stdout=log, stderr=log, check=True)
                 d, nets, vols = compose_definition(c, image)
                 current['services'][name + '-service'] = d
                 before['services'][name + '-service'] = {**d, 'image': c['Image']}
@@ -400,6 +530,8 @@ def deploy(candidate, manifest, state):
             smoke_web(candidate, manifest)
         smoke_quiet() if manifest['scope'] == 'quiet' else smoke()
         for name, value in manifest['components'].items():
+            if registry is not None and name not in changed:
+                continue
             key = ('backend/' if manifest['scope'] in ('backend', 'quiet') else 'web/') + name
             state.setdefault('components', {})[key] = {**value, 'release': release}
         if manifest['scope'] == 'web':
@@ -429,28 +561,50 @@ def deploy(candidate, manifest, state):
         raise
 
 
-def main():
+def receive(scope, stream):
     os.umask(0o077)
-    scope = sys.argv[1]
     if scope not in ('backend', 'quiet', 'web', 'h5'):
         raise ValueError('Unknown scope')
     BASE.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='incoming-', dir=BASE) as temp:
-        archive = Path(temp) / 'release.tgz'
-        size = 0
-        with open(archive, 'wb') as target:
-            for data in iter(lambda: sys.stdin.buffer.read(1048576), b''):
-                size += len(data)
-                if size > 1024**3:
-                    raise ValueError('Upload exceeds 1 GiB')
-                target.write(data)
+        directory = Path(temp)
+        request = None
+        registry = None
+        if stream.peek(1)[:1] == b'{':
+            if scope not in ARTIFACT_REPOS:
+                raise ValueError('This deployment key does not support artifact pull')
+            request = artifact_request(stream)
+            if shutil.disk_usage(BASE).free < 3 * 1024**3:
+                raise RuntimeError('Need at least 3 GiB free for release and rollback')
+            archive = download_artifact(scope, request, directory)
+        else:
+            archive = directory / 'release.tgz'
+            size = 0
+            with archive.open('xb') as target:
+                for data in iter(lambda: stream.read(1048576), b''):
+                    size += len(data)
+                    if size > MAX_RELEASE_BYTES:
+                        raise ValueError('Upload exceeds 1 GiB')
+                    target.write(data)
         with open(BASE / 'publish.lock', 'w') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             if shutil.disk_usage(BASE).free < 3 * 1024**3:
                 raise RuntimeError('Need at least 3 GiB free for release and rollback')
-            unpacked = Path(temp) / 'unpacked'
+            unpacked = directory / 'unpacked'
             unpacked.mkdir()
-            manifest = extract(archive, unpacked, scope)
+            if request and scope == 'backend':
+                manifest = json.loads(archive.read_text())
+                validate_image_manifest(manifest)
+            else:
+                manifest = extract(archive, unpacked, scope)
+            if request:
+                prefix = f'ci-{scope}-{request["run"]}-'
+                suffix = request['commit'][:12]
+                if (not re.fullmatch(re.escape(prefix) + r'[1-9][0-9]*-' + suffix, manifest['release'])
+                        or manifest['history'][scope][0] != request['commit']):
+                    raise ValueError('Artifact does not belong to this workflow run and commit')
+                manifest['release'] = prefix + request['attempt'] + '-' + suffix
+                atomic_json(unpacked / 'manifest.json', manifest)
             state = json.loads((BASE / 'state.json').read_text())
             validate_versions(manifest, state)
             if scope == 'backend' and manifest.get('contract') != json.loads((BASE / 'config.json').read_text())['backend_contract']:
@@ -462,11 +616,17 @@ def main():
             candidate = BASE / 'releases' / manifest['release']
             if candidate.exists():
                 raise ValueError('Release identifier already exists; rerun with a new attempt')
+            if request and scope == 'backend':
+                # Use only the deploy job token, in a disposable Docker client config.
+                registry = directory / 'docker-config'
+                registry.mkdir()
+                credentials = base64.b64encode(f'{request["actor"]}:{request["token"]}'.encode()).decode()
+                atomic_json(registry / 'config.json', {'auths': {'ghcr.io': {'auth': credentials}}})
             candidate.parent.mkdir(exist_ok=True)
             shutil.move(str(unpacked), candidate)
-            deploy(candidate, manifest, state)
-            # Successful archives/binaries are redundant with built images and manifest hashes.
-            shutil.rmtree(candidate / 'payload')
+            deploy(candidate, manifest, state, registry)
+            if (candidate / 'payload').is_dir():
+                shutil.rmtree(candidate / 'payload')
 
 
 def rollback_latest(release):
@@ -506,7 +666,7 @@ if __name__ == '__main__':
         if len(sys.argv) == 3 and sys.argv[1] == '--rollback':
             rollback_latest(sys.argv[2])
         else:
-            main()
+            receive(sys.argv[1], sys.stdin.buffer)
     except Exception as exc:
         # Never dump Docker inspect, environment, full command output or a secret-bearing compose.
         print('DEPLOY FAILED: %s' % str(exc), file=sys.stderr)

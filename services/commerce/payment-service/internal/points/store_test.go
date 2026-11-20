@@ -6,11 +6,32 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 )
+
+type productListConn struct {
+	sqlx.SqlConn
+	query string
+	args  []any
+}
+
+func (c *productListConn) QueryRowsCtx(_ context.Context, _ any, query string, args ...any) error {
+	c.query, c.args = query, args
+	return nil
+}
+
+func TestPointsProductsPrioritizeRedeemableBeforePaging(t *testing.T) {
+	conn := &productListConn{}
+	_, err := (Store{DB: conn}).Products(context.Background(), false, 2, "礼", "", "42")
+	if err != nil || !strings.Contains(conn.query, "status='on_sale'") || !strings.Contains(conn.query, "ORDER BY CASE WHEN stock > 0 AND points_price") ||
+		!reflect.DeepEqual(conn.args, []any{"%礼%", "%礼%", "42", 20}) {
+		t.Fatalf("unexpected personalized catalog query %q, args %v, err %v", conn.query, conn.args, err)
+	}
+}
 
 func TestEarned(t *testing.T) {
 	for _, c := range []struct{ cents, want int64 }{{-1, 0}, {0, 0}, {5800, 0}, {9999, 0}, {10000, 1}, {19999, 1}, {20000, 2}, {1234567, 123}} {
@@ -156,7 +177,7 @@ func TestMySQLPointsTransactions(t *testing.T) {
 	if a.Balance != 1 {
 		t.Fatalf("duplicate cancellation credit: %+v", a)
 	}
-	rows, _ := s.Products(ctx, true, 1)
+	rows, _ := s.Products(ctx, true, 1, "", "", "")
 	if rows[0].Stock != 1 {
 		t.Fatal("stock not restored exactly once")
 	}
