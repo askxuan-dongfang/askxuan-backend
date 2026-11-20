@@ -15,6 +15,8 @@ Run receiver tests: `python3 -m unittest discover -s scripts/ci -p 'test_*.py' -
 The backend workflow builds GHCR images from the same Linux amd64 binaries that passed CI.
 It publishes a manifest that binds each service to a repository and digest. ECS pulls the changed
 images by digest and uses the existing Compose configuration, health checks, and transaction.
+When first switching to image pulls, services with the same source fingerprint keep their
+current containers and provenance. They adopt the image workflow with their next source change.
 The image context contains only the CI binary and the runtime Dockerfile. Production configuration
 is still mounted from the server. The file service image includes the MariaDB client.
 

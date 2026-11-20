@@ -36,6 +36,7 @@ with tempfile.TemporaryDirectory(prefix='askxuan-image-build-') as temp:
             'docker', 'image', 'inspect', '--format', '{{json .RepoDigests}}', tag,
         ], text=True))
         component['image'], = [digest for digest in digests if digest.startswith(repository + '@sha256:')]
+        component['source_input'] = component['input']
         component['input'] = hashlib.sha256(f'{component["input"]}:{runtime}'.encode()).hexdigest()
     validate_image_manifest(manifest)
     Path(sys.argv[2]).write_text(json.dumps(manifest, sort_keys=True) + '\n')

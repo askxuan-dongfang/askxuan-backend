@@ -162,6 +162,8 @@ def validate_image_manifest(manifest):
         repository, separator, digest = component['image'].partition('@sha256:')
         if not separator or repository != image_repository(name) or not SHA256.fullmatch(digest):
             raise ValueError('Expected a fixed image digest from the service registry')
+        if 'source_input' in component and not SHA256.fullmatch(component['source_input']):
+            raise ValueError('Invalid service source fingerprint')
 
 
 def atomic_json(path, value):
@@ -456,7 +458,8 @@ def deploy(candidate, manifest, state, registry=None):
             current = {'services': {}, 'networks': {}, 'volumes': {}}
             before = {'services': {}, 'networks': {}, 'volumes': {}}
             for name, value in manifest['components'].items():
-                if state.get('components', {}).get('backend/' + name, {}).get('input') == value['input']:
+                previous_input = state.get('components', {}).get('backend/' + name, {}).get('input')
+                if previous_input == value['input'] or (registry is not None and previous_input == value.get('source_input', value['input'])):
                     continue
                 c = json.loads(run(['docker', 'inspect', 'askxuan-' + name + '-service']))[0]
                 if registry is not None:
@@ -527,6 +530,8 @@ def deploy(candidate, manifest, state, registry=None):
             smoke_web(candidate, manifest)
         smoke_quiet() if manifest['scope'] == 'quiet' else smoke()
         for name, value in manifest['components'].items():
+            if registry is not None and name not in changed:
+                continue
             key = ('backend/' if manifest['scope'] in ('backend', 'quiet') else 'web/') + name
             state.setdefault('components', {})[key] = {**value, 'release': release}
         if manifest['scope'] == 'web':

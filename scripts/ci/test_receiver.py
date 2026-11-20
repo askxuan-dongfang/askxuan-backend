@@ -292,6 +292,40 @@ class ReceiverTests(unittest.TestCase):
             with patch.object(receiver, 'BASE', base), self.assertRaisesRegex(ValueError, 'latest global'):
                 receiver.rollback_latest('ci-h5-older-1')
 
+    def test_image_release_preserves_unchanged_runtime_and_its_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            releases, old, public, candidate = self.web_fixture(base)
+            old_product = {'sources': {'backend': A}, 'input': '1' * 64, 'release': 'ci-backend-previous-1'}
+            state = {'components': {
+                'backend/product': old_product,
+                'backend/payment': {**old_product, 'input': '2' * 64},
+            }}
+            components = {
+                'product': {'sources': {'backend': B}, 'source_input': old_product['input'], 'input': '3' * 64,
+                            'image': receiver.image_repository('product') + '@sha256:' + '4' * 64},
+                'payment': {'sources': {'backend': B}, 'source_input': '5' * 64, 'input': '6' * 64,
+                            'image': receiver.image_repository('payment') + '@sha256:' + '7' * 64},
+            }
+            binary = '8' * 64
+            manifest = {'release': 'ci-backend-pull-2', 'scope': 'backend', 'components': components,
+                        'files': {'payload/payment/payment': binary}}
+            inspected = json.dumps([{'Image': 'sha256:old-payment'}]).encode()
+            with patch.multiple(receiver, BASE=base, PUBLIC=public, RELEASES=releases), \
+                 patch.object(receiver, 'run', side_effect=[inspected, binary.encode()]) as run, \
+                 patch.object(receiver, 'compose_definition', return_value=({'image': components['payment']['image']}, {}, {})), \
+                 patch.object(receiver.subprocess, 'run') as pull, patch.object(receiver, 'compose_up'), \
+                 patch.object(receiver, 'healthy') as health, patch.object(receiver, 'smoke'):
+                receiver.deploy(candidate, manifest, state, registry=base)
+            self.assertEqual(run.call_args_list[0].args[0], ['docker', 'inspect', 'askxuan-payment-service'])
+            pull.assert_called_once()
+            self.assertEqual(pull.call_args.args[0][-1], components['payment']['image'])
+            health.assert_called_once_with(['payment'])
+            saved = json.loads((base / 'state.json').read_text())['components']
+            self.assertEqual(saved['backend/product'], old_product)
+            self.assertEqual(saved['backend/payment']['image'], components['payment']['image'])
+            self.assertEqual(json.loads((candidate / 'rollback.json').read_text())['services']['payment-service']['image'], 'sha256:old-payment')
+
     def test_retry_retags_only_metadata_without_changing_payload(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
