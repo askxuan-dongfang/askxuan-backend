@@ -33,6 +33,8 @@ func (s *CatalogServer) ReserveCart(ctx context.Context, req *catalog.ReserveCar
 	}
 	if existing, err := s.loadReservation(ctx, req.GetRequestId()); err == nil {
 		return existing, nil
+	} else if !errors.Is(err, sqlx.ErrNotFound) {
+		return nil, err
 	}
 
 	resp := &catalog.ReserveCartResp{RequestId: req.GetRequestId()}
@@ -56,7 +58,8 @@ func (s *CatalogServer) ReserveCart(ctx context.Context, req *catalog.ReserveCar
 				return status.Error(codes.InvalidArgument, "体验商品与普通商品请分开结算")
 			}
 			quote := &catalog.CatalogQuote{ProductId: product.Id, ProductName: product.Name,
-				Quantity: line.GetQuantity(), Image: product.MainImage, UnitPrice: product.Price, IsExperience: product.IsExperience}
+				Quantity: line.GetQuantity(), Image: product.MainImage, UnitPrice: product.Price,
+				IsExperience: product.IsExperience, FreightTemplateId: product.FreightTemplateId}
 			if line.GetSkuId() > 0 {
 				var sku model.ProductSku
 				if err := session.QueryRowCtx(ctx, &sku, `SELECT id,product_id,spec_name,spec_value,price,stock,sku_no FROM product_sku WHERE id=? AND product_id=? FOR UPDATE`, line.GetSkuId(), product.Id); err != nil {
@@ -102,6 +105,8 @@ func (s *CatalogServer) ReserveCart(ctx context.Context, req *catalog.ReserveCar
 	if err != nil {
 		if existing, loadErr := s.loadReservation(ctx, req.GetRequestId()); loadErr == nil {
 			return existing, nil
+		} else if status.Code(loadErr) == codes.FailedPrecondition {
+			return nil, loadErr
 		}
 		return nil, err
 	}
@@ -159,7 +164,7 @@ func (s *CatalogServer) loadReservation(ctx context.Context, requestID string) (
 		return nil, err
 	}
 	if record.Status != "reserved" {
-		return nil, sqlx.ErrNotFound
+		return nil, status.Error(codes.FailedPrecondition, "本次结算已失效，请重新提交订单")
 	}
 	var resp catalog.ReserveCartResp
 	if err := json.Unmarshal([]byte(record.Snapshot), &resp); err != nil {

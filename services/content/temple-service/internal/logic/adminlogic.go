@@ -283,7 +283,7 @@ func (l *AdminServiceCreateLogic) AdminServiceCreate(req *types.TempleServiceCre
 	} else if !errors.Is(findErr, sqlx.ErrNotFound) {
 		return nil, common.ErrSystem
 	}
-	if req.IntentMode != "" && req.IntentMode != "inherit" && req.IntentMode != "custom" {
+	if !validSlotParticipationModes(req.Slots) || (req.IntentMode != "" && req.IntentMode != "inherit" && req.IntentMode != "custom") {
 		return nil, common.ErrParamInvalid
 	}
 	if req.IntentMode == "inherit" {
@@ -331,7 +331,7 @@ func (l *AdminServiceUpdateLogic) AdminServiceUpdate(req *types.TempleServiceUpd
 	if req.Price != nil && *req.Price < 0 {
 		return nil, common.ErrParamInvalid
 	}
-	if req.IntentMode != "" && req.IntentMode != "inherit" && req.IntentMode != "custom" {
+	if !validSlotParticipationModes(req.Slots) || (req.IntentMode != "" && req.IntentMode != "inherit" && req.IntentMode != "custom") {
 		return nil, common.ErrParamInvalid
 	}
 	if req.IntentMode == "inherit" {
@@ -694,7 +694,7 @@ func toTypeTempleService(s *model.TempleServiceRecord) types.TempleService {
 	slots := make([]types.TempleServiceSlot, 0, len(s.Slots))
 	timeSlots := make([]string, 0, len(s.Slots))
 	for _, slot := range s.Slots {
-		slots = append(slots, types.TempleServiceSlot{Code: slot.Code, Label: slot.Label, StartTime: slot.StartTime, EndTime: slot.EndTime, Capacity: slot.Capacity, Status: slot.Status, Sort: slot.Sort})
+		slots = append(slots, types.TempleServiceSlot{Code: slot.Code, Label: slot.Label, StartTime: slot.StartTime, EndTime: slot.EndTime, Capacity: slot.Capacity, Status: slot.Status, Sort: slot.Sort, ParticipationMode: slot.ParticipationMode})
 		if slot.Status == "enabled" {
 			timeSlots = append(timeSlots, slot.StartTime+"-"+slot.EndTime)
 		}
@@ -717,10 +717,23 @@ func toTypeTempleService(s *model.TempleServiceRecord) types.TempleService {
 	}
 }
 
+func validSlotParticipationModes(slots []types.TempleServiceSlot) bool {
+	for _, slot := range slots {
+		if slot.ParticipationMode != nil {
+			switch *slot.ParticipationMode {
+			case "", "onsite", "proxy":
+			default:
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func requestSlots(slots []types.TempleServiceSlot, legacy []string) []model.TempleServiceSlot {
 	out := make([]model.TempleServiceSlot, 0, len(slots)+len(legacy))
 	for _, slot := range slots {
-		out = append(out, model.TempleServiceSlot{Code: slot.Code, Label: slot.Label, StartTime: slot.StartTime, EndTime: slot.EndTime, Capacity: slot.Capacity, Status: slot.Status, Sort: slot.Sort})
+		out = append(out, model.TempleServiceSlot{Code: slot.Code, Label: slot.Label, StartTime: slot.StartTime, EndTime: slot.EndTime, Capacity: slot.Capacity, Status: slot.Status, Sort: slot.Sort, ParticipationMode: slot.ParticipationMode})
 	}
 	if len(out) == 0 {
 		for i, value := range legacy {

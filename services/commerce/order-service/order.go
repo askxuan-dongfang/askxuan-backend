@@ -14,6 +14,7 @@ import (
 
 	"github.com/askxuan/order-service/internal/config"
 	"github.com/askxuan/order-service/internal/handler"
+	"github.com/askxuan/order-service/internal/logic"
 	"github.com/askxuan/order-service/internal/model"
 	"github.com/askxuan/order-service/internal/mq"
 	"github.com/askxuan/order-service/internal/svc"
@@ -50,6 +51,7 @@ func main() {
 
 	// 启动 Outbox Publisher：轮询 outbox 表，将 pending 消息发送到 MQ
 	startOutboxPublisher(ctx, svcCtx)
+	go logic.RunPendingOrderMaintenance(ctx, svcCtx)
 
 	// 优雅退出
 	go func() {

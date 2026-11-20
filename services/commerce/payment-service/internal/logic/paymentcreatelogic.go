@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/askxuan/common"
@@ -66,8 +67,19 @@ func (l *PaymentCreateLogic) Create(req *types.PaymentCreateReq) (*types.Payment
 		}
 	}
 
-	if req.OrderType == model.OrderTypeShopOrder && common.IsExperienceOrder(req.OrderNo) && req.Channel != model.PaymentChannelMock {
-		return nil, common.NewBizError(common.ErrParam.Code, "体验订单仅支持模拟支付")
+	if req.OrderType == model.OrderTypeShopOrder {
+		// Legacy shop mock payments use the same atomic payment path as the H5 cashier.
+		// It takes the order lock before recording success and changing its status.
+		paid, err := l.svcCtx.Cashier.Pay(l.ctx, userID, cashier.OrderRequest{
+			OrderType: req.OrderType, OrderNo: req.OrderNo, Channel: req.Channel,
+			ExpectedCents: int64(math.Round(req.Amount * 100)),
+		})
+		if err != nil {
+			l.Errorf("商城订单支付失败: %v", err)
+			return nil, common.NewBizError(common.ErrOrderStatusConflict.Code, "商城订单当前无法支付，请刷新后重试")
+		}
+		return &types.PaymentCreateResp{Id: paid.Id, PaymentNo: paid.PaymentNo,
+			PayUrl: fmt.Sprintf("https://mock-pay.example.com/pay/%s?channel=%s", paid.PaymentNo, paid.Channel)}, nil
 	}
 	idempotencyKey := req.OrderType + ":" + req.OrderNo
 	if existing, err := l.svcCtx.PaymentModel.FindByIdempotencyKey(l.ctx, idempotencyKey); err == nil {

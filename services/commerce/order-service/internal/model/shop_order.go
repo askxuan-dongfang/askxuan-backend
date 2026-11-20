@@ -57,20 +57,26 @@ func IsOrderTerminalStatus(s string) bool {
 }
 
 const shopOrderTable = "shop_order"
+const shopOrderColumns = `id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, freight_amount,
+	status, address_id, note, COALESCE(DATE_FORMAT(payment_expire_time,'%Y-%m-%d %H:%i:%s'),'') payment_expire_time,
+	COALESCE(payment_expire_time<=NOW(),0) payment_expired, create_time, update_time`
 
 // ShopOrder 商城订单表
 type ShopOrder struct {
-	Id          int64   `db:"id" json:"id"`
-	RequestId   string  `db:"request_id" json:"requestId"`
-	OrderNo     string  `db:"order_no" json:"orderNo"`
-	UserId      string  `db:"user_id" json:"userId"`
-	TotalAmount float64 `db:"total_amount" json:"totalAmount"`
-	PayAmount   float64 `db:"pay_amount" json:"payAmount"`
-	Status      string  `db:"status" json:"status"`
-	AddressId   int64   `db:"address_id" json:"addressId"`
-	Note        string  `db:"note" json:"note"`
-	CreateTime  string  `db:"create_time" json:"createTime"`
-	UpdateTime  string  `db:"update_time" json:"updateTime"`
+	Id                int64   `db:"id" json:"id"`
+	RequestId         string  `db:"request_id" json:"requestId"`
+	OrderNo           string  `db:"order_no" json:"orderNo"`
+	UserId            string  `db:"user_id" json:"userId"`
+	TotalAmount       float64 `db:"total_amount" json:"totalAmount"`
+	PayAmount         float64 `db:"pay_amount" json:"payAmount"`
+	FreightAmount     float64 `db:"freight_amount" json:"freightAmount"`
+	PaymentExpireTime string  `db:"payment_expire_time" json:"paymentExpireTime"`
+	PaymentExpired    bool    `db:"payment_expired" json:"-"`
+	Status            string  `db:"status" json:"status"`
+	AddressId         int64   `db:"address_id" json:"addressId"`
+	Note              string  `db:"note" json:"note"`
+	CreateTime        string  `db:"create_time" json:"createTime"`
+	UpdateTime        string  `db:"update_time" json:"updateTime"`
 }
 
 // ShopOrderModel 订单模型接口
@@ -87,6 +93,10 @@ type ShopOrderModel interface {
 	GetReportTopProducts(ctx context.Context, start, end string, limit int) ([]*OrderTopProduct, error)
 	GetReportReturnRate(ctx context.Context, start, end string) (float64, error)
 	UpdateStatus(ctx context.Context, id int64, status string) (*ShopOrder, error)
+	ClosePending(ctx context.Context, id int64, userID string) error
+	FindExpired(ctx context.Context, limit int) ([]int64, error)
+	FindStockReleases(ctx context.Context, limit int) ([]StockRelease, error)
+	CompleteStockRelease(ctx context.Context, id int64) error
 }
 
 type defaultShopOrderModel struct {
@@ -120,8 +130,9 @@ func (m *defaultShopOrderModel) insert(ctx context.Context, executor sqlExecutor
 	data.CreateTime = now
 	data.UpdateTime = now
 
-	query := fmt.Sprintf(`INSERT INTO %s (order_no, request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, shopOrderTable)
-	result, err := executor.ExecCtx(ctx, query, data.OrderNo, data.RequestId, data.UserId, data.TotalAmount, data.PayAmount, data.Status, data.AddressId, data.Note, data.CreateTime, data.UpdateTime)
+	// Match the 15-minute payment window already used for temple bookings.
+	query := fmt.Sprintf(`INSERT INTO %s (order_no, request_id, user_id, total_amount, pay_amount, freight_amount, status, address_id, note, payment_expire_time, create_time, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, IF(?='pending_payment',DATE_ADD(NOW(),INTERVAL 15 MINUTE),NULL), ?, ?)`, shopOrderTable)
+	result, err := executor.ExecCtx(ctx, query, data.OrderNo, data.RequestId, data.UserId, data.TotalAmount, data.PayAmount, data.FreightAmount, data.Status, data.AddressId, data.Note, data.Status, data.CreateTime, data.UpdateTime)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +146,7 @@ func (m *defaultShopOrderModel) insert(ctx context.Context, executor sqlExecutor
 
 func (m *defaultShopOrderModel) FindByRequestId(ctx context.Context, requestId string) (*ShopOrder, error) {
 	var o ShopOrder
-	query := fmt.Sprintf(`SELECT id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE request_id = ?`, shopOrderTable)
+	query := `SELECT ` + shopOrderColumns + ` FROM shop_order WHERE request_id = ?`
 	if err := m.conn.QueryRowCtx(ctx, &o, query, requestId); err != nil {
 		return nil, err
 	}
@@ -144,7 +155,7 @@ func (m *defaultShopOrderModel) FindByRequestId(ctx context.Context, requestId s
 
 func (m *defaultShopOrderModel) FindOne(ctx context.Context, id int64) (*ShopOrder, error) {
 	var o ShopOrder
-	query := fmt.Sprintf(`SELECT id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE id = ?`, shopOrderTable)
+	query := `SELECT ` + shopOrderColumns + ` FROM shop_order WHERE id = ?`
 	err := m.conn.QueryRowCtx(ctx, &o, query, id)
 	if err != nil {
 		return nil, err
@@ -154,7 +165,7 @@ func (m *defaultShopOrderModel) FindOne(ctx context.Context, id int64) (*ShopOrd
 
 func (m *defaultShopOrderModel) FindByOrderNo(ctx context.Context, orderNo string) (*ShopOrder, error) {
 	var o ShopOrder
-	query := fmt.Sprintf(`SELECT id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE order_no = ?`, shopOrderTable)
+	query := `SELECT ` + shopOrderColumns + ` FROM shop_order WHERE order_no = ?`
 	err := m.conn.QueryRowCtx(ctx, &o, query, orderNo)
 	if err != nil {
 		return nil, err
@@ -175,7 +186,7 @@ func (m *defaultShopOrderModel) FindListByUser(ctx context.Context, userId, stat
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE %s ORDER BY create_time DESC LIMIT ?, ?`, shopOrderTable, where)
+	listQuery := `SELECT ` + shopOrderColumns + ` FROM shop_order WHERE ` + where + ` ORDER BY create_time DESC LIMIT ?, ?`
 	listArgs := append(args, offset, size)
 	var list []*ShopOrder
 	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, listArgs...); err != nil {
@@ -197,7 +208,7 @@ func (m *defaultShopOrderModel) FindListAdmin(ctx context.Context, status string
 	}
 
 	offset := (page - 1) * size
-	listQuery := fmt.Sprintf(`SELECT id, order_no, COALESCE(request_id,'') AS request_id, user_id, total_amount, pay_amount, status, address_id, note, create_time, update_time FROM %s WHERE %s ORDER BY create_time DESC LIMIT ?, ?`, shopOrderTable, where)
+	listQuery := `SELECT ` + shopOrderColumns + ` FROM shop_order WHERE ` + where + ` ORDER BY create_time DESC LIMIT ?, ?`
 	listArgs := append(args, offset, size)
 	var list []*ShopOrder
 	if err := m.conn.QueryRowsCtx(ctx, &list, listQuery, listArgs...); err != nil {

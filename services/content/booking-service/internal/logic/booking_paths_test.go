@@ -47,7 +47,7 @@ func (bookingPathLogs) Insert(context.Context, *model.BookingStatusLog) error { 
 type bookingPathTemple struct{}
 
 func (bookingPathTemple) GetBookingService(_ context.Context, temple, service string) (*templerpc.BookingService, error) {
-	return &templerpc.BookingService{TempleCode: temple, TempleName: "Test temple", TempleStatus: "正常", ServiceCode: service, ServiceName: "Test service", ServiceStatus: "on_shelf", Price: 300, Slots: []*templerpc.BookingSlot{{Code: "AM", StartTime: "09:00", EndTime: "12:00", Capacity: 10, Status: "enabled"}}}, nil
+	return &templerpc.BookingService{TempleCode: temple, TempleName: "Test temple", TempleStatus: "正常", ServiceCode: service, ServiceName: "Test service", ServiceStatus: "on_shelf", Price: 300, Slots: []*templerpc.BookingSlot{{Code: "AM", ParticipationMode: "onsite", StartTime: "09:00", EndTime: "12:00", Capacity: 10, Status: "enabled"}}}, nil
 }
 
 type bookingPathMaster struct{ rpcclient.MasterClient }
@@ -143,6 +143,12 @@ func TestWholeTempleBookingDoesNotRequireMasterTags(t *testing.T) {
 	}
 	if result.TotalFee != 300 || orders.saved.MasterId != "" || orders.saved.ServiceFee != 0 || !orders.reserved {
 		t.Fatalf("whole temple booking changed: %+v", orders.saved)
+	}
+	var snapshot struct {
+		ParticipationMode string `json:"participationMode"`
+	}
+	if err := json.Unmarshal([]byte(orders.saved.PriceSnapshot), &snapshot); err != nil || snapshot.ParticipationMode != "onsite" {
+		t.Fatalf("booking did not preserve the chosen participation mode: %+v %v", snapshot, err)
 	}
 }
 func TestDirectBookingRejectsTempleMasterAndRetainsConsultationGate(t *testing.T) {

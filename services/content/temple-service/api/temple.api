@@ -158,6 +158,7 @@ type (
         Capacity  int    `json:"capacity"`
         Status    string `json:"status"`
         Sort      int    `json:"sort"`
+        ParticipationMode *string `json:"participationMode,optional,omitempty"`
     }
 
     TempleServiceListReq {

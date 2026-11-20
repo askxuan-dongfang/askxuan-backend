@@ -57,6 +57,7 @@ type Booking struct {
 	BookingDate       string  `db:"booking_date" json:"bookingDate"`
 	SlotCode          string  `db:"slot_code" json:"slotCode"`
 	TimeSlot          string  `db:"time_slot" json:"timeSlot"`
+	ParticipationMode string  `db:"participation_mode" json:"participationMode,omitempty"`
 	ServiceFee        float64 `db:"service_fee" json:"serviceFee"`
 	MeritMoney        float64 `db:"merit_money" json:"meritMoney"`
 	MeritMoneyTier    string  `db:"merit_money_tier" json:"meritMoneyTier"`
@@ -96,7 +97,7 @@ type defaultBookingModel struct{ conn sqlx.SqlConn }
 
 func NewBookingModel(conn sqlx.SqlConn) BookingModel { return &defaultBookingModel{conn: conn} }
 
-const bookingSelect = `booking_no,COALESCE(request_id,'') request_id,user_id,temple_code,temple_name,master_code,master_name,service_code,service_name,DATE_FORMAT(booking_date,'%Y-%m-%d') booking_date,slot_code,time_slot,service_fee,merit_money,merit_money_tier,total_fee,COALESCE(CAST(price_snapshot AS CHAR),'') price_snapshot,payment_no,payment_channel,payment_status,COALESCE(DATE_FORMAT(payment_expire_time,'%Y-%m-%d %H:%i:%s'),'') payment_expire_time,slot_reserved,status,note,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
+const bookingSelect = `booking_no,COALESCE(request_id,'') request_id,user_id,temple_code,temple_name,master_code,master_name,service_code,service_name,DATE_FORMAT(booking_date,'%Y-%m-%d') booking_date,slot_code,time_slot,COALESCE(JSON_UNQUOTE(JSON_EXTRACT(price_snapshot,'$.participationMode')),'') participation_mode,service_fee,merit_money,merit_money_tier,total_fee,COALESCE(CAST(price_snapshot AS CHAR),'') price_snapshot,payment_no,payment_channel,payment_status,COALESCE(DATE_FORMAT(payment_expire_time,'%Y-%m-%d %H:%i:%s'),'') payment_expire_time,slot_reserved,status,note,DATE_FORMAT(create_time,'%Y-%m-%d %H:%i:%s') create_time`
 
 // InsertDirect 独立执业师傅直约：不占寺院时段库存。
 func (m *defaultBookingModel) InsertDirect(ctx context.Context, data *Booking) (*Booking, error) {

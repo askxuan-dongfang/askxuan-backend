@@ -34,7 +34,7 @@ func TestCashWalletMySQL(t *testing.T) {
 		`CREATE TABLE refund(id BIGINT PRIMARY KEY AUTO_INCREMENT,refund_no VARCHAR(64) UNIQUE,payment_id BIGINT,amount DECIMAL(12,2),reason VARCHAR(255),status VARCHAR(24),create_time DATETIME)`,
 		`CREATE TABLE points_payment_award(payment_id BIGINT PRIMARY KEY,user_id VARCHAR(64),awarded BIGINT,reversed BIGINT DEFAULT 0)`,
 		`CREATE TABLE event_outbox(id BIGINT AUTO_INCREMENT PRIMARY KEY,event_key VARCHAR(128) UNIQUE,aggregate_type VARCHAR(32),aggregate_id VARCHAR(64),event_type VARCHAR(64),exchange_name VARCHAR(64),routing_key VARCHAR(64),payload JSON,status VARCHAR(24),retry_count INT,next_retry_at DATETIME,created_at DATETIME,updated_at DATETIME)`,
-		`CREATE TABLE askxuan_order.shop_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),pay_amount DECIMAL(12,2),status VARCHAR(24))`,
+		`CREATE TABLE askxuan_order.shop_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),pay_amount DECIMAL(12,2),status VARCHAR(24),payment_expire_time DATETIME NULL)`,
 		`CREATE TABLE askxuan_diy.diy_order(order_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),total_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24),bless_fee DECIMAL(12,2) NOT NULL DEFAULT 0,pricing_snapshot TEXT)`,
 		`CREATE TABLE askxuan_booking.booking(booking_no VARCHAR(64) PRIMARY KEY,user_id VARCHAR(64),total_fee DECIMAL(12,2),status VARCHAR(24),payment_status VARCHAR(24),payment_expire_time DATETIME,slot_reserved INT,slot_code VARCHAR(32),master_code VARCHAR(32),temple_code VARCHAR(32) NOT NULL DEFAULT 'fixture',payment_no VARCHAR(64),payment_channel VARCHAR(16),temple_name VARCHAR(64),master_name VARCHAR(64),service_name VARCHAR(64),booking_date DATE,service_fee DECIMAL(10,2),merit_money DECIMAL(10,2))`,
 		`CREATE TABLE askxuan_booking.booking_status_log(id BIGINT AUTO_INCREMENT PRIMARY KEY,booking_id VARCHAR(64),from_status VARCHAR(24),to_status VARCHAR(24),operator_id VARCHAR(64),operator_type VARCHAR(32),remark VARCHAR(255),create_time DATETIME)`,
@@ -116,8 +116,15 @@ func TestCashWalletMySQL(t *testing.T) {
 	if e = s.Apply(ctx, "alipay", paychannel.Result{No: "W-test", TradeNo: "T-real-fixture", Cents: 10000, State: "success"}); e == nil {
 		t.Fatal("foreign channel accepted")
 	}
-	if _, e = db.ExecCtx(ctx, `INSERT INTO askxuan_order.shop_order VALUES('SHOP-1','10',30,'pending_payment'),('SHOP-2','10',80,'pending_payment'),('SHOP-3','10',80,'pending_payment')`); e != nil {
+	if _, e = db.ExecCtx(ctx, `INSERT INTO askxuan_order.shop_order(order_no,user_id,pay_amount,status) VALUES('SHOP-1','10',30,'pending_payment'),('SHOP-2','10',80,'pending_payment'),('SHOP-3','10',80,'pending_payment')`); e != nil {
 		t.Fatal(e)
+	}
+	if _, e = db.ExecCtx(ctx, `INSERT INTO askxuan_order.shop_order(order_no,user_id,pay_amount,status,payment_expire_time) VALUES('SHOP-TIMEOUT','10',30,'pending_payment',NOW()-INTERVAL 1 MINUTE)`); e != nil {
+		t.Fatal(e)
+	}
+	timedOut := OrderRequest{OrderType: "shop_order", OrderNo: "SHOP-TIMEOUT", ExpectedCents: 3000, Channel: "balance"}
+	if _, e := s.Pay(ctx, "10", timedOut); !errors.Is(e, balance.ErrConflict) {
+		t.Fatalf("expired order accepted payment: %v", e)
 	}
 	req := OrderRequest{OrderType: "shop_order", OrderNo: "SHOP-1", ExpectedCents: 3000, Channel: "balance"}
 	if _, e = s.Pay(ctx, "11", req); e == nil {

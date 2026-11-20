@@ -11,6 +11,7 @@ message BookingSlot {
   string end_time = 4;
   int64 capacity = 5;
   string status = 6;
+  string participation_mode = 7;
 }
 
 message GetBookingServiceReq {

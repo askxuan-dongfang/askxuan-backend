@@ -86,6 +86,7 @@ type (
         BookingDate   string  `json:"bookingDate"`   // 预约日期 yyyy-MM-dd
         SlotCode      string  `json:"slotCode"`
         TimeSlot      string  `json:"timeSlot"`      // 时段 09:00-10:00
+        ParticipationMode string `json:"participationMode,optional"`
         ServiceFee    float64 `json:"serviceFee"`
         MeritMoney    float64 `json:"meritMoney"`    // 功德金
         MeritMoneyTier string `json:"meritMoneyTier"` // 功德金档位
@@ -145,6 +146,7 @@ type (
         SlotCode string `json:"slotCode"`
         Label string `json:"label"`
         TimeRange string `json:"timeRange"`
+        ParticipationMode string `json:"participationMode,optional"`
         Capacity int `json:"capacity"`
         Remaining int `json:"remaining"`
         Available bool `json:"available"`

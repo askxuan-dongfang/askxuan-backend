@@ -32,7 +32,7 @@ func (s *ShopOrderServer) ValidatePayment(ctx context.Context, req *shoporder.Va
 	if o.UserId != req.GetUserId() {
 		return nil, status.Error(codes.PermissionDenied, "无权支付该订单")
 	}
-	if o.Status != model.OrderStatusPendingPayment {
+	if o.Status != model.OrderStatusPendingPayment || o.PaymentExpired {
 		return nil, status.Error(codes.FailedPrecondition, "商城订单当前状态不可支付")
 	}
 	if math.Abs(o.PayAmount-req.GetAmount()) > 0.001 {

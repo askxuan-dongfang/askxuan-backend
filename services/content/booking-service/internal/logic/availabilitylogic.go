@@ -61,7 +61,7 @@ func (l *AvailabilityLogic) Availability(req *types.AvailabilityReq) (*types.Ava
 				remaining = 0
 			}
 		}
-		slots = append(slots, types.AvailableSlot{SlotCode: slot.Code, Label: slot.Label, TimeRange: slot.StartTime + "-" + slot.EndTime, Capacity: int(slot.Capacity), Remaining: remaining, Available: enabled})
+		slots = append(slots, types.AvailableSlot{SlotCode: slot.Code, Label: slot.Label, TimeRange: slot.StartTime + "-" + slot.EndTime, Capacity: int(slot.Capacity), Remaining: remaining, Available: enabled, ParticipationMode: slot.ParticipationMode})
 	}
 	return &types.AvailabilityResp{TempleId: service.TempleCode, ServiceId: service.ServiceCode, ServiceName: service.ServiceName, BookingDate: req.BookingDate, ServiceFee: service.Price, Slots: slots}, nil
 }

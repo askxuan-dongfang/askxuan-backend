@@ -3,6 +3,7 @@ package points
 import (
 	"context"
 	"errors"
+	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"os"
 	"path/filepath"
@@ -276,4 +277,40 @@ func TestMySQLFulfillment(t *testing.T) {
 	if rows[0].ID != order.ID || rows[0].Status != "completed" || rows[0].TrackingNo != "SF-test" {
 		t.Fatalf("fulfillment result: %+v", rows)
 	}
+}
+
+func TestExperienceRedemptionMySQL(t *testing.T) {
+	dsn := os.Getenv("WISH_POINTS_TEST_DSN")
+	if dsn == "" || os.Getenv("WISH_CHECKOUT_TEST_ISOLATED") != "1" {
+		t.Skip("requires an isolated database loaded with the experience fixtures")
+	}
+	ctx := context.Background()
+	db := sqlx.NewMysql(dsn)
+	store := Store{DB: db}
+	const user = "991120"
+	req := RedeemRequest{
+		ProductID: 991120, Quantity: 1, ExpectedPrice: 120, RequestKey: uuid.NewString(),
+		Receiver: "体验用户", Mobile: "00000000000", Address: "上海市浦东新区虚拟收货地址 1 号",
+	}
+	check := func(wantBalance, wantStock int64) {
+		t.Helper()
+		var balance, stock int64
+		if err := db.QueryRowCtx(ctx, &balance, `SELECT balance FROM points_account WHERE user_id=?`, user); err != nil || balance != wantBalance {
+			t.Fatalf("balance=%d want=%d err=%v", balance, wantBalance, err)
+		}
+		if err := db.QueryRowCtx(ctx, &stock, `SELECT stock FROM points_product WHERE id=?`, req.ProductID); err != nil || stock != wantStock {
+			t.Fatalf("stock=%d want=%d err=%v", stock, wantStock, err)
+		}
+	}
+	check(500, 10)
+	order, err := store.Redeem(ctx, user, req)
+	if err != nil || order.Status != "pending" || order.PointsTotal != 120 {
+		t.Fatalf("redeem: %+v %v", order, err)
+	}
+	t.Cleanup(func() { _ = store.Transition(ctx, user, order.ID, "cancel", "", "", false) })
+	check(380, 9)
+	if err := store.Transition(ctx, user, order.ID, "cancel", "", "", false); err != nil {
+		t.Fatal(err)
+	}
+	check(500, 10)
 }

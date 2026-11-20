@@ -47,7 +47,7 @@ type order struct {
 func orderSQL(kind string) string {
 	switch kind {
 	case "shop_order":
-		return `SELECT user_id,CAST(ROUND(pay_amount*100) AS SIGNED) cents,(status='pending_payment') payable FROM askxuan_order.shop_order WHERE order_no=?`
+		return `SELECT user_id,CAST(ROUND(pay_amount*100) AS SIGNED) cents,(status='pending_payment' AND (payment_expire_time IS NULL OR payment_expire_time>NOW())) payable FROM askxuan_order.shop_order WHERE order_no=?`
 	case "diy_order":
 		return `SELECT user_id,CAST(ROUND(total_fee*100) AS SIGNED) cents,(status='pending_review' AND payment_status='pending') payable FROM askxuan_diy.diy_order WHERE order_no=?`
 	case "booking":
