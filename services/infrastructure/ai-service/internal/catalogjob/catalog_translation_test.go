@@ -17,11 +17,15 @@ import (
 type textFixture struct {
 	provider.Mock
 	answer func(provider.Request) string
+	err    error
 }
 
 func (textFixture) Name() string                     { return "text-fixture" }
 func (textFixture) ModelFor(provider.Request) string { return "text-only" }
 func (f textFixture) Complete(_ context.Context, req provider.Request) (*provider.Response, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
 	return &provider.Response{Content: f.answer(req), FinishReason: "stop"}, nil
 }
 
@@ -45,6 +49,19 @@ func TestCatalogTranslationMasksTermsAndValidatesResponse(t *testing.T) {
 	fake.answer = func(provider.Request) string { return `{"title":"Sandalwood beads","description":"Contact {{T1}}."}` }
 	if _, err := Translate(context.Background(), fake, provider.NewCatalog(fake), 1200, src); err == nil {
 		t.Fatal("accepted dropped numerical term")
+	}
+}
+
+func TestCatalogTranslationRetainsOnlySafeProviderFailure(t *testing.T) {
+	ctx := context.Background()
+	source := map[string]string{"title": "紫檀手珠"}
+	fake := textFixture{err: &provider.HTTPError{StatusCode: 402}}
+	if _, err := Translate(ctx, fake, provider.NewCatalog(fake), 1200, source); err == nil || err.Error() != "provider returned status 402" {
+		t.Fatalf("missing safe provider status: %v", err)
+	}
+	fake.err = errors.New("upstream supplied a private message")
+	if _, err := Translate(ctx, fake, provider.NewCatalog(fake), 1200, source); err == nil || strings.Contains(err.Error(), "private") {
+		t.Fatalf("provider details reached the catalog failure: %v", err)
 	}
 }
 

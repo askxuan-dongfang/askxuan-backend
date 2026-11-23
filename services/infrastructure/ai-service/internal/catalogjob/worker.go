@@ -57,8 +57,24 @@ func Translate(ctx context.Context, p provider.Provider, models *provider.Catalo
 		Model: model, SystemPrompt: translationPrompt, JSONMode: true, MaxTokens: outputTokens,
 		Messages: []provider.Message{{Role: "user", Content: string(raw)}},
 	})
-	if err != nil || reply == nil || reply.FinishReason == "length" || len(reply.Content) > 512<<10 {
-		return nil, errors.New("catalog text model request failed")
+	if err != nil {
+		var upstream *provider.HTTPError
+		switch {
+		case errors.As(err, &upstream):
+			return nil, upstream
+		case errors.Is(err, context.DeadlineExceeded):
+			return nil, errors.New("catalog text model timed out")
+		case errors.Is(err, provider.ErrEmptyContent):
+			return nil, provider.ErrEmptyContent
+		default:
+			return nil, errors.New("catalog text model connection failed")
+		}
+	}
+	if reply == nil || strings.TrimSpace(reply.Content) == "" {
+		return nil, provider.ErrEmptyContent
+	}
+	if reply.FinishReason == "length" || len(reply.Content) > 512<<10 {
+		return nil, errors.New("catalog text model exceeded its output limit")
 	}
 	var fields map[string]string
 	if err := json.Unmarshal([]byte(reply.Content), &fields); err != nil || len(fields) != len(source) {
@@ -137,7 +153,9 @@ func (s Store) processNext(ctx context.Context, translate func(context.Context, 
 		modelCtx, cancel := context.WithTimeout(ctx, 50*time.Second)
 		fields, translateErr := job.draft(modelCtx, source.Fields, translate)
 		cancel()
-		if translateErr == nil {
+		if translateErr != nil {
+			logx.Errorf("英文目录翻译失败 kind=%s id=%s: %v", job.Kind, job.ID, translateErr)
+		} else {
 			current, err := catalog.Load(ctx, s.DB, job.Kind, job.ID)
 			if err == nil && current.Revision == source.Revision {
 				raw, err = json.Marshal(fields)
