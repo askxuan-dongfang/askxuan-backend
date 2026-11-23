@@ -16,12 +16,18 @@ func (f openCodeTestTransport) RoundTrip(r *http.Request) (*http.Response, error
 
 func TestOpenCodeGoDiscoveryChecksAuthAndTextCapabilities(t *testing.T) {
 	status, body := 200, `{"object":"list","data":[
-		{"type":"chat","id":"kimi-k3","name":"Kimi K3","limit":{"context":2097152,"output":1048576},"modalities":{"input":["text","image/png"],"output":["text"]}},
-		{"type":"chat","id":"short-text"},
+		{"type":"chat","id":"kimi-k3","name":"Kimi K3","limit":{"context":2097152,"output":1048576},"modalities":{"input":["text","image/png"],"output":["text"]},
+		 "api":{"chat-completions":{"base_url":"https://opencode.ai/inference/go/openai/v1"}}},
+		{"type":"chat","id":"short-text","api":{"chat-completions":{"base_url":"https://opencode.ai/inference/go/openai/v1/"}}},
 		{"type":"embedding","id":"embed"},
-		{"type":"chat","id":"images","modalities":{"input":["image/png"],"output":["image/png"]}},
+		{"type":"chat","id":"images","modalities":{"input":["image/png"],"output":["image/png"]},
+		 "api":{"chat-completions":{"base_url":"https://opencode.ai/inference/go/openai/v1"}}},
+		{"type":"chat","id":"messages-only","modalities":{"input":["text"],"output":["text"]},
+		 "api":{"messages":{"base_url":"https://opencode.ai/inference/go/anthropic/v1"}}},
+		{"type":"chat","id":"unknown-api"},
+		{"type":"chat","id":"off-host","api":{"chat-completions":{"base_url":"https://elsewhere.invalid/v1"}}},
 		{"id":"unverified"},
-		{"type":"chat","id":"kimi-k3"}
+		{"type":"chat","id":"kimi-k3","api":{"chat-completions":{"base_url":"https://opencode.ai/inference/go/openai/v1"}}}
 	]}`
 	client := &http.Client{Transport: openCodeTestTransport(func(r *http.Request) (*http.Response, error) {
 		if r.Method != http.MethodGet || r.URL.String() != openCodeGoModels ||
