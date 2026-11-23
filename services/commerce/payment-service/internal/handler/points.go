@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/catalogtranslation"
 	"github.com/askxuan/common/middleware"
 	"github.com/askxuan/payment-service/internal/points"
 	"github.com/askxuan/payment-service/internal/svc"
@@ -89,7 +90,27 @@ func pointsHandler(store points.Store, admin bool, action string) http.HandlerFu
 			}
 			data, err = store.Products(r.Context(), admin, page, query.Get("keyword"), query.Get("status"), priorityUser)
 		case "orders":
-			data, err = store.Orders(r.Context(), user, admin, page, r.URL.Query().Get("keyword"), r.URL.Query().Get("status"))
+			query := r.URL.Query()
+			var orders []points.Order
+			orders, err = store.Orders(r.Context(), user, admin, page, query.Get("keyword"), query.Get("status"))
+			data = orders
+			if err == nil && !admin && query.Get("includeCatalogSnapshot") == "true" {
+				ids := make([]int64, len(orders))
+				for i, order := range orders {
+					ids[i] = order.ID
+				}
+				var snapshots map[int64]catalogtranslation.CheckoutSnapshot
+				snapshots, err = catalogtranslation.LoadCheckoutSnapshots(r.Context(), store.DB, ids)
+				type localizedOrder struct {
+					points.Order
+					CatalogSnapshot catalogtranslation.CheckoutSnapshot `json:"catalogSnapshot,omitempty"`
+				}
+				localized := make([]localizedOrder, len(orders))
+				for i, order := range orders {
+					localized[i] = localizedOrder{Order: order, CatalogSnapshot: snapshots[order.ID]}
+				}
+				data = localized
+			}
 		case "report":
 			data, err = store.Report(r.Context())
 		case "save":
@@ -134,6 +155,8 @@ func pointsHandler(store points.Store, admin bool, action string) http.HandlerFu
 		}
 		if err != nil {
 			switch {
+			case errors.Is(err, catalogtranslation.ErrCheckoutRevision):
+				common.JsonError(w, err)
 			case errors.Is(err, points.ErrBalance), errors.Is(err, points.ErrConflict), errors.Is(err, points.ErrInvalid):
 				common.JsonError(w, common.NewBizError(common.ErrParam.Code, err.Error()))
 			case errors.Is(err, sqlx.ErrNotFound):

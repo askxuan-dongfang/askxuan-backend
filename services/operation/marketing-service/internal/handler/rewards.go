@@ -7,10 +7,12 @@ import (
 	"strconv"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/catalogtranslation"
 	"github.com/askxuan/common/middleware"
 	"github.com/askxuan/marketing-service/internal/rewards"
 	"github.com/askxuan/marketing-service/internal/svc"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
@@ -104,7 +106,22 @@ func rewardHandler(store rewards.Store, admin bool, action string) http.HandlerF
 			}
 			e = store.ImportStock(r.Context(), path.ID, b.PrizeID, b.Items, user)
 		case "entries":
-			data, e = store.Entries(r.Context(), user, page)
+			var entries []rewards.Entry
+			entries, e = store.Entries(r.Context(), user, page)
+			if e == nil && r.URL.Query().Get("includeCatalogSnapshot") == "true" {
+				ids := make([]int64, len(entries))
+				for i, entry := range entries {
+					ids[i] = entry.ID
+				}
+				var snapshots map[int64]catalogtranslation.CheckoutSnapshot
+				snapshots, e = catalogtranslation.LoadCheckoutSnapshots(r.Context(), sqlx.NewSqlConnFromDB(store.DB), ids)
+				for i := range entries {
+					if snapshot := snapshots[entries[i].ID]; snapshot != nil {
+						entries[i].CatalogSnapshot = &snapshot
+					}
+				}
+			}
+			data = entries
 		case "save":
 			var c rewards.Campaign
 			if decode(&c) != nil {
@@ -115,15 +132,16 @@ func rewardHandler(store rewards.Store, admin bool, action string) http.HandlerF
 			data, e = store.Save(r.Context(), c, user)
 		case "join":
 			var b struct {
-				ExpectedPoints int64  `json:"expectedPoints"`
-				PrizeID        int64  `json:"prizeId"`
-				RequestKey     string `json:"requestKey"`
+				CatalogRevisions map[string]string `json:"catalogRevisions"`
+				ExpectedPoints   int64             `json:"expectedPoints"`
+				PrizeID          int64             `json:"prizeId"`
+				RequestKey       string            `json:"requestKey"`
 			}
 			if decode(&b) != nil || b.ExpectedPoints < 1 {
 				e = rewards.ErrPrice
 				break
 			}
-			data, e = store.JoinPrize(r.Context(), path.ID, user, b.ExpectedPoints, b.RequestKey, b.PrizeID)
+			data, e = store.JoinPrize(r.Context(), path.ID, user, b.ExpectedPoints, b.RequestKey, b.PrizeID, b.CatalogRevisions)
 		case "publish":
 			e = store.Publish(r.Context(), path.ID, user)
 		case "cancel":
@@ -149,6 +167,8 @@ func rewardHandler(store rewards.Store, admin bool, action string) http.HandlerF
 		}
 		if e != nil {
 			switch {
+			case errors.Is(e, catalogtranslation.ErrCheckoutRevision):
+				common.JsonError(w, e)
 			case errors.Is(e, rewards.ErrPrizeSelection), errors.Is(e, rewards.ErrStock), errors.Is(e, rewards.ErrDuplicateStock), errors.Is(e, rewards.ErrVault), errors.Is(e, rewards.ErrInvalid), errors.Is(e, rewards.ErrClosed), errors.Is(e, rewards.ErrConflict), errors.Is(e, rewards.ErrNotFound), errors.Is(e, rewards.ErrBalance), errors.Is(e, rewards.ErrPrice):
 				common.JsonError(w, common.NewBizError(40001, e.Error()))
 			default:

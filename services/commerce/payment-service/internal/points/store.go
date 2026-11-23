@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
+	"github.com/askxuan/common/catalogtranslation"
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
-	"strings"
 )
 
 type Store struct{ DB sqlx.SqlConn }
@@ -51,13 +53,14 @@ type Order struct {
 	CreatedAt    string `json:"createdAt" db:"created_at"`
 }
 type RedeemRequest struct {
-	ProductID     int64  `json:"productId"`
-	Quantity      int64  `json:"quantity"`
-	ExpectedPrice int64  `json:"expectedPrice"`
-	RequestKey    string `json:"requestKey"`
-	Receiver      string `json:"receiver"`
-	Mobile        string `json:"mobile"`
-	Address       string `json:"address"`
+	CatalogRevisions map[string]string `json:"catalogRevisions,omitempty"`
+	ProductID        int64             `json:"productId"`
+	Quantity         int64             `json:"quantity"`
+	ExpectedPrice    int64             `json:"expectedPrice"`
+	RequestKey       string            `json:"requestKey"`
+	Receiver         string            `json:"receiver"`
+	Mobile           string            `json:"mobile"`
+	Address          string            `json:"address"`
 }
 
 const productCols = `id,name,category,description,image,points_price,stock,status,version`
@@ -189,6 +192,10 @@ func (s Store) Redeem(ctx context.Context, user string, r RedeemRequest) (Order,
 		if p.Status != "on_sale" || p.Stock < r.Quantity || p.PointsPrice != r.ExpectedPrice {
 			return ErrConflict
 		}
+		snapshot, err := catalogtranslation.ConfirmCheckout(ctx, tx, r.CatalogRevisions, []catalogtranslation.CheckoutItem{{Kind: "points-product", ID: p.ID}})
+		if err != nil {
+			return err
+		}
 		total := p.PointsPrice * r.Quantity
 		if balance < total {
 			return ErrBalance
@@ -200,6 +207,9 @@ func (s Store) Redeem(ctx context.Context, user string, r RedeemRequest) (Order,
 		}
 		id, err := ins.LastInsertId()
 		if err != nil {
+			return err
+		}
+		if err := catalogtranslation.SaveCheckoutSnapshot(ctx, tx, id, snapshot); err != nil {
 			return err
 		}
 		if _, err = tx.ExecCtx(ctx, `UPDATE points_product SET stock=stock-?,version=version+1 WHERE id=?`, r.Quantity, p.ID); err != nil {

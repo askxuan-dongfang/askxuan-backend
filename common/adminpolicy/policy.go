@@ -319,6 +319,9 @@ func Assignable(code string) bool {
 	return false
 }
 func Match(method, path string) (Route, bool) {
+	if route, ok := catalogTranslationRoute(method, path); ok {
+		return route, true
+	}
 	// Static segments take precedence over parameter segments.
 	var best Route
 	score := -1

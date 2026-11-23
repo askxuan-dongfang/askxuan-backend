@@ -10,7 +10,14 @@ info (
 // ==================== 公共类型 ====================
 
 type (
+    OrderCatalogTranslation {
+        Revision string `json:"revision"`
+        Fields map[string]string `json:"fields"`
+        TransactionReady bool `json:"transactionReady"`
+    }
+
     ShopOrder {
+        CatalogSnapshot map[string]OrderCatalogTranslation `json:"catalogSnapshot,optional"`
         PaymentExpireTime string `json:"paymentExpireTime,optional"`
         IsExperience bool `json:"isExperience"`
         Id           int64              `json:"id"`
@@ -63,6 +70,7 @@ type (
 
 type (
     OrderCreateReq {
+        CatalogRevisions map[string]string `json:"catalogRevisions,optional"`
         RequestId string           `json:"requestId"`
         UserId    string           `json:"userId"`
         AddressId int64            `json:"addressId"`
@@ -95,6 +103,7 @@ type (
 
     OrderDetailReq {
         Id int64 `path:"id"`
+        IncludeCatalogSnapshot bool `form:"includeCatalogSnapshot,optional"`
     }
 
     OrderConfirmReq {

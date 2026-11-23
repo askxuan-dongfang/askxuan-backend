@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/catalogtranslation"
 	"github.com/askxuan/common/middleware"
 	"github.com/askxuan/common/rpc/catalog"
 	"github.com/askxuan/order-service/internal/model"
@@ -54,11 +55,15 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 	}
 
 	lines := make([]*catalog.CartLine, 0, len(req.Items))
+	var englishItems []catalogtranslation.CheckoutItem
 	for _, item := range req.Items {
 		if item.ProductId <= 0 || item.Quantity <= 0 {
 			return nil, common.ErrParam
 		}
 		lines = append(lines, &catalog.CartLine{ProductId: item.ProductId, SkuId: item.SkuId, Quantity: int32(item.Quantity)})
+		if req.CatalogRevisions != nil {
+			englishItems = append(englishItems, catalogtranslation.CheckoutItem{Kind: "shop-product", ID: item.ProductId})
+		}
 	}
 	quote, err := l.svcCtx.CatalogClient.ReserveCart(l.ctx, requestID, lines)
 	if err != nil {
@@ -95,6 +100,10 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 	var orderNo string
 	var orderId int64
 	err = l.svcCtx.DB.TransactCtx(l.ctx, func(ctx context.Context, session sqlx.Session) error {
+		snapshot, err := catalogtranslation.ConfirmCheckout(ctx, session, req.CatalogRevisions, englishItems)
+		if err != nil {
+			return err
+		}
 		o, err := l.svcCtx.ShopOrderModel.InsertWithSession(ctx, session, &model.ShopOrder{
 			OrderNo:       initialOrderNo,
 			RequestId:     requestID,
@@ -126,12 +135,15 @@ func (l *OrderCreateLogic) Create(req *types.OrderCreateReq) (*types.OrderCreate
 				return err
 			}
 		}
-		return nil
+		return catalogtranslation.SaveCheckoutSnapshot(ctx, session, o.Id, snapshot)
 	})
 	if err != nil {
 		if existing, lookupErr := l.svcCtx.ShopOrderModel.FindByRequestId(l.ctx, requestID); lookupErr == nil {
 			releaseReservation = false
 			return existingCheckout(existing, owner)
+		}
+		if errors.Is(err, catalogtranslation.ErrCheckoutRevision) {
+			return nil, err
 		}
 		l.Errorf("创建订单失败: %v", err)
 		return nil, common.ErrSystem
@@ -211,7 +223,16 @@ func (l *OrderDetailLogic) Detail(req *types.OrderDetailReq) (*types.ShopOrder, 
 	}
 	// 缓存订单状态（30 秒），供仅需要状态的场景读取
 	_ = l.svcCtx.Redis.Setex("order:status:"+o.OrderNo, o.Status, 30)
-	return toTypesOrderDetail(l.ctx, l.svcCtx, o), nil
+	result := toTypesOrderDetail(l.ctx, l.svcCtx, o)
+	if req.IncludeCatalogSnapshot {
+		snapshots, err := catalogtranslation.LoadCheckoutSnapshots(l.ctx, l.svcCtx.DB, []int64{o.Id})
+		if err != nil {
+			l.Errorf("读取商城订单英文条款失败: %v", err)
+			return nil, common.ErrSystem
+		}
+		result.CatalogSnapshot = snapshots[o.Id]
+	}
+	return result, nil
 }
 
 // OrderConfirmLogic 确认收货

@@ -35,6 +35,49 @@ func TestMarketingActivityGuestReadBoundary(t *testing.T) {
 	}
 }
 
+func TestCatalogTranslationGatewayUsesVerifiedDelegation(t *testing.T) {
+	const secret = "catalog-gateway-test-secret"
+	token, err := common.GenAccessToken(secret, common.TokenInfo{
+		UserId: 1, UserType: "admin", ClientID: "platform-admin", AuthzScope: "platform",
+		Roles: []string{"catalog-delegate"}, Permissions: []string{"platform.marketing.write"},
+	}, 60)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		method, path  string
+		bearer, allow bool
+	}{
+		{"GET", "/api/v1/ai/catalog-translations?kind=shop-product&ids=1", false, true},
+		{"POST", "/api/v1/ai/catalog-translations?kind=shop-product&ids=1", false, false},
+		{"PUT", "/api/v1/ai/admin/catalog-translations/reward-prize/1", false, false},
+		{"GET", "/api/v1/ai/admin/catalog-translations/reward-prize/1", true, true},
+		{"PUT", "/api/v1/ai/admin/catalog-translations/reward-prize/1", true, true},
+		{"PUT", "/api/v1/ai/admin/catalog-translations/shop-product/1", true, false},
+		{"PUT", "/api/v1/ai/admin/provider", true, false},
+	} {
+		called := false
+		handler := Auth(secret, nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			called = true
+			if tc.bearer && r.Header.Get("X-User-Permissions") != "platform.marketing.write" {
+				t.Fatalf("wrong verified catalog permissions forwarded: %v", r.Header)
+			}
+			if !tc.bearer && r.Header.Get("X-User-Permissions") != "" {
+				t.Fatal("spoofed permissions forwarded on guest route")
+			}
+		}))
+		req := httptest.NewRequest(tc.method, tc.path, nil)
+		req.Header.Set("X-User-Permissions", "platform.products.write")
+		if tc.bearer {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		handler.ServeHTTP(httptest.NewRecorder(), req)
+		if called != tc.allow {
+			t.Fatalf("%s %s reached service=%t; expected %t", tc.method, tc.path, called, tc.allow)
+		}
+	}
+}
+
 func TestRoleAllowedForAdminPath(t *testing.T) {
 	tests := []struct {
 		name    string

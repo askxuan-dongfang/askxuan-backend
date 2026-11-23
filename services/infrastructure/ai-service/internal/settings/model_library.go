@@ -2,7 +2,9 @@ package settings
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -12,11 +14,12 @@ import (
 )
 
 type ModelUses struct {
-	Chat      string `json:"chat"`
-	Vision    string `json:"vision"`
-	Embedding string `json:"embedding"`
-	Rerank    string `json:"rerank"`
-	Document  string `json:"document"`
+	Chat               string `json:"chat"`
+	Vision             string `json:"vision"`
+	Embedding          string `json:"embedding"`
+	Rerank             string `json:"rerank"`
+	Document           string `json:"document"`
+	CatalogTranslation string `json:"catalogTranslation"`
 }
 
 type LanguageModelValues struct {
@@ -73,6 +76,9 @@ func buildLanguageModel(r modelRecord) (provider.Provider, provider.ModelOption,
 		}
 	}
 	option := provider.ModelOption{ID: r.ID, Name: r.Name, Description: r.Model, SupportsVision: r.SupportsVision, ContextWindow: r.ContextWindow, MaxOutputTokens: r.MaxOutputTokens}
+	if r.Provider == provider.OpenCodeGo {
+		return p, option, nil
+	}
 	// Never inflate a known Plan model beyond its documented capacity.
 	if r.Provider == "volcengine" {
 		list, err := provider.NewCatalog(p).List(context.Background())
@@ -98,16 +104,26 @@ func buildLanguageModel(r modelRecord) (provider.Provider, provider.ModelOption,
 }
 
 func (m *Manager) withModelLibrary(snap *Snapshot, r record) (*Snapshot, error) {
-	if len(r.Models) == 0 && r.ModelUses.Chat == "" && r.ModelUses.Vision == "" {
-		return snap, nil
-	}
+	snap.CatalogTranslation.Model = r.ModelUses.CatalogTranslation
 	routes := make([]provider.RegisteredRoute, 0, len(r.Models))
 	for _, registered := range r.Models {
+		// OpenCode Go credentials are only usable by the bound catalog worker.
+		if registered.Provider == provider.OpenCodeGo && registered.ID != r.ModelUses.CatalogTranslation {
+			continue
+		}
 		p, option, err := m.modelBuilder(registered)
 		if err != nil {
 			return nil, err
 		}
-		routes = append(routes, provider.RegisteredRoute{Option: option, Provider: p, Model: registered.Model})
+		route := provider.RegisteredRoute{Option: option, Provider: p, Model: registered.Model}
+		if registered.Provider == provider.OpenCodeGo {
+			snap.CatalogTranslation = route
+		} else {
+			routes = append(routes, route)
+		}
+	}
+	if len(routes) == 0 && r.ModelUses.Chat == "" && r.ModelUses.Vision == "" {
+		return snap, nil
 	}
 	snap.Provider = provider.NewRegistry(snap.Provider, r.EnabledModels, routes, r.ModelUses.Chat, r.ModelUses.Vision)
 	snap.Models = provider.NewCatalog(snap.Provider)
@@ -176,13 +192,16 @@ func (m *Manager) prepareLanguageModel(ctx context.Context, in LanguageModelInpu
 	if len(r.Name) > 120 || !validModel.MatchString(r.Model) {
 		return r, errors.New("请填写有效的模型名称与服务商模型 ID")
 	}
-	base, err := normalizeURL(strings.TrimSpace(r.BaseURL))
+	if r.Provider == provider.OpenCodeGo && strings.TrimSpace(r.BaseURL) == "" {
+		r.BaseURL = provider.OpenCodeGoBaseURL
+	}
+	base, err := normalizeURL(r.BaseURL)
 	if err != nil {
 		return r, err
 	}
 	r.BaseURL = base
 	u, _ := url.Parse(base)
-	if r.Provider != "deepseek" && r.Provider != "volcengine" && r.Provider != "openai_compatible" {
+	if r.Provider != "deepseek" && r.Provider != "volcengine" && r.Provider != "openai_compatible" && r.Provider != provider.OpenCodeGo {
 		return r, errors.New("不支持的语言模型供应商")
 	}
 	if r.Provider == "deepseek" && (u.Hostname() != "api.deepseek.com" || u.Path != "" && u.Path != "/v1") {
@@ -191,7 +210,11 @@ func (m *Manager) prepareLanguageModel(ctx context.Context, in LanguageModelInpu
 	if r.Provider == "volcengine" && !provider.IsVolcengineURL(base) {
 		return r, errors.New("请填写火山方舟模型服务或 Agent Plan 官方根地址")
 	}
-	if r.ContextWindow != 0 && (r.ContextWindow < 32768 || r.ContextWindow > 1048576) || r.MaxOutputTokens != 0 && (r.MaxOutputTokens < 64 || r.MaxOutputTokens > 32768) {
+	if r.Provider == provider.OpenCodeGo && base != provider.OpenCodeGoBaseURL {
+		return r, errors.New("OpenCode Go 使用固定的官方接口地址")
+	}
+	if r.Provider != provider.OpenCodeGo && (r.ContextWindow != 0 && (r.ContextWindow < 32768 || r.ContextWindow > 1048576) ||
+		r.MaxOutputTokens != 0 && (r.MaxOutputTokens < 64 || r.MaxOutputTokens > 32768)) {
 		return r, errors.New("请核对模型上下文与输出容量")
 	}
 	if r.APIKey == "" && in.ReuseConnection != "" {
@@ -204,10 +227,46 @@ func (m *Manager) prepareLanguageModel(ctx context.Context, in LanguageModelInpu
 		}
 		r.APIKey = old.APIKey
 	}
-	if r.APIKey == "" || len(r.APIKey) > 4096 || strings.ContainsAny(r.APIKey, "\r\n\t ") {
+	if r.Provider == provider.OpenCodeGo {
+		models, err := m.DiscoverLanguageModels(ctx, r.Provider, r.APIKey)
+		if err != nil {
+			return r, err
+		}
+		for _, model := range models {
+			if model.ID == r.Model {
+				r.ContextWindow, r.MaxOutputTokens, r.SupportsVision = model.ContextWindow, model.MaxOutputTokens, model.SupportsVision
+				return r, nil
+			}
+		}
+		return r, errors.New("请从当前密钥可用的 OpenCode Go 文本模型中选择")
+	}
+	if !validLanguageAPIKey(r.APIKey) {
 		return r, errors.New("请填写 API Key 或选择已有连接")
 	}
 	return r, nil
+}
+
+func validLanguageAPIKey(key string) bool {
+	return key != "" && len(key) <= 4096 && !strings.ContainsAny(key, "\r\n\t ")
+}
+
+func (m *Manager) DiscoverLanguageModels(ctx context.Context, kind, key string) ([]provider.ModelOption, error) {
+	if kind != provider.OpenCodeGo {
+		return nil, errors.New("该供应商不支持模型发现")
+	}
+	key = strings.TrimSpace(key)
+	if !validLanguageAPIKey(key) {
+		return nil, errors.New("请填写有效的 OpenCode Go API Key")
+	}
+	models, err := m.openCodeGoModels(ctx, key)
+	if err != nil {
+		var upstream *provider.HTTPError
+		if errors.As(err, &upstream) {
+			return nil, fmt.Errorf("OpenCode Go 模型列表获取失败（HTTP %d）", upstream.StatusCode)
+		}
+		return nil, errors.New("OpenCode Go 模型列表获取失败")
+	}
+	return models, nil
 }
 
 func (m *Manager) checkLanguageModel(ctx context.Context, r modelRecord) (modelRecord, error) {
@@ -215,9 +274,33 @@ func (m *Manager) checkLanguageModel(ctx context.Context, r modelRecord) (modelR
 	if err != nil {
 		return r, errors.New("模型连接配置无效")
 	}
-	r.ContextWindow, r.MaxOutputTokens = option.ContextWindow, min(32768, option.MaxOutputTokens)
 	ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()
+	if r.Provider == provider.OpenCodeGo {
+		budget := 768
+		if r.MaxOutputTokens > 0 {
+			budget = min(budget, r.MaxOutputTokens)
+		}
+		reply, err := p.Complete(ctx, provider.Request{Model: r.Model, SessionID: "askxuan-probe-" + r.ID,
+			JSONMode: true, MaxTokens: budget, SystemPrompt: `Return only this JSON object: {"ok":true}.`,
+			Messages: []provider.Message{{Role: "user", Content: "Reply with the JSON confirmation."}},
+		})
+		if err != nil {
+			var upstream *provider.HTTPError
+			if errors.As(err, &upstream) {
+				return r, fmt.Errorf("OpenCode Go 模型测试失败（HTTP %d）", upstream.StatusCode)
+			}
+			return r, errors.New("OpenCode Go 模型连接测试失败")
+		}
+		var probe struct {
+			OK bool `json:"ok"`
+		}
+		if reply == nil || reply.FinishReason == "length" || json.Unmarshal([]byte(reply.Content), &probe) != nil || !probe.OK {
+			return r, errors.New("OpenCode Go 模型未返回可用的文本 JSON")
+		}
+		return r, nil
+	}
+	r.ContextWindow, r.MaxOutputTokens = option.ContextWindow, min(32768, option.MaxOutputTokens)
 	message := provider.Message{Role: "user", Content: "Reply with OK only."}
 	if r.SupportsVision {
 		message.ImageDataURLs = []string{probeImage}
@@ -290,11 +373,21 @@ func (m *Manager) saveLibraryLocked(r record, expected int64, actor, field strin
 }
 
 func (m *Manager) SaveModelUses(ctx context.Context, uses ModelUses, revision int64, actor string) error {
-	snapshot := m.Snapshot()
+	m.mu.RLock()
+	snapshot, records := m.active, m.record.Models
+	m.mu.RUnlock()
+	catalogModel := uses.CatalogTranslation
+	for _, record := range records {
+		if record.Provider == provider.OpenCodeGo && record.ID == catalogModel {
+			// This route is deliberately absent from the public model catalog.
+			catalogModel = ""
+			break
+		}
+	}
 	for _, choice := range []struct {
 		id     string
 		vision bool
-	}{{uses.Chat, false}, {uses.Vision, true}} {
+	}{{uses.Chat, false}, {uses.Vision, true}, {catalogModel, false}} {
 		if choice.id != "" {
 			if _, err := snapshot.Models.Select(ctx, choice.id, choice.vision); err != nil {
 				return err
@@ -323,7 +416,7 @@ func (m *Manager) DeleteLanguageModel(id, actor string, revision int64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	r := m.record
-	if id == r.ModelUses.Chat || id == r.ModelUses.Vision {
+	if id == r.ModelUses.Chat || id == r.ModelUses.Vision || id == r.ModelUses.CatalogTranslation {
 		return errors.New("默认用途正在使用此模型，请先选择其他模型")
 	}
 	r.Models = []modelRecord{}

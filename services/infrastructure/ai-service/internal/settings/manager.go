@@ -74,18 +74,20 @@ type record struct {
 	History  []Audit `json:"history"`
 }
 type Snapshot struct {
-	Config   config.AIConf
-	Provider provider.Provider
-	Models   *provider.Catalog
+	Config             config.AIConf
+	Provider           provider.Provider
+	Models             *provider.Catalog
+	CatalogTranslation provider.RegisteredRoute
 }
 type Manager struct {
-	mu           sync.RWMutex
-	original     config.AIConf
-	active       *Snapshot
-	record       record
-	store        *store
-	build        func(record) (*Snapshot, error)
-	modelBuilder func(modelRecord) (provider.Provider, provider.ModelOption, error)
+	mu               sync.RWMutex
+	original         config.AIConf
+	active           *Snapshot
+	record           record
+	store            *store
+	build            func(record) (*Snapshot, error)
+	modelBuilder     func(modelRecord) (provider.Provider, provider.ModelOption, error)
+	openCodeGoModels func(context.Context, string) ([]provider.ModelOption, error)
 }
 
 func New(initial config.AIConf, dir, key string) (*Manager, error) {
@@ -101,6 +103,10 @@ func New(initial config.AIConf, dir, key string) (*Manager, error) {
 	m := &Manager{original: initial, store: st}
 	m.build = m.buildSnapshot
 	m.modelBuilder = buildLanguageModel
+	discoveryClient := secureClient()
+	m.openCodeGoModels = func(ctx context.Context, key string) ([]provider.ModelOption, error) {
+		return provider.DiscoverOpenCodeGo(ctx, discoveryClient, key)
+	}
 	if st != nil {
 		saved, e := st.read()
 		if e != nil {

@@ -28,6 +28,7 @@ func RegisterHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 	registerReferences(server, svcCtx)
 	registerWeKnora(server, svcCtx)
 	registerFloorPlan(server, svcCtx)
+	registerCatalogTranslation(server, svcCtx)
 
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/ai/capabilities", Handler: capabilitiesHandler(svcCtx)},

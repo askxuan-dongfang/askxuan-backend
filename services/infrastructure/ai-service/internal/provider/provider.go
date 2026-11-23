@@ -14,6 +14,7 @@ type Message struct {
 }
 type Request struct {
 	Model           string
+	SessionID       string
 	SystemPrompt    string
 	Messages        []Message
 	MaxTokens       int
@@ -91,6 +92,14 @@ func New(cfg Config) (Provider, error) {
 			return nil, fmt.Errorf("openai_compatible requires AI_BASE_URL, AI_API_KEY and AI_MODEL")
 		}
 		return NewOpenAICompatible(cfg.BaseURL, cfg.APIKey, cfg.Model, cfg.VisionModel), nil
+	case OpenCodeGo:
+		if cfg.BaseURL != OpenCodeGoBaseURL || cfg.APIKey == "" || !modelID.MatchString(cfg.Model) {
+			return nil, fmt.Errorf("invalid OpenCode Go route")
+		}
+		p := NewOpenAICompatible(OpenCodeGoBaseURL, cfg.APIKey, cfg.Model, "")
+		p.openCodeGo = true
+		p.UseStandardParameters()
+		return p, nil
 	default:
 		return nil, fmt.Errorf("unsupported AI_PROVIDER %q", cfg.Provider)
 	}
