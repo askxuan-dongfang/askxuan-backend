@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/askxuan/ai-service/internal/logic"
+	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/types"
 	"github.com/askxuan/common"
@@ -55,11 +56,13 @@ func modelListHandler(s *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		runtime := s.Runtime()
-		var ids []string
+		var models provider.ModelList
+		var err error
 		if r.Header.Get("X-User-Type") == "user" {
-			ids = runtime.CustomerModelIDs
+			models, err = runtime.Models.CustomerList(r.Context(), runtime.CustomerModelIDs)
+		} else {
+			models, err = runtime.Models.List(r.Context())
 		}
-		models, err := runtime.Models.CustomerList(r.Context(), ids)
 		if err != nil {
 			common.JsonError(w, common.NewBizError(50301, "模型列表暂未加载，请稍后重试"))
 			return

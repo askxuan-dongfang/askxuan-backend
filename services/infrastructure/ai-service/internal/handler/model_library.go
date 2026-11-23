@@ -97,18 +97,18 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 			}
 			linked := map[string]bool{}
 			for _, m := range language {
-				bindings := map[string]string{"catalogTranslation": m.ID}
-				document := m.DocumentModelID
+				bindings := map[string]string{"chat": m.ID, "catalogTranslation": m.ID}
+				if m.SupportsVision {
+					bindings["vision"] = m.ID
+				}
 				if m.Provider != provider.OpenCodeGo {
+					document := m.DocumentModelID
 					if document == "" {
 						document = "chat:" + m.ID
 					} else {
 						linked[document] = true
 					}
-					bindings["chat"], bindings["document"] = m.ID, document
-					if m.SupportsVision {
-						bindings["vision"] = m.ID
-					}
+					bindings["document"] = document
 				}
 				items = append(items, libraryItem{ID: m.ID, Name: m.Name, Model: m.Model, Provider: m.Provider, BaseURL: m.BaseURL, Kind: "language", Source: m.Source, ContextWindow: m.ContextWindow, MaxOutputTokens: m.MaxOutputTokens, Bindings: bindings})
 			}
@@ -272,7 +272,7 @@ func resolveDocumentModel(s *svc.ServiceContext, r *http.Request, selected, acto
 		return "", revision, err
 	}
 	if m.Provider == provider.OpenCodeGo {
-		return "", revision, errors.New("OpenCode Go 模型仅用于英文目录翻译")
+		return "", revision, errors.New("当前文档理解连接不支持 OpenCode Go 的会话协议")
 	}
 	if m.DocumentModelID != "" {
 		return m.DocumentModelID, revision, s.WeKnora.ValidateModelType(r.Context(), m.DocumentModelID, "KnowledgeQA")

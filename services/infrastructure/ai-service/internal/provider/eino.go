@@ -3,9 +3,11 @@ package provider
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	openai "github.com/cloudwego/eino-ext/components/model/openai"
 	"github.com/cloudwego/eino/components/model"
+	"github.com/google/uuid"
 )
 
 // NewEinoModel adapts an immutable provider snapshot without exporting its key or
@@ -30,7 +32,19 @@ func NewEinoModel(ctx context.Context, source Provider, req Request) (model.Base
 	if req.JSONMode {
 		c.ResponseFormat = &openai.ChatCompletionResponseFormat{Type: openai.ChatCompletionResponseFormatTypeJSONObject}
 	}
-	if req.ThinkingEnabled && !p.modelDefaultReasoning {
+	if p.openCodeGo {
+		if req.SessionID == "" {
+			req.SessionID = "askxuan-" + uuid.NewString()
+		}
+		client := *p.client
+		transport := client.Transport
+		if transport == nil {
+			transport = http.DefaultTransport
+		}
+		client.Transport = openCodeSessionTransport{base: transport, sessionID: req.SessionID}
+		c.HTTPClient = &client
+	}
+	if req.ThinkingEnabled && !p.modelDefaultReasoning && !p.openCodeGo {
 		c.ReasoningEffort = openai.ReasoningEffortLevel(req.ReasoningEffort)
 		if p.Name() == "volcengine" {
 			c.MaxTokens = nil
@@ -45,6 +59,17 @@ func NewEinoModel(ctx context.Context, source Provider, req Request) (model.Base
 		c.ExtraFields = map[string]any{"thinking": map[string]string{"type": mode}}
 	}
 	return openai.NewChatModel(ctx, c)
+}
+
+type openCodeSessionTransport struct {
+	base      http.RoundTripper
+	sessionID string
+}
+
+func (t openCodeSessionTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	request := req.Clone(req.Context())
+	setOpenCodeGoHeaders(request.Header, t.sessionID)
+	return t.base.RoundTrip(request)
 }
 
 // ReasoningFallbackOptions permits one bounded non-thinking retry on adapters

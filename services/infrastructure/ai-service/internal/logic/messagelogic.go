@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -86,7 +87,7 @@ func (l *MessageSendLogic) Send(req *types.MessageSendReq) (*types.MessageSendRe
 	if strings.TrimSpace(req.Content) == "" {
 		req.Content = "请分析我上传的图片"
 	}
-	selectedModel, err := selectChatModel(l.ctx, l.svcCtx, req.Id, req.Model, len(req.Attachments) > 0, l.svcCtx.CustomerModelIDs)
+	selectedModel, err := selectChatModel(l.ctx, l.svcCtx, req.Id, req.Model, len(req.Attachments) > 0, true)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +191,7 @@ func (l *MessageRetryLogic) Retry(req *types.MessageRetryReq) (*types.MessageSen
 	if skill, skillErr := l.svcCtx.SkillModel.FindByCode(l.ctx, session.SkillCode); skillErr != nil || skill.Status != model.SkillStatusEnabled {
 		return nil, common.NewBizError(40001, "该技能已停用，请新建其他问事")
 	}
-	if _, err = selectChatModel(l.ctx, l.svcCtx, req.Id, pending.Model, false, nil); err != nil {
+	if _, err = selectChatModel(l.ctx, l.svcCtx, req.Id, pending.Model, false, false); err != nil {
 		return nil, err
 	}
 	if err := l.svcCtx.UsageModel.Acquire(l.ctx, req.UserId, l.svcCtx.AIConfig.MinuteRequestLimit, l.svcCtx.AIConfig.DailyRequestLimit); err != nil {
@@ -346,7 +347,7 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 	}
 	var streamed strings.Builder
 	lastPersisted := time.Now()
-	request := provider.Request{Model: pending.Model, SystemPrompt: systemPrompt, Messages: input, MaxTokens: svcCtx.AIConfig.MaxOutputTokens, ThinkingEnabled: svcCtx.AIConfig.ThinkingEnabled, ReasoningEffort: svcCtx.AIConfig.ReasoningEffort}
+	request := provider.Request{Model: pending.Model, SessionID: "askxuan-chat-" + strconv.FormatInt(sessionId, 10), SystemPrompt: systemPrompt, Messages: input, MaxTokens: svcCtx.AIConfig.MaxOutputTokens, ThinkingEnabled: svcCtx.AIConfig.ThinkingEnabled, ReasoningEffort: svcCtx.AIConfig.ReasoningEffort}
 	stage := "answering"
 	resp, err := svcCtx.Provider.Stream(ctx, request, func(delta provider.StreamDelta) error {
 		if delta.Reasoning && stage != "reasoning" {
@@ -381,7 +382,7 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 		// A reasoning-only response can consume tokens even when no answer is produced.
 		if resp != nil {
 			usage.PromptTokens, usage.CompletionTokens = resp.PromptTokens, resp.CompletionTokens
-			usage.CostMicros = calculateCostMicros(*resp, svcCtx.AIConfig, time.Now().UTC())
+			usage.CostMicros = modelCostMicros(svcCtx, pending.Model, *resp)
 			if resp.Model != "" {
 				usage.Model = resp.Model
 			}
@@ -392,7 +393,7 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 	if err := svcCtx.Guard.ValidateOutput(resp.Content); err != nil {
 		return err
 	}
-	costMicros := calculateCostMicros(*resp, svcCtx.AIConfig, time.Now().UTC())
+	costMicros := modelCostMicros(svcCtx, pending.Model, *resp)
 	meta := model.CompletionMeta{
 		Content: resp.Content, PromptTokens: resp.PromptTokens, CompletionTokens: resp.CompletionTokens,
 		Provider: svcCtx.Provider.Name(), Model: resp.Model, CostMicros: costMicros, FinishReason: resp.FinishReason,
@@ -408,6 +409,13 @@ func processMessage(ctx context.Context, svcCtx *svc.ServiceContext, sessionId, 
 		Provider: meta.Provider, Model: meta.Model, PromptTokens: meta.PromptTokens, CompletionTokens: meta.CompletionTokens,
 		CostMicros: meta.CostMicros, Status: model.MessageStatusCompleted, LatencyMS: int(time.Since(startedAt).Milliseconds()),
 	})
+}
+
+func modelCostMicros(s *svc.ServiceContext, modelID string, response provider.Response) int64 {
+	if provider.IsRegisteredModel(s.Provider, modelID) {
+		return 0
+	}
+	return calculateCostMicros(response, s.AIConfig, time.Now())
 }
 
 func calculateCostMicros(resp provider.Response, aiConfig config.AIConf, at time.Time) int64 {

@@ -11,7 +11,7 @@ import (
 	"github.com/askxuan/common"
 )
 
-func selectChatModel(ctx context.Context, s *svc.ServiceContext, sessionID int64, id string, images bool, customerModelIDs []string) (string, error) {
+func selectChatModel(ctx context.Context, s *svc.ServiceContext, sessionID int64, id string, images bool, customerChoice bool) (string, error) {
 	if sessionID > 0 {
 		history, err := s.ConversationModel.ListAllMessages(ctx, sessionID)
 		if err != nil {
@@ -39,12 +39,18 @@ func selectChatModel(ctx context.Context, s *svc.ServiceContext, sessionID int64
 	catalog := s.Models
 	if id == "" && !images && s.AgentDefaultModel != "" {
 		id = s.AgentDefaultModel
-		customerModelIDs = nil
+		customerChoice = false
 	}
 	if catalog == nil {
 		catalog = provider.NewCatalog(s.Provider)
 	}
-	selected, err := catalog.SelectForCustomer(ctx, customerModelIDs, id, images)
+	var selected string
+	var err error
+	if customerChoice {
+		selected, err = catalog.SelectForCustomer(ctx, s.CustomerModelIDs, id, images)
+	} else {
+		selected, err = catalog.Select(ctx, id, images)
+	}
 	if err != nil {
 		return "", common.NewBizError(40001, err.Error())
 	}

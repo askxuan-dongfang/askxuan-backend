@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -50,7 +51,7 @@ func languageInput(revision int64) LanguageModelInput {
 	return LanguageModelInput{Revision: revision, APIKey: "fixture-library-key", LanguageModelValues: LanguageModelValues{Name: "Library model", Model: "same-name", Provider: "openai_compatible", BaseURL: "https://models.example.com/v1"}}
 }
 
-func TestOpenCodeGoModelsAreOnlyAvailableToCatalogTranslation(t *testing.T) {
+func TestOpenCodeGoModelsCanBeAssignedByPurpose(t *testing.T) {
 	ctx := context.Background()
 	m, dir, key := libraryFixture(t)
 	m.original.ReportModel = "configured-report"
@@ -60,7 +61,10 @@ func TestOpenCodeGoModelsAreOnlyAvailableToCatalogTranslation(t *testing.T) {
 		if credential != "fixture-library-key" {
 			return nil, &provider.HTTPError{StatusCode: 403}
 		}
-		return []provider.ModelOption{{ID: "kimi-k3", Name: "Kimi K3", ContextWindow: 2097152, MaxOutputTokens: 1048576, SupportsVision: true}}, nil
+		return []provider.ModelOption{
+			{ID: "kimi-k3", Name: "Kimi K3", ContextWindow: 2097152, MaxOutputTokens: 1048576, SupportsVision: true},
+			{ID: "text-only", Name: "Text only", ContextWindow: 32768, MaxOutputTokens: 8192},
+		}, nil
 	}
 	in := languageInput(0)
 	in.Provider, in.Model, in.BaseURL = provider.OpenCodeGo, "kimi-k3", "https://elsewhere.example/v1"
@@ -82,14 +86,8 @@ func TestOpenCodeGoModelsAreOnlyAvailableToCatalogTranslation(t *testing.T) {
 	if m.Snapshot().CatalogTranslation.Provider != nil {
 		t.Fatal("unbound OpenCode Go model was activated")
 	}
-	if _, err := m.Snapshot().Models.Select(ctx, model.ID, false); !errors.Is(err, provider.ErrModelUnavailable) {
-		t.Fatalf("customer can select catalog-only Go model: %v", err)
-	}
-	if err := m.SaveModelUses(ctx, ModelUses{Chat: model.ID}, nil, 1, "42"); err == nil {
-		t.Fatal("OpenCode Go was accepted as chat default")
-	}
-	if err := m.SaveModelUses(ctx, ModelUses{Vision: model.ID}, nil, 1, "42"); err == nil {
-		t.Fatal("OpenCode Go was accepted as vision default")
+	if _, err := m.Snapshot().Models.Select(ctx, model.ID, true); err != nil {
+		t.Fatalf("registered Go model is missing from the shared catalog: %v", err)
 	}
 	if err := m.SaveModelUses(ctx, ModelUses{CatalogTranslation: model.ID}, nil, 1, "42"); err != nil {
 		t.Fatal(err)
@@ -99,12 +97,41 @@ func TestOpenCodeGoModelsAreOnlyAvailableToCatalogTranslation(t *testing.T) {
 		snapshot.CatalogTranslation.Provider == nil || snapshot.CatalogTranslation.Model != "kimi-k3" {
 		t.Fatalf("unexpected provider isolation: %+v", snapshot.CatalogTranslation)
 	}
-	if _, err := snapshot.Models.Select(ctx, model.ID, false); !errors.Is(err, provider.ErrModelUnavailable) {
-		t.Fatalf("bound catalog model reached customer picker: %v", err)
+	customer, err := snapshot.Models.CustomerList(ctx, nil)
+	if err != nil || slices.ContainsFunc(customer.List, func(option provider.ModelOption) bool { return option.ID == model.ID }) {
+		t.Fatalf("translation model reached the customer picker: %+v, %v", customer, err)
 	}
-	if err := m.ValidateCustomerModelIDs(ctx, []string{model.ID}); err == nil {
-		t.Fatal("catalog-only model was accepted as a customer model")
+	if _, err := snapshot.Models.SelectForCustomer(ctx, nil, model.ID, false); !errors.Is(err, provider.ErrModelUnavailable) {
+		t.Fatalf("translation model was callable as a customer choice: %v", err)
 	}
+	if err := m.ValidateCustomerModelIDs(ctx, []string{model.ID}); err != nil {
+		t.Fatalf("administrator cannot explicitly open registered model: %v", err)
+	}
+	in.Revision, in.Model = 2, "text-only"
+	text, err := m.AddLanguageModel(ctx, in, "42")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.SaveModelUses(ctx, ModelUses{Vision: text.ID}, nil, 3, "42"); !errors.Is(err, provider.ErrModelNeedsVision) {
+		t.Fatalf("text model passed vision validation: %v", err)
+	}
+
+	uses := ModelUses{Chat: text.ID, Vision: model.ID, CatalogTranslation: model.ID}
+	if err := m.SaveModelUses(ctx, uses, nil, 3, "42"); err != nil {
+		t.Fatal(err)
+	}
+	snapshot = m.Snapshot()
+	customer, err = snapshot.Models.CustomerList(ctx, nil)
+	if err != nil || customer.DefaultModel != text.ID || customer.DefaultVisionModel != model.ID {
+		t.Fatalf("customer defaults do not match the purpose selections: %+v, %v", customer, err)
+	}
+	if chosen, err := snapshot.Models.SelectForCustomer(ctx, nil, "", true); err != nil || chosen != model.ID {
+		t.Fatalf("omitted image model resolved to %q: %v", chosen, err)
+	}
+	if _, err := snapshot.Models.SelectForCustomer(ctx, []string{text.ID}, "", true); !errors.Is(err, provider.ErrModelNeedsVision) {
+		t.Fatalf("requested customer allowlist was ignored: %v", err)
+	}
+
 	restarted, err := New(m.original, dir, key)
 	if err != nil {
 		t.Fatal(err)
@@ -113,14 +140,21 @@ func TestOpenCodeGoModelsAreOnlyAvailableToCatalogTranslation(t *testing.T) {
 		route.Option.MaxOutputTokens != 1048576 {
 		t.Fatal("catalog binding or authoritative limits lost after restart")
 	}
-	if err := m.DeleteLanguageModel(model.ID, "42", 2); err == nil {
-		t.Fatal("deleted active catalog model")
+	if restored, _ := restarted.ModelUses(); restored != uses {
+		t.Fatalf("role selections lost after restart: %+v", restored)
 	}
-	if err := m.SaveModelUses(ctx, ModelUses{}, nil, 2, "42"); err != nil {
+	if err := m.DeleteLanguageModel(model.ID, "42", 4); err == nil {
+		t.Fatal("deleted an active model")
+	}
+	if err := m.SaveModelUses(ctx, ModelUses{}, []string{model.ID}, 4, "42"); err != nil {
 		t.Fatal(err)
 	}
 	if route := m.Snapshot().CatalogTranslation; route.Provider != nil || route.Model != "" {
 		t.Fatal("clearing the binding did not restore current text routing")
+	}
+	snapshot = m.Snapshot()
+	if chosen, err := snapshot.Models.SelectForCustomer(ctx, snapshot.CustomerModelIDs, model.ID, true); err != nil || chosen != model.ID {
+		t.Fatalf("explicit customer choice resolved to %q: %v", chosen, err)
 	}
 }
 
@@ -170,7 +204,8 @@ func TestStoredOpenCodeGoModelsDoNotReachLegacyRuntime(t *testing.T) {
 		{ID: "existing", LanguageModelValues: LanguageModelValues{Provider: "openai_compatible"}},
 		{ID: "go-catalog", LanguageModelValues: LanguageModelValues{Provider: provider.OpenCodeGo}},
 	}
-	r.ModelUses = ModelUses{Chat: "existing", CatalogTranslation: "go-catalog"}
+	r.ModelUses = ModelUses{Chat: "go-catalog", Vision: "go-catalog", CatalogTranslation: "go-catalog"}
+	r.CustomerModelIDs = []string{"existing", "go-catalog"}
 	if err := m.store.write(r, 0); err != nil {
 		t.Fatal(err)
 	}
@@ -183,17 +218,20 @@ func TestStoredOpenCodeGoModelsDoNotReachLegacyRuntime(t *testing.T) {
 	var legacy struct {
 		Revision  int64 `json:"revision"`
 		ModelUses struct {
-			Chat string `json:"chat"`
+			Chat   string `json:"chat"`
+			Vision string `json:"vision"`
 		} `json:"modelUses"`
-		Models []modelRecord `json:"models"`
+		Models           []modelRecord `json:"models"`
+		CustomerModelIDs []string      `json:"customerModelIds"`
 	}
-	if err := json.Unmarshal(plain, &legacy); err != nil || legacy.Revision != 1 || legacy.ModelUses.Chat != "existing" ||
-		len(legacy.Models) != 1 || legacy.Models[0].ID != "existing" || legacy.Models[0].Provider != "openai_compatible" {
+	if err := json.Unmarshal(plain, &legacy); err != nil || legacy.Revision != 1 || legacy.ModelUses.Chat != "" || legacy.ModelUses.Vision != "" ||
+		!slices.Equal(legacy.CustomerModelIDs, []string{"existing"}) || len(legacy.Models) != 1 || legacy.Models[0].ID != "existing" || legacy.Models[0].Provider != "openai_compatible" {
 		t.Fatalf("legacy settings include unsupported models or lost the existing chat binding: %+v, %v", legacy, err)
 	}
 	reopened, err := m.store.read()
-	if err != nil || reopened.ModelUses.CatalogTranslation != "go-catalog" || len(reopened.Models) != 2 || reopened.Models[1].ID != "go-catalog" {
-		t.Fatal("new runtime lost the catalog-only model after reopening")
+	if err != nil || reopened.ModelUses != r.ModelUses || !slices.Equal(reopened.CustomerModelIDs, r.CustomerModelIDs) ||
+		len(reopened.Models) != 2 || reopened.Models[1].ID != "go-catalog" {
+		t.Fatal("new runtime lost managed settings after reopening")
 	}
 }
 

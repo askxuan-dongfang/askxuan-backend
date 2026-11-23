@@ -237,10 +237,14 @@ func (p *OpenAICompatible) setHeaders(httpReq *http.Request, req Request) error 
 		if req.SessionID == "" {
 			return errors.New("OpenCode Go requires a session ID")
 		}
-		httpReq.Header.Set("User-Agent", openCodeUserAgent)
-		httpReq.Header.Set("x-opencode-session", req.SessionID)
+		setOpenCodeGoHeaders(httpReq.Header, req.SessionID)
 	}
 	return nil
+}
+
+func setOpenCodeGoHeaders(headers http.Header, sessionID string) {
+	headers.Set("User-Agent", openCodeUserAgent)
+	headers.Set("x-opencode-session", sessionID)
 }
 
 type wireMessage struct {

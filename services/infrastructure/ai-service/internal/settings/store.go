@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"syscall"
 
 	"github.com/askxuan/ai-service/internal/provider"
@@ -22,7 +23,10 @@ type store struct {
 // Older binaries can still read and use the shared store during an image rollback.
 type storedSettings struct {
 	record
-	CatalogModels []modelRecord `json:"catalogModels,omitempty"`
+	CatalogModels           []modelRecord `json:"catalogModels,omitempty"`
+	GoChatModel             string        `json:"goChatModel,omitempty"`
+	GoVisionModel           string        `json:"goVisionModel,omitempty"`
+	UnifiedCustomerModelIDs []string      `json:"unifiedCustomerModelIds,omitempty"`
 }
 
 func newStore(dir, key string) (*store, error) {
@@ -70,6 +74,15 @@ func (s *store) read() (*record, error) {
 		return nil, errors.New("AI settings data is invalid")
 	}
 	stored.record.Models = append(stored.record.Models, stored.CatalogModels...)
+	if stored.GoChatModel != "" {
+		stored.ModelUses.Chat = stored.GoChatModel
+	}
+	if stored.GoVisionModel != "" {
+		stored.ModelUses.Vision = stored.GoVisionModel
+	}
+	if stored.UnifiedCustomerModelIDs != nil {
+		stored.CustomerModelIDs = stored.UnifiedCustomerModelIDs
+	}
 	return &stored.record, nil
 }
 func (s *store) write(r record, expected int64) error {
@@ -95,12 +108,26 @@ func (s *store) write(r record, expected int64) error {
 	}
 	stored := storedSettings{record: r}
 	stored.record.Models = nil
+	goModels := make(map[string]bool)
 	for _, model := range r.Models {
 		if model.Provider == provider.OpenCodeGo {
 			stored.CatalogModels = append(stored.CatalogModels, model)
+			goModels[model.ID] = true
 		} else {
 			stored.record.Models = append(stored.record.Models, model)
 		}
+	}
+	// Previous images cannot route Go for chat or images. They retain usable defaults
+	// and customer choices, while current images hydrate the full selection.
+	if goModels[r.ModelUses.Chat] {
+		stored.GoChatModel, stored.ModelUses.Chat = r.ModelUses.Chat, ""
+	}
+	if goModels[r.ModelUses.Vision] {
+		stored.GoVisionModel, stored.ModelUses.Vision = r.ModelUses.Vision, ""
+	}
+	customerIDs := slices.DeleteFunc(slices.Clone(r.CustomerModelIDs), func(id string) bool { return goModels[id] })
+	if len(customerIDs) != len(r.CustomerModelIDs) {
+		stored.CustomerModelIDs, stored.UnifiedCustomerModelIDs = customerIDs, r.CustomerModelIDs
 	}
 	plain, err := json.Marshal(stored)
 	if err != nil {

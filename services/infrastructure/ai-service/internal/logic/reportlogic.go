@@ -319,11 +319,11 @@ func generateReport(s *svc.ServiceContext, id int64) {
 		failureCtx, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
 		privateAudit, _ := json.Marshal(reportFailureAudit(doc))
-		_, _ = s.DB.ExecCtx(failureCtx, `UPDATE ai_report SET status='failed',generation_stage='failed',document_json=?,provider=?,model=?,prompt_tokens=?,completion_tokens=?,cost_micros=?,error_message='报告暂未生成成功，请免费重试；尚未扣款' WHERE id=? AND status='generating'`, string(privateAudit), s.Provider.Name(), usage.Model, usage.PromptTokens, usage.CompletionTokens, calculateCostMicros(usage, s.AIConfig, time.Now()), id)
+		_, _ = s.DB.ExecCtx(failureCtx, `UPDATE ai_report SET status='failed',generation_stage='failed',document_json=?,provider=?,model=?,prompt_tokens=?,completion_tokens=?,cost_micros=?,error_message='报告暂未生成成功，请免费重试；尚未扣款' WHERE id=? AND status='generating'`, string(privateAudit), s.Provider.Name(), usage.Model, usage.PromptTokens, usage.CompletionTokens, modelCostMicros(s, usage.Model, usage), id)
 		return
 	}
 	raw, _ := json.Marshal(doc)
-	_, _ = s.DB.ExecCtx(ctx, `UPDATE ai_report SET status='ready',generation_stage='complete',summary=?,content=?,document_json=?,provider=?,model=?,prompt_tokens=?,completion_tokens=?,cost_micros=?,error_message='' WHERE id=? AND status='generating'`, body.Summary, body.Content, string(raw), s.Provider.Name(), usage.Model, usage.PromptTokens, usage.CompletionTokens, calculateCostMicros(usage, s.AIConfig, time.Now()), id)
+	_, _ = s.DB.ExecCtx(ctx, `UPDATE ai_report SET status='ready',generation_stage='complete',summary=?,content=?,document_json=?,provider=?,model=?,prompt_tokens=?,completion_tokens=?,cost_micros=?,error_message='' WHERE id=? AND status='generating'`, body.Summary, body.Content, string(raw), s.Provider.Name(), usage.Model, usage.PromptTokens, usage.CompletionTokens, modelCostMicros(s, usage.Model, usage), id)
 }
 
 type reportBody struct {
@@ -399,16 +399,14 @@ func reportVisionModel(ctx context.Context, s *svc.ServiceContext) (string, erro
 	if s.Models == nil {
 		return "", provider.ErrModelNeedsVision
 	}
-	models, e := s.Models.List(ctx)
-	if e != nil {
-		return "", e
+	models, err := s.Models.CustomerList(ctx, nil)
+	if err != nil {
+		return "", err
 	}
-	for _, m := range models.List {
-		if m.SupportsVision {
-			return m.ID, nil
-		}
+	if models.DefaultVisionModel == "" {
+		return "", provider.ErrModelNeedsVision
 	}
-	return "", provider.ErrModelNeedsVision
+	return models.DefaultVisionModel, nil
 }
 
 // Failed drafts and raw tool payloads never become readable reports.

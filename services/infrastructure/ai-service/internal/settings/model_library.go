@@ -109,20 +109,18 @@ func (m *Manager) withModelLibrary(snap *Snapshot, r record) (*Snapshot, error) 
 	snap.CatalogTranslation.Model = r.ModelUses.CatalogTranslation
 	routes := make([]provider.RegisteredRoute, 0, len(r.Models))
 	for _, registered := range r.Models {
-		// OpenCode Go credentials are only usable by the bound catalog worker.
-		if registered.Provider == provider.OpenCodeGo && registered.ID != r.ModelUses.CatalogTranslation {
-			continue
-		}
 		p, option, err := m.modelBuilder(registered)
 		if err != nil {
 			return nil, err
 		}
-		route := provider.RegisteredRoute{Option: option, Provider: p, Model: registered.Model}
-		if registered.Provider == provider.OpenCodeGo {
-			snap.CatalogTranslation = route
-		} else {
-			routes = append(routes, route)
+		route := provider.RegisteredRoute{
+			Option: option, Provider: p, Model: registered.Model,
+			ExplicitCustomerChoice: registered.Provider == provider.OpenCodeGo,
 		}
+		if route.ExplicitCustomerChoice && registered.ID == r.ModelUses.CatalogTranslation {
+			snap.CatalogTranslation = route
+		}
+		routes = append(routes, route)
 	}
 	if len(routes) == 0 && r.ModelUses.Chat == "" && r.ModelUses.Vision == "" {
 		return snap, nil
@@ -130,10 +128,6 @@ func (m *Manager) withModelLibrary(snap *Snapshot, r record) (*Snapshot, error) 
 	snap.Provider = provider.NewRegistry(snap.Provider, r.EnabledModels, routes, r.ModelUses.Chat, r.ModelUses.Vision)
 	snap.Models = provider.NewCatalog(snap.Provider)
 	snap.Config.Model = snap.Provider.Model()
-	// A provider-wide DeepSeek price must never be charged to another model.
-	snap.Config.DeepSeekPricing.Enabled = false
-	snap.Config.ModelPricing = nil
-	snap.Config.InputCostPerMillion, snap.Config.OutputCostPerMillion = 0, 0
 	return snap, nil
 }
 
@@ -396,20 +390,12 @@ func (m *Manager) saveLibraryLocked(r record, expected int64, actor, field strin
 
 func (m *Manager) SaveModelUses(ctx context.Context, uses ModelUses, customerModelIDs []string, revision int64, actor string) error {
 	m.mu.RLock()
-	snapshot, records := m.active, m.record.Models
+	snapshot := m.active
 	m.mu.RUnlock()
-	catalogModel := uses.CatalogTranslation
-	for _, record := range records {
-		if record.Provider == provider.OpenCodeGo && record.ID == catalogModel {
-			// This route is deliberately absent from the public model catalog.
-			catalogModel = ""
-			break
-		}
-	}
 	for _, choice := range []struct {
 		id     string
 		vision bool
-	}{{uses.Chat, false}, {uses.Vision, true}, {catalogModel, false}} {
+	}{{uses.Chat, false}, {uses.Vision, true}, {uses.CatalogTranslation, false}} {
 		if choice.id != "" {
 			if _, err := snapshot.Models.Select(ctx, choice.id, choice.vision); err != nil {
 				return err
