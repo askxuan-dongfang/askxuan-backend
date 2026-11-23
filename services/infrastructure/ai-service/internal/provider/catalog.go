@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -171,8 +172,18 @@ func (c *Catalog) Select(ctx context.Context, id string, images bool) (string, e
 
 func (c *Catalog) CustomerList(ctx context.Context, ids []string) (ModelList, error) {
 	list, err := c.List(ctx)
-	if err != nil || len(ids) == 0 {
+	if err != nil {
 		return list, err
+	}
+	if len(ids) == 0 {
+		list.List = slices.DeleteFunc(list.List, func(m ModelOption) bool {
+			return !c.availableToCustomerByDefault(m.ID)
+		})
+		if len(list.List) == 0 {
+			return ModelList{}, ErrModelUnavailable
+		}
+		c.setDefaults(&list)
+		return list, nil
 	}
 	allowed := make(map[string]bool, len(ids))
 	for _, id := range ids {
@@ -191,8 +202,20 @@ func (c *Catalog) CustomerList(ctx context.Context, ids []string) (ModelList, er
 	return list, nil
 }
 
+// Separately registered subscription models enter the automatic list only after
+// the administrator assigns them to customer-facing text or image use.
+func (c *Catalog) availableToCustomerByDefault(id string) bool {
+	if r, ok := c.provider.(*Registry); ok {
+		return !r.routes[id].ExplicitCustomerChoice || id == r.defaultModel || id == r.vision
+	}
+	return true
+}
+
 func (c *Catalog) SelectForCustomer(ctx context.Context, ids []string, id string, images bool) (string, error) {
 	if len(ids) == 0 {
+		if !c.availableToCustomerByDefault(strings.TrimSpace(id)) {
+			return "", ErrModelUnavailable
+		}
 		return c.Select(ctx, id, images)
 	}
 	list, err := c.CustomerList(ctx, ids)

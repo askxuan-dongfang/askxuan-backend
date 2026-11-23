@@ -323,7 +323,7 @@ func executeReport(ctx context.Context, s *svc.ServiceContext, r *Report) (resul
 	}
 	// Reports use a local reasoning policy. Never change the shared chat model,
 	// the published agent's model, or the immutable provider/settings snapshot.
-	req := provider.Request{Model: selected, MaxTokens: output, ThinkingEnabled: true, ReasoningEffort: "low", JSONMode: true}
+	req := provider.Request{Model: selected, SessionID: fmt.Sprintf("askxuan-report-%d", r.ID), MaxTokens: output, ThinkingEnabled: true, ReasoningEffort: "low", JSONMode: true}
 	phase = "model_init"
 	chat, err := provider.NewEinoModel(ctx, s.Provider, req)
 	if err != nil {

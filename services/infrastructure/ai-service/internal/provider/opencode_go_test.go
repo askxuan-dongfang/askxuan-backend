@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/cloudwego/eino/schema"
 )
 
 type openCodeTestTransport func(*http.Request) (*http.Response, error)
@@ -84,5 +86,65 @@ func TestOpenCodeGoUsesFixedChatEndpointAndOwnSessionHeaders(t *testing.T) {
 	cfg.BaseURL = "https://unrelated.example/v1"
 	if _, err := New(cfg); err == nil {
 		t.Fatal("Go credential could be used at another host")
+	}
+}
+
+func TestOpenCodeGoChatRoutesBothRuntimesThroughTheSelectedModel(t *testing.T) {
+	ctx := context.Background()
+	p, err := New(Config{Provider: OpenCodeGo, BaseURL: OpenCodeGoBaseURL, Model: "kimi-k3", APIKey: "fixture-key"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const session = "askxuan-chat-fixture"
+	calls := 0
+	p.(*OpenAICompatible).SetHTTPClient(&http.Client{Transport: openCodeTestTransport(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if r.URL.String() != OpenCodeGoBaseURL+"/chat/completions" || r.UserAgent() != openCodeUserAgent ||
+			r.Header.Get("x-opencode-session") != session || r.Header.Get("Authorization") != "Bearer fixture-key" {
+			t.Fatalf("wrong request route or headers for chat request %d", calls)
+		}
+		var body struct {
+			Model     string          `json:"model"`
+			Stream    bool            `json:"stream"`
+			Thinking  json.RawMessage `json:"thinking"`
+			Reasoning json.RawMessage `json:"reasoning_effort"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Model != "kimi-k3" || body.Thinking != nil || body.Reasoning != nil {
+			t.Fatalf("wrong chat request: %+v %v", body, err)
+		}
+		header := http.Header{"Content-Type": {"application/json"}}
+		text := `{"model":"kimi-k3","choices":[{"index":0,"message":{"role":"assistant","content":"Ready"},"finish_reason":"stop"}]}`
+		if body.Stream {
+			header.Set("Content-Type", "text/event-stream")
+			text = "data: " + `{"model":"kimi-k3","choices":[{"index":0,"delta":{"role":"assistant","content":"Ready"},"finish_reason":"stop"}]}` +
+				"\n\ndata: [DONE]\n\n"
+		}
+		return &http.Response{StatusCode: 200, Header: header, Body: io.NopCloser(strings.NewReader(text))}, nil
+	})})
+	registry := NewRegistry(Mock{}, nil, []RegisteredRoute{{Option: ModelOption{ID: "stored-go"}, Provider: p, Model: "kimi-k3"}}, "stored-go", "")
+	req := Request{SessionID: session, MaxTokens: 128, ThinkingEnabled: true, ReasoningEffort: "high",
+		Messages: []Message{{Role: "user", Content: "Say Ready"}}}
+	result, err := registry.Stream(ctx, req, func(StreamDelta) error { return nil })
+	if err != nil || result.Content != "Ready" {
+		t.Fatalf("classic stream: %+v, %v", result, err)
+	}
+
+	chat, err := NewEinoModel(ctx, registry, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := []*schema.Message{schema.UserMessage("Say Ready")}
+	reply, err := chat.Generate(ctx, input)
+	if err != nil || reply.Content != "Ready" {
+		t.Fatalf("agent completion: %+v, %v", reply, err)
+	}
+	stream, err := chat.Stream(ctx, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stream.Close()
+	delta, err := stream.Recv()
+	if err != nil || delta.Content != "Ready" || calls != 3 {
+		t.Fatalf("agent stream: %+v, %v (%d requests)", delta, err, calls)
 	}
 }

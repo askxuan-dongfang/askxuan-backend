@@ -6,6 +6,7 @@ import (
 
 	"github.com/askxuan/ai-service/internal/config"
 	"github.com/askxuan/ai-service/internal/provider"
+	"github.com/askxuan/ai-service/internal/svc"
 )
 
 func TestCalculateDeepSeekCostUsesCacheAndPeakMultiplier(t *testing.T) {
@@ -35,5 +36,22 @@ func TestModelSpecificPricingDoesNotUseFlashRateForPro(t *testing.T) {
 		if got := calculateCostMicros(resp, conf, at); got != tc.want {
 			t.Errorf("%s cost %d, want %d", tc.id, got, tc.want)
 		}
+	}
+}
+
+func TestRegisteredModelDoesNotUsePrimaryCost(t *testing.T) {
+	primary := provider.NewOpenAICompatible("https://api.deepseek.com", "fixture", "deepseek-v4-pro", "")
+	goModel := provider.RegisteredRoute{Option: provider.ModelOption{ID: "go-deepseek"},
+		Provider: provider.Mock{}, Model: "deepseek-v4-pro", ExplicitCustomerChoice: true}
+	s := &svc.ServiceContext{
+		Provider: provider.NewRegistry(primary, nil, []provider.RegisteredRoute{goModel}, "", ""),
+		AIConfig: config.AIConf{InputCostPerMillion: 2},
+	}
+	reply := provider.Response{Model: "deepseek-v4-pro", PromptTokens: 100}
+	if cost := modelCostMicros(s, primary.Model(), reply); cost != 200 {
+		t.Fatalf("primary cost=%d, want 200", cost)
+	}
+	if cost := modelCostMicros(s, goModel.Option.ID, reply); cost != 0 {
+		t.Fatalf("registered route used primary pricing: %d", cost)
 	}
 }

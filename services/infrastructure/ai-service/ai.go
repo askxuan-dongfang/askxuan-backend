@@ -48,6 +48,17 @@ func main() {
 			}
 			route.Provider, route.Model = runtime.Provider, model
 		}
+		if task.Kind == "diy-design" {
+			p, req, err := provider.ResolveProvider(ctx, route.Provider, provider.Request{Model: route.Model})
+			if err != nil {
+				return nil, err
+			}
+			if p.Name() == provider.OpenCodeGo {
+				p = provider.PrimaryProvider(runtime.Provider)
+				req.Model = p.Model()
+			}
+			route.Provider, route.Model = p, req.Model
+		}
 		budget := runtime.Config.MaxOutputTokens
 		if limit := route.Option.MaxOutputTokens; limit > 0 && (budget <= 0 || limit < budget) {
 			budget = limit

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -223,7 +224,7 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 	}
 	in.ContextWindow, in.OutputTokens = window, output
 	in.Timeout = time.Duration(max(60, s.AIConfig.TaskTimeoutSeconds)) * time.Second
-	req := provider.Request{Model: pending.Model, MaxTokens: output, ThinkingEnabled: s.AIConfig.ThinkingEnabled, ReasoningEffort: s.AIConfig.ReasoningEffort}
+	req := provider.Request{Model: pending.Model, SessionID: "askxuan-chat-" + strconv.FormatInt(session.Id, 10), MaxTokens: output, ThinkingEnabled: s.AIConfig.ThinkingEnabled, ReasoningEffort: s.AIConfig.ReasoningEffort}
 	chat, e := provider.NewEinoModel(ctx, s.Provider, req)
 	if e != nil {
 		return e
@@ -244,7 +245,7 @@ func executeLiveTurn(ctx context.Context, s *svc.ServiceContext, session *model.
 	if e != nil {
 		status = model.MessageStatusFailed
 	}
-	usage := model.UsageRecord{UserID: session.UserId, SessionID: session.Id, MessageID: pending.Id, SkillCode: session.SkillCode, Provider: s.Provider.Name(), Model: out.Usage.Model, PromptTokens: out.Usage.PromptTokens, CompletionTokens: out.Usage.CompletionTokens, CostMicros: calculateCostMicros(out.Usage, s.AIConfig, time.Now()), Status: status, LatencyMS: int(time.Since(started).Milliseconds())}
+	usage := model.UsageRecord{UserID: session.UserId, SessionID: session.Id, MessageID: pending.Id, SkillCode: session.SkillCode, Provider: s.Provider.Name(), Model: out.Usage.Model, PromptTokens: out.Usage.PromptTokens, CompletionTokens: out.Usage.CompletionTokens, CostMicros: modelCostMicros(s, pending.Model, out.Usage), Status: status, LatencyMS: int(time.Since(started).Milliseconds())}
 	if e != nil {
 		usage.ErrorMessage = e.Error()
 	}

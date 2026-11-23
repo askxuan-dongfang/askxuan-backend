@@ -8,9 +8,10 @@ import (
 // RegisteredRoute has a stable platform identity; Model is the upstream wire
 // name. Keys and clients remain inside each immutable Provider snapshot.
 type RegisteredRoute struct {
-	Option   ModelOption
-	Provider Provider
-	Model    string
+	Option                 ModelOption
+	Provider               Provider
+	Model                  string
+	ExplicitCustomerChoice bool
 }
 
 type Registry struct {
@@ -26,6 +27,16 @@ func NewRegistry(primary Provider, allowed []string, routes []RegisteredRoute, d
 		r.routes[route.Option.ID] = route
 	}
 	return r
+}
+
+// IsRegisteredModel reports whether the stable model ID uses a separate connection.
+func IsRegisteredModel(p Provider, id string) bool {
+	r, ok := p.(*Registry)
+	if !ok {
+		return false
+	}
+	_, ok = r.routes[id]
+	return ok
 }
 
 func PrimaryProvider(p Provider) Provider {

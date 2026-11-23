@@ -568,7 +568,7 @@ func (m *Manager) classic(ctx context.Context, t *debugTask, d *DebugRun, event 
 	if cap := t.snapshot.Config.MaxOutputTokens; cap > 0 && tokens > cap {
 		tokens = cap
 	}
-	resp, err := t.snapshot.Provider.Stream(ctx, provider.Request{Model: d.Model, SystemPrompt: prompt, Messages: []provider.Message{{Role: "user", Content: t.question + "\n结构化资料：" + inputs}}, MaxTokens: tokens, ThinkingEnabled: t.snapshot.Config.ThinkingEnabled, ReasoningEffort: t.snapshot.Config.ReasoningEffort}, func(delta provider.StreamDelta) error {
+	resp, err := t.snapshot.Provider.Stream(ctx, provider.Request{Model: d.Model, SessionID: "askxuan-debug-" + d.ID, SystemPrompt: prompt, Messages: []provider.Message{{Role: "user", Content: t.question + "\n结构化资料：" + inputs}}, MaxTokens: tokens, ThinkingEnabled: t.snapshot.Config.ThinkingEnabled, ReasoningEffort: t.snapshot.Config.ReasoningEffort}, func(delta provider.StreamDelta) error {
 		d.Result += delta.Content
 		if len(d.Result) > 32768 {
 			return invalid("output limit")
