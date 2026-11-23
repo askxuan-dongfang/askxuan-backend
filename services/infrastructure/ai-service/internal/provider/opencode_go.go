@@ -51,9 +51,6 @@ func DiscoverOpenCodeGo(ctx context.Context, client *http.Client, key string) ([
 				Input  []string `json:"input"`
 				Output []string `json:"output"`
 			} `json:"modalities"`
-			API map[string]struct {
-				BaseURL string `json:"base_url"`
-			} `json:"api"`
 		} `json:"data"`
 	}
 	const maxCatalog = 2 << 20
@@ -66,7 +63,6 @@ func DiscoverOpenCodeGo(ctx context.Context, client *http.Client, key string) ([
 	seen := make(map[string]bool)
 	for _, entry := range reply.Data {
 		if entry.Type != "chat" || !modelID.MatchString(entry.ID) || seen[entry.ID] ||
-			strings.TrimSuffix(entry.API["chat-completions"].BaseURL, "/") != OpenCodeGoBaseURL ||
 			(len(entry.Modalities.Input) > 0 && !slices.Contains(entry.Modalities.Input, "text")) ||
 			(len(entry.Modalities.Output) > 0 && !slices.Contains(entry.Modalities.Output, "text")) {
 			continue
