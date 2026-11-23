@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/svc"
@@ -10,7 +11,7 @@ import (
 	"github.com/askxuan/common"
 )
 
-func selectChatModel(ctx context.Context, s *svc.ServiceContext, sessionID int64, id string, images bool) (string, error) {
+func selectChatModel(ctx context.Context, s *svc.ServiceContext, sessionID int64, id string, images bool, customerModelIDs []string) (string, error) {
 	if sessionID > 0 {
 		history, err := s.ConversationModel.ListAllMessages(ctx, sessionID)
 		if err != nil {
@@ -38,11 +39,12 @@ func selectChatModel(ctx context.Context, s *svc.ServiceContext, sessionID int64
 	catalog := s.Models
 	if id == "" && !images && s.AgentDefaultModel != "" {
 		id = s.AgentDefaultModel
+		customerModelIDs = nil
 	}
 	if catalog == nil {
 		catalog = provider.NewCatalog(s.Provider)
 	}
-	selected, err := catalog.Select(ctx, id, images)
+	selected, err := catalog.SelectForCustomer(ctx, customerModelIDs, id, images)
 	if err != nil {
 		return "", common.NewBizError(40001, err.Error())
 	}

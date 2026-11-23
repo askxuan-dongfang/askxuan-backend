@@ -34,6 +34,7 @@ type ServiceContext struct {
 	RunModel          model.RunModel
 	Provider          provider.Provider
 	Models            *provider.Catalog
+	CustomerModelIDs  []string
 	Guard             *agent.Guard
 	MCP               *agent.MCPClient
 	ImageLoader       *agent.ImageLoader
@@ -94,6 +95,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		RunModel:          model.NewRunModel(db),
 		Provider:          snapshot.Provider,
 		Models:            snapshot.Models,
+		CustomerModelIDs:  snapshot.CustomerModelIDs,
 		Guard:             agent.NewGuard(snapshot.Config.MaxInputChars, snapshot.Config.BlockedTerms),
 		MCP:               mcp,
 		ImageLoader:       agent.NewImageLoader(runtimeAI.AllowedImageHosts, runtimeAI.ImageMaxBytes),
@@ -150,6 +152,7 @@ func (s *ServiceContext) Runtime() *ServiceContext {
 	result := *s
 	result.Provider = snapshot.Provider
 	result.Models = snapshot.Models
+	result.CustomerModelIDs = snapshot.CustomerModelIDs
 	result.AIConfig = snapshot.Config
 	result.Guard = agent.NewGuard(snapshot.Config.MaxInputChars, snapshot.Config.BlockedTerms)
 	result.Settings = nil

@@ -65,6 +65,7 @@ type Public struct {
 type record struct {
 	Models                  []modelRecord     `json:"models,omitempty"`
 	ModelUses               ModelUses         `json:"modelUses,omitempty"`
+	CustomerModelIDs        []string          `json:"customerModelIds,omitempty"`
 	KnowledgeLinks          map[string]string `json:"knowledgeLinks,omitempty"`
 	WebSearchFallbackAPIKey string            `json:"webSearchFallbackSecret,omitempty"`
 	WebSearchAPIKey         string            `json:"webSearchSecret,omitempty"`
@@ -77,6 +78,7 @@ type Snapshot struct {
 	Config             config.AIConf
 	Provider           provider.Provider
 	Models             *provider.Catalog
+	CustomerModelIDs   []string
 	CatalogTranslation provider.RegisteredRoute
 }
 type Manager struct {
@@ -272,7 +274,7 @@ func (m *Manager) prepare(req Update) (record, error) {
 		return record{}, err
 	}
 	req.WebSearchOptions = &options
-	return record{Values: req.Values, APIKey: key, WebSearchAPIKey: searchKey, WebSearchFallbackAPIKey: fallbackKey, Revision: old.Revision, Models: append([]modelRecord(nil), old.Models...), ModelUses: old.ModelUses, KnowledgeLinks: copyLinks(old.KnowledgeLinks)}, nil
+	return record{Values: req.Values, APIKey: key, WebSearchAPIKey: searchKey, WebSearchFallbackAPIKey: fallbackKey, Revision: old.Revision, Models: append([]modelRecord(nil), old.Models...), ModelUses: old.ModelUses, CustomerModelIDs: old.CustomerModelIDs, KnowledgeLinks: copyLinks(old.KnowledgeLinks)}, nil
 }
 func (m *Manager) buildSnapshot(r record) (*Snapshot, error) {
 	c := m.original

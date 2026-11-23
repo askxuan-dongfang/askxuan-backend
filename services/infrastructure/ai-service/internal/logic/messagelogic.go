@@ -86,7 +86,7 @@ func (l *MessageSendLogic) Send(req *types.MessageSendReq) (*types.MessageSendRe
 	if strings.TrimSpace(req.Content) == "" {
 		req.Content = "请分析我上传的图片"
 	}
-	selectedModel, err := selectChatModel(l.ctx, l.svcCtx, req.Id, req.Model, len(req.Attachments) > 0)
+	selectedModel, err := selectChatModel(l.ctx, l.svcCtx, req.Id, req.Model, len(req.Attachments) > 0, l.svcCtx.CustomerModelIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +190,7 @@ func (l *MessageRetryLogic) Retry(req *types.MessageRetryReq) (*types.MessageSen
 	if skill, skillErr := l.svcCtx.SkillModel.FindByCode(l.ctx, session.SkillCode); skillErr != nil || skill.Status != model.SkillStatusEnabled {
 		return nil, common.NewBizError(40001, "该技能已停用，请新建其他问事")
 	}
-	if _, err = selectChatModel(l.ctx, l.svcCtx, req.Id, pending.Model, false); err != nil {
+	if _, err = selectChatModel(l.ctx, l.svcCtx, req.Id, pending.Model, false, nil); err != nil {
 		return nil, err
 	}
 	if err := l.svcCtx.UsageModel.Acquire(l.ctx, req.UserId, l.svcCtx.AIConfig.MinuteRequestLimit, l.svcCtx.AIConfig.DailyRequestLimit); err != nil {
