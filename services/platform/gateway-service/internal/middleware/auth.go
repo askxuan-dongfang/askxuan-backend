@@ -115,7 +115,8 @@ func AuthWithOptions(secret string, noAuthPaths []string, options AuthOptions) f
 			}
 			publicRead := false
 			if r.Method == http.MethodGet {
-				publicRead = r.URL.Path == "/api/v1/payments/growth/public/rules" || r.URL.Path == "/api/v1/marketing/activities" || strings.HasPrefix(r.URL.Path, "/api/v1/marketing/activities/")
+				publicRead = r.URL.Path == "/api/v1/ai/catalog-translations" || r.URL.Path == "/api/v1/payments/growth/public/rules" ||
+					r.URL.Path == "/api/v1/marketing/activities" || strings.HasPrefix(r.URL.Path, "/api/v1/marketing/activities/")
 				for _, p := range whitelist {
 					if r.URL.Path == p || strings.HasPrefix(r.URL.Path, p+"/") {
 						publicRead = true
@@ -189,9 +190,12 @@ func AuthWithOptions(secret string, noAuthPaths []string, options AuthOptions) f
 				return
 			}
 			// 管理台/工作台路径角色校验：/api/v1/admin/* 需要管理台角色，法师工作台也使用该前缀
+			_, catalogTranslation := adminpolicy.CatalogTranslationKind(r.URL.Path)
 			if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") || r.URL.Path == "/api/v1/ai/admin" || strings.HasPrefix(r.URL.Path, "/api/v1/ai/admin/") {
 				allowed := roleAllowedForAdminPath(r.URL.Path, claims)
-				if claims.UserType == "admin" && claims.ClientID == "platform-admin" && claims.AuthzScope == "platform" && len(claims.Roles) == 1 && !adminpolicy.Builtin(claims.Roles[0]) {
+				if catalogTranslation {
+					allowed = adminpolicy.CatalogTranslationAccess(r.Method, r.URL.Path, claims.UserType, claims.ClientID, claims.AuthzScope, claims.Roles, claims.Permissions)
+				} else if claims.UserType == "admin" && claims.ClientID == "platform-admin" && claims.AuthzScope == "platform" && len(claims.Roles) == 1 && !adminpolicy.Builtin(claims.Roles[0]) {
 					allowed = adminpolicy.Allowed(r.Method, r.URL.Path, claims.Permissions)
 				}
 				if !allowed {
@@ -235,6 +239,10 @@ func AuthWithOptions(secret string, noAuthPaths []string, options AuthOptions) f
 			}
 			if claims.MasterID > 0 {
 				r.Header.Set(HeaderMasterID, strconv.FormatInt(claims.MasterID, 10))
+			}
+			if catalogTranslation {
+				r.Header.Set("X-Authz-Scope", claims.AuthzScope)
+				r.Header.Set("X-User-Permissions", strings.Join(claims.Permissions, ","))
 			}
 			next.ServeHTTP(w, r)
 		})

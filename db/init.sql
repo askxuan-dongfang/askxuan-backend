@@ -2031,6 +2031,32 @@ INSERT INTO `coupon_record` (`coupon_id`,`coupon_no`,`user_id`,`status`,`create_
 CREATE DATABASE IF NOT EXISTS `askxuan_ai` DEFAULT CHARACTER SET utf8mb4;
 USE `askxuan_ai`;
 
+CREATE TABLE IF NOT EXISTS askxuan_ai.catalog_translation (
+ kind VARCHAR(32) NOT NULL,
+ resource_id VARCHAR(32) NOT NULL,
+ source_revision CHAR(64) NOT NULL,
+ status VARCHAR(16) NOT NULL DEFAULT 'missing',
+ version BIGINT NOT NULL DEFAULT 0,
+ fields JSON NULL,
+ published_fields JSON NULL,
+ published_source_revision CHAR(64) NULL,
+ published_source_fingerprints JSON NULL,
+ editor_id BIGINT NULL,
+ published_by BIGINT NULL,
+ published_at DATETIME(6) NULL,
+ lease_until DATETIME(6) NULL,
+ updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+ PRIMARY KEY (kind,resource_id),
+ KEY idx_catalog_translation_queue (status,lease_until,updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE IF NOT EXISTS askxuan_order.catalog_checkout_snapshot (
+  id BIGINT NOT NULL PRIMARY KEY,
+  payload JSON NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS askxuan_payment.catalog_checkout_snapshot LIKE askxuan_order.catalog_checkout_snapshot;
+CREATE TABLE IF NOT EXISTS askxuan_marketing.catalog_checkout_snapshot LIKE askxuan_order.catalog_checkout_snapshot;
+
 CREATE TABLE IF NOT EXISTS `ai_skill` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `code` VARCHAR(32) NOT NULL COMMENT '技能编码',

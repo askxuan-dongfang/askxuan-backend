@@ -5,13 +5,20 @@ import (
 	"errors"
 	"os"
 	"slices"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/askxuan/common"
+	"github.com/askxuan/common/catalogtranslation"
+	"github.com/askxuan/common/middleware"
 	"github.com/askxuan/common/rpc/catalog"
 	"github.com/askxuan/order-service/internal/model"
+	"github.com/askxuan/order-service/internal/mq"
 	"github.com/askxuan/order-service/internal/svc"
+	"github.com/askxuan/order-service/internal/types"
 	"github.com/google/uuid"
+	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -106,6 +113,97 @@ func TestExperienceShopCheckoutMySQL(t *testing.T) {
 			t.Fatalf("closed order: %+v %v", row, err)
 		}
 	}
+}
+
+func TestEnglishShopCheckoutSnapshotsAndReleasesStaleCart(t *testing.T) {
+	fixtureDSN, serviceDSN := os.Getenv("CATALOG_TEST_FIXTURE_DSN"), os.Getenv("CATALOG_TEST_ORDER_DSN")
+	if fixtureDSN == "" || serviceDSN == "" || os.Getenv("CATALOG_TEST_ISOLATED") != "1" {
+		t.Skip("requires a disposable migrated MySQL and the order service account")
+	}
+	fixtures, db := sqlx.NewMysql(fixtureDSN), sqlx.NewMysql(serviceDSN)
+	ctx := context.WithValue(context.Background(), middleware.CtxKeyUserID, int64(991123))
+	productNo := strings.ReplaceAll(uuid.NewString(), "-", "")
+	created, err := fixtures.ExecCtx(ctx, `INSERT INTO askxuan_product.product
+		(product_no,name,description,status,is_experience,price,stock) VALUES (?,'青木手串','本地测试商品','on_shelf',1,48.50,8)`, productNo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	productID, err := created.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := strconv.FormatInt(productID, 10)
+	key := "shop-product:" + id
+	t.Cleanup(func() {
+		_, _ = fixtures.ExecCtx(ctx, "DELETE FROM askxuan_ai.catalog_translation WHERE kind='shop-product' AND resource_id=?", id)
+		_, _ = fixtures.ExecCtx(ctx, "DELETE FROM askxuan_product.product WHERE id=?", productID)
+	})
+	source, err := catalogtranslation.Load(ctx, fixtures, "shop-product", id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	english := `{"title":"Greenwood Prayer Beads","description":"A wooden bracelet for daily wear."}`
+	if _, err := fixtures.ExecCtx(ctx, `INSERT INTO askxuan_ai.catalog_translation
+		(kind,resource_id,source_revision,status,fields,published_fields,published_source_revision)
+		VALUES ('shop-product',?,?,'published',?,?,?)`, id, source.Revision, english, english, source.Revision); err != nil {
+		t.Fatal(err)
+	}
+	reviewed, err := catalogtranslation.LookupSession(ctx, db, "shop-product", []string{id})
+	if err != nil || !reviewed[id].TransactionReady {
+		t.Fatalf("expected current English from the scoped order service account: %+v %v", reviewed, err)
+	}
+	reservation := &catalogFixture{quote: &catalog.ReserveCartResp{
+		TotalAmount: 48.5, Items: []*catalog.CatalogQuote{{
+			ProductId: productID, ProductName: "青木手串", UnitPrice: 48.5, Quantity: 1, IsExperience: true,
+		}},
+	}}
+	service := &svc.ServiceContext{
+		DB: db, ShopOrderModel: model.NewShopOrderModel(db), ShopOrderItemModel: model.NewShopOrderItemModel(db),
+		ShopOrderLogisticsModel: model.NewShopOrderLogisticsModel(db), CatalogClient: reservation,
+		MqProducer: mq.NewProducer("127.0.0.1", 1, "fixture", "fixture", "/"),
+		Redis:      redis.New("127.0.0.1:1"),
+	}
+	request := types.OrderCreateReq{
+		RequestId: uuid.NewString(), Items: []types.ShopOrderItem{{ProductId: productID, Quantity: 1, Price: 1}},
+		CatalogRevisions: map[string]string{key: reviewed[id].Revision},
+	}
+	order, err := NewOrderCreateLogic(ctx, service).Create(&request)
+	if err != nil || order.PayAmount != 48.5 || !common.IsExperienceOrder(order.OrderNo) {
+		t.Fatalf("checkout did not use the authoritative price: %+v %v", order, err)
+	}
+	t.Cleanup(func() {
+		_, _ = db.ExecCtx(ctx, "DELETE FROM catalog_checkout_snapshot WHERE id=?", order.Id)
+		_, _ = db.ExecCtx(ctx, "DELETE FROM shop_order_item WHERE order_id=?", order.Id)
+		_, _ = db.ExecCtx(ctx, "DELETE FROM shop_order WHERE id=?", order.Id)
+	})
+	if _, err := fixtures.ExecCtx(ctx, "UPDATE askxuan_product.product SET description='请到店自取。' WHERE id=?", productID); err != nil {
+		t.Fatal(err)
+	}
+	stale := request
+	stale.RequestId = uuid.NewString()
+	if _, err := NewOrderCreateLogic(ctx, service).Create(&stale); !errors.Is(err, catalogtranslation.ErrCheckoutRevision) {
+		t.Fatalf("stale English checkout: %v", err)
+	}
+	if !slices.Equal(reservation.ids, []string{stale.RequestId}) {
+		t.Fatalf("stale cart inventory was not released: %+v", reservation.ids)
+	}
+	detail, err := NewOrderDetailLogic(ctx, service).Detail(&types.OrderDetailReq{Id: order.Id, IncludeCatalogSnapshot: true})
+	if err != nil || detail.CatalogSnapshot[key].Fields["description"] != "A wooden bracelet for daily wear." {
+		t.Fatalf("order lost the terms originally displayed: %+v %v", detail, err)
+	}
+	foreign := context.WithValue(ctx, middleware.CtxKeyUserID, int64(991124))
+	if _, err := NewOrderDetailLogic(foreign, service).Detail(&types.OrderDetailReq{Id: order.Id, IncludeCatalogSnapshot: true}); !errors.Is(err, common.ErrForbidden) {
+		t.Fatalf("another customer could read the order snapshot: %v", err)
+	}
+}
+
+type catalogFixture struct {
+	testReleases
+	quote *catalog.ReserveCartResp
+}
+
+func (r *catalogFixture) ReserveCart(context.Context, string, []*catalog.CartLine) (*catalog.ReserveCartResp, error) {
+	return r.quote, nil
 }
 
 type testReleases struct {

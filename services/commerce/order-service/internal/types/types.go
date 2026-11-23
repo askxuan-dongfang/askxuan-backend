@@ -1,21 +1,24 @@
 package types
 
+import "github.com/askxuan/common/catalogtranslation"
+
 // ShopOrder 商城订单
 type ShopOrder struct {
-	IsExperience      bool               `json:"isExperience"`
-	Id                int64              `json:"id"`
-	OrderNo           string             `json:"orderNo"`
-	UserId            string             `json:"userId"`
-	TotalAmount       float64            `json:"totalAmount"`
-	PayAmount         float64            `json:"payAmount"`
-	FreightAmount     float64            `json:"freightAmount"`
-	PaymentExpireTime string             `json:"paymentExpireTime,omitempty"`
-	Status            string             `json:"status"`
-	AddressId         int64              `json:"addressId"`
-	Note              string             `json:"note"`
-	Items             []ShopOrderItem    `json:"items"`
-	Logistics         ShopOrderLogistics `json:"logistics"`
-	CreateTime        string             `json:"createTime"`
+	CatalogSnapshot   catalogtranslation.CheckoutSnapshot `json:"catalogSnapshot,omitempty"`
+	IsExperience      bool                                `json:"isExperience"`
+	Id                int64                               `json:"id"`
+	OrderNo           string                              `json:"orderNo"`
+	UserId            string                              `json:"userId"`
+	TotalAmount       float64                             `json:"totalAmount"`
+	PayAmount         float64                             `json:"payAmount"`
+	FreightAmount     float64                             `json:"freightAmount"`
+	PaymentExpireTime string                              `json:"paymentExpireTime,omitempty"`
+	Status            string                              `json:"status"`
+	AddressId         int64                               `json:"addressId"`
+	Note              string                              `json:"note"`
+	Items             []ShopOrderItem                     `json:"items"`
+	Logistics         ShopOrderLogistics                  `json:"logistics"`
+	CreateTime        string                              `json:"createTime"`
 }
 
 // ShopOrderItem 订单明细
@@ -58,11 +61,12 @@ type ReturnOrder struct {
 // ===== C端请求/响应 =====
 
 type OrderCreateReq struct {
-	RequestId string          `json:"requestId"`
-	UserId    string          `json:"userId"`
-	AddressId int64           `json:"addressId"`
-	Note      string          `json:"note"`
-	Items     []ShopOrderItem `json:"items"`
+	CatalogRevisions map[string]string `json:"catalogRevisions,optional"`
+	RequestId        string            `json:"requestId"`
+	UserId           string            `json:"userId"`
+	AddressId        int64             `json:"addressId"`
+	Note             string            `json:"note"`
+	Items            []ShopOrderItem   `json:"items"`
 }
 
 type OrderCreateResp struct {
@@ -88,7 +92,8 @@ type OrderListResp struct {
 }
 
 type OrderDetailReq struct {
-	Id int64 `path:"id"`
+	Id                     int64 `path:"id"`
+	IncludeCatalogSnapshot bool  `form:"includeCatalogSnapshot,optional"`
 }
 
 type OrderConfirmReq struct {

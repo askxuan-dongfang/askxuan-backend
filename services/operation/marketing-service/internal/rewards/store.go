@@ -18,6 +18,9 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/askxuan/common/catalogtranslation"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 var rewardRequestKey = regexp.MustCompile(`^[A-Za-z0-9_-]{16,80}$`)
@@ -65,16 +68,17 @@ type Campaign struct {
 	Algorithm        string  `json:"algorithm"`
 }
 type Entry struct {
-	PrizeID     int64  `json:"prizeId"`
-	PrizeName   string `json:"prizeName"`
-	ID          int64  `json:"id"`
-	CampaignID  int64  `json:"campaignId"`
-	UserID      string `json:"-"`
-	Code        string `json:"code"`
-	Outcome     string `json:"outcome"`
-	CreatedAt   int64  `json:"createdAt"`
-	Title       string `json:"title"`
-	PointsSpent int64  `json:"pointsSpent"`
+	CatalogSnapshot *catalogtranslation.CheckoutSnapshot `json:"catalogSnapshot,omitempty"`
+	PrizeID         int64                                `json:"prizeId"`
+	PrizeName       string                               `json:"prizeName"`
+	ID              int64                                `json:"id"`
+	CampaignID      int64                                `json:"campaignId"`
+	UserID          string                               `json:"-"`
+	Code            string                               `json:"code"`
+	Outcome         string                               `json:"outcome"`
+	CreatedAt       int64                                `json:"createdAt"`
+	Title           string                               `json:"title"`
+	PointsSpent     int64                                `json:"pointsSpent"`
 }
 type Order struct {
 	PrizeID       int64  `json:"prizeId"`
@@ -489,7 +493,7 @@ func (s Store) Join(ctx context.Context, id int64, user string, expectedPoints i
 	}
 	return s.JoinPrize(ctx, id, user, expectedPoints, requestKey, 0)
 }
-func (s Store) JoinPrize(ctx context.Context, id int64, user string, expectedPoints int64, suppliedKey string, prizeID int64) (Entry, error) {
+func (s Store) JoinPrize(ctx context.Context, id int64, user string, expectedPoints int64, suppliedKey string, prizeID int64, revisions ...map[string]string) (Entry, error) {
 	var entry Entry
 	if prizeID < 0 {
 		return entry, ErrInvalid
@@ -551,6 +555,24 @@ func (s Store) JoinPrize(ctx context.Context, id int64, user string, expectedPoi
 		if c.PointsCost < 1 || expectedPoints != c.PointsCost {
 			return ErrPrice
 		}
+		var snapshot catalogtranslation.CheckoutSnapshot
+		if len(revisions) > 0 && revisions[0] != nil {
+			if len(c.Prizes) == 0 {
+				return catalogtranslation.ErrCheckoutRevision
+			}
+			items := []catalogtranslation.CheckoutItem{{Kind: "reward-campaign", ID: id}}
+			if poolPrize != nil {
+				items = append(items, catalogtranslation.CheckoutItem{Kind: "reward-prize", ID: poolPrize.ID})
+			} else {
+				for _, prize := range c.Prizes {
+					items = append(items, catalogtranslation.CheckoutItem{Kind: "reward-prize", ID: prize.ID})
+				}
+			}
+			snapshot, e = catalogtranslation.ConfirmCheckout(ctx, sqlx.NewSessionFromTx(tx), revisions[0], items)
+			if e != nil {
+				return e
+			}
+		}
 		entry = Entry{CampaignID: id, UserID: user, Code: fmt.Sprintf("WX%08d-%06d", id, c.ParticipantCount+1), Outcome: "pending", CreatedAt: time.Now().Unix(), PointsSpent: c.PointsCost}
 		if poolPrize != nil {
 			entry.PrizeID, entry.PrizeName = poolPrize.ID, poolPrize.Name
@@ -610,6 +632,9 @@ func (s Store) JoinPrize(ctx context.Context, id int64, user string, expectedPoi
 		if e != nil {
 			return e
 		}
+		if e = catalogtranslation.SaveCheckoutSnapshot(ctx, sqlx.NewSessionFromTx(tx), entry.ID, snapshot); e != nil {
+			return e
+		}
 		won := 0
 		if entry.Outcome == "won" {
 			won = 1
@@ -641,6 +666,9 @@ func (s Store) JoinPrize(ctx context.Context, id int64, user string, expectedPoi
 			if e != nil {
 				return e
 			}
+		}
+		if len(snapshot) > 0 {
+			entry.CatalogSnapshot = &snapshot
 		}
 		return audit(ctx, tx, id, 0, user, "join", fmt.Sprintf("%s:%s；扣除 %d 积分", entry.Code, entry.Outcome, entry.PointsSpent))
 	})
