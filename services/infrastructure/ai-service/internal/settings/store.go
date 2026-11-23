@@ -10,11 +10,19 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/askxuan/ai-service/internal/provider"
 )
 
 type store struct {
 	dir    string
 	cipher cipher.AEAD
+}
+
+// Older binaries can still read and use the shared store during an image rollback.
+type storedSettings struct {
+	record
+	CatalogModels []modelRecord `json:"catalogModels,omitempty"`
 }
 
 func newStore(dir, key string) (*store, error) {
@@ -57,11 +65,12 @@ func (s *store) read() (*record, error) {
 	if err != nil {
 		return nil, errors.New("AI settings integrity check failed")
 	}
-	var r record
-	if json.Unmarshal(plain, &r) != nil {
+	var stored storedSettings
+	if json.Unmarshal(plain, &stored) != nil {
 		return nil, errors.New("AI settings data is invalid")
 	}
-	return &r, nil
+	stored.record.Models = append(stored.record.Models, stored.CatalogModels...)
+	return &stored.record, nil
 }
 func (s *store) write(r record, expected int64) error {
 	lock, err := os.OpenFile(filepath.Join(s.dir, "write.lock"), os.O_CREATE|os.O_RDWR, 0600)
@@ -84,7 +93,16 @@ func (s *store) write(r record, expected int64) error {
 	if revision != expected {
 		return ErrConflict
 	}
-	plain, err := json.Marshal(r)
+	stored := storedSettings{record: r}
+	stored.record.Models = nil
+	for _, model := range r.Models {
+		if model.Provider == provider.OpenCodeGo {
+			stored.CatalogModels = append(stored.CatalogModels, model)
+		} else {
+			stored.record.Models = append(stored.record.Models, model)
+		}
+	}
+	plain, err := json.Marshal(stored)
 	if err != nil {
 		return err
 	}

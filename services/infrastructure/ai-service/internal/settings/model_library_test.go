@@ -121,6 +121,43 @@ func TestOpenCodeGoModelsAreOnlyAvailableToCatalogTranslation(t *testing.T) {
 	}
 }
 
+func TestStoredOpenCodeGoModelsDoNotReachLegacyRuntime(t *testing.T) {
+	m, dir, _ := fixture(t)
+	history := Audit{Revision: 1, Actor: "42", Fields: []string{"modelLibrary.uses"}}
+	r := m.record
+	r.Revision = 1
+	r.History = []Audit{history}
+	r.Models = []modelRecord{
+		{ID: "existing", LanguageModelValues: LanguageModelValues{Provider: "openai_compatible"}},
+		{ID: "go-catalog", LanguageModelValues: LanguageModelValues{Provider: provider.OpenCodeGo}},
+	}
+	r.ModelUses = ModelUses{Chat: "existing", CatalogTranslation: "go-catalog"}
+	if err := m.store.write(r, 0); err != nil {
+		t.Fatal(err)
+	}
+	sealed := mustRead(t, filepath.Join(dir, "settings.enc"))
+	nonce := m.store.cipher.NonceSize()
+	plain, err := m.store.cipher.Open(nil, sealed[:nonce], sealed[nonce:], []byte("askxuan-ai-settings-v1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var legacy struct {
+		Revision  int64 `json:"revision"`
+		ModelUses struct {
+			Chat string `json:"chat"`
+		} `json:"modelUses"`
+		Models []modelRecord `json:"models"`
+	}
+	if err := json.Unmarshal(plain, &legacy); err != nil || legacy.Revision != 1 || legacy.ModelUses.Chat != "existing" ||
+		len(legacy.Models) != 1 || legacy.Models[0].ID != "existing" || legacy.Models[0].Provider != "openai_compatible" {
+		t.Fatalf("legacy settings include unsupported models or lost the existing chat binding: %+v, %v", legacy, err)
+	}
+	reopened, err := m.store.read()
+	if err != nil || reopened.ModelUses.CatalogTranslation != "go-catalog" || len(reopened.Models) != 2 || reopened.Models[1].ID != "go-catalog" {
+		t.Fatal("new runtime lost the catalog-only model after reopening")
+	}
+}
+
 func TestLibraryPersistenceRedactionCASAndLegacySave(t *testing.T) {
 	ctx := context.Background()
 	m, dir, key := libraryFixture(t)
