@@ -85,13 +85,13 @@ func TestOpenCodeGoModelsAreOnlyAvailableToCatalogTranslation(t *testing.T) {
 	if _, err := m.Snapshot().Models.Select(ctx, model.ID, false); !errors.Is(err, provider.ErrModelUnavailable) {
 		t.Fatalf("customer can select catalog-only Go model: %v", err)
 	}
-	if err := m.SaveModelUses(ctx, ModelUses{Chat: model.ID}, 1, "42"); err == nil {
+	if err := m.SaveModelUses(ctx, ModelUses{Chat: model.ID}, nil, 1, "42"); err == nil {
 		t.Fatal("OpenCode Go was accepted as chat default")
 	}
-	if err := m.SaveModelUses(ctx, ModelUses{Vision: model.ID}, 1, "42"); err == nil {
+	if err := m.SaveModelUses(ctx, ModelUses{Vision: model.ID}, nil, 1, "42"); err == nil {
 		t.Fatal("OpenCode Go was accepted as vision default")
 	}
-	if err := m.SaveModelUses(ctx, ModelUses{CatalogTranslation: model.ID}, 1, "42"); err != nil {
+	if err := m.SaveModelUses(ctx, ModelUses{CatalogTranslation: model.ID}, nil, 1, "42"); err != nil {
 		t.Fatal(err)
 	}
 	snapshot := m.Snapshot()
@@ -101,6 +101,9 @@ func TestOpenCodeGoModelsAreOnlyAvailableToCatalogTranslation(t *testing.T) {
 	}
 	if _, err := snapshot.Models.Select(ctx, model.ID, false); !errors.Is(err, provider.ErrModelUnavailable) {
 		t.Fatalf("bound catalog model reached customer picker: %v", err)
+	}
+	if err := m.ValidateCustomerModelIDs(ctx, []string{model.ID}); err == nil {
+		t.Fatal("catalog-only model was accepted as a customer model")
 	}
 	restarted, err := New(m.original, dir, key)
 	if err != nil {
@@ -113,11 +116,47 @@ func TestOpenCodeGoModelsAreOnlyAvailableToCatalogTranslation(t *testing.T) {
 	if err := m.DeleteLanguageModel(model.ID, "42", 2); err == nil {
 		t.Fatal("deleted active catalog model")
 	}
-	if err := m.SaveModelUses(ctx, ModelUses{}, 2, "42"); err != nil {
+	if err := m.SaveModelUses(ctx, ModelUses{}, nil, 2, "42"); err != nil {
 		t.Fatal(err)
 	}
 	if route := m.Snapshot().CatalogTranslation; route.Provider != nil || route.Model != "" {
 		t.Fatal("clearing the binding did not restore current text routing")
+	}
+}
+
+func TestCustomerModelsPersistAcrossSettingsWrites(t *testing.T) {
+	ctx := context.Background()
+	m, dir, key := libraryFixture(t)
+	model, err := m.AddLanguageModel(ctx, languageInput(0), "42")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := []string{model.ID}
+	if err := m.ValidateCustomerModelIDs(ctx, ids); err != nil {
+		t.Fatal(err)
+	}
+	before := m.Snapshot()
+	if err := m.SaveModelUses(ctx, ModelUses{}, ids, 1, "42"); err != nil {
+		t.Fatal(err)
+	}
+	ids[0] = "mutation"
+	if len(before.CustomerModelIDs) != 0 || m.Snapshot().CustomerModelIDs[0] != model.ID {
+		t.Fatal("customer policy mutated a request snapshot")
+	}
+	req := update(m)
+	req.MaxOutputTokens = 4096
+	if _, err := m.Save(ctx, req, "42"); err != nil {
+		t.Fatal(err)
+	}
+	restarted, err := New(m.original, dir, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ids := restarted.Snapshot().CustomerModelIDs; len(ids) != 1 || ids[0] != model.ID {
+		t.Fatal("provider settings save or restart discarded customer choices", ids)
+	}
+	if err := restarted.DeleteLanguageModel(model.ID, "42", 3); err == nil {
+		t.Fatal("deleted an open customer model")
 	}
 }
 
@@ -170,7 +209,7 @@ func TestLibraryPersistenceRedactionCASAndLegacySave(t *testing.T) {
 		t.Fatal("stale edit accepted", err)
 	}
 	uses := ModelUses{Chat: model.ID, Embedding: "embedding", Rerank: "rank"}
-	if err = m.SaveModelUses(ctx, uses, 1, "42"); err != nil {
+	if err = m.SaveModelUses(ctx, uses, nil, 1, "42"); err != nil {
 		t.Fatal(err)
 	}
 	if before.Provider.Model() != "deepseek-flash" || m.Snapshot().Provider.Model() != model.ID {
@@ -283,10 +322,10 @@ func TestLibraryConcurrentAddAndCapabilityValidation(t *testing.T) {
 		t.Fatal("concurrent writes overwrote", success)
 	}
 	id := m.record.Models[0].ID
-	if err := m.SaveModelUses(ctx, ModelUses{Vision: id}, 1, "1"); !errors.Is(err, provider.ErrModelNeedsVision) {
+	if err := m.SaveModelUses(ctx, ModelUses{Vision: id}, nil, 1, "1"); !errors.Is(err, provider.ErrModelNeedsVision) {
 		t.Fatal("text model accepted for vision", err)
 	}
-	if err := m.SaveModelUses(ctx, ModelUses{Chat: "unknown"}, 1, "1"); !errors.Is(err, provider.ErrModelUnavailable) {
+	if err := m.SaveModelUses(ctx, ModelUses{Chat: "unknown"}, nil, 1, "1"); !errors.Is(err, provider.ErrModelUnavailable) {
 		t.Fatal("unregistered model accepted", err)
 	}
 }

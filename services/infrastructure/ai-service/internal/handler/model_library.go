@@ -138,8 +138,8 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 			} else {
 				warnings = append(warnings, "知识引擎尚未配置")
 			}
-			uses, revision := s.Settings.ModelUses()
-			finish(map[string]any{"list": items, "uses": uses, "revision": revision, "writable": s.Settings.Public().Writable, "defaultChat": s.Settings.Snapshot().Provider.Model(), "warnings": warnings}, nil)
+			uses, customerModelIDs, revision := s.Settings.ModelLibraryUses()
+			finish(map[string]any{"list": items, "uses": uses, "customerModelIds": customerModelIDs, "revision": revision, "writable": s.Settings.Public().Writable, "defaultChat": s.Settings.Snapshot().Provider.Model(), "warnings": warnings}, nil)
 		case "discover":
 			var in struct {
 				Provider string `json:"provider"`
@@ -176,7 +176,8 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 					settings.ModelUses
 					CatalogTranslation *string `json:"catalogTranslation"`
 				} `json:"uses"`
-				Revision int64 `json:"revision"`
+				Revision         int64    `json:"revision"`
+				CustomerModelIDs []string `json:"customerModelIds"`
 			}
 			if !read(&in) {
 				return
@@ -184,6 +185,10 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 			current, revision := s.Settings.ModelUses()
 			if revision != in.Revision {
 				finish(nil, settings.ErrConflict)
+				return
+			}
+			if err := s.Settings.ValidateCustomerModelIDs(ctx, in.CustomerModelIDs); err != nil {
+				finish(nil, err)
 				return
 			}
 			uses := in.Uses.ModelUses
@@ -211,7 +216,7 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 					return
 				}
 			}
-			finish(nil, s.Settings.SaveModelUses(ctx, uses, in.Revision, actor))
+			finish(nil, s.Settings.SaveModelUses(ctx, uses, in.CustomerModelIDs, in.Revision, actor))
 		case "delete":
 			var in struct {
 				Revision int64 `json:"revision"`

@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/askxuan/ai-service/internal/config"
+	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/settings"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/weknora"
@@ -134,4 +136,69 @@ func TestLibraryRequiresPlatformAdminAndRejectsUnknownFields(t *testing.T) {
 	if strings.Contains(w.Body.String(), `"code":0`) {
 		t.Fatal("unknown fields accepted")
 	}
+}
+
+func TestModelLibraryControlsOnlyCustomerChoices(t *testing.T) {
+	initial := config.AIConf{Provider: "volcengine", BaseURL: "https://ark.cn-beijing.volces.com/api/v3",
+		APIKey: "fixture-key", Model: "ep-fixture-text", VisionModel: "ep-fixture-vision"}
+	m, err := settings.New(initial, t.TempDir(), base64.StdEncoding.EncodeToString(make([]byte, 32)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &svc.ServiceContext{Settings: m}
+	put := func(body string, code int) {
+		t.Helper()
+		out := httptest.NewRecorder()
+		modelLibraryHandler(s, "uses")(out, libraryRequest("PUT", body))
+		var response struct{ Code int }
+		if err := json.Unmarshal(out.Body.Bytes(), &response); err != nil || response.Code != code {
+			t.Fatal(out.Body.String(), err)
+		}
+	}
+	library := func(ids []string, revision int64) {
+		t.Helper()
+		out := httptest.NewRecorder()
+		modelLibraryHandler(s, "list")(out, libraryRequest("GET", ""))
+		var response struct {
+			Data struct {
+				CustomerModelIDs []string `json:"customerModelIds"`
+				Revision         int64    `json:"revision"`
+			}
+		}
+		if err := json.Unmarshal(out.Body.Bytes(), &response); err != nil || response.Data.CustomerModelIDs == nil ||
+			!slices.Equal(response.Data.CustomerModelIDs, ids) || response.Data.Revision != revision {
+			t.Fatal(out.Body.String(), err)
+		}
+	}
+	assertModels := func(userType, selected, vision string, count int) {
+		t.Helper()
+		r := httptest.NewRequest("GET", "/api/v1/ai/models", nil)
+		r.Header.Set("X-User-Id", "1")
+		r.Header.Set("X-User-Type", userType)
+		out := httptest.NewRecorder()
+		modelListHandler(s)(out, r)
+		var response struct{ Data provider.ModelList }
+		if err := json.Unmarshal(out.Body.Bytes(), &response); err != nil ||
+			response.Data.DefaultModel != selected || response.Data.DefaultVisionModel != vision || len(response.Data.List) != count {
+			t.Fatal(out.Body.String(), err)
+		}
+	}
+	library([]string{}, 0)
+	assertModels("user", initial.Model, initial.VisionModel, 2)
+	put(`{"uses":{},"customerModelIds":["engine-only"],"revision":0}`, 40001)
+	put(`{"uses":{},"customerModelIds":["ep-fixture-vision","ep-fixture-vision"],"revision":0}`, 40001)
+	library([]string{}, 0)
+	put(`{"uses":{"chat":"ep-fixture-text","vision":"ep-fixture-vision"},"customerModelIds":["ep-fixture-vision"],"revision":0}`, 0)
+	library([]string{initial.VisionModel}, 1)
+	assertModels("user", initial.VisionModel, initial.VisionModel, 1)
+	assertModels("admin", initial.Model, initial.VisionModel, 2)
+	put(`{"uses":{},"customerModelIds":[],"revision":0}`, 40901)
+	put(`{"uses":{},"revision":1}`, 0)
+	library([]string{initial.VisionModel}, 2)
+	assertModels("user", initial.VisionModel, initial.VisionModel, 1)
+	put(`{"uses":{},"customerModelIds":[],"revision":2}`, 0)
+	library([]string{}, 3)
+	assertModels("user", initial.Model, initial.VisionModel, 2)
+	put(`{"uses":{},"customerModelIds":["ep-fixture-text"],"revision":3}`, 0)
+	assertModels("user", initial.Model, "", 1)
 }

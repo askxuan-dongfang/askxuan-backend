@@ -85,7 +85,7 @@ func (l *SessionCreateLogic) Create(req *types.SessionCreateReq) (*types.Session
 	if strings.TrimSpace(req.Question) == "" && len(req.Attachments) > 0 {
 		req.Question = "请分析我上传的图片"
 	}
-	selectedModel, err := selectChatModel(l.ctx, l.svcCtx, 0, req.Model, len(req.Attachments) > 0)
+	selectedModel, err := selectChatModel(l.ctx, l.svcCtx, 0, req.Model, len(req.Attachments) > 0, l.svcCtx.CustomerModelIDs)
 	if err != nil {
 		return nil, err
 	}

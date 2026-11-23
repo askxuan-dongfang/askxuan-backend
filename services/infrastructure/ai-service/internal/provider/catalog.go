@@ -28,9 +28,10 @@ type ModelOption struct {
 	SupportsVision bool   `json:"supportsVision"`
 }
 type ModelList struct {
-	List         []ModelOption `json:"list"`
-	DefaultModel string        `json:"defaultModel"`
-	Stale        bool          `json:"stale"`
+	List               []ModelOption `json:"list"`
+	DefaultModel       string        `json:"defaultModel"`
+	DefaultVisionModel string        `json:"defaultVisionModel,omitempty"`
+	Stale              bool          `json:"stale"`
 }
 type Catalog struct {
 	provider           Provider
@@ -152,31 +153,90 @@ func (c *Catalog) List(ctx context.Context) (ModelList, error) {
 			return ModelList{}, errors.New("管理员开放的模型暂不可用")
 		}
 	}
-	for _, row := range result.List {
-		if row.ID == c.provider.Model() {
-			result.DefaultModel = row.ID
-		}
-	}
-	if result.DefaultModel == "" {
-		result.DefaultModel = result.List[0].ID
-	}
+	c.setDefaults(&result)
 	return result, nil
 }
 func (c *Catalog) Select(ctx context.Context, id string, images bool) (string, error) {
 	id = strings.TrimSpace(id)
 	// Existing clients omit model; preserve their configured text/image routing.
 	if id == "" {
-		request := Request{}
-		if images {
-			request.Messages = []Message{{ImageDataURLs: []string{"present"}}}
-		}
-		return c.provider.ModelFor(request), nil
+		return c.defaultFor(images), nil
 	}
 	list, err := c.List(ctx)
 	if err != nil {
 		return "", err
 	}
-	for _, row := range list.List {
+	return list.selectModel(id, images)
+}
+
+func (c *Catalog) CustomerList(ctx context.Context, ids []string) (ModelList, error) {
+	list, err := c.List(ctx)
+	if err != nil || len(ids) == 0 {
+		return list, err
+	}
+	allowed := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		allowed[id] = true
+	}
+	options := list.List
+	list.List = make([]ModelOption, 0, len(ids))
+	for _, model := range options {
+		if model.ID == "mock" || !allowed[model.ID] {
+			continue
+		}
+		delete(allowed, model.ID)
+		list.List = append(list.List, model)
+	}
+	c.setDefaults(&list)
+	return list, nil
+}
+
+func (c *Catalog) SelectForCustomer(ctx context.Context, ids []string, id string, images bool) (string, error) {
+	if len(ids) == 0 {
+		return c.Select(ctx, id, images)
+	}
+	list, err := c.CustomerList(ctx, ids)
+	if err != nil {
+		return "", err
+	}
+	if id = strings.TrimSpace(id); id != "" {
+		return list.selectModel(id, images)
+	}
+	if list.DefaultModel == "" {
+		return "", ErrModelUnavailable
+	}
+	if !images {
+		return list.DefaultModel, nil
+	}
+	if list.DefaultVisionModel == "" {
+		return "", ErrModelNeedsVision
+	}
+	return list.DefaultVisionModel, nil
+}
+
+func (c *Catalog) setDefaults(list *ModelList) {
+	chat, vision := c.provider.Model(), c.defaultFor(true)
+	list.DefaultModel, list.DefaultVisionModel = "", ""
+	for _, model := range list.List {
+		if list.DefaultModel == "" || model.ID == chat {
+			list.DefaultModel = model.ID
+		}
+		if model.SupportsVision && (list.DefaultVisionModel == "" || model.ID == vision) {
+			list.DefaultVisionModel = model.ID
+		}
+	}
+}
+
+func (c *Catalog) defaultFor(images bool) string {
+	request := Request{}
+	if images {
+		request.Messages = []Message{{ImageDataURLs: []string{"present"}}}
+	}
+	return c.provider.ModelFor(request)
+}
+
+func (l ModelList) selectModel(id string, images bool) (string, error) {
+	for _, row := range l.List {
 		if row.ID == id {
 			if images && !row.SupportsVision {
 				return "", ErrModelNeedsVision

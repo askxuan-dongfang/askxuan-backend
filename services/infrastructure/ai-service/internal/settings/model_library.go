@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -104,6 +105,7 @@ func buildLanguageModel(r modelRecord) (provider.Provider, provider.ModelOption,
 }
 
 func (m *Manager) withModelLibrary(snap *Snapshot, r record) (*Snapshot, error) {
+	snap.CustomerModelIDs = slices.Clone(r.CustomerModelIDs)
 	snap.CatalogTranslation.Model = r.ModelUses.CatalogTranslation
 	routes := make([]provider.RegisteredRoute, 0, len(r.Models))
 	for _, registered := range r.Models {
@@ -139,6 +141,26 @@ func (m *Manager) ModelUses() (ModelUses, int64) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.record.ModelUses, m.record.Revision
+}
+
+func (m *Manager) ModelLibraryUses() (ModelUses, []string, int64) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.record.ModelUses, append([]string{}, m.record.CustomerModelIDs...), m.record.Revision
+}
+
+func (m *Manager) ValidateCustomerModelIDs(ctx context.Context, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	list, err := m.Snapshot().Models.CustomerList(ctx, ids)
+	if err != nil {
+		return err
+	}
+	if len(list.List) != len(ids) {
+		return errors.New("信众端开放模型不可用或重复，请从对话模型中选择")
+	}
+	return nil
 }
 
 func (m *Manager) LanguageModels(ctx context.Context) ([]LanguageModel, error) {
@@ -372,7 +394,7 @@ func (m *Manager) saveLibraryLocked(r record, expected int64, actor, field strin
 	return nil
 }
 
-func (m *Manager) SaveModelUses(ctx context.Context, uses ModelUses, revision int64, actor string) error {
+func (m *Manager) SaveModelUses(ctx context.Context, uses ModelUses, customerModelIDs []string, revision int64, actor string) error {
 	m.mu.RLock()
 	snapshot, records := m.active, m.record.Models
 	m.mu.RUnlock()
@@ -398,6 +420,9 @@ func (m *Manager) SaveModelUses(ctx context.Context, uses ModelUses, revision in
 	defer m.mu.Unlock()
 	r := m.record
 	r.ModelUses = uses
+	if customerModelIDs != nil {
+		r.CustomerModelIDs = slices.Clone(customerModelIDs)
+	}
 	return m.saveLibraryLocked(r, revision, actor, "modelLibrary.uses")
 }
 
@@ -418,6 +443,9 @@ func (m *Manager) DeleteLanguageModel(id, actor string, revision int64) error {
 	r := m.record
 	if id == r.ModelUses.Chat || id == r.ModelUses.Vision || id == r.ModelUses.CatalogTranslation {
 		return errors.New("默认用途正在使用此模型，请先选择其他模型")
+	}
+	if slices.Contains(r.CustomerModelIDs, id) {
+		return errors.New("此模型已向信众端开放，请先取消开放")
 	}
 	r.Models = []modelRecord{}
 	found := false

@@ -54,7 +54,12 @@ func modelListHandler(s *svc.ServiceContext) http.HandlerFunc {
 			common.JsonError(w, err)
 			return
 		}
-		models, err := s.Runtime().Models.List(r.Context())
+		runtime := s.Runtime()
+		var ids []string
+		if r.Header.Get("X-User-Type") == "user" {
+			ids = runtime.CustomerModelIDs
+		}
+		models, err := runtime.Models.CustomerList(r.Context(), ids)
 		if err != nil {
 			common.JsonError(w, common.NewBizError(50301, "模型列表暂未加载，请稍后重试"))
 			return
