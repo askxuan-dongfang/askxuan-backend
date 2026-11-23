@@ -7,7 +7,7 @@ permissions:
   packages: read
 jobs:
   export:
-    if: github.repository == 'askxuan-dongfang/askxuan-backend' && github.ref == 'refs/heads/codex/official-image-transfer-20261123'
+    if: github.repository == 'askxuan-dongfang/askxuan-backend' && github.ref == 'refs/heads/codex/model-image-cache-20261123'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -19,10 +19,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           PYTHONPATH=scripts/ci python3 scripts/ci/export_image_cache.py \
-            --artifact-id 14796973932 \
-            --artifact-sha256 e98b57b47897382dce853b0bbe9ebc7c448cd07cb2fce6975fc3d85c63a6fedf \
-            --run-id 45129643021 \
-            --source a7f2025d963cb1cccdd9314587630c9b75e41025 \
+            --artifact-id 14824182423 \
+            --artifact-sha256 df8db462dd44603787d818b6a1a0d48dac024daba6a6be87ec834d9f4447437f \
+            --run-id 45186503063 \
+            --source 26d04a301b58a99ed28ca4dcc31fec7883e4258a \
             --output "$RUNNER_TEMP/askxuan-image-content"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

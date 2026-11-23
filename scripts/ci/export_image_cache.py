@@ -89,7 +89,8 @@ def export_content(args, stage, actor, job_token):
             raise ValueError("Conflicting size for an existing digest")
         return digest, size
 
-    for name, component in sorted(release["components"].items()):
+    for name in ("ai",):
+        component = release["components"][name]
         repository_at, top_digest = component["image"].split("@", 1)
         repository = repository_at.removeprefix("ghcr.io/")
         params = urlencode({"service": "ghcr.io", "scope": f"repository:{repository}:pull"})
