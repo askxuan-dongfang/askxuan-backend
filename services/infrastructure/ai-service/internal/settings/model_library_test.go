@@ -30,10 +30,15 @@ func libraryFixture(t *testing.T) (*Manager, string, string) {
 			return
 		}
 		var v struct {
-			Model string `json:"model"`
+			Model          string            `json:"model"`
+			ResponseFormat map[string]string `json:"response_format"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&v)
-		_ = json.NewEncoder(w).Encode(map[string]any{"model": v.Model, "choices": []any{map[string]any{"message": map[string]string{"role": "assistant", "content": "OK"}}}})
+		text := "OK"
+		if v.ResponseFormat["type"] == "json_object" {
+			text = `{"ok":true}`
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"model": v.Model, "choices": []any{map[string]any{"message": map[string]string{"role": "assistant", "content": text}}}})
 	}))
 	t.Cleanup(server.Close)
 	m.modelBuilder = func(r modelRecord) (provider.Provider, provider.ModelOption, error) {
@@ -43,6 +48,77 @@ func libraryFixture(t *testing.T) (*Manager, string, string) {
 }
 func languageInput(revision int64) LanguageModelInput {
 	return LanguageModelInput{Revision: revision, APIKey: "fixture-library-key", LanguageModelValues: LanguageModelValues{Name: "Library model", Model: "same-name", Provider: "openai_compatible", BaseURL: "https://models.example.com/v1"}}
+}
+
+func TestOpenCodeGoModelsAreOnlyAvailableToCatalogTranslation(t *testing.T) {
+	ctx := context.Background()
+	m, dir, key := libraryFixture(t)
+	m.original.ReportModel = "configured-report"
+	discoveries := 0
+	m.openCodeGoModels = func(_ context.Context, credential string) ([]provider.ModelOption, error) {
+		discoveries++
+		if credential != "fixture-library-key" {
+			return nil, &provider.HTTPError{StatusCode: 403}
+		}
+		return []provider.ModelOption{{ID: "kimi-k3", Name: "Kimi K3", ContextWindow: 2097152, MaxOutputTokens: 1048576, SupportsVision: true}}, nil
+	}
+	in := languageInput(0)
+	in.Provider, in.Model, in.BaseURL = provider.OpenCodeGo, "kimi-k3", "https://elsewhere.example/v1"
+	if _, err := m.AddLanguageModel(ctx, in, "42"); err == nil || discoveries != 0 {
+		t.Fatal("off-host credential was accepted")
+	}
+	in.BaseURL, in.Model = provider.OpenCodeGoBaseURL, "unlisted"
+	if _, err := m.AddLanguageModel(ctx, in, "42"); err == nil || m.Public().Revision != 0 {
+		t.Fatal("unlisted OpenCode Go model was registered")
+	}
+	in.Model, in.ContextWindow, in.MaxOutputTokens, in.SupportsVision = "kimi-k3", 100, 100, false
+	model, err := m.AddLanguageModel(ctx, in, "42")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if model.ContextWindow != 2097152 || model.MaxOutputTokens != 1048576 || !model.SupportsVision {
+		t.Fatalf("provider limits or metadata were replaced by browser values: %+v", model)
+	}
+	if m.Snapshot().CatalogTranslation.Provider != nil {
+		t.Fatal("unbound OpenCode Go model was activated")
+	}
+	if _, err := m.Snapshot().Models.Select(ctx, model.ID, false); !errors.Is(err, provider.ErrModelUnavailable) {
+		t.Fatalf("customer can select catalog-only Go model: %v", err)
+	}
+	if err := m.SaveModelUses(ctx, ModelUses{Chat: model.ID}, 1, "42"); err == nil {
+		t.Fatal("OpenCode Go was accepted as chat default")
+	}
+	if err := m.SaveModelUses(ctx, ModelUses{Vision: model.ID}, 1, "42"); err == nil {
+		t.Fatal("OpenCode Go was accepted as vision default")
+	}
+	if err := m.SaveModelUses(ctx, ModelUses{CatalogTranslation: model.ID}, 1, "42"); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := m.Snapshot()
+	if snapshot.Provider.Model() != "deepseek-flash" || snapshot.Config.ReportModel != "configured-report" ||
+		snapshot.CatalogTranslation.Provider == nil || snapshot.CatalogTranslation.Model != "kimi-k3" {
+		t.Fatalf("unexpected provider isolation: %+v", snapshot.CatalogTranslation)
+	}
+	if _, err := snapshot.Models.Select(ctx, model.ID, false); !errors.Is(err, provider.ErrModelUnavailable) {
+		t.Fatalf("bound catalog model reached customer picker: %v", err)
+	}
+	restarted, err := New(m.original, dir, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if route := restarted.Snapshot().CatalogTranslation; route.Provider == nil || route.Provider.Name() != provider.OpenCodeGo ||
+		route.Option.MaxOutputTokens != 1048576 {
+		t.Fatal("catalog binding or authoritative limits lost after restart")
+	}
+	if err := m.DeleteLanguageModel(model.ID, "42", 2); err == nil {
+		t.Fatal("deleted active catalog model")
+	}
+	if err := m.SaveModelUses(ctx, ModelUses{}, 2, "42"); err != nil {
+		t.Fatal(err)
+	}
+	if route := m.Snapshot().CatalogTranslation; route.Provider != nil || route.Model != "" {
+		t.Fatal("clearing the binding did not restore current text routing")
+	}
 }
 
 func TestLibraryPersistenceRedactionCASAndLegacySave(t *testing.T) {

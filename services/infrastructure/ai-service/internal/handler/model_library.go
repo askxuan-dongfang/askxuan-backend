@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/settings"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/weknora"
@@ -34,7 +35,7 @@ type libraryItem struct {
 }
 
 func registerModelLibrary(server *rest.Server, s *svc.ServiceContext) {
-	for _, op := range []struct{ method, path, action string }{{"GET", "", "list"}, {"POST", "/language", "add"}, {"POST", "/language/test", "test-input"}, {"POST", "/:model/test", "test"}, {"DELETE", "/:model", "delete"}, {"PUT", "/uses", "uses"}} {
+	for _, op := range []struct{ method, path, action string }{{"GET", "", "list"}, {"POST", "/language", "add"}, {"POST", "/language/discover", "discover"}, {"POST", "/language/test", "test-input"}, {"POST", "/:model/test", "test"}, {"DELETE", "/:model", "delete"}, {"PUT", "/uses", "uses"}} {
 		server.AddRoute(rest.Route{Method: op.method, Path: "/api/v1/ai/admin/model-library" + op.path, Handler: modelLibraryHandler(s, op.action)})
 	}
 }
@@ -96,15 +97,18 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 			}
 			linked := map[string]bool{}
 			for _, m := range language {
+				bindings := map[string]string{"catalogTranslation": m.ID}
 				document := m.DocumentModelID
-				if document == "" {
-					document = "chat:" + m.ID
-				} else {
-					linked[document] = true
-				}
-				bindings := map[string]string{"chat": m.ID, "document": document}
-				if m.SupportsVision {
-					bindings["vision"] = m.ID
+				if m.Provider != provider.OpenCodeGo {
+					if document == "" {
+						document = "chat:" + m.ID
+					} else {
+						linked[document] = true
+					}
+					bindings["chat"], bindings["document"] = m.ID, document
+					if m.SupportsVision {
+						bindings["vision"] = m.ID
+					}
 				}
 				items = append(items, libraryItem{ID: m.ID, Name: m.Name, Model: m.Model, Provider: m.Provider, BaseURL: m.BaseURL, Kind: "language", Source: m.Source, ContextWindow: m.ContextWindow, MaxOutputTokens: m.MaxOutputTokens, Bindings: bindings})
 			}
@@ -136,6 +140,16 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 			}
 			uses, revision := s.Settings.ModelUses()
 			finish(map[string]any{"list": items, "uses": uses, "revision": revision, "writable": s.Settings.Public().Writable, "defaultChat": s.Settings.Snapshot().Provider.Model(), "warnings": warnings}, nil)
+		case "discover":
+			var in struct {
+				Provider string `json:"provider"`
+				APIKey   string `json:"apiKey"`
+			}
+			if !read(&in) {
+				return
+			}
+			list, err := s.Settings.DiscoverLanguageModels(ctx, in.Provider, in.APIKey)
+			finish(map[string]any{"list": list}, err)
 		case "test-input", "add":
 			var in settings.LanguageModelInput
 			if !read(&in) {
@@ -158,17 +172,26 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 			finish(map[string]bool{"ok": err == nil}, err)
 		case "uses":
 			var in struct {
-				Uses     settings.ModelUses `json:"uses"`
-				Revision int64              `json:"revision"`
+				Uses struct {
+					settings.ModelUses
+					CatalogTranslation *string `json:"catalogTranslation"`
+				} `json:"uses"`
+				Revision int64 `json:"revision"`
 			}
 			if !read(&in) {
 				return
 			}
-			if _, revision := s.Settings.ModelUses(); revision != in.Revision {
+			current, revision := s.Settings.ModelUses()
+			if revision != in.Revision {
 				finish(nil, settings.ErrConflict)
 				return
 			}
-			for _, selected := range []struct{ id, kind string }{{in.Uses.Embedding, "Embedding"}, {in.Uses.Rerank, "Rerank"}} {
+			uses := in.Uses.ModelUses
+			uses.CatalogTranslation = current.CatalogTranslation
+			if in.Uses.CatalogTranslation != nil {
+				uses.CatalogTranslation = *in.Uses.CatalogTranslation
+			}
+			for _, selected := range []struct{ id, kind string }{{uses.Embedding, "Embedding"}, {uses.Rerank, "Rerank"}} {
 				if selected.id == "" {
 					continue
 				}
@@ -181,14 +204,14 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 					return
 				}
 			}
-			if in.Uses.Document != "" {
-				in.Uses.Document, in.Revision, err = resolveDocumentModel(s, r, in.Uses.Document, actor, in.Revision)
+			if uses.Document != "" {
+				uses.Document, in.Revision, err = resolveDocumentModel(s, r, uses.Document, actor, in.Revision)
 				if err != nil {
 					finish(nil, err)
 					return
 				}
 			}
-			finish(nil, s.Settings.SaveModelUses(ctx, in.Uses, in.Revision, actor))
+			finish(nil, s.Settings.SaveModelUses(ctx, uses, in.Revision, actor))
 		case "delete":
 			var in struct {
 				Revision int64 `json:"revision"`
@@ -242,6 +265,9 @@ func resolveDocumentModel(s *svc.ServiceContext, r *http.Request, selected, acto
 	m, connection, err := s.Settings.LanguageConnection(r.Context(), strings.TrimPrefix(selected, "chat:"))
 	if err != nil {
 		return "", revision, err
+	}
+	if m.Provider == provider.OpenCodeGo {
+		return "", revision, errors.New("OpenCode Go 模型仅用于英文目录翻译")
 	}
 	if m.DocumentModelID != "" {
 		return m.DocumentModelID, revision, s.WeKnora.ValidateModelType(r.Context(), m.DocumentModelID, "KnowledgeQA")

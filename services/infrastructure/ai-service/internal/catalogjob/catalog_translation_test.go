@@ -32,7 +32,7 @@ func (f textFixture) Complete(_ context.Context, req provider.Request) (*provide
 func TestCatalogTranslationMasksTermsAndValidatesResponse(t *testing.T) {
 	src := map[string]string{"title": "紫檀手珠", "description": "共108颗，联系 review@example.invalid。"}
 	fake := textFixture{answer: func(req provider.Request) string {
-		if !req.JSONMode || req.Model != "text-only" || len(req.Messages) != 1 {
+		if !req.JSONMode || req.Model != "text-only" || req.SessionID != "askxuan-catalog-test" || len(req.Messages) != 1 {
 			t.Fatalf("unexpected text request: %#v", req)
 		}
 		input := req.Messages[0].Content
@@ -42,12 +42,12 @@ func TestCatalogTranslationMasksTermsAndValidatesResponse(t *testing.T) {
 		}
 		return `{"title":"Sandalwood prayer beads","description":"{{T0}} beads. Contact {{T1}}."}`
 	}}
-	got, err := Translate(context.Background(), fake, provider.NewCatalog(fake), 1200, src)
+	got, err := Translate(context.Background(), fake, "text-only", "askxuan-catalog-test", 1200, src)
 	if err != nil || got["description"] != "108 beads. Contact review@example.invalid." {
 		t.Fatalf("translation=%v err=%v", got, err)
 	}
 	fake.answer = func(provider.Request) string { return `{"title":"Sandalwood beads","description":"Contact {{T1}}."}` }
-	if _, err := Translate(context.Background(), fake, provider.NewCatalog(fake), 1200, src); err == nil {
+	if _, err := Translate(context.Background(), fake, "text-only", "askxuan-catalog-test", 1200, src); err == nil {
 		t.Fatal("accepted dropped numerical term")
 	}
 }
@@ -56,11 +56,11 @@ func TestCatalogTranslationRetainsOnlySafeProviderFailure(t *testing.T) {
 	ctx := context.Background()
 	source := map[string]string{"title": "紫檀手珠"}
 	fake := textFixture{err: &provider.HTTPError{StatusCode: 402}}
-	if _, err := Translate(ctx, fake, provider.NewCatalog(fake), 1200, source); err == nil || err.Error() != "provider returned status 402" {
+	if _, err := Translate(ctx, fake, "text-only", "askxuan-catalog-test", 1200, source); err == nil || err.Error() != "provider returned status 402" {
 		t.Fatalf("missing safe provider status: %v", err)
 	}
 	fake.err = errors.New("upstream supplied a private message")
-	if _, err := Translate(ctx, fake, provider.NewCatalog(fake), 1200, source); err == nil || strings.Contains(err.Error(), "private") {
+	if _, err := Translate(ctx, fake, "text-only", "askxuan-catalog-test", 1200, source); err == nil || strings.Contains(err.Error(), "private") {
 		t.Fatalf("provider details reached the catalog failure: %v", err)
 	}
 }
@@ -151,8 +151,11 @@ func TestMySQLCatalogTranslationWorkflow(t *testing.T) {
 	fake := textFixture{answer: func(provider.Request) string {
 		return `{"title":"Sandalwood beads","description":"{{T0}} beads"}`
 	}}
-	translate := func(ctx context.Context, source map[string]string) (map[string]string, error) {
-		return Translate(ctx, fake, provider.NewCatalog(fake), 1200, source)
+	translate := func(ctx context.Context, task TranslationTask, source map[string]string) (map[string]string, error) {
+		if task.Kind != kind || !strings.HasPrefix(task.SessionID, "askxuan-catalog-") {
+			t.Fatalf("unexpected catalog task: %+v", task)
+		}
+		return Translate(ctx, fake, "text-only", task.SessionID, 1200, source)
 	}
 	if err := store.processNext(ctx, translate); err != nil {
 		t.Fatal(err)
@@ -192,7 +195,7 @@ func TestMySQLCatalogTranslationWorkflow(t *testing.T) {
 		t.Fatalf("stale review accepted: %v", err)
 	}
 	manage(true, nil)
-	if err := store.processNext(ctx, func(context.Context, map[string]string) (map[string]string, error) {
+	if err := store.processNext(ctx, func(context.Context, TranslationTask, map[string]string) (map[string]string, error) {
 		t.Fatal("delivery policy change with unchanged text consumed a model call")
 		return nil, nil
 	}); err != nil {
@@ -209,7 +212,7 @@ func TestMySQLCatalogTranslationWorkflow(t *testing.T) {
 
 	exec("UPDATE askxuan_product.product SET description='共有120颗' WHERE id=?", id)
 	manage(true, nil)
-	if err := store.processNext(ctx, func(_ context.Context, source map[string]string) (map[string]string, error) {
+	if err := store.processNext(ctx, func(_ context.Context, _ TranslationTask, source map[string]string) (map[string]string, error) {
 		if len(source) != 1 || source["description"] != "共有120颗" {
 			t.Fatalf("unexpected changed fields: %v", source)
 		}
@@ -224,7 +227,7 @@ func TestMySQLCatalogTranslationWorkflow(t *testing.T) {
 	manage(false, &Edit{Revision: changed.Revision, Fields: changed.Fields, Publish: true})
 	exec("UPDATE askxuan_product.product SET description='共110颗' WHERE id=?", id)
 	manage(true, nil)
-	err = store.processNext(ctx, func(_ context.Context, _ map[string]string) (map[string]string, error) {
+	err = store.processNext(ctx, func(_ context.Context, _ TranslationTask, _ map[string]string) (map[string]string, error) {
 		active := manage(false, nil)
 		manage(false, &Edit{Revision: active.Revision, Fields: map[string]string{"title": "Handmade sandalwood beads", "description": "110 beads"}, Publish: true})
 		return map[string]string{"description": "Late machine result"}, nil

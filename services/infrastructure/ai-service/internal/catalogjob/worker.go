@@ -22,8 +22,8 @@ const translationPrompt = `You translate customer catalog copy into clear Americ
 var protectedText = regexp.MustCompile(`(?i)https?://[^\s<>"'，。；）]+|[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}|\+?[0-9][0-9 ()-]{8,20}[0-9]X?|\p{Nd}+(?:[.,]\p{Nd}+)*`)
 var maskToken = regexp.MustCompile(`\{\{T[0-9]+\}\}`)
 
-func Translate(ctx context.Context, p provider.Provider, models *provider.Catalog, outputTokens int, source map[string]string) (map[string]string, error) {
-	if p == nil || models == nil || p.Name() == "mock" {
+func Translate(ctx context.Context, p provider.Provider, model, sessionID string, outputTokens int, source map[string]string) (map[string]string, error) {
+	if p == nil || model == "" || p.Name() == "mock" {
 		return nil, errors.New("catalog text model unavailable")
 	}
 	masked := make(map[string]string, len(source))
@@ -46,15 +46,11 @@ func Translate(ctx context.Context, p provider.Provider, models *provider.Catalo
 	if err != nil {
 		return nil, err
 	}
-	model, err := models.Select(ctx, "", false)
-	if err != nil {
-		return nil, err
-	}
 	if outputTokens <= 0 || outputTokens > 4096 {
 		outputTokens = 4096
 	}
 	reply, err := p.Complete(ctx, provider.Request{
-		Model: model, SystemPrompt: translationPrompt, JSONMode: true, MaxTokens: outputTokens,
+		Model: model, SessionID: sessionID, SystemPrompt: translationPrompt, JSONMode: true, MaxTokens: outputTokens,
 		Messages: []provider.Message{{Role: "user", Content: string(raw)}},
 	})
 	if err != nil {
@@ -107,7 +103,12 @@ type translationJob struct {
 	ApprovedFingerprints string `db:"published_source_fingerprints"`
 }
 
-func (s Store) Run(ctx context.Context, translate func(context.Context, map[string]string) (map[string]string, error)) {
+type TranslationTask struct {
+	Kind      string
+	SessionID string
+}
+
+func (s Store) Run(ctx context.Context, translate func(context.Context, TranslationTask, map[string]string) (map[string]string, error)) {
 	ticker := time.NewTicker(4 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -124,7 +125,7 @@ func (s Store) Run(ctx context.Context, translate func(context.Context, map[stri
 	}
 }
 
-func (s Store) processNext(ctx context.Context, translate func(context.Context, map[string]string) (map[string]string, error)) error {
+func (s Store) processNext(ctx context.Context, translate func(context.Context, TranslationTask, map[string]string) (map[string]string, error)) error {
 	var job translationJob
 	err := s.DB.QueryRowCtx(ctx, &job, `SELECT kind,resource_id,source_revision,version,
 		COALESCE(published_fields,'{}') AS published_fields, COALESCE(published_source_fingerprints,'{}') AS published_source_fingerprints
@@ -172,7 +173,7 @@ func (s Store) processNext(ctx context.Context, translate func(context.Context, 
 	return err
 }
 
-func (job translationJob) draft(ctx context.Context, source map[string]string, translate func(context.Context, map[string]string) (map[string]string, error)) (map[string]string, error) {
+func (job translationJob) draft(ctx context.Context, source map[string]string, translate func(context.Context, TranslationTask, map[string]string) (map[string]string, error)) (map[string]string, error) {
 	var approved, fingerprints map[string]string
 	if err := json.Unmarshal([]byte(job.ApprovedFields), &approved); err != nil {
 		return nil, err
@@ -189,7 +190,10 @@ func (job translationJob) draft(ctx context.Context, source map[string]string, t
 		}
 	}
 	if len(changed) > 0 {
-		fields, err := translate(ctx, changed)
+		task := TranslationTask{
+			Kind: job.Kind, SessionID: "askxuan-catalog-" + fieldFingerprint(job.Kind + "\x00" + job.ID + "\x00" + job.Revision)[:24],
+		}
+		fields, err := translate(ctx, task, changed)
 		if err != nil {
 			return nil, err
 		}

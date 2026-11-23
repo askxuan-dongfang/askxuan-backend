@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ type OpenAICompatible struct {
 	baseURL, apiKey, model, visionModel string
 	standardParameters                  bool
 	modelDefaultReasoning               bool
+	openCodeGo                          bool
 	configuredModels                    []ModelOption
 	client                              *http.Client
 }
@@ -32,7 +34,7 @@ func (p *OpenAICompatible) payload(req Request, model string, messages []wireMes
 	if p.standardParameters || p.modelDefaultReasoning {
 		delete(result, "thinking")
 	}
-	if p.modelDefaultReasoning {
+	if p.modelDefaultReasoning || p.openCodeGo {
 		delete(result, "reasoning_effort")
 	}
 	if p.Name() == "volcengine" && !p.modelDefaultReasoning && req.ThinkingEnabled && req.MaxTokens > 0 {
@@ -43,6 +45,9 @@ func (p *OpenAICompatible) payload(req Request, model string, messages []wireMes
 	return result
 }
 func (p *OpenAICompatible) Name() string {
+	if p.openCodeGo {
+		return OpenCodeGo
+	}
 	if p.configuredModels != nil {
 		return "volcengine"
 	}
@@ -71,8 +76,9 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 	if err != nil {
 		return nil, err
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
+	if err := p.setHeaders(httpReq, req); err != nil {
+		return nil, err
+	}
 	resp, err := p.client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("provider request failed: %w", err)
@@ -83,6 +89,7 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 		return nil, &HTTPError{StatusCode: resp.StatusCode}
 	}
 	var decoded struct {
+		Error   json.RawMessage `json:"error"`
 		Choices []struct {
 			Message      Message `json:"message"`
 			FinishReason string  `json:"finish_reason"`
@@ -100,6 +107,9 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 	}
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return nil, fmt.Errorf("decode provider response: %w", err)
+	}
+	if p.openCodeGo && len(decoded.Error) > 0 && string(decoded.Error) != "null" {
+		return nil, errors.New("OpenCode Go returned a completion error")
 	}
 	result := &Response{PromptTokens: decoded.Usage.PromptTokens, CompletionTokens: decoded.Usage.CompletionTokens, PromptCacheHitTokens: decoded.Usage.PromptCacheHitTokens, PromptCacheMissTokens: decoded.Usage.PromptCacheMissTokens, ReasoningTokens: decoded.Usage.CompletionTokenDetails.ReasoningTokens, Model: defaultValue(decoded.Model, model)}
 	if len(decoded.Choices) > 0 {
@@ -123,9 +133,10 @@ func (p *OpenAICompatible) Stream(ctx context.Context, req Request, onDelta func
 	if err != nil {
 		return nil, err
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
+	if err := p.setHeaders(httpReq, req); err != nil {
+		return nil, err
+	}
 	httpReq.Header.Set("Accept", "text/event-stream")
-	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
 	resp, err := p.client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("provider stream request failed: %w", err)
@@ -217,6 +228,19 @@ func (p *OpenAICompatible) Stream(ctx context.Context, req Request, onDelta func
 		result.FinishReason = "stop"
 	}
 	return result, nil
+}
+
+func (p *OpenAICompatible) setHeaders(httpReq *http.Request, req Request) error {
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
+	if p.openCodeGo {
+		if req.SessionID == "" {
+			return errors.New("OpenCode Go requires a session ID")
+		}
+		httpReq.Header.Set("User-Agent", openCodeUserAgent)
+		httpReq.Header.Set("x-opencode-session", req.SessionID)
+	}
+	return nil
 }
 
 type wireMessage struct {
