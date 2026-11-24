@@ -16,6 +16,33 @@ type openCodeTestTransport func(*http.Request) (*http.Response, error)
 
 func (f openCodeTestTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
+func TestDiscoverDeepSeekReadsAuthenticatedModelCapabilities(t *testing.T) {
+	status := http.StatusOK
+	client := &http.Client{Transport: openCodeTestTransport(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodGet || r.URL.String() != "https://api.deepseek.com/models" ||
+			r.Header.Get("Authorization") != "Bearer fixture-deepseek" {
+			t.Fatal("DeepSeek discovery did not use the official authenticated route")
+		}
+		body := `{"object":"list","data":[
+			{"id":"deepseek-flash","name":"Official Flash","context_window":1048576,"max_output_tokens":393216,"input_modalities":["text","image"],"output_modalities":["text"]},
+			{"id":"fixture-pro","name":"Fixture Pro","input_modalities":["text"],"output_modalities":["text"]},
+			{"id":"voice-only","input_modalities":["text"],"output_modalities":["audio"]},
+			{"id":"fixture-pro","name":"duplicate"}
+		]}`
+		return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}, nil
+	})}
+	options, err := DiscoverDeepSeek(context.Background(), client, "fixture-deepseek")
+	if err != nil || len(options) != 2 || !options[0].SupportsVision || options[0].ContextWindow != 1048576 ||
+		options[0].MaxOutputTokens != 393216 || options[1].SupportsVision || options[1].Name != "Fixture Pro" {
+		t.Fatalf("incorrect DeepSeek model catalog: %+v %v", options, err)
+	}
+	status = http.StatusUnauthorized
+	var upstream *HTTPError
+	if _, err := DiscoverDeepSeek(context.Background(), client, "fixture-deepseek"); !errors.As(err, &upstream) || upstream.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("invalid credential not detected: %v", err)
+	}
+}
+
 func TestOpenCodeGoDiscoveryChecksAuthAndTextCapabilities(t *testing.T) {
 	status, body := 200, `{"object":"list","data":[
 		{"type":"chat","id":"kimi-k3","name":"Kimi K3","limit":{"context":2097152,"output":1048576},"modalities":{"input":["text","image/png"],"output":["text"]}},

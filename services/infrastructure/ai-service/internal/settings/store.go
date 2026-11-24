@@ -74,6 +74,11 @@ func (s *store) read() (*record, error) {
 		return nil, errors.New("AI settings data is invalid")
 	}
 	stored.record.Models = append(stored.record.Models, stored.CatalogModels...)
+	for i, model := range stored.Models {
+		if model.UsesSupplierKey && stored.ModelSupplierSecrets[model.Provider] != "" {
+			stored.Models[i].APIKey = ""
+		}
+	}
 	if stored.GoChatModel != "" {
 		stored.ModelUses.Chat = stored.GoChatModel
 	}
@@ -110,6 +115,8 @@ func (s *store) write(r record, expected int64) error {
 	stored.record.Models = nil
 	goModels := make(map[string]bool)
 	for _, model := range r.Models {
+		// Keep a usable, encrypted per-model credential for previous binaries.
+		model.APIKey = r.languageAPIKey(model)
 		if model.Provider == provider.OpenCodeGo {
 			stored.CatalogModels = append(stored.CatalogModels, model)
 			goModels[model.ID] = true

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"slices"
 	"strings"
@@ -49,9 +50,12 @@ type LanguageModelInput struct {
 
 type modelRecord struct {
 	LanguageModelValues
-	ID     string `json:"id"`
-	APIKey string `json:"secret"`
+	ID              string `json:"id"`
+	APIKey          string `json:"secret,omitempty"`
+	UsesSupplierKey bool   `json:"usesSupplierKey,omitempty"`
 }
+
+const maxLanguageModels = 100
 
 func copyLinks(in map[string]string) map[string]string {
 	out := map[string]string{}
@@ -109,6 +113,7 @@ func (m *Manager) withModelLibrary(snap *Snapshot, r record) (*Snapshot, error) 
 	snap.CatalogTranslation.Model = r.ModelUses.CatalogTranslation
 	routes := make([]provider.RegisteredRoute, 0, len(r.Models))
 	for _, registered := range r.Models {
+		registered.APIKey = r.languageAPIKey(registered)
 		p, option, err := m.modelBuilder(registered)
 		if err != nil {
 			return nil, err
@@ -137,10 +142,12 @@ func (m *Manager) ModelUses() (ModelUses, int64) {
 	return m.record.ModelUses, m.record.Revision
 }
 
-func (m *Manager) ModelLibraryUses() (ModelUses, []string, int64) {
+func (m *Manager) ModelLibraryUses() (ModelUses, []string, []string, int64) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.record.ModelUses, append([]string{}, m.record.CustomerModelIDs...), m.record.Revision
+	suppliers := slices.AppendSeq([]string{}, maps.Keys(m.record.ModelSupplierSecrets))
+	slices.Sort(suppliers)
+	return m.record.ModelUses, append([]string{}, m.record.CustomerModelIDs...), suppliers, m.record.Revision
 }
 
 func (m *Manager) ValidateCustomerModelIDs(ctx context.Context, ids []string) error {
@@ -183,7 +190,7 @@ func (m *Manager) LanguageConnection(ctx context.Context, id string) (LanguageMo
 	m.mu.RUnlock()
 	for _, v := range r.Models {
 		if v.ID == id {
-			return LanguageModel{ID: id, Source: "registered", DocumentModelID: r.KnowledgeLinks[id], LanguageModelValues: v.LanguageModelValues}, provider.Config{Provider: v.Provider, BaseURL: v.BaseURL, APIKey: v.APIKey, Model: v.Model}, nil
+			return LanguageModel{ID: id, Source: "registered", DocumentModelID: r.KnowledgeLinks[id], LanguageModelValues: v.LanguageModelValues}, provider.Config{Provider: v.Provider, BaseURL: v.BaseURL, APIKey: r.languageAPIKey(v), Model: v.Model}, nil
 		}
 	}
 	list, err := provider.NewCatalogWithAllowed(provider.PrimaryProvider(snapshot.Provider), r.EnabledModels).List(ctx)
@@ -266,25 +273,6 @@ func validLanguageAPIKey(key string) bool {
 	return key != "" && len(key) <= 4096 && !strings.ContainsAny(key, "\r\n\t ")
 }
 
-func (m *Manager) DiscoverLanguageModels(ctx context.Context, kind, key string) ([]provider.ModelOption, error) {
-	if kind != provider.OpenCodeGo {
-		return nil, errors.New("该供应商不支持模型发现")
-	}
-	key = strings.TrimSpace(key)
-	if !validLanguageAPIKey(key) {
-		return nil, errors.New("请填写有效的 OpenCode Go API Key")
-	}
-	models, err := m.openCodeGoModels(ctx, key)
-	if err != nil {
-		var upstream *provider.HTTPError
-		if errors.As(err, &upstream) {
-			return nil, fmt.Errorf("OpenCode Go 模型列表获取失败（HTTP %d）", upstream.StatusCode)
-		}
-		return nil, errors.New("OpenCode Go 模型列表获取失败")
-	}
-	return models, nil
-}
-
 func (m *Manager) checkLanguageModel(ctx context.Context, r modelRecord) (modelRecord, error) {
 	p, option, err := m.modelBuilder(r)
 	if err != nil {
@@ -349,11 +337,11 @@ func (m *Manager) AddLanguageModel(ctx context.Context, in LanguageModelInput, a
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if len(m.record.Models) >= 100 {
+	if len(m.record.Models) >= maxLanguageModels {
 		return LanguageModel{}, errors.New("已登记语言模型达到上限")
 	}
 	for _, old := range m.record.Models {
-		if old.Provider == r.Provider && old.BaseURL == r.BaseURL && old.Model == r.Model && old.APIKey == r.APIKey {
+		if old.Provider == r.Provider && old.BaseURL == r.BaseURL && old.Model == r.Model && m.record.languageAPIKey(old) == r.APIKey {
 			return LanguageModel{}, errors.New("此连接的模型已登记，请从模型库选择")
 		}
 	}
