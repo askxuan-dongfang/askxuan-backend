@@ -19,6 +19,8 @@ var ErrModelUnavailable = errors.New("所选模型已不可用，请刷新模型
 var ErrModelNeedsVision = errors.New("当前会话含图片，请选择支持图片的模型，或新建文字对话")
 var modelID = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,99}$`)
 
+const DeepSeekBaseURL = "https://api.deepseek.com"
+
 type ModelOption struct {
 	ContextWindow   int `json:"contextWindow"`
 	MaxOutputTokens int `json:"maxOutputTokens"`
@@ -55,6 +57,12 @@ func NewCatalogWithAllowed(p Provider, ids []string) *Catalog {
 	return c
 }
 
+func DiscoverDeepSeek(ctx context.Context, client *http.Client, key string) ([]ModelOption, error) {
+	p := NewOpenAICompatible(DeepSeekBaseURL, key, "", "")
+	p.SetHTTPClient(client)
+	return p.listModels(ctx)
+}
+
 // Model IDs come from the authenticated upstream catalog. Descriptions and
 // capabilities are our compatibility metadata, not inferred from arbitrary IDs.
 func (p *OpenAICompatible) listModels(ctx context.Context) ([]ModelOption, error) {
@@ -75,14 +83,21 @@ func (p *OpenAICompatible) listModels(ctx context.Context) ([]ModelOption, error
 		return nil, errors.New("模型列表暂时无法连接")
 	}
 	defer response.Body.Close()
+	deepSeek := p.baseURL == DeepSeekBaseURL || p.baseURL == DeepSeekBaseURL+"/v1"
 	if response.StatusCode != http.StatusOK {
+		if deepSeek {
+			return nil, &HTTPError{StatusCode: response.StatusCode}
+		}
 		return nil, fmt.Errorf("模型列表暂时不可用（%d）", response.StatusCode)
 	}
 	var body struct {
 		Data []struct {
-			ID              string `json:"id"`
-			ContextWindow   int    `json:"context_window"`
-			MaxOutputTokens int    `json:"max_output_tokens"`
+			ID               string   `json:"id"`
+			Name             string   `json:"name"`
+			ContextWindow    int      `json:"context_window"`
+			MaxOutputTokens  int      `json:"max_output_tokens"`
+			InputModalities  []string `json:"input_modalities"`
+			OutputModalities []string `json:"output_modalities"`
 		} `json:"data"`
 	}
 	if err = json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&body); err != nil {
@@ -94,8 +109,15 @@ func (p *OpenAICompatible) listModels(ctx context.Context) ([]ModelOption, error
 		if !modelID.MatchString(row.ID) || seen[row.ID] {
 			continue
 		}
+		if deepSeek && ((len(row.InputModalities) > 0 && !slices.Contains(row.InputModalities, "text")) ||
+			(len(row.OutputModalities) > 0 && !slices.Contains(row.OutputModalities, "text"))) {
+			continue
+		}
 		seen[row.ID] = true
 		option := ModelOption{ContextWindow: row.ContextWindow, MaxOutputTokens: row.MaxOutputTokens, ID: row.ID, Name: row.ID, Description: "文字对话", SupportsVision: row.ID == p.visionModel}
+		if name := strings.TrimSpace(row.Name); deepSeek && name != "" && len(name) <= 120 {
+			option.Name = name
+		}
 		switch row.ID {
 		case "deepseek-flash", "deepseek-v4-flash", "deepseek-v4-flash-vision-exp":
 			option.Name = "DeepSeek Flash"
@@ -105,6 +127,13 @@ func (p *OpenAICompatible) listModels(ctx context.Context) ([]ModelOption, error
 			option.Name = "DeepSeek V4 Pro"
 			option.Description = "文字对话 · 不支持图片"
 			option.SupportsVision = false
+		}
+		if deepSeek && len(row.InputModalities) > 0 {
+			option.SupportsVision = slices.Contains(row.InputModalities, "image")
+			option.Description = "文字对话"
+			if option.SupportsVision {
+				option.Description = "文字与图片"
+			}
 		}
 		result = append(result, option)
 	}

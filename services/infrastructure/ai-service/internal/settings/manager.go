@@ -64,6 +64,7 @@ type Public struct {
 }
 type record struct {
 	Models                  []modelRecord     `json:"models,omitempty"`
+	ModelSupplierSecrets    map[string]string `json:"modelSupplierSecrets,omitempty"`
 	ModelUses               ModelUses         `json:"modelUses,omitempty"`
 	CustomerModelIDs        []string          `json:"customerModelIds,omitempty"`
 	KnowledgeLinks          map[string]string `json:"knowledgeLinks,omitempty"`
@@ -90,6 +91,7 @@ type Manager struct {
 	build            func(record) (*Snapshot, error)
 	modelBuilder     func(modelRecord) (provider.Provider, provider.ModelOption, error)
 	openCodeGoModels func(context.Context, string) ([]provider.ModelOption, error)
+	deepSeekModels   func(context.Context, string) ([]provider.ModelOption, error)
 }
 
 func New(initial config.AIConf, dir, key string) (*Manager, error) {
@@ -108,6 +110,9 @@ func New(initial config.AIConf, dir, key string) (*Manager, error) {
 	discoveryClient := secureClient()
 	m.openCodeGoModels = func(ctx context.Context, key string) ([]provider.ModelOption, error) {
 		return provider.DiscoverOpenCodeGo(ctx, discoveryClient, key)
+	}
+	m.deepSeekModels = func(ctx context.Context, key string) ([]provider.ModelOption, error) {
+		return provider.DiscoverDeepSeek(ctx, discoveryClient, key)
 	}
 	if st != nil {
 		saved, e := st.read()
@@ -274,7 +279,7 @@ func (m *Manager) prepare(req Update) (record, error) {
 		return record{}, err
 	}
 	req.WebSearchOptions = &options
-	return record{Values: req.Values, APIKey: key, WebSearchAPIKey: searchKey, WebSearchFallbackAPIKey: fallbackKey, Revision: old.Revision, Models: append([]modelRecord(nil), old.Models...), ModelUses: old.ModelUses, CustomerModelIDs: old.CustomerModelIDs, KnowledgeLinks: copyLinks(old.KnowledgeLinks)}, nil
+	return record{Values: req.Values, APIKey: key, WebSearchAPIKey: searchKey, WebSearchFallbackAPIKey: fallbackKey, Revision: old.Revision, Models: append([]modelRecord(nil), old.Models...), ModelSupplierSecrets: old.ModelSupplierSecrets, ModelUses: old.ModelUses, CustomerModelIDs: old.CustomerModelIDs, KnowledgeLinks: copyLinks(old.KnowledgeLinks)}, nil
 }
 func (m *Manager) buildSnapshot(r record) (*Snapshot, error) {
 	c := m.original

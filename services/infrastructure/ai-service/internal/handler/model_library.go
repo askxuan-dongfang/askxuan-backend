@@ -35,7 +35,7 @@ type libraryItem struct {
 }
 
 func registerModelLibrary(server *rest.Server, s *svc.ServiceContext) {
-	for _, op := range []struct{ method, path, action string }{{"GET", "", "list"}, {"POST", "/language", "add"}, {"POST", "/language/discover", "discover"}, {"POST", "/language/test", "test-input"}, {"POST", "/:model/test", "test"}, {"DELETE", "/:model", "delete"}, {"PUT", "/uses", "uses"}} {
+	for _, op := range []struct{ method, path, action string }{{"GET", "", "list"}, {"POST", "/language", "add"}, {"POST", "/language/discover", "discover"}, {"POST", "/language/import", "import"}, {"POST", "/language/test", "test-input"}, {"POST", "/:model/test", "test"}, {"DELETE", "/:model", "delete"}, {"PUT", "/uses", "uses"}} {
 		server.AddRoute(rest.Route{Method: op.method, Path: "/api/v1/ai/admin/model-library" + op.path, Handler: modelLibraryHandler(s, op.action)})
 	}
 }
@@ -138,8 +138,8 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 			} else {
 				warnings = append(warnings, "知识引擎尚未配置")
 			}
-			uses, customerModelIDs, revision := s.Settings.ModelLibraryUses()
-			finish(map[string]any{"list": items, "uses": uses, "customerModelIds": customerModelIDs, "revision": revision, "writable": s.Settings.Public().Writable, "defaultChat": s.Settings.Snapshot().Provider.Model(), "warnings": warnings}, nil)
+			uses, customerModelIDs, suppliers, revision := s.Settings.ModelLibraryUses()
+			finish(map[string]any{"list": items, "uses": uses, "customerModelIds": customerModelIDs, "suppliers": suppliers, "revision": revision, "writable": s.Settings.Public().Writable, "defaultChat": s.Settings.Snapshot().Provider.Model(), "warnings": warnings}, nil)
 		case "discover":
 			var in struct {
 				Provider string `json:"provider"`
@@ -150,6 +150,13 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 			}
 			list, err := s.Settings.DiscoverLanguageModels(ctx, in.Provider, in.APIKey)
 			finish(map[string]any{"list": list}, err)
+		case "import":
+			var in settings.SupplierImportInput
+			if !read(&in) {
+				return
+			}
+			value, err := s.Settings.ImportSupplierModels(ctx, in, actor)
+			finish(value, err)
 		case "test-input", "add":
 			var in settings.LanguageModelInput
 			if !read(&in) {
