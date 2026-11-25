@@ -5,15 +5,16 @@ import http.server
 import io
 import json
 import os
+from contextlib import nullcontext
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import threading
-from unittest.mock import patch
 from urllib.request import urlopen
 
 import ecs_receiver as receiver
+from verify_knowledge_fixture import knowledge_fixture
 
 
 def command(*args, **kwargs):
@@ -89,23 +90,32 @@ NoAuthPaths:
     receiver.atomic_json(receiver.BASE / 'config.json', {'backend_contract': manifest['contract']})
     image = manifest['components']['gateway']['image']
     assert subprocess.run(['docker', 'image', 'inspect', image], capture_output=True).returncode != 0
-    # This runner exercises the real gateway image with a gateway-only fixture.
-    # Knowledge cutover and joint rollback are covered by test_weknora_release.py.
-    with patch.object(receiver, 'prepare_weknora', return_value=({}, [])), \
-         patch.object(receiver, 'smoke_weknora', return_value={'fixture': 'gateway-only'}):
+    knowledge = manifest.get('weknora')
+    fixture = knowledge_fixture(directory, knowledge) if knowledge else nullcontext((None, None))
+    with fixture as (_, old_knowledge_container):
         receiver.receive('backend', io.BufferedReader(io.BytesIO(payload)))
-    installed = receiver.run(['docker', 'exec', 'askxuan-gateway-service', 'sha256sum', '/app/gateway']).decode().split()[0]
-    assert installed == manifest['files']['payload/gateway/gateway']
-    active = json.loads((receiver.BASE / 'state.json').read_text())
-    assert active['components']['backend/gateway']['image'] == image
-    assert response()['data']['service'] == 'gateway'
-    receiver.rollback_latest(release)
-    assert response()['version'] == 'old'
-    assert receiver.run(['docker', 'inspect', '--format', '{{.Image}}', 'askxuan-gateway-service']).strip() == old_image
-    assert json.loads((receiver.BASE / 'state.json').read_text()) == baseline
+        installed = receiver.run(['docker', 'exec', 'askxuan-gateway-service', 'sha256sum', '/app/gateway']).decode().split()[0]
+        assert installed == manifest['files']['payload/gateway/gateway']
+        active = json.loads((receiver.BASE / 'state.json').read_text())
+        assert active['components']['backend/gateway']['image'] == image
+        assert response()['data']['service'] == 'gateway'
+        if knowledge:
+            transaction = receiver.BASE / 'releases' / release / 'transaction.json'
+            journal = json.loads(transaction.read_text())
+            assert journal['weknora_services'] == ['app']
+            assert journal['weknora_checks'] == {'embedding': True, 'retrieval': True, 'ai_bridge': True,
+                                                  'document_llm': False}
+            assert active['components']['backend/weknora']['fields'] == knowledge['fields']
+            new_knowledge_container = receiver.run(['docker', 'inspect', '--format', '{{.Id}}', 'askxuan-weknora']).decode().strip()
+            assert new_knowledge_container != old_knowledge_container
+        receiver.rollback_latest(release)
+        assert response()['version'] == 'old'
+        assert receiver.run(['docker', 'inspect', '--format', '{{.Image}}', 'askxuan-gateway-service']).strip() == old_image
+        assert json.loads((receiver.BASE / 'state.json').read_text()) == baseline
     command(*compose, 'down')
     print(json.dumps({'scope': 'backend', 'fixed_image': image, 'live_binary_sha256': installed,
-                      'real_gateway': True, 'rollback_restored_previous_image': True}), flush=True)
+                      'real_gateway': True, 'rollback_restored_previous_image': True,
+                      'real_weknora_app_and_joint_rollback': knowledge is not None}), flush=True)
 
 
 def h5_pull(directory, payload, release):

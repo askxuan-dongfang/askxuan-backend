@@ -62,8 +62,8 @@ health, embedding inference, and the private AI endpoint. It also runs a
 read-only retrieval probe when a compatible document base exists and probes one
 bound platform model when available. The receipt records each actual check.
 A failure restores the version combination modified by this release. The
-disposable workflow keeps its gateway-only fixture, with knowledge-release
-transactions covered in `test_weknora_release.py`.
+disposable workflow exercises the actual gateway release and upstream knowledge
+engine with a fictional document, a fixture model endpoint and a joint rollback.
 
 A different engine image is accepted only after the operator has verified that
 the candidate image pair and its rollback image pair can both read the same
