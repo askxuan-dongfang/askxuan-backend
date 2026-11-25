@@ -4,6 +4,9 @@ package weknora
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,10 +22,22 @@ var ErrUnavailable = errors.New("WeKnora 暂不可用，请检查引擎与索引
 var ErrInput = errors.New("知识库参数无效或资料不属于此知识库")
 var ErrConflict = errors.New("资料已变更，请刷新后重试")
 
+const documentCompletionPrefix = "/internal/weknora/models/"
+const documentCompletionBase = "http://askxuan-ai-service:8098" + documentCompletionPrefix
+const DocumentCompletionPath = documentCompletionPrefix + ":model/v1/chat/completions"
+
 type Client struct {
 	base, key, embedding string
 	http                 *http.Client
 }
+
+// DocumentConnection scopes the engine's bearer token to a single registered model.
+func (c *Client) DocumentConnection(libraryID string) (baseURL, token string) {
+	mac := hmac.New(sha256.New, []byte(c.key))
+	mac.Write([]byte("askxuan-weknora-completion-v1\x00" + libraryID))
+	return documentCompletionBase + url.PathEscape(libraryID) + "/v1", hex.EncodeToString(mac.Sum(nil))
+}
+
 type Envelope struct {
 	Success bool            `json:"success"`
 	Data    json.RawMessage `json:"data"`

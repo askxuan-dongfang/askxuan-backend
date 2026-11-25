@@ -122,6 +122,18 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req Request) (*Response
 	return result, nil
 }
 
+// CompleteDocument sends the engine's Chat Completions payload using the model's registered connection.
+func (p *OpenAICompatible) CompleteDocument(ctx context.Context, body []byte, sessionID string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/chat/completions", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	if err = p.setHeaders(req, Request{SessionID: sessionID}); err != nil {
+		return nil, err
+	}
+	return p.client.Do(req)
+}
+
 func (p *OpenAICompatible) Stream(ctx context.Context, req Request, onDelta func(StreamDelta) error) (*Response, error) {
 	messages := wireMessages(req)
 	model := p.ModelFor(req)

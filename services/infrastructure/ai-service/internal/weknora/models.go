@@ -36,6 +36,8 @@ type ModelInput struct {
 	APIKey      string `json:"apiKey"`
 	Provider    string `json:"provider"`
 	Dimension   int    `json:"dimension"`
+
+	LibraryModelID string `json:"-"`
 }
 
 func (s *Service) Models(ctx context.Context) ([]EngineModel, error) {
@@ -112,11 +114,17 @@ func (s *Service) SaveModel(ctx context.Context, id, actor string, v ModelInput)
 	if endpoint, _ := url.Parse(v.BaseURL); v.Type == "KnowledgeQA" && strings.EqualFold(endpoint.Hostname(), "api.deepseek.com") {
 		params["extra_config"] = map[string]string{"thinking_control": "thinking_type"}
 	}
-	if v.Type == "KnowledgeQA" && provider.IsVolcenginePlanURL(v.BaseURL) {
+	if v.Type == "KnowledgeQA" && (provider.IsVolcenginePlanURL(v.BaseURL) || v.BaseURL == provider.OpenCodeGoBaseURL) {
 		params["extra_config"] = map[string]string{"thinking_control": "none"}
 	}
 	if v.APIKey != "" {
 		params["api_key"] = v.APIKey
+	}
+	if v.LibraryModelID != "" {
+		if id != "" || v.Type != "KnowledgeQA" || !validModelID(v.LibraryModelID) {
+			return EngineModel{}, ErrInput
+		}
+		params["base_url"], params["api_key"] = s.Client.DocumentConnection(v.LibraryModelID)
 	}
 	payload := map[string]any{"name": v.Name, "display_name": v.DisplayName, "type": v.Type, "source": "remote", "parameters": params}
 	method, path := "POST", "/models"
@@ -196,7 +204,8 @@ func (s *Service) debugModel(ctx context.Context, id, input string, documents []
 	}
 	b, _ := json.Marshal(documents)
 	options := `{"max_tokens":256,"thinking":false}`
-	if m, err := s.engineModel(ctx, id); err == nil && m.Type == "KnowledgeQA" && provider.IsVolcenginePlanURL(m.Parameters.BaseURL) {
+	if m, err := s.engineModel(ctx, id); err == nil && m.Type == "KnowledgeQA" &&
+		(provider.IsVolcenginePlanURL(m.Parameters.BaseURL) || strings.HasPrefix(m.Parameters.BaseURL, documentCompletionBase)) {
 		options = `{"max_tokens":2048}`
 	}
 	form := url.Values{"input": {input}, "documents": {string(b)}, "options": {options}}
