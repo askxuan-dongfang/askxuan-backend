@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+from unittest.mock import patch
 from urllib.request import urlopen
 
 import ecs_receiver as receiver
@@ -88,7 +89,11 @@ NoAuthPaths:
     receiver.atomic_json(receiver.BASE / 'config.json', {'backend_contract': manifest['contract']})
     image = manifest['components']['gateway']['image']
     assert subprocess.run(['docker', 'image', 'inspect', image], capture_output=True).returncode != 0
-    receiver.receive('backend', io.BufferedReader(io.BytesIO(payload)))
+    # This runner exercises the real gateway image with a gateway-only fixture.
+    # Knowledge cutover and joint rollback are covered by test_weknora_release.py.
+    with patch.object(receiver, 'prepare_weknora', return_value=({}, [])), \
+         patch.object(receiver, 'smoke_weknora', return_value={'fixture': 'gateway-only'}):
+        receiver.receive('backend', io.BufferedReader(io.BytesIO(payload)))
     installed = receiver.run(['docker', 'exec', 'askxuan-gateway-service', 'sha256sum', '/app/gateway']).decode().split()[0]
     assert installed == manifest['files']['payload/gateway/gateway']
     active = json.loads((receiver.BASE / 'state.json').read_text())
