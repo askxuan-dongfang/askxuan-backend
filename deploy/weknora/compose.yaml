@@ -2,7 +2,7 @@
 # Dedicated persistent stores. Only the application is reachable from AskXuan.
 services:
   app:
-    image: wechatopenai/weknora-app:v0.8.2
+    image: wechatopenai/weknora-app@sha256:bc8a534799fcb54045100daf4bc5db86270b38ae45c5f761c410c50b4dcd6cdc
     container_name: askxuan-weknora
     restart: unless-stopped
     env_file: .env
@@ -76,7 +76,7 @@ services:
     mem_limit: 256m
     restart: unless-stopped
   docreader:
-    image: wechatopenai/weknora-docreader:v0.8.2
+    image: wechatopenai/weknora-docreader@sha256:3c36e7e738ba515315523876d8041f9bb02809145a4e3b331e2550e4bff98b7a
     container_name: askxuan-weknora-docreader
     environment:
       LOG_LEVEL: error

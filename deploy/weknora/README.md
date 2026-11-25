@@ -2,6 +2,8 @@
 
 固定 WeKnora v0.8.2，源码 `3e8b0bfc80b845b2d4b2ed683994748741450a97`，MIT。config.yaml 源自同一版本，LICENSE.upstream 保留原许可。标准部署包含应用、ParadeDB PostgreSQL 17（pgvector/BM25）、Redis、DocReader、本地中文 FastEmbed。应用只绑定回环 18085，并接入 askxuan-net；数据库、队列、解析器不公开端口。
 
+应用与 DocReader 镜像按生产摘要固定。GitHub Actions 的后端镜像发布同时管理这两个镜像、内网许可、`config.yaml` 与 `builtin_models.yaml`。服务器使用原知识服务 Compose 项目，只更新本次变化的组件，并保存联合回滚配置。[发布接收器说明](../../scripts/ci/README.md#weknora-in-the-backend-image-release)
+
 ## 配置与启动
 
 复制 `.env.example` 至 `.env`，生成私有随机 DB_PASSWORD、REDIS_PASSWORD、JWT_SECRET、32 字节 SYSTEM_AES_KEY、AI_EMBEDDING_KEY。配置只保存在服务端，不提交 Git。首次模型下载约 90MB，可预填 embedding 模型卷；长文嵌入分段加权。本地嵌入不会上传原文。

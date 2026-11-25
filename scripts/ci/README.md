@@ -40,6 +40,38 @@ before the first image release. Set each repository's `ECS_RELEASE_TRANSPORT` to
 its receiver and workflow are ready. Select `upload` for the compatibility path. Keep the
 previous local images and public directory as rollback targets.
 
+## WeKnora in the backend image release
+
+The backend image manifest includes WeKnora App and DocReader digests, the
+internal host policy, the two managed configuration files and their hashes.
+The list of twenty compiled AskXuan images remains separate from those external
+images. The receiver uses the existing knowledge Compose project and global
+publication lock. The first release can adopt already-running digests without
+restarting those containers. Subsequent releases pull or restart only the
+affected components and save their file and image rollback state together.
+
+Install the reviewed receiver before merging a release that emits manifest schema
+2. Older receivers reject that schema. The receiver supports the existing
+binary-upload format for legacy backend artifacts, which carries no WeKnora
+changes. Docker data stores, filesystem mounts and local service secrets stay
+in the trusted ECS runtime. A drift in the unmanaged Compose structure needs
+operator review before proceeding.
+
+For a WeKnora change or an AI service release, the receiver verifies engine
+health, embedding inference, and the private AI endpoint. It also runs a
+read-only retrieval probe when a compatible document base exists and probes one
+bound platform model when available. The receipt records each actual check.
+A failure restores the version combination modified by this release. The
+disposable workflow exercises the actual gateway release and upstream knowledge
+engine with a fictional document, a fixture model endpoint and a joint rollback.
+
+A different engine image is accepted only after the operator has verified that
+the candidate image pair and its rollback image pair can both read the same
+data. Record the exact App and DocReader digests under `weknora_compatible_images`
+in the root-owned receiver config. A release with database or extension
+migrations needs its separately rehearsed backup and restore procedure before
+being adopted as the managed baseline.
+
 Quiet park is an independent `quiet` scope. `GOWORK=off python3 scripts/ci/release.py quiet`
 builds the entire `services/content/quiet-service` package for Linux amd64 and includes
 exactly `payload/quiet/quiet`. It records `backend/quiet`; the original twenty-service

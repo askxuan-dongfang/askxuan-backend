@@ -29,6 +29,10 @@ import zipfile
 BASE = Path('/opt/askxuan/ci')
 PUBLIC = Path('/var/www/askxuan/public')
 RELEASES = Path('/var/www/askxuan/releases')
+WEKNORA = Path('/opt/askxuan/runtime/weknora-20260930/deploy/weknora')
+WEKNORA_REPOS = {'app': 'wechatopenai/weknora-app', 'docreader': 'wechatopenai/weknora-docreader'}
+WEKNORA_FILES = ('config.yaml', 'builtin_models.yaml')
+WEKNORA_HOSTS = {'embedding', 'rerank', 'api.deepseek.com', 'ark.cn-beijing.volces.com', 'askxuan-ai-service'}
 SERVICES = {'gateway', 'auth', 'user', 'temple', 'master', 'booking', 'community', 'review',
             'product', 'order', 'payment', 'diy', 'marketing', 'logistics', 'finance', 'audit',
             'message', 'file', 'ai', 'media'}
@@ -154,7 +158,8 @@ def download_artifact(scope, request, directory):
 
 def validate_release(manifest, scope):
     allowed = SERVICES if scope == 'backend' else ({'quiet'} if scope == 'quiet' else (WEB if scope == 'web' else {'h5'}))
-    if manifest.get('schema') != 1 or manifest.get('scope') != scope or set(manifest['components']) != allowed:
+    schema = 2 if scope == 'backend' and 'weknora' in manifest else 1
+    if manifest.get('schema') != schema or manifest.get('scope') != scope or set(manifest['components']) != allowed:
         raise ValueError('Release scope mismatch')
     if not re.fullmatch(r'ci-(backend|quiet|web|h5)-[a-zA-Z0-9-]{1,100}', manifest['release']) or not manifest['release'].startswith('ci-' + scope + '-'):
         raise ValueError('Invalid release identifier')
@@ -172,6 +177,58 @@ def validate_image_manifest(manifest):
             raise ValueError('Expected a fixed image digest from the service registry')
         if 'source_input' in component and not SHA256.fullmatch(component['source_input']):
             raise ValueError('Invalid service source fingerprint')
+    if 'weknora' in manifest:
+        validate_weknora(manifest['weknora'])
+
+
+def weknora_compose(text, replacements=None):
+    fields = {}
+    layout = text
+    prefixes = {name: f'  {name}:\n    image: ' for name in WEKNORA_REPOS}
+    prefixes['hosts'] = '      SSRF_WHITELIST: '
+    for field, prefix in prefixes.items():
+        pattern = re.compile(r'^(' + re.escape(prefix) + r')([^\n]+)$', re.MULTILINE)
+        matches = list(pattern.finditer(text))
+        if len(matches) != 1:
+            raise ValueError('Missing or duplicate managed WeKnora setting: ' + field)
+        fields[field] = matches[0][2]
+        layout = pattern.sub(lambda match: match[1] + '<managed>', layout)
+        if replacements is not None:
+            text = pattern.sub(lambda match: match[1] + replacements[field], text)
+    return fields, hashlib.sha256(layout.encode()).hexdigest(), text
+
+
+def weknora_manifest(directory):
+    fields, layout, _ = weknora_compose((directory / 'compose.yaml').read_text())
+    configs = {name: {'content': (directory / name).read_text(), 'sha256': sha(directory / name)}
+               for name in WEKNORA_FILES}
+    return {'fields': fields, 'layout': layout, 'configs': configs}
+
+
+def validate_weknora(spec):
+    if not isinstance(spec, dict) or set(spec) != {'fields', 'layout', 'configs'}:
+        raise ValueError('Invalid WeKnora manifest')
+    fields, layout, configs = spec['fields'], spec['layout'], spec['configs']
+    if (not isinstance(fields, dict) or set(fields) != set(WEKNORA_REPOS) | {'hosts'}
+            or not all(isinstance(value, str) for value in fields.values())
+            or not isinstance(layout, str) or not SHA256.fullmatch(layout)):
+        raise ValueError('Invalid WeKnora settings')
+    for name, repo in WEKNORA_REPOS.items():
+        prefix = repo + '@sha256:'
+        if not fields[name].startswith(prefix) or not SHA256.fullmatch(fields[name][len(prefix):]):
+            raise ValueError('Expected an official fixed WeKnora image digest')
+    hosts = fields['hosts'].split(',')
+    if (len(set(hosts)) != len(hosts) or not {'embedding', 'rerank', 'askxuan-ai-service'} <= set(hosts)
+            or not set(hosts) <= WEKNORA_HOSTS):
+        raise ValueError('Invalid WeKnora host allowlist')
+    if not isinstance(configs, dict) or set(configs) != set(WEKNORA_FILES):
+        raise ValueError('Unexpected WeKnora configuration files')
+    for config in configs.values():
+        if not isinstance(config, dict) or set(config) != {'content', 'sha256'} or not isinstance(config['content'], str):
+            raise ValueError('Invalid WeKnora configuration')
+        content = config['content'].encode()
+        if not 0 < len(content) <= 256 * 1024 or b'\x00' in content or hashlib.sha256(content).hexdigest() != config['sha256']:
+            raise ValueError('WeKnora configuration checksum or size mismatch')
 
 
 def atomic_json(path, value):
@@ -245,6 +302,10 @@ def extract(archive, dest, scope):
 
 
 def validate_versions(manifest, state):
+    if manifest['scope'] == 'backend':
+        previous = state.get('components', {}).get('backend/weknora', {}).get('sources', {}).get('backend')
+        if previous and 'weknora' in manifest and previous not in manifest['history']['backend']:
+            raise ValueError('Stale WeKnora release')
     for component, value in manifest['components'].items():
         key = ('backend/' if manifest['scope'] in ('backend', 'quiet') else 'web/') + component
         required = {'backend'} if manifest['scope'] in ('backend', 'quiet') else ({'frontend', 'h5'} if component == 'h5' else {'frontend'})
@@ -301,11 +362,136 @@ def compose_definition(c, image):
     return d, networks, volumes
 
 
-def compose_up(path):
+def compose_up(path, *, project='askxuan', services=(), log_path=None):
     # Docker output/errors can contain env values. Keep full output in root-only logs.
-    with open(path.parent / (path.stem + '.log'), 'ab') as log:
-        subprocess.run(['docker', 'compose', '-p', 'askxuan', '-f', str(path), 'up', '-d', '--no-build', '--no-deps', '--pull', 'never'],
-                       stdout=log, stderr=log, check=True)
+    args = ['docker', 'compose', '-p', project, '-f', str(path), 'up', '-d', '--no-build', '--no-deps', '--pull', 'never']
+    if services:
+        args += ['--wait', '--wait-timeout', '180', '--force-recreate', *services]
+    with open(log_path or path.parent / (path.stem + '.log'), 'ab') as log:
+        subprocess.run(args, stdout=log, stderr=log, check=True)
+
+
+def prepare_weknora(spec, candidate):
+    before = {}
+    for name in ('compose.yaml', *WEKNORA_FILES):
+        path = WEKNORA / name
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
+            raise ValueError('Untrusted WeKnora runtime configuration')
+        before[name] = path.read_text()
+    fields, layout, compose = weknora_compose(before['compose.yaml'], spec['fields'])
+    if layout != spec['layout']:
+        raise ValueError('WeKnora infrastructure layout changed; review the runtime contract first')
+    after = {'compose.yaml': compose, **{name: file['content'] for name, file in spec['configs'].items()}}
+    files = {name: text for name, text in after.items() if text != before[name]}
+    services, pulls = [], []
+    for name, container in (('app', 'askxuan-weknora'), ('docreader', 'askxuan-weknora-docreader')):
+        running = json.loads(run(['docker', 'inspect', container]))[0]
+        labels = running['Config']['Labels']
+        if (labels['com.docker.compose.project'] != 'askxuan-knowledge'
+                or labels['com.docker.compose.service'] != name
+                or labels['com.docker.compose.project.config_files'] != str(WEKNORA / 'compose.yaml')):
+            raise ValueError('Unexpected WeKnora runtime project')
+        current_image = json.loads(run(['docker', 'image', 'inspect', running['Image']]))[0]
+        pin = spec['fields'][name]
+        if pin not in (current_image.get('RepoDigests') or []):
+            original = run(['docker', 'image', 'inspect', '--format', '{{.Id}}', fields[name]]).decode().strip()
+            if original != running['Image']:
+                raise ValueError('WeKnora rollback image differs from the running image')
+            pulls.append(pin)
+            services.append(name)
+        if name == 'app' and name not in services and (
+                'SSRF_WHITELIST=' + spec['fields']['hosts'] not in running['Config']['Env']
+                or any(config in files for config in WEKNORA_FILES)):
+            services.append(name)
+    if pulls:
+        # A reviewed version pair must be compatible with the same on-disk data before automatic image rollback.
+        approved = json.loads((BASE / 'config.json').read_text()).get('weknora_compatible_images')
+        if approved != {name: spec['fields'][name] for name in WEKNORA_REPOS}:
+            raise ValueError('WeKnora image change needs an approved data-compatible version pair')
+        with open(candidate / 'weknora-pull.log', 'ab') as log:
+            for image in pulls:
+                subprocess.run(['docker', 'pull', '--platform', 'linux/amd64', image],
+                               stdout=log, stderr=log, timeout=1500, check=True)
+    if files or services:
+        atomic_json(candidate / 'weknora.rollback.json',
+                    {'files': {name: before[name] for name in files}, 'services': services})
+    return files, services
+
+
+def apply_weknora(candidate, files, services):
+    for name, text in files.items():
+        if name not in ('compose.yaml', *WEKNORA_FILES):
+            raise ValueError('Unexpected WeKnora configuration file')
+        path = WEKNORA / name
+        original = path.stat()
+        with tempfile.NamedTemporaryFile(mode='w', dir=WEKNORA, prefix='.release-', delete=False) as staging:
+            temp = Path(staging.name)
+            try:
+                staging.write(text)
+                staging.flush()
+                os.fsync(staging.fileno())
+                os.fchown(staging.fileno(), original.st_uid, original.st_gid)
+                os.fchmod(staging.fileno(), stat.S_IMODE(original.st_mode))
+                os.replace(temp, path)
+            finally:
+                temp.unlink(missing_ok=True)
+    if services:
+        compose_up(WEKNORA / 'compose.yaml', project='askxuan-knowledge', services=services,
+                   log_path=candidate / 'weknora-compose.log')
+
+
+def rollback_weknora(candidate):
+    rollback = json.loads((candidate / 'weknora.rollback.json').read_text())
+    apply_weknora(candidate, rollback['files'], rollback['services'])
+
+
+def smoke_weknora():
+    ai = json.loads(run(['docker', 'inspect', 'askxuan-ai-service']))[0]
+    env = dict(item.split('=', 1) for item in ai['Config']['Env'])
+    key, embedding = env['AI_WEKNORA_KEY'], env['AI_WEKNORA_EMBEDDING_ID']
+    origin = 'http://127.0.0.1:18085'
+    with urllib.request.urlopen(origin + '/health', timeout=8):
+        pass
+
+    def call(path, body=None, content_type='application/json'):
+        req = urllib.request.Request(origin + '/api/v1' + path, data=body,
+                                     headers={'X-API-Key': key, 'Content-Type': content_type})
+        with urllib.request.urlopen(req, timeout=35) as response:
+            payload = json.load(response)
+        if not payload['success']:
+            raise RuntimeError('WeKnora business probe was rejected')
+        return payload['data']
+
+    def probe_model(model_id, prompt, options):
+        form = urllib.parse.urlencode({'input': prompt, 'documents': '[]', 'options': options})
+        path = '/models/' + urllib.parse.quote(model_id, safe='') + '/debug'
+        if not call(path, form.encode(), 'application/x-www-form-urlencoded')['ok']:
+            raise RuntimeError('WeKnora model call failed')
+
+    models = call('/models')
+    if not any(model['id'] == embedding and model['type'] == 'Embedding' for model in models):
+        raise RuntimeError('WeKnora embedding model is unavailable')
+    probe_model(embedding, '问玄发布连通性检查', '{}')
+    bases = call('/knowledge-bases')
+    base = next((item for item in bases if item.get('type') == 'document'
+                 and item.get('embedding_model_id') == embedding and not item.get('is_temporary')), None)
+    if base:
+        query = json.dumps({'query_text': '问玄发布连通性检查', 'match_count': 1,
+                            'vector_threshold': 0.35, 'keyword_threshold': 0, 'skip_context_enrichment': True})
+        path = '/knowledge-bases/' + urllib.parse.quote(base['id'], safe='') + '/hybrid-search'
+        if not isinstance(call(path, query.encode()), list):
+            raise RuntimeError('WeKnora retrieval probe returned invalid results')
+    bridge = 'http://askxuan-ai-service:8098/internal/weknora/models/'
+    code = run(['docker', 'exec', 'askxuan-weknora', 'curl', '--max-time', '8', '-sS', '-o', '/dev/null',
+                '-w', '%{http_code}', '-X', 'POST', '-d', '{}', bridge + 'verify-release/v1/chat/completions'])
+    if code != b'401':
+        raise RuntimeError('WeKnora private AI bridge is unreachable or rejected incorrectly')
+    model = next((item for item in models if item['type'] == 'KnowledgeQA'
+                  and (item.get('parameters') or {}).get('base_url', '').startswith(bridge)), None)
+    if model:
+        probe_model(model['id'], '连通性测试，请只回复 OK。', '{"max_tokens":2048}')
+    return {'embedding': True, 'retrieval': base is not None, 'ai_bridge': True, 'document_llm': model is not None}
 
 
 def trusted_json(path):
@@ -463,6 +649,8 @@ def deploy(candidate, manifest, state, registry=None):
     atomic_json(candidate / 'transaction.json', journal)
     try:
         if manifest['scope'] == 'backend':
+            knowledge = manifest.get('weknora') if registry is not None else None
+            files, knowledge_services = prepare_weknora(knowledge, candidate) if knowledge else ({}, [])
             current = {'services': {}, 'networks': {}, 'volumes': {}}
             before = {'services': {}, 'networks': {}, 'volumes': {}}
             for name, value in manifest['components'].items():
@@ -510,6 +698,23 @@ def deploy(candidate, manifest, state, registry=None):
                 atomic_json(candidate / 'transaction.json', journal)
                 compose_up(candidate / 'compose.json')
                 healthy(changed)
+            if files or knowledge_services:
+                if knowledge_services:
+                    query = ("SELECT count(*) FROM knowledges WHERE deleted_at IS NULL "
+                             "AND parse_status IN ('pending','processing','finalizing')")
+                    if int(run(['docker', 'exec', 'askxuan-weknora-postgres', 'psql', '-U', 'weknora',
+                                '-d', 'weknora', '-Atq', '-c', query])):
+                        raise RuntimeError('WeKnora has active document processing; retry after it finishes')
+                journal.update(phase='switching-backend', weknora_switched=True, weknora_services=knowledge_services)
+                atomic_json(candidate / 'transaction.json', journal)
+                apply_weknora(candidate, files, knowledge_services)
+            if knowledge and (files or knowledge_services or 'ai' in changed or 'backend/weknora' not in state.get('components', {})):
+                journal['weknora_checks'] = smoke_weknora()
+                state.setdefault('components', {})['backend/weknora'] = {
+                    'fields': knowledge['fields'], 'layout': knowledge['layout'], 'release': release,
+                    'configs': {name: value['sha256'] for name, value in knowledge['configs'].items()},
+                    'sources': {'backend': manifest['history']['backend'][0]},
+                }
         elif manifest['scope'] == 'quiet':
             changed = deploy_quiet(candidate, manifest, state, journal)
         else:
@@ -562,9 +767,13 @@ def deploy(candidate, manifest, state, registry=None):
                           'components': list(manifest['components'])}), flush=True)
     except BaseException:
         # Roll back the entire affected component set, and record recovery evidence.
-        if journal['phase'] == 'switching-backend' and rollback.exists():
-            compose_up(rollback)
-            healthy(['quiet'] if manifest['scope'] == 'quiet' else changed)
+        try:
+            if journal.get('weknora_switched'):
+                rollback_weknora(candidate)
+        finally:
+            if journal['phase'] == 'switching-backend' and rollback.exists():
+                compose_up(rollback)
+                healthy(['quiet'] if manifest['scope'] == 'quiet' else changed)
         if journal['phase'] == 'switching-backend':
             remove_created_services(journal.get('created_services', []))
         if PUBLIC.resolve() == web_public:
@@ -611,6 +820,8 @@ def receive(scope, stream):
                 validate_image_manifest(manifest)
             else:
                 manifest = extract(archive, unpacked, scope)
+                if 'weknora' in manifest:
+                    raise ValueError('Managed WeKnora releases require fixed-image artifact pull')
             if request:
                 prefix = f'ci-{scope}-{request["run"]}-'
                 suffix = request['commit'][:12]
@@ -657,9 +868,13 @@ def rollback_latest(release):
         journal = json.loads((candidate / 'transaction.json').read_text())
         if journal['phase'] != 'complete':
             raise ValueError('Release is not complete')
-        if (candidate / 'rollback.json').exists():
-            compose_up(candidate / 'rollback.json')
-            healthy(journal['changed_services'])
+        try:
+            if journal.get('weknora_switched'):
+                rollback_weknora(candidate)
+        finally:
+            if (candidate / 'rollback.json').exists():
+                compose_up(candidate / 'rollback.json')
+                healthy(journal['changed_services'])
         remove_created_services(journal.get('created_services', []))
         if PUBLIC.resolve() == (RELEASES / release / 'public').resolve():
             switch_public(Path(journal['previous_public']), release + '-manual-rollback')

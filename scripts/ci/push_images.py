@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 
-from ecs_receiver import extract, image_repository, validate_image_manifest
+from ecs_receiver import extract, image_repository, validate_image_manifest, validate_weknora, weknora_manifest
 
 
 dockerfile = Path(__file__).with_name('Dockerfile.image').resolve()
@@ -20,6 +20,9 @@ with tempfile.TemporaryDirectory(prefix='askxuan-image-build-') as temp:
     source = manifest['history']['backend'][0]
     if source != os.environ['GITHUB_SHA']:
         raise ValueError('Release must match the current CI commit')
+    manifest['schema'] = 2
+    manifest['weknora'] = weknora_manifest(dockerfile.parents[2] / 'deploy' / 'weknora')
+    validate_weknora(manifest['weknora'])
     for name, component in manifest['components'].items():
         repository = image_repository(name)
         tag = f'{repository}:{manifest["release"]}'
