@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/settings"
 	"github.com/askxuan/ai-service/internal/svc"
 	"github.com/askxuan/ai-service/internal/weknora"
@@ -101,15 +100,13 @@ func modelLibraryHandler(s *svc.ServiceContext, action string) http.HandlerFunc 
 				if m.SupportsVision {
 					bindings["vision"] = m.ID
 				}
-				if m.Provider != provider.OpenCodeGo {
-					document := m.DocumentModelID
-					if document == "" {
-						document = "chat:" + m.ID
-					} else {
-						linked[document] = true
-					}
-					bindings["document"] = document
+				document := m.DocumentModelID
+				if document == "" {
+					document = "chat:" + m.ID
+				} else {
+					linked[document] = true
 				}
+				bindings["document"] = document
 				items = append(items, libraryItem{ID: m.ID, Name: m.Name, Model: m.Model, Provider: m.Provider, BaseURL: m.BaseURL, Kind: "language", Source: m.Source, ContextWindow: m.ContextWindow, MaxOutputTokens: m.MaxOutputTokens, Bindings: bindings})
 			}
 			if s.WeKnora != nil {
@@ -278,16 +275,18 @@ func resolveDocumentModel(s *svc.ServiceContext, r *http.Request, selected, acto
 	if err != nil {
 		return "", revision, err
 	}
-	if m.Provider == provider.OpenCodeGo {
-		return "", revision, errors.New("当前文档理解连接不支持 OpenCode Go 的会话协议")
-	}
 	if m.DocumentModelID != "" {
 		return m.DocumentModelID, revision, s.WeKnora.ValidateModelType(r.Context(), m.DocumentModelID, "KnowledgeQA")
 	}
 	if _, current := s.Settings.ModelUses(); current != revision {
 		return "", revision, settings.ErrConflict
 	}
-	engine, err := s.WeKnora.SaveModel(r.Context(), "", actor, weknora.ModelInput{Name: m.Model, DisplayName: m.Name, Type: "KnowledgeQA", BaseURL: connection.BaseURL, APIKey: connection.APIKey, Provider: "openai"})
+	input := weknora.ModelInput{Name: m.Model, DisplayName: m.Name, Type: "KnowledgeQA", BaseURL: connection.BaseURL, APIKey: connection.APIKey, Provider: "openai"}
+	if m.Source == "registered" {
+		input.LibraryModelID = m.ID
+		input.APIKey = ""
+	}
+	engine, err := s.WeKnora.SaveModel(r.Context(), "", actor, input)
 	if err != nil {
 		return "", revision, weknora.ErrUnavailable
 	}

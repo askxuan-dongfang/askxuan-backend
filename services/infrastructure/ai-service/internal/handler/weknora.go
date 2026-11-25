@@ -18,6 +18,8 @@ import (
 )
 
 func registerWeKnora(server *rest.Server, s *svc.ServiceContext) {
+	server.AddRoute(rest.Route{Method: http.MethodPost, Path: weknora.DocumentCompletionPath, Handler: documentCompletionHandler(s)},
+		rest.WithMaxBytes(weknora.MaxFileBytes))
 	for _, v := range []struct{ method, path, action string }{{"GET", "", "models"}, {"POST", "", "model_create"}, {"PUT", "/:model", "model_update"}, {"DELETE", "/:model", "model_delete"}, {"POST", "/:model/test", "model_test"}} {
 		server.AddRoute(rest.Route{Method: v.method, Path: "/api/v1/ai/admin/knowledge-models" + v.path, Handler: weknoraHandler(s, v.action)})
 	}
