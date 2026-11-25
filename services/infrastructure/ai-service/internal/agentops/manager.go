@@ -3,6 +3,7 @@ package agentops
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -99,6 +100,10 @@ func (m *Manager) Workspace(ctx context.Context) (Workspace, error) {
 		if err != nil {
 			return w, ErrUnavailable
 		}
+		w.TopicCatalog, err = repo.reportTopics(ctx)
+		if err != nil {
+			return w, ErrUnavailable
+		}
 	}
 	_, pr := m.Snapshot()
 	w.Tested, err = m.Repo.Tested(ctx, s.Revision, pr)
@@ -112,6 +117,24 @@ func (m *Manager) Save(ctx context.Context, revision int64, c Config, actor stri
 	f, err := Freeze(c, catalog)
 	if err != nil {
 		return err
+	}
+	if len(f.Config.Topics) > 0 {
+		repo, ok := m.Repo.(*SQLRepository)
+		if !ok {
+			return ErrUnavailable
+		}
+		topics, err := repo.reportTopics(ctx)
+		if err != nil {
+			return ErrUnavailable
+		}
+		for _, policy := range f.Config.Topics {
+			if !slices.ContainsFunc(topics, func(topic ReportTopic) bool { return topic.Code == policy.Code }) {
+				return invalid("专题未开放，请重新加载配置")
+			}
+			if len(policy.KnowledgeBaseIDs) > 0 && m.ValidateRetrieval == nil {
+				return invalid("专题知识库需要已接入的知识引擎")
+			}
+		}
 	}
 	snap, _ := m.Snapshot()
 	selected, err := snap.Models.Select(ctx, c.Model, false)

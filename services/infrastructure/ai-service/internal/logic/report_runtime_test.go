@@ -526,7 +526,7 @@ func TestReportOmitsCalculationsRequiringUnconfirmedFacts(t *testing.T) {
 	guard := agent.NewGuard(20000, nil)
 	codes := func() map[string]bool {
 		out := map[string]bool{}
-		for _, s := range reportAvailableSkills(skills, facts, "生成专题报告", guard) {
+		for _, s := range reportAvailableSkills(skills, facts, "生成专题报告", guard, "", nil) {
 			out[s.Code] = true
 		}
 		return out

@@ -42,6 +42,7 @@ type Config struct {
 	Model            string                    `json:"model"`
 	MaxOutputTokens  int                       `json:"maxOutputTokens"`
 	Skills           []SkillPolicy             `json:"skills"`
+	Topics           []TopicPolicy             `json:"topics,omitempty"`
 	Evaluation       []EvaluationCase          `json:"evaluation"`
 }
 
@@ -88,16 +89,17 @@ type SkillInfo struct {
 type Workspace struct {
 	RuntimeMode string `json:"runtimeMode"`
 	State
-	DraftSaved         bool        `json:"draftSaved"`
-	Draft              Config      `json:"draft"`
-	Catalog            []SkillInfo `json:"catalog"`
-	Active             *Config     `json:"active"`
-	Versions           []Version   `json:"versions"`
-	Audit              []Audit     `json:"audit"`
-	Tested             bool        `json:"tested"`
-	LiveEnabled        bool        `json:"liveEnabled"`
-	PersistentRecovery bool        `json:"persistentRecovery"`
-	Rollout            Rollout     `json:"rollout"`
+	DraftSaved         bool          `json:"draftSaved"`
+	Draft              Config        `json:"draft"`
+	Catalog            []SkillInfo   `json:"catalog"`
+	TopicCatalog       []ReportTopic `json:"topicCatalog"`
+	Active             *Config       `json:"active"`
+	Versions           []Version     `json:"versions"`
+	Audit              []Audit       `json:"audit"`
+	Tested             bool          `json:"tested"`
+	LiveEnabled        bool          `json:"liveEnabled"`
+	PersistentRecovery bool          `json:"persistentRecovery"`
+	Rollout            Rollout       `json:"rollout"`
 }
 type Event struct {
 	Stage string `json:"stage"`
@@ -213,6 +215,9 @@ func Freeze(c Config, catalog []*model.AISkill) (Frozen, error) {
 	}
 	if _, exists := byCode[model.SkillCodeGeneral]; exists && !seen[model.SkillCodeGeneral] {
 		return Frozen{}, invalid("请保留日常问事兜底技能")
+	}
+	if err := f.freezeTopics(); err != nil {
+		return Frozen{}, err
 	}
 	return f, nil
 }
