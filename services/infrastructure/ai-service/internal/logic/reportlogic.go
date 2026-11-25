@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/askxuan/ai-service/internal/agent"
+	"github.com/askxuan/ai-service/internal/askagent"
 	"github.com/askxuan/ai-service/internal/model"
 	"github.com/askxuan/ai-service/internal/provider"
 	"github.com/askxuan/ai-service/internal/reportdoc"
@@ -19,17 +20,18 @@ import (
 )
 
 type ReportProduct struct {
-	ToolConfig    string   `json:"-" db:"tool_config"`
-	Ready         bool     `json:"ready" db:"-"`
-	ExecutionNote string   `json:"executionNote" db:"-"`
-	Code          string   `json:"code" db:"code"`
-	Title         string   `json:"title" db:"title"`
-	Subtitle      string   `json:"subtitle" db:"subtitle"`
-	PriceCents    int64    `json:"priceCents" db:"price_cents"`
-	PointsPrice   int64    `json:"pointsPrice" db:"points_price"`
-	ChaptersJSON  string   `json:"-" db:"chapters_json"`
-	Chapters      []string `json:"chapters" db:"-"`
-	Version       string   `json:"version" db:"version"`
+	InputSchema   json.RawMessage `json:"inputSchema,omitempty" db:"-"`
+	ToolConfig    string          `json:"-" db:"tool_config"`
+	Ready         bool            `json:"ready" db:"-"`
+	ExecutionNote string          `json:"executionNote" db:"-"`
+	Code          string          `json:"code" db:"code"`
+	Title         string          `json:"title" db:"title"`
+	Subtitle      string          `json:"subtitle" db:"subtitle"`
+	PriceCents    int64           `json:"priceCents" db:"price_cents"`
+	PointsPrice   int64           `json:"pointsPrice" db:"points_price"`
+	ChaptersJSON  string          `json:"-" db:"chapters_json"`
+	Chapters      []string        `json:"chapters" db:"-"`
+	Version       string          `json:"version" db:"version"`
 }
 type Report struct {
 	DocumentJSON    string              `json:"-" db:"document_json"`
@@ -90,14 +92,31 @@ func ReportProducts(ctx context.Context, s *svc.ServiceContext) ([]ReportProduct
 		return nil, err
 	}
 	if s.AgentVersion > 0 {
+		skills, err := s.SkillModel.List(ctx, model.SkillStatusEnabled)
+		if err != nil {
+			return nil, err
+		}
+		enabled := make(map[string]*model.AISkill, len(skills))
+		for _, skill := range skills {
+			enabled[skill.Code] = skill
+		}
 		filtered := make([]ReportProduct, 0, len(list))
 		for _, product := range list {
-			skill, e := s.SkillModel.FindByCode(ctx, product.Code)
-			if e != nil || skill.Status != model.SkillStatusEnabled {
+			skill := enabled[product.Code]
+			if skill == nil {
 				continue
 			}
 			product.ToolConfig = skill.ToolConfig
 			product.Version = reportAgentVersion(product.Version, s.AgentVersion)
+			if topic := s.PublishedAgent.Topic(product.Code); topic != nil {
+				form, err := topic.Form(enabled)
+				if err != nil {
+					return nil, err
+				}
+				product.InputSchema, _ = json.Marshal(form)
+				chapters, _ := json.Marshal(topic.Chapters)
+				product.ChaptersJSON = string(chapters)
+			}
 			filtered = append(filtered, product)
 		}
 		list = filtered
@@ -120,7 +139,8 @@ func ReportProducts(ctx context.Context, s *svc.ServiceContext) ([]ReportProduct
 		}
 	}
 	for i := range list {
-		for _, code := range reportTools(list[i].Code) {
+		requiredTools := agent.RequiredReportTools(list[i].Code)
+		for _, code := range requiredTools {
 			if s.SkillModel == nil {
 				list[i].Ready = false
 				list[i].ExecutionNote = "计算能力暂不可用"
@@ -139,7 +159,7 @@ func ReportProducts(ctx context.Context, s *svc.ServiceContext) ([]ReportProduct
 				break
 			}
 		}
-		if list[i].Ready && len(reportTools(list[i].Code)) > 0 {
+		if list[i].Ready && len(requiredTools) > 0 {
 			list[i].ExecutionNote = "排盘图表 + AI 专题解读"
 			if agent.IsTopicTool(list[i].Code) {
 				list[i].ExecutionNote = "工具核验依据 + AI 专题解读"
@@ -234,11 +254,21 @@ func ReportCreate(ctx context.Context, s *svc.ServiceContext, user string, req R
 	if err != nil {
 		return nil, err
 	}
-	inputs, err := s.Guard.Validate(agent.GuidedInputSchema(skill.Code, skill.InputSchema), req.Question, req.Inputs)
+	skillSchema := agent.GuidedInputSchema(skill.Code, skill.InputSchema)
+	form := string(p.InputSchema)
+	if form == "" {
+		form = skillSchema
+	}
+	inputs, err := s.Guard.Validate(form, req.Question, req.Inputs)
 	if err != nil {
 		return nil, common.ErrParamInvalid
 	}
-	if _, err := agent.BuildToolArguments(skill.Code, req.Question, inputs, time.Now()); err != nil {
+	toolInputs := inputs
+	if len(p.InputSchema) > 0 {
+		raw, _ := json.Marshal(askagent.FilterFacts(skillSchema, req.Inputs))
+		toolInputs = string(raw)
+	}
+	if _, err := agent.BuildToolArguments(req.SkillCode, req.Question, toolInputs, time.Now()); err != nil {
 		return nil, common.ErrParamInvalid
 	}
 	if req.SkillCode == "marriage" {

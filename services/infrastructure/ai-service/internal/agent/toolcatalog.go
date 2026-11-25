@@ -47,3 +47,18 @@ func IsReadOnlyTool(code string) bool {
 	}
 	return false
 }
+
+func RequiredReportTools(code string) []string {
+	switch code {
+	case "marriage":
+		return []string{"bazi"}
+	case "bazi":
+		return []string{"bazi", "bazi_dayun"}
+	case "ziwei":
+		return []string{"ziwei", "ziwei_horoscope"}
+	}
+	if IsReadOnlyTool(code) {
+		return []string{code}
+	}
+	return nil
+}

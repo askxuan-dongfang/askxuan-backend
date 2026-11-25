@@ -97,6 +97,14 @@ func TestOperationsMySQLLifecycle(t *testing.T) {
 			}
 		}
 	}
+	for _, stmt := range []string{
+		`CREATE TABLE IF NOT EXISTS ai_skill (code VARCHAR(50) PRIMARY KEY, sort_order INT NOT NULL)`,
+		`CREATE TABLE IF NOT EXISTS ai_report_product (code VARCHAR(50) PRIMARY KEY, title VARCHAR(80) NOT NULL, chapters_json JSON NOT NULL, enabled TINYINT NOT NULL)`,
+	} {
+		if _, e = db.ExecCtx(ctx, stmt); e != nil {
+			t.Fatal(e)
+		}
+	}
 	for _, table := range []string{"ai_agent_debug", "ai_agent_version", "ai_agent_audit", "ai_agent_checkpoint", "ai_agent_evaluation"} {
 		if _, e = db.ExecCtx(ctx, "DELETE FROM "+table); e != nil {
 			t.Fatal(e)

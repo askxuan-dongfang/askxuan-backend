@@ -41,6 +41,7 @@ type ServiceContext struct {
 	AIConfig          config.AIConf
 	Settings          *settings.Manager
 	AgentOps          *agentops.Manager
+	PublishedAgent    *agentops.Config
 	AgentDefaultModel string
 	AgentVersion      int64
 	AgentSubject      string
@@ -128,6 +129,7 @@ func (s *ServiceContext) AskRuntimeFor(ctx context.Context, subject string) (*Se
 		f.Skills[i].PromptTemplate = f.Config.Instruction + "\n" + f.Skills[i].PromptTemplate
 	}
 	result.SkillModel = &agentops.SkillView{Frozen: *f, Version: version}
+	result.PublishedAgent = &f.Config
 	result.AgentDefaultModel = f.Config.Model
 	result.AgentVersion = version
 	result.Retrieval = f.Config.Retrieval
