@@ -39,9 +39,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps({"data": [
-            {"index": i, "embedding": [1.0] + [0.0] * 511} for i in range(count)
-        ]}).encode())
+        self.wfile.write(json.dumps({"object": "list", "model": value.get("model", "fixture"),
+            "usage": {"prompt_tokens": count, "total_tokens": count}, "data": [
+                {"object": "embedding", "index": i, "embedding": [1.0] + [0.0] * 511} for i in range(count)
+            ]}).encode())
 ThreadingHTTPServer(("0.0.0.0", int(sys.argv[1])), Handler).serve_forever()
 '''
     server = runtime / 'fixture.py'
@@ -56,8 +57,11 @@ ThreadingHTTPServer(("0.0.0.0", int(sys.argv[1])), Handler).serve_forever()
             payload = json.dumps(payload).encode()
             headers['Content-Type'] = 'application/json'
         req = urllib.request.Request('http://127.0.0.1:18085/api/v1' + path, data=payload, headers=headers)
-        with urllib.request.urlopen(req, timeout=20) as response:
-            data = json.load(response)
+        try:
+            with urllib.request.urlopen(req, timeout=20) as response:
+                data = json.load(response)
+        except urllib.error.HTTPError as error:
+            raise RuntimeError(f'Knowledge fixture {path} returned HTTP {error.code}') from None
         assert data['success']
         return data
 
@@ -81,7 +85,7 @@ ThreadingHTTPServer(("0.0.0.0", int(sys.argv[1])), Handler).serve_forever()
                'python', '/fixture.py', '9981')
         subprocess.run([*compose, 'up', '-d', '--no-deps', '--no-build', '--wait', '--wait-timeout', '180', 'app'], check=True)
         credentials = {'email': 'knowledge-release@internal.example', 'username': 'Release fixture',
-                       'password': secrets.token_hex(16) + 'Aa1!'}
+                       'password': secrets.token_hex(12) + 'Aa1!'}
         engine('/auth/register', credentials)
         login = engine('/auth/login', {name: credentials[name] for name in ('email', 'password')})
         token = engine(f'/tenants/{login["active_tenant"]["id"]}/api-keys', {'name': 'CI', 'full_access': True},
